@@ -571,6 +571,19 @@ marginBottom:30
 
 <div
 key={stage}
+onDragOver={(e)=>e.preventDefault()}
+onDrop={async (e)=>{
+
+const prospectId = e.dataTransfer.getData("prospectId")
+
+await supabase
+.from("prospects")
+.update({ status: stage })
+.eq("id", prospectId)
+
+loadProspects()
+
+}}
 style={{
 background:"#0f1f3d",
 border:"1px solid #2f5aa6",
@@ -595,13 +608,17 @@ paddingBottom:6
 
 <div
 key={p.id}
+draggable
+onDragStart={(e)=>{
+e.dataTransfer.setData("prospectId", p.id)
+}}
 onClick={()=>setSelectedProspect(p)}
 style={{
 background:"#162a52",
 padding:10,
 borderRadius:8,
 marginBottom:8,
-cursor:"pointer"
+cursor:"grab"
 }}
 >
 
