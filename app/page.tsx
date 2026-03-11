@@ -538,6 +538,7 @@ export default function Home() {
                         <th style={thStyle}>Origen</th>
                         <th style={thStyle}>Servicio</th>
                         <th style={thStyle}>Estatus</th>
+                        <th style={thStyle}>Seguimiento</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -552,6 +553,21 @@ export default function Home() {
                             {prospect.interested_service || "-"}
                           </td>
                           <td style={tdStyle}>{prospect.status || "-"}</td>
+
+<td style={tdStyle}>
+  <button
+    style={{
+      background: "#2f5aa6",
+      border: "none",
+      color: "#fff",
+      padding: "6px 10px",
+      borderRadius: "6px",
+      cursor: "pointer",
+    }}
+  >
+    Seguimiento
+  </button>
+</td>
                         </tr>
                       ))}
                     </tbody>
