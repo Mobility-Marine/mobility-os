@@ -29,7 +29,7 @@ type ProspectRow = {
   notes: string | null;
   company_id: string | null;
   estimated_value: number | null;
-  stage_position: 0
+  stage_position: number | null
 };
 
 type ViewName =
@@ -619,27 +619,16 @@ marginBottom:30
 {pipelineStages.map(stage => (
 
 <div
-key={stage}
-onDragOver={(e)=>e.preventDefault()}
-onDrop={(e) => handleDrop(e, stage)}
-
-const prospectId = e.dataTransfer.getData("prospectId")
-
-await supabase
-.from("prospects")
-.update({ status: stage })
-.eq("id", prospectId)
-
-loadProspects()
-
-}}
-style={{
-background:"#0f1f3d",
-border:"1px solid #2f5aa6",
-borderRadius:10,
-padding:12,
-minHeight:180
-}}
+  key={stage}
+  onDragOver={(e) => e.preventDefault()}
+  onDrop={(e) => handleDrop(e, stage)}
+  style={{
+    background: "#0f1f3d",
+    border: "1px solid #2f5aa6",
+    borderRadius: 10,
+    padding: 12,
+    minHeight: 180
+  }}
 >
 
 <div style={{
@@ -737,38 +726,32 @@ style={{ cursor: "pointer" }}
 <select
 value={prospect.status || "Nuevo"}
 onChange={async (e) => {
-const newStatus = e.target.value;
 
-// Obtener última posición de esa columna
-const { data: lastItems } = await supabase
-  .from("prospects")
-  .select("stage_position")
-  .eq("status", stage)
-  .order("stage_position", { ascending: false })
-  .limit(1)
+  const newStatus = e.target.value
 
-const nextPosition =
-  lastItems && lastItems.length > 0
-    ? lastItems[0].stage_position + 1
-    : 1
+  // Obtener última posición de esa columna
+  const { data: lastItems } = await supabase
+    .from("prospects")
+    .select("stage_position")
+    .eq("status", newStatus)
+    .order("stage_position", { ascending: false })
+    .limit(1)
 
-// Actualizar status + posición
-await supabase
-  .from("prospects")
-  .update({
-    status: stage,
-    stage_position: nextPosition
-  })
-  .eq("id", prospectId)
+  const nextPosition =
+    lastItems && lastItems.length > 0
+      ? (lastItems[0].stage_position || 0) + 1
+      : 1
 
-loadProspects();
-}}
-style={{
-background: "#0b1220",
-color: "#fff",
-border: "1px solid #2f5aa6",
-borderRadius: "6px",
-padding: "4px"
+  // Actualizar prospecto correcto
+  await supabase
+    .from("prospects")
+    .update({
+      status: newStatus,
+      stage_position: nextPosition
+    })
+    .eq("id", prospect.id)
+
+  loadProspects()
 }}
 >
 <option value="Nuevo">Nuevo</option>
