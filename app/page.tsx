@@ -1253,62 +1253,61 @@ Seguimiento
     ))}
 
     {/* Filas por hora */}
-    {generateHours().map(hour => (
-      <>
-        {/* Columna de horas */}
-        <div
-          key={hour}
-          style={{
-            padding: 8,
-            borderTop: "1px solid #284577",
-            background: "#0b1b3a",
-            fontSize: 12
-          }}
-        >
-          {hour}
-        </div>
+{generateHours().map(hour => (
+  <React.Fragment key={hour}>
 
-        {/* Columnas por día */}
-        {getWeekDays().map(day => (
-          <div
-            key={hour + day.toISOString()}
-            style={{
-              borderLeft: "1px solid #284577",
-              borderTop: "1px solid #284577",
-              minHeight: 60,
-              padding: 4,
-              position: "relative"
-            }}
-          >
-            {calendarEvents
-              .filter(ev => {
-                const evDate = new Date(ev.start_datetime)
+    {/* Columna de horas */}
+    <div
+      style={{
+        padding: 8,
+        borderTop: "1px solid #284577",
+        background: "#0b1b3a",
+        fontSize: 12
+      }}
+    >
+      {hour}
+    </div>
 
-                return (
-                  evDate.toDateString() === day.toDateString() &&
-                  evDate
-                    .toTimeString()
-                    .slice(0, 5) === hour
-                )
-              })
-              .map(ev => (
-                <div
-                  key={ev.id}
-                  style={{
-                    background: ev.color || "#2563eb",
-                    padding: 4,
-                    borderRadius: 6,
-                    fontSize: 12,
-                    color: "#fff"
-                  }}
-                >
-                  {ev.title}
-                </div>
-              ))}
-          </div>
-        ))}
-      </>
+    {/* Columnas por día */}
+    {getWeekDays().map(day => (
+      <div
+        key={hour + day.toISOString()}
+        style={{
+          borderLeft: "1px solid #284577",
+          borderTop: "1px solid #284577",
+          minHeight: 60,
+          padding: 4,
+          position: "relative"
+        }}
+      >
+        {calendarEvents
+          .filter(ev => {
+            const evDate = new Date(ev.start_datetime)
+
+            return (
+              evDate.toDateString() === day.toDateString() &&
+              evDate.toTimeString().slice(0, 5) === hour
+            )
+          })
+          .map(ev => (
+            <div
+              key={ev.id}
+              style={{
+                background: ev.color || "#2563eb",
+                padding: 4,
+                borderRadius: 6,
+                fontSize: 12,
+                color: "#fff"
+              }}
+            >
+              {ev.title}
+            </div>
+          ))}
+      </div>
     ))}
+
+  </React.Fragment>
+))}
 
     </section>
 
