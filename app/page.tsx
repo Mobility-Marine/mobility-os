@@ -69,6 +69,11 @@ export default function Home() {
   const [newActivityType, setNewActivityType] = useState("");
 const [newActivityNotes, setNewActivityNotes] = useState("");
 
+  const [tasks, setTasks] = useState<any[]>([])
+const [taskTitle, setTaskTitle] = useState("")
+const [taskDescription, setTaskDescription] = useState("")
+const [taskDueDate, setTaskDueDate] = useState("")
+
   const [clientForm, setClientForm] = useState({
     name: "",
     rfc: "",
@@ -187,6 +192,22 @@ setProspectHistory(data || [])
 
 }
 
+async function loadTasks(prospectId: string) {
+
+  const { data, error } = await supabase
+    .from("prospect_tasks")
+    .select("*")
+    .eq("prospect_id", prospectId)
+    .order("due_date", { ascending: true })
+
+  if (error) {
+    alert("Error cargando tareas")
+    return
+  }
+
+  setTasks(data || [])
+}
+  
   async function createClient() {
     const { data: companyData } = await supabase
       .from("companies")
@@ -744,6 +765,7 @@ key={prospect.id}
 onClick={() => {
 setSelectedProspect(prospect)
 loadFollowups(prospect.id)
+  loadTasks(prospect.id)
 }}
 style={{ cursor: "pointer" }}
 >
@@ -1104,6 +1126,95 @@ onChange={(e)=>setNewActivityNotes(e.target.value)}
 style={{...inputStyle, marginBottom:10}}
 />
 
+<h3 style={{marginTop:25}}>Tareas programadas</h3>
+
+<input
+  placeholder="Título"
+  value={taskTitle}
+  onChange={(e)=>setTaskTitle(e.target.value)}
+  style={{...inputStyle, marginBottom:10}}
+/>
+
+<input
+  placeholder="Descripción"
+  value={taskDescription}
+  onChange={(e)=>setTaskDescription(e.target.value)}
+  style={{...inputStyle, marginBottom:10}}
+/>
+
+<input
+  type="datetime-local"
+  value={taskDueDate}
+  onChange={(e)=>setTaskDueDate(e.target.value)}
+  style={{...inputStyle, marginBottom:10}}
+/>
+
+<button
+  onClick={async ()=>{
+
+    if(!taskTitle || !taskDueDate){
+      alert("Completa título y fecha")
+      return
+    }
+
+    const { error } = await supabase
+      .from("prospect_tasks")
+      .insert({
+        prospect_id: selectedProspect.id,
+        title: taskTitle,
+        description: taskDescription,
+        due_date: taskDueDate
+      })
+
+    if(error){
+      alert("Error guardando tarea")
+      return
+    }
+
+    setTaskTitle("")
+    setTaskDescription("")
+    setTaskDueDate("")
+
+    loadTasks(selectedProspect.id)
+
+  }}
+  style={{
+    background:"#2563eb",
+    border:"none",
+    padding:"10px 14px",
+    color:"#fff",
+    borderRadius:6
+  }}
+>
+  Crear tarea
+</button>
+
+  {tasks.length === 0 && (
+  <p style={{color:"#9fb3d9"}}>Sin tareas programadas</p>
+)}
+
+{tasks.map((task)=>(
+  <div
+    key={task.id}
+    style={{
+      borderBottom:"1px solid #243a63",
+      padding:"10px 0"
+    }}
+  >
+    <div style={{fontWeight:"bold"}}>
+      {task.title}
+    </div>
+
+    <div style={{fontSize:14,color:"#9fb3d9"}}>
+      {task.description}
+    </div>
+
+    <div style={{fontSize:12,color:"#64748b",marginTop:4}}>
+      {new Date(task.due_date).toLocaleString()}
+    </div>
+  </div>
+))}
+  
 <button
 onClick={async ()=>{
 
