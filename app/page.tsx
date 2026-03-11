@@ -225,7 +225,37 @@ setProspectHistory(data || [])
     setStatus("Cliente creado correctamente");
     loadClients();
   }
+  
+async function handleDrop(e: React.DragEvent, newStage: string) {
+  const prospectId = e.dataTransfer.getData("prospectId")
 
+  const { data: lastItems } = await supabase
+    .from("prospects")
+    .select("stage_position")
+    .eq("status", newStage)
+    .order("stage_position", { ascending: false })
+    .limit(1)
+
+  const nextPosition =
+    lastItems && lastItems.length > 0
+      ? (lastItems[0].stage_position || 0) + 1
+      : 1
+
+  const { error } = await supabase
+    .from("prospects")
+    .update({
+      status: newStage,
+      stage_position: nextPosition
+    })
+    .eq("id", prospectId)
+
+  if (error) {
+    alert("Error moviendo prospecto")
+    return
+  }
+
+  loadProspects()
+}
   async function createProspect() {
     const { data: companyData } = await supabase
       .from("companies")
@@ -591,7 +621,7 @@ marginBottom:30
 <div
 key={stage}
 onDragOver={(e)=>e.preventDefault()}
-onDrop={async (e)=>{
+onDrop={(e) => handleDrop(e, stage)}
 
 const prospectId = e.dataTransfer.getData("prospectId")
 
