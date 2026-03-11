@@ -1307,7 +1307,7 @@ Seguimiento
     ))}
 
   </React.Fragment>
-))}
+  
 ))}
   </div>
 </div>
