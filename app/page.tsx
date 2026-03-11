@@ -50,6 +50,14 @@ export default function Home() {
   const [loadingClients, setLoadingClients] = useState(false);
 
   const [prospects, setProspects] = useState<ProspectRow[]>([]);
+  const pipelineStages = [
+"Nuevo",
+"Contactado",
+"Cotización",
+"Negociación",
+"Ganado",
+"Perdido"
+]
   const [followups, setFollowups] = useState<any[]>([]);
   const [prospectHistory, setProspectHistory] = useState<any[]>([]);
   const [loadingProspects, setLoadingProspects] = useState(false);
@@ -549,6 +557,71 @@ style={inputStyle}
               }}
             >
               <h3 style={{ marginTop: 0 }}>Prospectos registrados</h3>
+              <div
+style={{
+display:"grid",
+gridTemplateColumns:"repeat(6, 1fr)",
+gap:16,
+marginTop:20,
+marginBottom:30
+}}
+>
+
+{pipelineStages.map(stage => (
+
+<div
+key={stage}
+style={{
+background:"#0f1f3d",
+border:"1px solid #2f5aa6",
+borderRadius:10,
+padding:12,
+minHeight:180
+}}
+>
+
+<div style={{
+fontWeight:"bold",
+marginBottom:10,
+borderBottom:"1px solid #2f5aa6",
+paddingBottom:6
+}}>
+{stage}
+</div>
+
+{prospects
+.filter(p => p.status === stage)
+.map(p => (
+
+<div
+key={p.id}
+onClick={()=>setSelectedProspect(p)}
+style={{
+background:"#162a52",
+padding:10,
+borderRadius:8,
+marginBottom:8,
+cursor:"pointer"
+}}
+>
+
+<div style={{fontWeight:"bold"}}>
+{p.company_name || p.name}
+</div>
+
+<div style={{fontSize:12,color:"#9fb3d9"}}>
+{p.name}
+</div>
+
+</div>
+
+))}
+
+</div>
+
+))}
+
+</div>
 
               {loadingProspects ? (
                 <p>Cargando prospectos...</p>
