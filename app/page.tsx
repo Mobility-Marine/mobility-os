@@ -153,9 +153,9 @@ async function loadProspects() {
 
   const { data, error } = await supabase
     .from("prospects")
-    .select(
-      "id, name, company_name, email, phone, lead_source, interested_service, status, notes, company_id"
-    )
+  .select(
+"id, name, company_name, email, phone, lead_source, interested_service, status, notes, company_id, estimated_value, stage_position"
+)
     .order("created_at", { ascending: false });
 
   if (error) {
@@ -242,6 +242,7 @@ setProspectHistory(data || [])
       interested_service: prospectForm.interested_service,
       status: prospectForm.status,
       notes: prospectForm.notes,
+      estimated_value: prospectForm.estimated_value,
     });
 
     if (error) {
