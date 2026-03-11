@@ -1295,6 +1295,7 @@ style={{...inputStyle, marginBottom:10}}
       padding:"10px 0"
     }}
   >
+
     <div style={{fontWeight:"bold"}}>
       {task.title}
     </div>
@@ -1306,6 +1307,34 @@ style={{...inputStyle, marginBottom:10}}
     <div style={{fontSize:12,color:"#64748b",marginTop:4}}>
       {new Date(task.due_date).toLocaleString()}
     </div>
+
+    {/* BOTÓN COMPLETAR */}
+    {!task.completed && (
+      <button
+        onClick={async () => {
+          await supabase
+            .from("prospect_tasks")
+            .update({ completed: true })
+            .eq("id", task.id)
+
+          loadTasks(selectedProspect.id)
+        }}
+        style={{
+          marginTop: 6,
+          background: "#16a34a",
+          border: "none",
+          padding: "6px 10px",
+          color: "#fff",
+          borderRadius: 6,
+          cursor: "pointer"
+        }}
+      >
+        Marcar completada
+      </button>
+    )}
+
+  </div>
+))}
   </div>
 ))}
   
