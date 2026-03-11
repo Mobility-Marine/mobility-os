@@ -51,6 +51,7 @@ export default function Home() {
 
   const [prospects, setProspects] = useState<ProspectRow[]>([]);
   const [followups, setFollowups] = useState<any[]>([]);
+  const [prospectHistory, setProspectHistory] = useState<any[]>([]);
   const [loadingProspects, setLoadingProspects] = useState(false);
   
   const [selectedProspect, setSelectedProspect] = useState<ProspectRow | null>(null);
@@ -156,24 +157,18 @@ async function loadProspects() {
 
 async function loadFollowups(prospectId: string) {
 
-  const { data, error } = await supabase
-    .from("prospect_followups")
-    .select("*")
-    .eq("prospect_id", prospectId)
-    .order("activity_date", { ascending: false });
+const { data, error } = await supabase
+.from("prospect_followups")
+.select("*")
+.eq("prospect_id", prospectId)
+.order("activity_date", { ascending: false });
 
-  if (!error && data) {
+if(error){
+alert("Error cargando historial")
+return
+}
 
-    let history = "";
-
-    data.forEach((item: any) => {
-      history += "• " + item.activity_type + "\n";
-      history += (item.notes || "") + "\n\n";
-    });
-
-    alert("Historial:\n\n" + history);
-
-  }
+setProspectHistory(data || [])
 
 }
 
@@ -576,9 +571,12 @@ style={inputStyle}
                     </thead>
                     <tbody>
                       {prospects.map((prospect) => (
-                        <tr
+                       <tr
 key={prospect.id}
-onClick={() => setSelectedProspect(prospect)}
+onClick={() => {
+setSelectedProspect(prospect)
+loadFollowups(prospect.id)
+}}
 style={{ cursor: "pointer" }}
 >
                           <td style={tdStyle}>{prospect.name || "-"}</td>
@@ -876,6 +874,30 @@ style={inputStyle}
 <strong>Estatus</strong>
 <div>{selectedProspect.status}</div>
 </div>
+
+<h3 style={{marginTop:30}}>Historial</h3>
+
+{prospectHistory.length === 0 && (
+<p style={{color:"#9fb3d9"}}>Sin actividades registradas</p>
+)}
+
+{prospectHistory.map((item) => (
+<div
+key={item.id}
+style={{
+borderBottom:"1px solid #243a63",
+padding:"10px 0"
+}}
+>
+<div style={{fontWeight:"bold"}}>
+{item.activity_type}
+</div>
+
+<div style={{fontSize:14,color:"#9fb3d9"}}>
+{item.notes}
+</div>
+</div>
+))}
 
 <button
 onClick={async () => {
