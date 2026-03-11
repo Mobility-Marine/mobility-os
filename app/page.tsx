@@ -282,6 +282,26 @@ async function handleDrop(e: React.DragEvent, newStage: string) {
     .filter(p => p.status === stage)
     .reduce((sum, p) => sum + (p.estimated_value || 0), 0)
 }
+  function getProspectScore(p: ProspectRow) {
+  let score = 0
+
+  // Valor económico
+  score += (p.estimated_value || 0) / 1000
+
+  // Etapa del pipeline
+  const stageWeights: Record<string, number> = {
+    "Nuevo": 5,
+    "Contactado": 10,
+    "Cotización": 20,
+    "Negociación": 30,
+    "Ganado": 50,
+    "Perdido": 0
+  }
+
+  score += stageWeights[p.status || "Nuevo"] || 0
+
+  return Math.round(score)
+}
   function getPipelineTotal() {
   return prospects.reduce(
     (sum, p) => sum + (p.estimated_value || 0),
