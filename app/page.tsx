@@ -28,6 +28,7 @@ type ProspectRow = {
   status: string | null;
   notes: string | null;
   company_id: string | null;
+  estimated_value: number | null;
 };
 
 type ViewName =
@@ -84,6 +85,7 @@ const [newActivityNotes, setNewActivityNotes] = useState("");
     interested_service: "",
     status: "Nuevo",
     notes: "",
+    estimated_value: 0,
   });
 
   const modules: ViewName[] = useMemo(
@@ -506,6 +508,18 @@ scrollbarWidth: "thin"
                   }
                   style={inputStyle}
                 />
+                <input
+  placeholder="Valor estimado por operación (USD)"
+  type="number"
+  value={prospectForm.estimated_value || ""}
+  onChange={(e) =>
+    setProspectForm({
+      ...prospectForm,
+      estimated_value: Number(e.target.value),
+    })
+  }
+  style={inputStyle}
+/>
                 <select
 value={prospectForm.status}
 onChange={(e) =>
