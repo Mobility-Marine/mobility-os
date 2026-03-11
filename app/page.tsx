@@ -25,7 +25,7 @@ export default function Home() {
 
         setCompanyCount(count ?? 0);
         setStatus("Supabase conectado correctamente");
-      } catch (err) {
+      } catch {
         setStatus("No se pudo conectar con Supabase");
       }
     }
@@ -33,81 +33,167 @@ export default function Home() {
     testConnection();
   }, []);
 
+  const cards = [
+    { title: "Cotizaciones abiertas", value: "0" },
+    { title: "Embarques activos", value: "0" },
+    { title: "Facturas pendientes", value: "0" },
+    { title: "Empresas registradas", value: companyCount ?? "-" },
+  ];
+
+  const modules = [
+    "Dashboard",
+    "CRM",
+    "Cotizaciones",
+    "Embarques",
+    "Facturación",
+    "Reportes",
+    "Proveedores",
+    "Comercio Exterior",
+  ];
+
   return (
-    <main
+    <div
       style={{
         minHeight: "100vh",
-        background: "#0f172a",
-        color: "white",
+        background: "#08142c",
+        color: "#ffffff",
         fontFamily: "Arial, sans-serif",
-        padding: "40px",
+        display: "grid",
+        gridTemplateColumns: "260px 1fr",
       }}
     >
-      <div
+      <aside
         style={{
-          maxWidth: "900px",
-          margin: "0 auto",
-          background: "#1e293b",
-          borderRadius: "16px",
-          padding: "32px",
-          boxShadow: "0 10px 30px rgba(0,0,0,0.25)",
+          background: "#0b1b3a",
+          borderRight: "1px solid #1e335c",
+          padding: "24px 18px",
         }}
       >
-        <h1 style={{ marginBottom: 8 }}>Mobility OS</h1>
-        <p style={{ marginTop: 0, color: "#cbd5e1" }}>
-          Logistics & Foreign Trade Management System
+        <h2 style={{ marginTop: 0, marginBottom: 6 }}>Mobility OS</h2>
+        <p style={{ color: "#9fb3d9", fontSize: 14, marginTop: 0 }}>
+          Mobility Marine
         </p>
 
-        <div
-          style={{
-            marginTop: 24,
-            padding: 20,
-            borderRadius: 12,
-            background: "#0b1220",
-            border: "1px solid #334155",
-          }}
-        >
-          <h2 style={{ marginTop: 0 }}>Estado del sistema</h2>
-          <p>{status}</p>
-          <p>
-            Empresas registradas en base de datos:{" "}
-            <strong>{companyCount ?? "-"}</strong>
-          </p>
-        </div>
-
-        <div
-          style={{
-            marginTop: 24,
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: 16,
-          }}
-        >
-          {[
-            "Dashboard",
-            "CRM",
-            "Cotizaciones",
-            "Embarques",
-            "Facturación",
-            "Reportes",
-          ].map((item) => (
+        <div style={{ marginTop: 28 }}>
+          {modules.map((item) => (
             <div
               key={item}
               style={{
-                background: "#172033",
-                border: "1px solid #334155",
-                borderRadius: 12,
-                padding: 16,
+                padding: "12px 14px",
+                borderRadius: 10,
+                marginBottom: 8,
+                background: item === "Dashboard" ? "#16315f" : "transparent",
+                color: item === "Dashboard" ? "#ffffff" : "#c9d7f2",
+                border: item === "Dashboard" ? "1px solid #2f5aa6" : "1px solid transparent",
+                cursor: "pointer",
               }}
             >
-              <strong>{item}</strong>
-              <p style={{ color: "#94a3b8", marginBottom: 0, marginTop: 8 }}>
-                Próximo módulo a desarrollar
-              </p>
+              {item}
             </div>
           ))}
         </div>
-      </div>
-    </main>
+      </aside>
+
+      <main style={{ padding: 28 }}>
+        <header
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: 24,
+          }}
+        >
+          <div>
+            <h1 style={{ margin: 0 }}>Dashboard</h1>
+            <p style={{ margin: "6px 0 0", color: "#aab9d6" }}>
+              ERP logístico y de comercio exterior
+            </p>
+          </div>
+
+          <div
+            style={{
+              background: "#102244",
+              padding: "10px 14px",
+              borderRadius: 10,
+              border: "1px solid #284577",
+              color: "#dbe7ff",
+              fontSize: 14,
+            }}
+          >
+            {status}
+          </div>
+        </header>
+
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: 16,
+            marginBottom: 24,
+          }}
+        >
+          {cards.map((card) => (
+            <div
+              key={card.title}
+              style={{
+                background: "#12284d",
+                border: "1px solid #284577",
+                borderRadius: 16,
+                padding: 20,
+              }}
+            >
+              <div style={{ color: "#9fb3d9", fontSize: 14 }}>{card.title}</div>
+              <div style={{ fontSize: 30, fontWeight: 700, marginTop: 10 }}>
+                {card.value}
+              </div>
+            </div>
+          ))}
+        </section>
+
+        <section
+          style={{
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr",
+            gap: 16,
+          }}
+        >
+          <div
+            style={{
+              background: "#12284d",
+              border: "1px solid #284577",
+              borderRadius: 16,
+              padding: 22,
+            }}
+          >
+            <h3 style={{ marginTop: 0 }}>Resumen general</h3>
+            <p style={{ color: "#c5d3ee", lineHeight: 1.6 }}>
+              Mobility OS ya está conectado con Supabase y listo para comenzar a
+              construir los módulos reales del sistema: CRM, cotizaciones,
+              embarques, facturación y reportes.
+            </p>
+            <p style={{ color: "#9fb3d9" }}>
+              Empresas registradas: <strong>{companyCount ?? "-"}</strong>
+            </p>
+          </div>
+
+          <div
+            style={{
+              background: "#12284d",
+              border: "1px solid #284577",
+              borderRadius: 16,
+              padding: 22,
+            }}
+          >
+            <h3 style={{ marginTop: 0 }}>Accesos rápidos</h3>
+            <ul style={{ paddingLeft: 18, color: "#d8e3fb", lineHeight: 1.8 }}>
+              <li>Nuevo cliente</li>
+              <li>Nueva cotización</li>
+              <li>Nuevo embarque</li>
+              <li>Nueva factura</li>
+            </ul>
+          </div>
+        </section>
+      </main>
+    </div>
   );
 }
