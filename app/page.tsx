@@ -899,6 +899,10 @@ padding:"10px 0"
 <div style={{fontSize:14,color:"#9fb3d9"}}>
 {item.notes}
 </div>
+  
+<div style={{fontSize:12,color:"#64748b",marginTop:4}}>
+{new Date(item.activity_date).toLocaleString()}
+</div>
 </div>
 ))}
 
@@ -936,7 +940,8 @@ const { error } = await supabase
 .insert({
 prospect_id: selectedProspect.id,
 activity_type: newActivityType,
-notes: newActivityNotes
+notes: newActivityNotes,
+activity_date: new Date()
 })
 
 if(error){
