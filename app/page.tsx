@@ -809,7 +809,6 @@ Seguimiento
             </p>
           </section>
         )}
-        </section>
 
 {selectedProspect && (
 <div
