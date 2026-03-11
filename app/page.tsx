@@ -75,11 +75,11 @@ const [newActivityNotes, setNewActivityNotes] = useState("");
 
   const [tasks, setTasks] = useState<any[]>([])
   const [calendarEvents, setCalendarEvents] = useState<any[]>([])
+  
 const [taskTitle, setTaskTitle] = useState("")
 const [taskDescription, setTaskDescription] = useState("")
 const [taskDueDate, setTaskDueDate] = useState("")
 
-  const [calendarEvents, setCalendarEvents] = useState<any[]>([])
 const [newEventTitle, setNewEventTitle] = useState("")
 const [newEventStart, setNewEventStart] = useState("")
 const [newEventEnd, setNewEventEnd] = useState("")
