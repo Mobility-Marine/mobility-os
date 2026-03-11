@@ -621,9 +621,10 @@ paddingBottom:6
 {stage}
 </div>
 
-{prospects
-.filter(p => p.status === stage)
-.map(p => (
+prospects
+  .filter(p => p.status === stage)
+  .sort((a, b) => a.stage_position - b.stage_position)
+  .map(p => (
 
 <div
 key={p.id}
@@ -708,10 +709,27 @@ value={prospect.status || "Nuevo"}
 onChange={async (e) => {
 const newStatus = e.target.value;
 
+// Obtener última posición de esa columna
+const { data: lastItems } = await supabase
+  .from("prospects")
+  .select("stage_position")
+  .eq("status", stage)
+  .order("stage_position", { ascending: false })
+  .limit(1)
+
+const nextPosition =
+  lastItems && lastItems.length > 0
+    ? lastItems[0].stage_position + 1
+    : 1
+
+// Actualizar status + posición
 await supabase
-.from("prospects")
-.update({ status: newStatus })
-.eq("id", prospect.id);
+  .from("prospects")
+  .update({
+    status: stage,
+    stage_position: nextPosition
+  })
+  .eq("id", prospectId)
 
 loadProspects();
 }}
