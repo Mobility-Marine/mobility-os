@@ -132,46 +132,46 @@ export default function Home() {
     setLoadingClients(false);
   }
 
- async function loadProspects() {
-setLoadingProspects(true);
+async function loadProspects() {
+  setLoadingProspects(true);
 
-const { data, error } = await supabase
-.from("prospects")
-.select(
-"id, name, company_name, email, phone, lead_source, interested_service, status, notes, company_id"
-)
-.order("created_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("prospects")
+    .select(
+      "id, name, company_name, email, phone, lead_source, interested_service, status, notes, company_id"
+    )
+    .order("created_at", { ascending: false });
 
-if (error) {
-setStatus(`Error cargando prospectos: ${error.message}`);
-setLoadingProspects(false);
-return;
-}
+  if (error) {
+    setStatus(`Error cargando prospectos: ${error.message}`);
+    setLoadingProspects(false);
+    return;
+  }
 
-setProspects((data as ProspectRow[]) || []);
-setLoadingProspects(false);
+  setProspects((data as ProspectRow[]) || []);
+  setLoadingProspects(false);
 }
 
 async function loadFollowups(prospectId: string) {
 
-const { data, error } = await supabase
-.from("prospect_followups")
-.select("*")
-.eq("prospect_id", prospectId)
-.order("activity_date", { ascending: false });
+  const { data, error } = await supabase
+    .from("prospect_followups")
+    .select("*")
+    .eq("prospect_id", prospectId)
+    .order("activity_date", { ascending: false });
 
-if (!error && data) {
+  if (!error && data) {
 
-let history = "";
+    let history = "";
 
-data.forEach((item:any) => {
-history += "• " + item.activity_type + "\n";
-history += (item.notes || "") + "\n\n";
-});
+    data.forEach((item:any) => {
+      history += "• " + item.activity_type + "\n";
+      history += (item.notes || "") + "\n\n";
+    });
 
-alert("Historial:\n\n" + history);
+    alert("Historial:\n\n" + history);
 
-}
+  }
 
 }
   
