@@ -1310,12 +1310,6 @@ Seguimiento
       </>
     ))}
 
-</div>
-          ))}
-
-        </div>
-      )}
-
     </section>
 
     <section
