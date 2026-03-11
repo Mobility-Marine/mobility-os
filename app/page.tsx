@@ -364,6 +364,16 @@ async function handleDrop(e: React.DragEvent, newStage: string) {
     return sum + value * prob;
   }, 0);
 }
+  function getTodayTasks() {
+
+  const today = new Date().toDateString();
+
+  return tasks.filter(t => {
+    if (!t.due_date) return false;
+    return new Date(t.due_date).toDateString() === today;
+  });
+
+}
   async function createProspect() {
     const { data: companyData } = await supabase
       .from("companies")
@@ -524,6 +534,40 @@ scrollbarWidth: "thin"
               ))}
             </section>
 
+<div
+  style={{
+    background: "#12284d",
+    border: "1px solid #284577",
+    borderRadius: 16,
+    padding: 22,
+    marginTop: 16
+  }}
+>
+  <h3 style={{ marginTop: 0 }}>Agenda de hoy</h3>
+
+  {getTodayTasks().length === 0 ? (
+    <p style={{ color: "#9fb3d9" }}>
+      No hay actividades programadas hoy
+    </p>
+  ) : (
+    getTodayTasks().map(task => (
+      <div
+        key={task.id}
+        style={{
+          borderBottom: "1px solid #243a63",
+          padding: "8px 0"
+        }}
+      >
+        <strong>{task.title}</strong>
+        <div style={{ fontSize: 12, color: "#9fb3d9" }}>
+          {task.description}
+        </div>
+      </div>
+    ))
+  )}
+
+</div>
+            
             <section
               style={{
                 display: "grid",
