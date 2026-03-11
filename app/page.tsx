@@ -809,7 +809,69 @@ Seguimiento
             </p>
           </section>
         )}
-      </main>
+        </section>
+
+{selectedProspect && (
+<div
+style={{
+position: "fixed",
+right: 0,
+top: 0,
+width: "420px",
+height: "100%",
+background: "#0f172a",
+borderLeft: "2px solid #2f5aa6",
+padding: "24px",
+overflowY: "auto",
+zIndex: 1000
+}}
+>
+
+<h2 style={{marginBottom:20}}>Prospecto</h2>
+
+<div style={{marginBottom:15}}>
+<strong>Nombre</strong>
+<div>{selectedProspect.name}</div>
+</div>
+
+<div style={{marginBottom:15}}>
+<strong>Empresa</strong>
+<div>{selectedProspect.company_name}</div>
+</div>
+
+<div style={{marginBottom:15}}>
+<strong>Correo</strong>
+<div>{selectedProspect.email}</div>
+</div>
+
+<div style={{marginBottom:15}}>
+<strong>Teléfono</strong>
+<div>{selectedProspect.phone}</div>
+</div>
+
+<div style={{marginBottom:15}}>
+<strong>Estatus</strong>
+<div>{selectedProspect.status}</div>
+</div>
+
+<button
+onClick={() => setSelectedProspect(null)}
+style={{
+marginTop:20,
+background:"#2f5aa6",
+border:"none",
+padding:"10px 14px",
+color:"#fff",
+borderRadius:6
+}}
+>
+Cerrar
+</button>
+
+</div>
+)}
+
+</main>
     </div>
   );
 }
