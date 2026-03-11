@@ -114,23 +114,23 @@ export default function Home() {
     if (activeView === "Prospectos") loadProspects();
   }, [activeView]);
 
-  async function loadClients() {
-    setLoadingClients(true);
+ async function loadClients() {
+  setLoadingClients(true);
 
-    const { data, error } = await supabase
-      .from("clients")
-      .select("id, name, rfc, address, contact, email, company_id")
-      .order("created_at", { ascending: false });
+  const { data, error } = await supabase
+    .from("clients")
+    .select("id, name, rfc, address, contact, email, company_id")
+    .order("created_at", { ascending: false });
 
-    if (error) {
-      setStatus(`Error cargando clientes: ${error.message}`);
-      setLoadingClients(false);
-      return;
-    }
-
-    setClients((data as ClientRow[]) || []);
+  if (error) {
+    setStatus(`Error cargando clientes: ${error.message}`);
     setLoadingClients(false);
+    return;
   }
+
+  setClients((data as ClientRow[]) || []);
+  setLoadingClients(false);
+}
 
 async function loadProspects() {
   setLoadingProspects(true);
@@ -164,7 +164,7 @@ async function loadFollowups(prospectId: string) {
 
     let history = "";
 
-    data.forEach((item:any) => {
+    data.forEach((item: any) => {
       history += "• " + item.activity_type + "\n";
       history += (item.notes || "") + "\n\n";
     });
@@ -174,25 +174,6 @@ async function loadFollowups(prospectId: string) {
   }
 
 }
-  
-    setLoadingProspects(true);
-
-    const { data, error } = await supabase
-      .from("prospects")
-      .select(
-        "id, name, company_name, email, phone, lead_source, interested_service, status, notes, company_id"
-      )
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      setStatus(`Error cargando prospectos: ${error.message}`);
-      setLoadingProspects(false);
-      return;
-    }
-
-    setProspects((data as ProspectRow[]) || []);
-    setLoadingProspects(false);
-  }
 
   async function createClient() {
     const { data: companyData } = await supabase
