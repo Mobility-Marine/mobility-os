@@ -556,12 +556,28 @@ export default function Home() {
 
 <td style={tdStyle}>
  <button
-onClick={() => {
-const note = prompt("Escribe la actividad del prospecto (llamada, correo, reunión, etc.)");
+onClick={async () => {
 
-if (note) {
-alert("Actividad registrada: " + note);
+const activity = prompt("Tipo de actividad (llamada, correo, reunión)");
+
+const notes = prompt("Notas de la actividad");
+
+if (!activity) return;
+
+const { error } = await supabase
+.from("prospect_followups")
+.insert({
+prospect_id: prospect.id,
+activity_type: activity,
+notes: notes
+});
+
+if (error) {
+alert("Error guardando actividad: " + error.message);
+} else {
+alert("Actividad guardada correctamente");
 }
+
 }}
 style={{
 background: "#2f5aa6",
