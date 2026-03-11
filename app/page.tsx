@@ -897,6 +897,10 @@ return
 
 alert("Prospecto actualizado")
 
+await loadProspects()
+
+setSelectedProspect(null)
+
 }}
 style={{
 marginTop:10,
