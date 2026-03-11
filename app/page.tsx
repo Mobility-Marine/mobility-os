@@ -74,9 +74,15 @@ const [loadingEvents, setLoadingEvents] = useState(false)
 const [newActivityNotes, setNewActivityNotes] = useState("");
 
   const [tasks, setTasks] = useState<any[]>([])
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([])
 const [taskTitle, setTaskTitle] = useState("")
 const [taskDescription, setTaskDescription] = useState("")
 const [taskDueDate, setTaskDueDate] = useState("")
+
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([])
+const [newEventTitle, setNewEventTitle] = useState("")
+const [newEventStart, setNewEventStart] = useState("")
+const [newEventEnd, setNewEventEnd] = useState("")
 
   const [clientForm, setClientForm] = useState({
     name: "",
@@ -230,6 +236,21 @@ async function loadTasks(prospectId: string) {
   setTasks(data || [])
 }
 
+async function loadCalendarEvents() {
+
+  const { data, error } = await supabase
+    .from("calendar_events")
+    .select("*")
+    .order("start_datetime", { ascending: true })
+
+  if (error) {
+    alert("Error cargando calendario")
+    return
+  }
+
+  setCalendarEvents(data || [])
+}
+  
 async function convertToClient() {
   if (!selectedProspect) return;
 
