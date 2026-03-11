@@ -1220,97 +1220,98 @@ Seguimiento
     >
       <h3 style={{ marginTop: 0 }}>Calendario semanal</h3>
 
-<div style={{ overflowX: "auto" }}>
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "80px repeat(5, 1fr)",
-      border: "1px solid #284577",
-      borderRadius: 12,
-      overflow: "hidden"
-    }}
-  >
+      <div style={{ overflowX: "auto" }}>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "80px repeat(5, 1fr)",
+            border: "1px solid #284577",
+            borderRadius: 12,
+            overflow: "hidden"
+          }}
+        >
 
-    {/* Encabezado */}
-    <div style={{ background: "#0f1f3d" }} />
+          {/* Encabezado */}
+          <div style={{ background: "#0f1f3d" }} />
 
-    {getWeekDays().map(day => (
-      <div
-        key={day.toISOString()}
-        style={{
-          background: "#0f1f3d",
-          padding: 10,
-          borderLeft: "1px solid #284577",
-          textAlign: "center",
-          fontWeight: "bold"
-        }}
-      >
-        {day.toLocaleDateString("es-MX", {
-          weekday: "short",
-          day: "numeric"
-        })}
-      </div>
-    ))}
-
-    {/* Filas por hora */}
-{generateHours().map(hour => (
-  <React.Fragment key={hour}>
-
-    {/* Columna de horas */}
-    <div
-      style={{
-        padding: 8,
-        borderTop: "1px solid #284577",
-        background: "#0b1b3a",
-        fontSize: 12
-      }}
-    >
-      {hour}
-    </div>
-
-    {/* Columnas por día */}
-    {getWeekDays().map(day => (
-      <div
-        key={hour + day.toISOString()}
-        style={{
-          borderLeft: "1px solid #284577",
-          borderTop: "1px solid #284577",
-          minHeight: 60,
-          padding: 4,
-          position: "relative"
-        }}
-      >
-        {calendarEvents
-          .filter(ev => {
-            const evDate = new Date(ev.start_datetime)
-
-            return (
-              evDate.toDateString() === day.toDateString() &&
-              evDate.toTimeString().slice(0, 5) === hour
-            )
-          })
-          .map(ev => (
+          {getWeekDays().map(day => (
             <div
-              key={ev.id}
+              key={day.toISOString()}
               style={{
-                background: ev.color || "#2563eb",
-                padding: 4,
-                borderRadius: 6,
-                fontSize: 12,
-                color: "#fff"
+                background: "#0f1f3d",
+                padding: 10,
+                borderLeft: "1px solid #284577",
+                textAlign: "center",
+                fontWeight: "bold"
               }}
             >
-              {ev.title}
+              {day.toLocaleDateString("es-MX", {
+                weekday: "short",
+                day: "numeric"
+              })}
             </div>
           ))}
-      </div>
-    ))}
 
-  </React.Fragment>
-  
-))}
-  </div>
-</div>
+          {/* Filas por hora */}
+          {generateHours().map(hour => (
+            <React.Fragment key={hour}>
+
+              {/* Hora */}
+              <div
+                style={{
+                  padding: 8,
+                  borderTop: "1px solid #284577",
+                  background: "#0b1b3a",
+                  fontSize: 12
+                }}
+              >
+                {hour}
+              </div>
+
+              {/* Días */}
+              {getWeekDays().map(day => (
+                <div
+                  key={hour + day.toISOString()}
+                  style={{
+                    borderLeft: "1px solid #284577",
+                    borderTop: "1px solid #284577",
+                    minHeight: 60,
+                    padding: 4,
+                    position: "relative"
+                  }}
+                >
+                  {calendarEvents
+                    .filter(ev => {
+                      const evDate = new Date(ev.start_datetime)
+
+                      return (
+                        evDate.toDateString() === day.toDateString() &&
+                        evDate.toTimeString().slice(0, 5) === hour
+                      )
+                    })
+                    .map(ev => (
+                      <div
+                        key={ev.id}
+                        style={{
+                          background: ev.color || "#2563eb",
+                          padding: 4,
+                          borderRadius: 6,
+                          fontSize: 12,
+                          color: "#fff"
+                        }}
+                      >
+                        {ev.title}
+                      </div>
+                    ))}
+                </div>
+              ))}
+
+            </React.Fragment>
+          ))}
+
+        </div> 
+      </div> 
+
     </section>
 
     <section
