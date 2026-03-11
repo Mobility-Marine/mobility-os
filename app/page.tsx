@@ -206,8 +206,6 @@ async function loadTasks(prospectId: string) {
   }
 
   setTasks(data || [])
-
-  setProspectTasks(data || [])
 }
   
   async function createClient() {
