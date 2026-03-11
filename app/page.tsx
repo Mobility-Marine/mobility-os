@@ -36,6 +36,7 @@ type ViewName =
   | "Dashboard"
   | "Prospectos"
   | "CRM"
+  | "Agenda"
   | "Cotizaciones"
   | "Embarques"
   | "Facturación"
@@ -96,19 +97,20 @@ const [taskDueDate, setTaskDueDate] = useState("")
   });
 
   const modules: ViewName[] = useMemo(
-    () => [
-      "Dashboard",
-      "Prospectos",
-      "CRM",
-      "Cotizaciones",
-      "Embarques",
-      "Facturación",
-      "Reportes",
-      "Proveedores",
-      "Comercio Exterior",
-    ],
-    []
-  );
+  () => [
+    "Dashboard",
+    "Prospectos",
+    "CRM",
+    "Agenda",
+    "Cotizaciones",
+    "Embarques",
+    "Facturación",
+    "Reportes",
+    "Proveedores",
+    "Comercio Exterior",
+  ],
+  []
+);
 
   useEffect(() => {
     async function testConnection() {
@@ -1134,6 +1136,52 @@ Seguimiento
           </div>
         )}
 
+{activeView === "Agenda" && (
+  <div style={{ display: "grid", gap: 16 }}>
+
+    <section
+      style={{
+        background: "#12284d",
+        border: "1px solid #284577",
+        borderRadius: 16,
+        padding: 22,
+      }}
+    >
+      <h3 style={{ marginTop: 0 }}>Agenda general</h3>
+
+      {tasks.length === 0 ? (
+        <p style={{ color: "#9fb3d9" }}>
+          No hay tareas programadas
+        </p>
+      ) : (
+        tasks.map(task => (
+          <div
+            key={task.id}
+            style={{
+              borderBottom: "1px solid #243a63",
+              padding: "10px 0"
+            }}
+          >
+            <strong>{task.title}</strong>
+
+            <div style={{ fontSize: 13, color: "#9fb3d9" }}>
+              {task.description}
+            </div>
+
+            <div style={{ fontSize: 12, color: "#64748b" }}>
+              Fecha: {task.due_date
+                ? new Date(task.due_date).toLocaleString()
+                : "Sin fecha"}
+            </div>
+          </div>
+        ))
+      )}
+
+    </section>
+
+  </div>
+)}
+        
         {!["Dashboard", "CRM", "Prospectos"].includes(activeView) && (
           <section
             style={{
