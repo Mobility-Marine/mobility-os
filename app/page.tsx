@@ -262,6 +262,7 @@ setProspectHistory(data || [])
       status: "nuevo",
       notes: "",
       estimated_value: 0,
+       stage_position: 0
     });
 
     setStatus("Prospecto creado correctamente");
