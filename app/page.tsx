@@ -1210,6 +1210,7 @@ Seguimiento
 {activeView === "Agenda" && (
   <div style={{ display: "grid", gap: 16 }}>
 
+    {/* ===== CALENDARIO ===== */}
     <section
       style={{
         background: "#12284d",
@@ -1268,7 +1269,7 @@ Seguimiento
                 {hour}
               </div>
 
-              {/* Días */}
+              {/* Celdas por día */}
               {getWeekDays().map(day => (
                 <div
                   key={hour + day.toISOString()}
@@ -1283,7 +1284,6 @@ Seguimiento
                   {calendarEvents
                     .filter(ev => {
                       const evDate = new Date(ev.start_datetime)
-
                       return (
                         evDate.toDateString() === day.toDateString() &&
                         evDate.toTimeString().slice(0, 5) === hour
@@ -1309,11 +1309,11 @@ Seguimiento
             </React.Fragment>
           ))}
 
-        </div> 
-      </div> 
-
+        </div>
+      </div>
     </section>
 
+    {/* ===== CREAR EVENTO ===== */}
     <section
       style={{
         background: "#12284d",
@@ -1371,7 +1371,6 @@ Seguimiento
           setNewEventEnd("");
 
           loadCalendarEvents();
-
         }}
         style={{
           background: "#2563eb",
