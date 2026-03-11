@@ -347,6 +347,23 @@ async function handleDrop(e: React.DragEvent, newStage: string) {
     0
   )
 }
+  function getForecastTotal() {
+
+  const probabilities: Record<string, number> = {
+    "Nuevo": 0.1,
+    "Contactado": 0.25,
+    "Cotización": 0.5,
+    "Negociación": 0.75,
+    "Ganado": 1,
+    "Perdido": 0
+  };
+
+  return prospects.reduce((sum, p) => {
+    const value = p.estimated_value || 0;
+    const prob = probabilities[p.status || "Nuevo"] || 0;
+    return sum + value * prob;
+  }, 0);
+}
   async function createProspect() {
     const { data: companyData } = await supabase
       .from("companies")
@@ -709,6 +726,19 @@ style={inputStyle}
   }}
 >
   Valor total del pipeline: ${getPipelineTotal().toLocaleString()}
+</div>
+
+              <div
+  style={{
+    background: "#0b3a2b",
+    border: "1px solid #16a34a",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    fontWeight: "bold"
+  }}
+>
+  Forecast estimado: ${getForecastTotal().toLocaleString()}
 </div>
               
               <div
