@@ -174,17 +174,6 @@ alert("Historial:\n\n" + history);
 }
 
 }
-
-data.forEach((item:any) => {
-history += "• " + item.activity_type + "\n";
-history += (item.notes || "") + "\n\n";
-});
-
-alert("Historial:\n\n" + history);
-
-}
-
-}
     setLoadingProspects(true);
 
     const { data, error } = await supabase
