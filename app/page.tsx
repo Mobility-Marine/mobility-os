@@ -615,31 +615,12 @@ e.dataTransfer.setData("prospectId", p.id)
 onClick={()=>setSelectedProspect(p)}
 style={{
 background:"#162a52",
-padding:"12px",
-borderRadius:10,
-marginBottom:10,
-cursor:"grab",
-border:"1px solid #2f5aa6"
+padding:10,
+borderRadius:8,
+marginBottom:8,
+cursor:"grab"
 }}
 >
-
-<div style={{fontWeight:"bold",fontSize:14}}>
-{p.company_name || p.name}
-</div>
-
-<div style={{fontSize:12,color:"#9fb3d9",marginBottom:6}}>
-{p.name}
-</div>
-
-<div style={{fontSize:12,color:"#9fb3d9"}}>
-Servicio: {p.interested_service || "-"}
-</div>
-
-<div style={{fontSize:12,color:"#9fb3d9"}}>
-Origen: {p.lead_source || "-"}
-</div>
-
-</div>
 
 <div style={{fontWeight:"bold"}}>
 {p.company_name || p.name}
