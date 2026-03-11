@@ -29,6 +29,7 @@ type ProspectRow = {
   notes: string | null;
   company_id: string | null;
   estimated_value: number | null;
+  stage_position: 0
 };
 
 type ViewName =
@@ -86,6 +87,7 @@ const [newActivityNotes, setNewActivityNotes] = useState("");
     status: "Nuevo",
     notes: "",
     estimated_value: 0,
+    stage_position: 0
   });
 
   const modules: ViewName[] = useMemo(
