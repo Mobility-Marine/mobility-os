@@ -1053,6 +1053,21 @@ boxSizing: "border-box",
 zIndex: 1000
 }}
 >
+  <button
+  onClick={() => setSelectedProspect(null)}
+  style={{
+    position: "absolute",
+    top: 10,
+    right: 10,
+    background: "transparent",
+    border: "none",
+    color: "#fff",
+    fontSize: 22,
+    cursor: "pointer"
+  }}
+>
+  ✕
+</button>
 
 <h2 style={{marginBottom:20}}>Prospecto</h2>
 
