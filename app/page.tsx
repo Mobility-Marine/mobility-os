@@ -17,8 +17,22 @@ type ClientRow = {
   company_id: string | null;
 };
 
+type ProspectRow = {
+  id: string;
+  name: string | null;
+  company_name: string | null;
+  email: string | null;
+  phone: string | null;
+  lead_source: string | null;
+  interested_service: string | null;
+  status: string | null;
+  notes: string | null;
+  company_id: string | null;
+};
+
 type ViewName =
   | "Dashboard"
+  | "Prospectos"
   | "CRM"
   | "Cotizaciones"
   | "Embarques"
@@ -31,8 +45,13 @@ export default function Home() {
   const [status, setStatus] = useState("Conectando con Supabase...");
   const [companyCount, setCompanyCount] = useState<number | null>(null);
   const [activeView, setActiveView] = useState<ViewName>("Dashboard");
+
   const [clients, setClients] = useState<ClientRow[]>([]);
   const [loadingClients, setLoadingClients] = useState(false);
+
+  const [prospects, setProspects] = useState<ProspectRow[]>([]);
+  const [loadingProspects, setLoadingProspects] = useState(false);
+
   const [clientForm, setClientForm] = useState({
     name: "",
     rfc: "",
@@ -41,9 +60,21 @@ export default function Home() {
     email: "",
   });
 
+  const [prospectForm, setProspectForm] = useState({
+    name: "",
+    company_name: "",
+    email: "",
+    phone: "",
+    lead_source: "",
+    interested_service: "",
+    status: "nuevo",
+    notes: "",
+  });
+
   const modules: ViewName[] = useMemo(
     () => [
       "Dashboard",
+      "Prospectos",
       "CRM",
       "Cotizaciones",
       "Embarques",
@@ -78,9 +109,8 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    if (activeView === "CRM") {
-      loadClients();
-    }
+    if (activeView === "CRM") loadClients();
+    if (activeView === "Prospectos") loadProspects();
   }, [activeView]);
 
   async function loadClients() {
@@ -99,6 +129,26 @@ export default function Home() {
 
     setClients((data as ClientRow[]) || []);
     setLoadingClients(false);
+  }
+
+  async function loadProspects() {
+    setLoadingProspects(true);
+
+    const { data, error } = await supabase
+      .from("prospects")
+      .select(
+        "id, name, company_name, email, phone, lead_source, interested_service, status, notes, company_id"
+      )
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      setStatus(`Error cargando prospectos: ${error.message}`);
+      setLoadingProspects(false);
+      return;
+    }
+
+    setProspects((data as ProspectRow[]) || []);
+    setLoadingProspects(false);
   }
 
   async function createClient() {
@@ -138,6 +188,46 @@ export default function Home() {
 
     setStatus("Cliente creado correctamente");
     loadClients();
+  }
+
+  async function createProspect() {
+    const { data: companyData } = await supabase
+      .from("companies")
+      .select("id")
+      .limit(1);
+
+    const firstCompanyId = companyData?.[0]?.id ?? null;
+
+    const { error } = await supabase.from("prospects").insert({
+      company_id: firstCompanyId,
+      name: prospectForm.name,
+      company_name: prospectForm.company_name,
+      email: prospectForm.email,
+      phone: prospectForm.phone,
+      lead_source: prospectForm.lead_source,
+      interested_service: prospectForm.interested_service,
+      status: prospectForm.status,
+      notes: prospectForm.notes,
+    });
+
+    if (error) {
+      setStatus(`Error creando prospecto: ${error.message}`);
+      return;
+    }
+
+    setProspectForm({
+      name: "",
+      company_name: "",
+      email: "",
+      phone: "",
+      lead_source: "",
+      interested_service: "",
+      status: "nuevo",
+      notes: "",
+    });
+
+    setStatus("Prospecto creado correctamente");
+    loadProspects();
   }
 
   const cards = [
@@ -272,8 +362,7 @@ export default function Home() {
                 <h3 style={{ marginTop: 0 }}>Resumen general</h3>
                 <p style={{ color: "#c5d3ee", lineHeight: 1.6 }}>
                   Mobility OS ya está conectado con Supabase y listo para
-                  comenzar a construir los módulos reales del sistema: CRM,
-                  cotizaciones, embarques, facturación y reportes.
+                  comenzar a construir los módulos reales del sistema.
                 </p>
                 <p style={{ color: "#9fb3d9" }}>
                   Empresas registradas: <strong>{companyCount ?? "-"}</strong>
@@ -297,13 +386,180 @@ export default function Home() {
                   }}
                 >
                   <li>Nuevo cliente</li>
+                  <li>Nuevo prospecto</li>
                   <li>Nueva cotización</li>
                   <li>Nuevo embarque</li>
-                  <li>Nueva factura</li>
                 </ul>
               </div>
             </section>
           </>
+        )}
+
+        {activeView === "Prospectos" && (
+          <div style={{ display: "grid", gap: 16 }}>
+            <section
+              style={{
+                background: "#12284d",
+                border: "1px solid #284577",
+                borderRadius: 16,
+                padding: 22,
+              }}
+            >
+              <h3 style={{ marginTop: 0 }}>Nuevo prospecto</h3>
+
+              <div
+                style={{
+                  display: "grid",
+                  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+                  gap: 12,
+                }}
+              >
+                <input
+                  placeholder="Nombre"
+                  value={prospectForm.name}
+                  onChange={(e) =>
+                    setProspectForm({ ...prospectForm, name: e.target.value })
+                  }
+                  style={inputStyle}
+                />
+                <input
+                  placeholder="Empresa"
+                  value={prospectForm.company_name}
+                  onChange={(e) =>
+                    setProspectForm({
+                      ...prospectForm,
+                      company_name: e.target.value,
+                    })
+                  }
+                  style={inputStyle}
+                />
+                <input
+                  placeholder="Correo"
+                  value={prospectForm.email}
+                  onChange={(e) =>
+                    setProspectForm({ ...prospectForm, email: e.target.value })
+                  }
+                  style={inputStyle}
+                />
+                <input
+                  placeholder="Teléfono"
+                  value={prospectForm.phone}
+                  onChange={(e) =>
+                    setProspectForm({ ...prospectForm, phone: e.target.value })
+                  }
+                  style={inputStyle}
+                />
+                <input
+                  placeholder="Origen del lead"
+                  value={prospectForm.lead_source}
+                  onChange={(e) =>
+                    setProspectForm({
+                      ...prospectForm,
+                      lead_source: e.target.value,
+                    })
+                  }
+                  style={inputStyle}
+                />
+                <input
+                  placeholder="Servicio de interés"
+                  value={prospectForm.interested_service}
+                  onChange={(e) =>
+                    setProspectForm({
+                      ...prospectForm,
+                      interested_service: e.target.value,
+                    })
+                  }
+                  style={inputStyle}
+                />
+                <input
+                  placeholder="Estatus"
+                  value={prospectForm.status}
+                  onChange={(e) =>
+                    setProspectForm({ ...prospectForm, status: e.target.value })
+                  }
+                  style={inputStyle}
+                />
+                <input
+                  placeholder="Notas"
+                  value={prospectForm.notes}
+                  onChange={(e) =>
+                    setProspectForm({ ...prospectForm, notes: e.target.value })
+                  }
+                  style={inputStyle}
+                />
+              </div>
+
+              <button
+                onClick={createProspect}
+                style={{
+                  marginTop: 16,
+                  background: "#2f5aa6",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: 10,
+                  padding: "12px 18px",
+                  cursor: "pointer",
+                  fontWeight: 700,
+                }}
+              >
+                Guardar prospecto
+              </button>
+            </section>
+
+            <section
+              style={{
+                background: "#12284d",
+                border: "1px solid #284577",
+                borderRadius: 16,
+                padding: 22,
+              }}
+            >
+              <h3 style={{ marginTop: 0 }}>Prospectos registrados</h3>
+
+              {loadingProspects ? (
+                <p>Cargando prospectos...</p>
+              ) : prospects.length === 0 ? (
+                <p>No hay prospectos registrados todavía.</p>
+              ) : (
+                <div style={{ overflowX: "auto" }}>
+                  <table
+                    style={{
+                      width: "100%",
+                      borderCollapse: "collapse",
+                      marginTop: 12,
+                    }}
+                  >
+                    <thead>
+                      <tr style={{ textAlign: "left", color: "#9fb3d9" }}>
+                        <th style={thStyle}>Nombre</th>
+                        <th style={thStyle}>Empresa</th>
+                        <th style={thStyle}>Correo</th>
+                        <th style={thStyle}>Teléfono</th>
+                        <th style={thStyle}>Origen</th>
+                        <th style={thStyle}>Servicio</th>
+                        <th style={thStyle}>Estatus</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {prospects.map((prospect) => (
+                        <tr key={prospect.id}>
+                          <td style={tdStyle}>{prospect.name || "-"}</td>
+                          <td style={tdStyle}>{prospect.company_name || "-"}</td>
+                          <td style={tdStyle}>{prospect.email || "-"}</td>
+                          <td style={tdStyle}>{prospect.phone || "-"}</td>
+                          <td style={tdStyle}>{prospect.lead_source || "-"}</td>
+                          <td style={tdStyle}>
+                            {prospect.interested_service || "-"}
+                          </td>
+                          <td style={tdStyle}>{prospect.status || "-"}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </section>
+          </div>
         )}
 
         {activeView === "CRM" && (
@@ -434,7 +690,7 @@ export default function Home() {
           </div>
         )}
 
-        {!["Dashboard", "CRM"].includes(activeView) && (
+        {!["Dashboard", "CRM", "Prospectos"].includes(activeView) && (
           <section
             style={{
               background: "#12284d",
