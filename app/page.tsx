@@ -132,7 +132,7 @@ export default function Home() {
     setLoadingClients(false);
   }
 
-  async function loadProspects() {
+ async function loadProspects() {
 setLoadingProspects(true);
 
 const { data, error } = await supabase
@@ -174,6 +174,7 @@ alert("Historial:\n\n" + history);
 }
 
 }
+  
     setLoadingProspects(true);
 
     const { data, error } = await supabase
