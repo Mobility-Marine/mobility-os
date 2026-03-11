@@ -52,6 +52,8 @@ export default function Home() {
   const [prospects, setProspects] = useState<ProspectRow[]>([]);
   const [followups, setFollowups] = useState<any[]>([]);
   const [loadingProspects, setLoadingProspects] = useState(false);
+  
+  const [selectedProspect, setSelectedProspect] = useState<ProspectRow | null>(null);
 
   const [clientForm, setClientForm] = useState({
     name: "",
@@ -574,7 +576,11 @@ style={inputStyle}
                     </thead>
                     <tbody>
                       {prospects.map((prospect) => (
-                        <tr key={prospect.id}>
+                        <tr
+key={prospect.id}
+onClick={() => setSelectedProspect(prospect)}
+style={{ cursor: "pointer" }}
+>
                           <td style={tdStyle}>{prospect.name || "-"}</td>
                           <td style={tdStyle}>{prospect.company_name || "-"}</td>
                           <td style={tdStyle}>{prospect.email || "-"}</td>
