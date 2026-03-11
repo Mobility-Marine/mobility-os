@@ -82,6 +82,8 @@ const [taskDescription, setTaskDescription] = useState("")
 const [taskDueDate, setTaskDueDate] = useState("")
 
 const [newEventTitle, setNewEventTitle] = useState("")
+  const [showEventModal, setShowEventModal] = useState(false)
+const [modalDateTime, setModalDateTime] = useState("")
 const [newEventStart, setNewEventStart] = useState("")
 const [newEventEnd, setNewEventEnd] = useState("")
   const [selectedDate, setSelectedDate] = useState(
@@ -1237,7 +1239,15 @@ Seguimiento
           <div style={{ background: "#0f1f3d" }} />
 
           {getWeekDays().map(day => (
-            <div
+          <div
+  onClick={() => {
+    const date = new Date(day)
+    const [h, m] = hour.split(":")
+    date.setHours(Number(h), Number(m))
+
+    setModalDateTime(date.toISOString().slice(0, 16))
+    setShowEventModal(true)
+  }}
               key={day.toISOString()}
               style={{
                 background: "#0f1f3d",
@@ -1256,60 +1266,68 @@ Seguimiento
 
           {/* Filas por hora */}
           {generateHours().map(hour => (
-            <React.Fragment key={hour}>
+  <React.Fragment key={hour}>
 
-              {/* Hora */}
-              <div
-                style={{
-                  padding: 8,
-                  borderTop: "1px solid #284577",
-                  background: "#0b1b3a",
-                  fontSize: 12
-                }}
-              >
-                {hour}
-              </div>
+    {/* Hora */}
+    <div
+      style={{
+        padding: 8,
+        borderTop: "1px solid #284577",
+        background: "#0b1b3a",
+        fontSize: 12
+      }}
+    >
+      {hour}
+    </div>
 
-              {/* Celdas por día */}
-              {getWeekDays().map(day => (
-                <div
-                  key={hour + day.toISOString()}
-                  style={{
-                    borderLeft: "1px solid #284577",
-                    borderTop: "1px solid #284577",
-                    minHeight: 60,
-                    padding: 4,
-                    position: "relative"
-                  }}
-                >
-                  {calendarEvents
-                    .filter(ev => {
-                      const evDate = new Date(ev.start_datetime)
-                      return (
-                        evDate.toDateString() === day.toDateString() &&
-                        evDate.toTimeString().slice(0, 5) === hour
-                      )
-                    })
-                    .map(ev => (
-                      <div
-                        key={ev.id}
-                        style={{
-                          background: ev.color || "#2563eb",
-                          padding: 4,
-                          borderRadius: 6,
-                          fontSize: 12,
-                          color: "#fff"
-                        }}
-                      >
-                        {ev.title}
-                      </div>
-                    ))}
-                </div>
-              ))}
+    {/* Celdas por día */}
+    {getWeekDays().map(day => (
+      <div
+        key={hour + day.toISOString()}
+        onClick={() => {
+          const date = new Date(day)
+          const [h, m] = hour.split(":")
+          date.setHours(Number(h), Number(m))
 
-            </React.Fragment>
+          setModalDateTime(date.toISOString().slice(0, 16))
+          setShowEventModal(true)
+        }}
+        style={{
+          borderLeft: "1px solid #284577",
+          borderTop: "1px solid #284577",
+          minHeight: 60,
+          padding: 4,
+          position: "relative",
+          cursor: "pointer"
+        }}
+      >
+        {calendarEvents
+          .filter(ev => {
+            const evDate = new Date(ev.start_datetime)
+            return (
+              evDate.toDateString() === day.toDateString() &&
+              evDate.toTimeString().slice(0, 5) === hour
+            )
+          })
+          .map(ev => (
+            <div
+              key={ev.id}
+              style={{
+                background: ev.color || "#2563eb",
+                padding: 4,
+                borderRadius: 6,
+                fontSize: 12,
+                color: "#fff"
+              }}
+            >
+              {ev.title}
+            </div>
           ))}
+      </div>
+    ))}
 
+  </React.Fragment>
+))}
         </div>
       </div>
     </section>
