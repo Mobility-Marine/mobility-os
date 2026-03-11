@@ -64,6 +64,9 @@ export default function Home() {
   const [followups, setFollowups] = useState<any[]>([]);
   const [prospectHistory, setProspectHistory] = useState<any[]>([]);
   const [loadingProspects, setLoadingProspects] = useState(false);
+
+  const [events, setEvents] = useState<any[]>([])
+const [loadingEvents, setLoadingEvents] = useState(false)
   
   const [selectedProspect, setSelectedProspect] = useState<ProspectRow | null>(null);
 
@@ -177,6 +180,23 @@ async function loadProspects() {
   setLoadingProspects(false);
 }
 
+async function loadEvents() {
+  setLoadingEvents(true)
+
+  const { data, error } = await supabase
+    .from("calendar_events")
+    .select("*")
+    .order("start_datetime", { ascending: true })
+
+  if (error) {
+    alert("Error cargando calendario")
+    return
+  }
+
+  setEvents(data || [])
+  setLoadingEvents(false)
+}
+  
 async function loadFollowups(prospectId: string) {
 
 const { data, error } = await supabase
