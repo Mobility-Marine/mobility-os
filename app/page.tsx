@@ -830,22 +830,46 @@ zIndex: 1000
 
 <div style={{marginBottom:15}}>
 <strong>Nombre</strong>
-<div>{selectedProspect.name}</div>
+<input
+value={selectedProspect.name || ""}
+onChange={(e) =>
+setSelectedProspect({...selectedProspect, name: e.target.value})
+}
+style={inputStyle}
+/>
 </div>
 
 <div style={{marginBottom:15}}>
 <strong>Empresa</strong>
-<div>{selectedProspect.company_name}</div>
+<input
+value={selectedProspect.company_name || ""}
+onChange={(e) =>
+setSelectedProspect({...selectedProspect, company_name: e.target.value})
+}
+style={inputStyle}
+/>
 </div>
 
 <div style={{marginBottom:15}}>
 <strong>Correo</strong>
-<div>{selectedProspect.email}</div>
+<input
+value={selectedProspect.email || ""}
+onChange={(e) =>
+setSelectedProspect({...selectedProspect, email: e.target.value})
+}
+style={inputStyle}
+/>
 </div>
 
 <div style={{marginBottom:15}}>
 <strong>Teléfono</strong>
-<div>{selectedProspect.phone}</div>
+<input
+value={selectedProspect.phone || ""}
+onChange={(e) =>
+setSelectedProspect({...selectedProspect, phone: e.target.value})
+}
+style={inputStyle}
+/>
 </div>
 
 <div style={{marginBottom:15}}>
@@ -854,17 +878,37 @@ zIndex: 1000
 </div>
 
 <button
-onClick={() => setSelectedProspect(null)}
+onClick={async () => {
+
+const { error } = await supabase
+.from("prospects")
+.update({
+name: selectedProspect.name,
+company_name: selectedProspect.company_name,
+email: selectedProspect.email,
+phone: selectedProspect.phone
+})
+.eq("id", selectedProspect.id)
+
+if(error){
+alert("Error actualizando prospecto")
+return
+}
+
+alert("Prospecto actualizado")
+
+}}
 style={{
-marginTop:20,
-background:"#2f5aa6",
+marginTop:10,
+background:"#16a34a",
 border:"none",
 padding:"10px 14px",
 color:"#fff",
-borderRadius:6
+borderRadius:6,
+marginRight:10
 }}
 >
-Cerrar
+Guardar cambios
 </button>
 
 </div>
