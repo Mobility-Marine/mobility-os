@@ -556,7 +556,13 @@ export default function Home() {
 
 <td style={tdStyle}>
  <button
-onClick={() => alert("Aquí abriremos el historial del prospecto")}
+onClick={() => {
+const note = prompt("Escribe la actividad del prospecto (llamada, correo, reunión, etc.)");
+
+if (note) {
+alert("Actividad registrada: " + note);
+}
+}}
 style={{
 background: "#2f5aa6",
 border: "none",
