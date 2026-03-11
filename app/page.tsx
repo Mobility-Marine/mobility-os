@@ -258,6 +258,7 @@ setProspectHistory(data || [])
       interested_service: "",
       status: "nuevo",
       notes: "",
+      estimated_value: 0,
     });
 
     setStatus("Prospecto creado correctamente");
