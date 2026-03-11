@@ -421,6 +421,32 @@ async function handleDrop(e: React.DragEvent, newStage: string) {
   });
 
 }
+  function generateHours() {
+  const hours = []
+
+  for (let h = 8; h <= 20; h++) {
+    const label = h.toString().padStart(2, "0") + ":00"
+    hours.push(label)
+  }
+
+  return hours
+}
+  function getWeekDays() {
+  const today = new Date()
+  const start = new Date(today)
+  start.setDate(today.getDate() - today.getDay() + 1)
+
+  const days = []
+
+  for (let i = 0; i < 5; i++) {
+    const d = new Date(start)
+    d.setDate(start.getDate() + i)
+
+    days.push(d)
+  }
+
+  return days
+}
   async function createProspect() {
     const { data: companyData } = await supabase
       .from("companies")
@@ -1194,31 +1220,97 @@ Seguimiento
     >
       <h3 style={{ marginTop: 0 }}>Calendario semanal</h3>
 
-      {calendarEvents.length === 0 ? (
-        <p style={{ color: "#9fb3d9" }}>
-          No hay eventos registrados
-        </p>
-      ) : (
-        <div style={{ display: "grid", gap: 8 }}>
+<div style={{ overflowX: "auto" }}>
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "80px repeat(5, 1fr)",
+      border: "1px solid #284577",
+      borderRadius: 12,
+      overflow: "hidden"
+    }}
+  >
 
-          {calendarEvents.map(event => (
-            <div
-              key={event.id}
-              style={{
-                background: event.color || "#2563eb",
-                padding: 12,
-                borderRadius: 10,
-                color: "#fff"
-              }}
-            >
-              <strong>{event.title}</strong>
+    {/* Encabezado */}
+    <div style={{ background: "#0f1f3d" }} />
 
-              <div style={{ fontSize: 13 }}>
-                {new Date(event.start_datetime).toLocaleString()}
-                {" — "}
-                {new Date(event.end_datetime).toLocaleString()}
-              </div>
-            </div>
+    {getWeekDays().map(day => (
+      <div
+        key={day.toISOString()}
+        style={{
+          background: "#0f1f3d",
+          padding: 10,
+          borderLeft: "1px solid #284577",
+          textAlign: "center",
+          fontWeight: "bold"
+        }}
+      >
+        {day.toLocaleDateString("es-MX", {
+          weekday: "short",
+          day: "numeric"
+        })}
+      </div>
+    ))}
+
+    {/* Filas por hora */}
+    {generateHours().map(hour => (
+      <>
+        {/* Columna de horas */}
+        <div
+          key={hour}
+          style={{
+            padding: 8,
+            borderTop: "1px solid #284577",
+            background: "#0b1b3a",
+            fontSize: 12
+          }}
+        >
+          {hour}
+        </div>
+
+        {/* Columnas por día */}
+        {getWeekDays().map(day => (
+          <div
+            key={hour + day.toISOString()}
+            style={{
+              borderLeft: "1px solid #284577",
+              borderTop: "1px solid #284577",
+              minHeight: 60,
+              padding: 4,
+              position: "relative"
+            }}
+          >
+            {calendarEvents
+              .filter(ev => {
+                const evDate = new Date(ev.start_datetime)
+
+                return (
+                  evDate.toDateString() === day.toDateString() &&
+                  evDate
+                    .toTimeString()
+                    .slice(0, 5) === hour
+                )
+              })
+              .map(ev => (
+                <div
+                  key={ev.id}
+                  style={{
+                    background: ev.color || "#2563eb",
+                    padding: 4,
+                    borderRadius: 6,
+                    fontSize: 12,
+                    color: "#fff"
+                  }}
+                >
+                  {ev.title}
+                </div>
+              ))}
+          </div>
+        ))}
+      </>
+    ))}
+
+</div>
           ))}
 
         </div>
