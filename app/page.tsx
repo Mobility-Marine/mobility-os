@@ -1192,82 +1192,109 @@ Seguimiento
         padding: 22,
       }}
     >
-      <h3 style={{ marginTop: 0 }}>Agenda general</h3>
+      <h3 style={{ marginTop: 0 }}>Calendario semanal</h3>
 
-      <h4 style={{ marginTop: 16 }}>Eventos del calendario</h4>
-
-{calendarEvents.length === 0 ? (
-  <p style={{ color: "#9fb3d9" }}>
-    No hay eventos programados
-  </p>
-) : (
-  calendarEvents.map(event => (
-    <div
-      key={event.id}
-      style={{
-        background: "#162a52",
-        padding: 12,
-        borderRadius: 10,
-        marginBottom: 10,
-        borderLeft: `4px solid ${event.color || "#2563eb"}`
-      }}
-    >
-      <div style={{ fontWeight: "bold" }}>
-        {event.title}
-      </div>
-
-      <div style={{ fontSize: 12, color: "#9fb3d9" }}>
-        {new Date(event.start_datetime).toLocaleString()}
-        {" — "}
-        {event.end_datetime
-          ? new Date(event.end_datetime).toLocaleString()
-          : "Sin hora fin"}
-      </div>
-    </div>
-  ))
-)}
-
-      <input
-  type="date"
-  value={selectedDate}
-  onChange={(e) => setSelectedDate(e.target.value)}
-  style={{
-    background: "#0b1220",
-    color: "#fff",
-    border: "1px solid #334155",
-    borderRadius: 8,
-    padding: "8px 12px",
-    marginBottom: 16
-  }}
-/>
-
-      {tasks.length === 0 ? (
+      {calendarEvents.length === 0 ? (
         <p style={{ color: "#9fb3d9" }}>
-          No hay tareas programadas
+          No hay eventos registrados
         </p>
       ) : (
-        tasks.map(task => (
-          <div
-            key={task.id}
-            style={{
-              borderBottom: "1px solid #243a63",
-              padding: "10px 0"
-            }}
-          >
-            <strong>{task.title}</strong>
+        <div style={{ display: "grid", gap: 8 }}>
 
-            <div style={{ fontSize: 13, color: "#9fb3d9" }}>
-              {task.description}
-            </div>
+          {calendarEvents.map(event => (
+            <div
+              key={event.id}
+              style={{
+                background: event.color || "#2563eb",
+                padding: 12,
+                borderRadius: 10,
+                color: "#fff"
+              }}
+            >
+              <strong>{event.title}</strong>
 
-            <div style={{ fontSize: 12, color: "#64748b" }}>
-              Fecha: {task.due_date
-                ? new Date(task.due_date).toLocaleString()
-                : "Sin fecha"}
+              <div style={{ fontSize: 13 }}>
+                {new Date(event.start_datetime).toLocaleString()}
+                {" — "}
+                {new Date(event.end_datetime).toLocaleString()}
+              </div>
             </div>
-          </div>
-        ))
+          ))}
+
+        </div>
       )}
+
+    </section>
+
+    <section
+      style={{
+        background: "#12284d",
+        border: "1px solid #284577",
+        borderRadius: 16,
+        padding: 22,
+      }}
+    >
+      <h3 style={{ marginTop: 0 }}>Crear evento</h3>
+
+      <input
+        placeholder="Título"
+        value={newEventTitle}
+        onChange={(e) => setNewEventTitle(e.target.value)}
+        style={{ ...inputStyle, marginBottom: 10 }}
+      />
+
+      <input
+        type="datetime-local"
+        value={newEventStart}
+        onChange={(e) => setNewEventStart(e.target.value)}
+        style={{ ...inputStyle, marginBottom: 10 }}
+      />
+
+      <input
+        type="datetime-local"
+        value={newEventEnd}
+        onChange={(e) => setNewEventEnd(e.target.value)}
+        style={{ ...inputStyle, marginBottom: 10 }}
+      />
+
+      <button
+        onClick={async () => {
+
+          if (!newEventTitle || !newEventStart || !newEventEnd) {
+            alert("Completa todos los campos");
+            return;
+          }
+
+          const { error } = await supabase
+            .from("calendar_events")
+            .insert({
+              title: newEventTitle,
+              start_datetime: newEventStart,
+              end_datetime: newEventEnd
+            });
+
+          if (error) {
+            alert("Error creando evento");
+            return;
+          }
+
+          setNewEventTitle("");
+          setNewEventStart("");
+          setNewEventEnd("");
+
+          loadCalendarEvents();
+
+        }}
+        style={{
+          background: "#2563eb",
+          border: "none",
+          padding: "10px 14px",
+          color: "#fff",
+          borderRadius: 6
+        }}
+      >
+        Crear evento
+      </button>
 
     </section>
 
