@@ -1238,31 +1238,23 @@ Seguimiento
           {/* Encabezado */}
           <div style={{ background: "#0f1f3d" }} />
 
-          {getWeekDays().map(day => (
-          <div
-  onClick={() => {
-    const date = new Date(day)
-    const [h, m] = hour.split(":")
-    date.setHours(Number(h), Number(m))
-
-    setModalDateTime(date.toISOString().slice(0, 16))
-    setShowEventModal(true)
-  }}
-              key={day.toISOString()}
-              style={{
-                background: "#0f1f3d",
-                padding: 10,
-                borderLeft: "1px solid #284577",
-                textAlign: "center",
-                fontWeight: "bold"
-              }}
-            >
-              {day.toLocaleDateString("es-MX", {
-                weekday: "short",
-                day: "numeric"
-              })}
-            </div>
-          ))}
+        {getWeekDays().map(day => (
+  <div
+    key={day.toISOString()}
+    style={{
+      background: "#0f1f3d",
+      padding: 10,
+      borderLeft: "1px solid #284577",
+      textAlign: "center",
+      fontWeight: "bold"
+    }}
+  >
+    {day.toLocaleDateString("es-MX", {
+      weekday: "short",
+      day: "numeric"
+    })}
+  </div>
+))}
 
           {/* Filas por hora */}
           {generateHours().map(hour => (
