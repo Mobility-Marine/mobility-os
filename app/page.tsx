@@ -555,18 +555,19 @@ export default function Home() {
                           <td style={tdStyle}>{prospect.status || "-"}</td>
 
 <td style={tdStyle}>
-  <button
-    style={{
-      background: "#2f5aa6",
-      border: "none",
-      color: "#fff",
-      padding: "6px 10px",
-      borderRadius: "6px",
-      cursor: "pointer",
-    }}
-  >
-    Seguimiento
-  </button>
+ <button
+onClick={() => alert("Aquí abriremos el historial del prospecto")}
+style={{
+background: "#2f5aa6",
+border: "none",
+color: "#fff",
+padding: "6px 10px",
+borderRadius: "6px",
+cursor: "pointer",
+}}
+>
+Seguimiento
+</button>
 </td>
                         </tr>
                       ))}
