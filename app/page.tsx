@@ -716,7 +716,7 @@ marginBottom:30
 
 {prospects
   .filter(p => p.status === stage)
-  .sort((a, b) => a.stage_position - b.stage_position)
+  .sort((a, b) => getProspectScore(b) - getProspectScore(a))
   .map(p => (
 
 <div
@@ -736,7 +736,15 @@ cursor:"grab"
 >
 
 <div style={{fontWeight:"bold"}}>
-{p.company_name || p.name}
+  {p.company_name || p.name}
+</div>
+
+<div style={{
+  fontSize: 11,
+  color: "#60a5fa",
+  marginTop: 4
+}}>
+  Score: {getProspectScore(p)}
 </div>
 
 <div style={{fontSize:12,color:"#9fb3d9"}}>
