@@ -621,7 +621,7 @@ paddingBottom:6
 {stage}
 </div>
 
-prospects
+{prospects
   .filter(p => p.status === stage)
   .sort((a, b) => a.stage_position - b.stage_position)
   .map(p => (
