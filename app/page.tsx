@@ -68,7 +68,7 @@ export default function Home() {
     phone: "",
     lead_source: "",
     interested_service: "",
-    status: "nuevo",
+    status: "Nuevo",
     notes: "",
   });
 
@@ -495,14 +495,21 @@ async function loadFollowups(prospectId: string) {
                   }
                   style={inputStyle}
                 />
-                <input
-                  placeholder="Estatus"
-                  value={prospectForm.status}
-                  onChange={(e) =>
-                    setProspectForm({ ...prospectForm, status: e.target.value })
-                  }
-                  style={inputStyle}
-                />
+                <select
+value={prospectForm.status}
+onChange={(e) =>
+setProspectForm({ ...prospectForm, status: e.target.value })
+}
+style={inputStyle}
+>
+<option value="Nuevo">Nuevo</option>
+<option value="Contactado">Contactado</option>
+<option value="Cotización">Cotización</option>
+<option value="Negociación">Negociación</option>
+<option value="Ganado">Ganado</option>
+<option value="Perdido">Perdido</option>
+</select>
+               
                 <input
                   placeholder="Notas"
                   value={prospectForm.notes}
