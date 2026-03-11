@@ -62,6 +62,8 @@ export default function Home() {
 ]
   const [followups, setFollowups] = useState<any[]>([]);
   const [prospectHistory, setProspectHistory] = useState<any[]>([]);
+  const [prospectTasks, setProspectTasks] = useState<any[]>([]);
+const [newTaskText, setNewTaskText] = useState("");
   const [loadingProspects, setLoadingProspects] = useState(false);
   
   const [selectedProspect, setSelectedProspect] = useState<ProspectRow | null>(null);
@@ -1105,6 +1107,69 @@ padding:"10px 0"
 </div>
 ))}
 
+<h3 style={{ marginTop: 30 }}>Tareas internas</h3>
+
+{prospectTasks.length === 0 && (
+  <p style={{ color: "#9fb3d9" }}>Sin tareas</p>
+)}
+
+{prospectTasks.map((task) => (
+  <div
+    key={task.id}
+    style={{
+      background: "#162a52",
+      padding: 10,
+      borderRadius: 8,
+      marginBottom: 8
+    }}
+  >
+    <div>{task.task_text}</div>
+
+    <div style={{ fontSize: 12, color: "#9fb3d9", marginTop: 4 }}>
+      {task.is_completed ? "✔ Completada" : "Pendiente"}
+    </div>
+  </div>
+))}
+
+  <input
+  placeholder="Nueva tarea"
+  value={newTaskText}
+  onChange={(e) => setNewTaskText(e.target.value)}
+  style={{ ...inputStyle, marginBottom: 10 }}
+/>
+
+<button
+  onClick={async () => {
+
+    if (!newTaskText) return;
+
+    const { error } = await supabase
+      .from("prospect_tasks")
+      .insert({
+        prospect_id: selectedProspect.id,
+        task_text: newTaskText
+      });
+
+    if (error) {
+      alert("Error guardando tarea");
+      return;
+    }
+
+    setNewTaskText("");
+    loadTasks(selectedProspect.id);
+
+  }}
+  style={{
+    background: "#2563eb",
+    border: "none",
+    padding: "10px 14px",
+    color: "#fff",
+    borderRadius: 6
+  }}
+>
+  Agregar tarea
+</button>
+  
 <h3 style={{marginTop:25}}>Agregar actividad</h3>
 
 <select
