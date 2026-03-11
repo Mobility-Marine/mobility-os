@@ -583,7 +583,35 @@ style={inputStyle}
                           <td style={tdStyle}>
                             {prospect.interested_service || "-"}
                           </td>
-                          <td style={tdStyle}>{prospect.status || "-"}</td>
+                         <td style={tdStyle}>
+<select
+value={prospect.status || "Nuevo"}
+onChange={async (e) => {
+const newStatus = e.target.value;
+
+await supabase
+.from("prospects")
+.update({ status: newStatus })
+.eq("id", prospect.id);
+
+loadProspects();
+}}
+style={{
+background: "#0b1220",
+color: "#fff",
+border: "1px solid #2f5aa6",
+borderRadius: "6px",
+padding: "4px"
+}}
+>
+<option value="Nuevo">Nuevo</option>
+<option value="Contactado">Contactado</option>
+<option value="Cotización">Cotización</option>
+<option value="Negociación">Negociación</option>
+<option value="Ganado">Ganado</option>
+<option value="Perdido">Perdido</option>
+</select>
+</td>
 
 <td style={tdStyle}>
  <button
