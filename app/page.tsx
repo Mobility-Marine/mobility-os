@@ -256,6 +256,17 @@ async function handleDrop(e: React.DragEvent, newStage: string) {
 
   loadProspects()
 }
+  function getStageTotal(stage: string) {
+  return prospects
+    .filter(p => p.status === stage)
+    .reduce((sum, p) => sum + (p.estimated_value || 0), 0)
+}
+  function getPipelineTotal() {
+  return prospects.reduce(
+    (sum, p) => sum + (p.estimated_value || 0),
+    0
+  )
+}
   async function createProspect() {
     const { data: companyData } = await supabase
       .from("companies")
@@ -606,6 +617,20 @@ style={inputStyle}
               }}
             >
               <h3 style={{ marginTop: 0 }}>Prospectos registrados</h3>
+
+<div
+  style={{
+    background: "#0f1f3d",
+    border: "1px solid #2f5aa6",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 16,
+    fontWeight: "bold"
+  }}
+>
+  Valor total del pipeline: ${getPipelineTotal().toLocaleString()}
+</div>
+              
               <div
 style={{
 display:"grid",
@@ -632,12 +657,20 @@ marginBottom:30
 >
 
 <div style={{
-fontWeight:"bold",
-marginBottom:10,
-borderBottom:"1px solid #2f5aa6",
-paddingBottom:6
+  fontWeight:"bold",
+  marginBottom:10,
+  borderBottom:"1px solid #2f5aa6",
+  paddingBottom:6
 }}>
-{stage}
+  {stage}
+
+  <div style={{
+    fontSize:12,
+    color:"#9fb3d9",
+    marginTop:4
+  }}>
+    ${getStageTotal(stage).toLocaleString()} USD
+  </div>
 </div>
 
 {prospects
