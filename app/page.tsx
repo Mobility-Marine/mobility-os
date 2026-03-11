@@ -1336,7 +1336,6 @@ style={{...inputStyle, marginBottom:10}}
   </div>
 ))}
   </div>
-))}
   
 <button
 onClick={async ()=>{
