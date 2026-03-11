@@ -272,13 +272,16 @@ setProspectHistory(data || [])
         gridTemplateColumns: "260px 1fr",
       }}
     >
-      <aside
-        style={{
-          background: "#0b1b3a",
-          borderRight: "1px solid #1e335c",
-          padding: "24px 18px",
-        }}
-      >
+    <aside
+style={{
+background: "#0b1b3a",
+borderRight: "1px solid #1e335c",
+padding: "24px 18px",
+height: "100vh",
+overflowY: "auto",
+scrollbarWidth: "thin"
+}}
+>
         <h2 style={{ marginTop: 0, marginBottom: 6 }}>Mobility OS</h2>
         <p style={{ color: "#9fb3d9", fontSize: 14, marginTop: 0 }}>
           Mobility Marine
