@@ -1172,6 +1172,34 @@ padding:"10px 0"
   
 <h3 style={{marginTop:25}}>Agregar actividad</h3>
 
+  <h3 style={{marginTop:30}}>Tareas pendientes</h3>
+
+{tasks.length === 0 && (
+  <p style={{ color: "#9fb3d9" }}>Sin tareas</p>
+)}
+
+{tasks.map(task => (
+  <div
+    key={task.id}
+    style={{
+      borderBottom: "1px solid #243a63",
+      padding: "10px 0"
+    }}
+  >
+    <div style={{ fontWeight: "bold" }}>
+      {task.title}
+    </div>
+
+    <div style={{ fontSize: 14, color: "#9fb3d9" }}>
+      {task.description}
+    </div>
+
+    <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>
+      Vence: {task.due_date ? new Date(task.due_date).toLocaleDateString() : "Sin fecha"}
+    </div>
+  </div>
+))}
+
 <select
 value={newActivityType}
 onChange={(e)=>setNewActivityType(e.target.value)}
@@ -1222,14 +1250,15 @@ style={{...inputStyle, marginBottom:10}}
       return
     }
 
-    const { error } = await supabase
-      .from("prospect_tasks")
-      .insert({
-        prospect_id: selectedProspect.id,
-        title: taskTitle,
-        description: taskDescription,
-        due_date: taskDueDate
-      })
+   const { error } = await supabase
+  .from("prospect_tasks")
+  .insert({
+    prospect_id: selectedProspect.id,
+    title: taskTitle,
+    description: taskDescription,
+    due_date: taskDueDate,
+    status: "pending"   // ⭐ NUEVO
+  })
 
     if(error){
       alert("Error guardando tarea")
