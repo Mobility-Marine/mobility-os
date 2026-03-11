@@ -207,6 +207,45 @@ async function loadTasks(prospectId: string) {
 
   setTasks(data || [])
 }
+
+async function convertToClient() {
+  if (!selectedProspect) return;
+
+  const { data: companyData } = await supabase
+    .from("companies")
+    .select("id")
+    .limit(1);
+
+  const companyId = companyData?.[0]?.id ?? null;
+
+  const { error } = await supabase
+    .from("clients")
+    .insert({
+      company_id: companyId,
+      name: selectedProspect.company_name || selectedProspect.name,
+      contact: selectedProspect.name,
+      email: selectedProspect.email,
+      address: null,
+      rfc: null
+    });
+
+  if (error) {
+    alert("Error creando cliente: " + error.message);
+    return;
+  }
+
+  // Opcional: marcar prospecto como ganado
+  await supabase
+    .from("prospects")
+    .update({ status: "Ganado" })
+    .eq("id", selectedProspect.id);
+
+  alert("Prospecto convertido a cliente");
+
+  loadClients();
+  loadProspects();
+  setSelectedProspect(null);
+}
   
   async function createClient() {
     const { data: companyData } = await supabase
@@ -1391,6 +1430,20 @@ marginRight:10
 Guardar cambios
 </button>
 
+  <button
+  onClick={convertToClient}
+  style={{
+    marginTop: 10,
+    background: "#2563eb",
+    border: "none",
+    padding: "10px 14px",
+    color: "#fff",
+    borderRadius: 6
+  }}
+>
+  Convertir a cliente
+</button>
+  
 </div>
 )}
 
