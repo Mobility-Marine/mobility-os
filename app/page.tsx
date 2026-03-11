@@ -821,11 +821,12 @@ position: "fixed",
 right: 0,
 top: 0,
 width: "420px",
-height: "100%",
+height: "100vh",
 background: "#0f172a",
 borderLeft: "2px solid #2f5aa6",
 padding: "24px",
 overflowY: "auto",
+boxSizing: "border-box",
 zIndex: 1000
 }}
 >
