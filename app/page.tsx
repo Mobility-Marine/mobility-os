@@ -83,6 +83,9 @@ const [taskDueDate, setTaskDueDate] = useState("")
 const [newEventTitle, setNewEventTitle] = useState("")
 const [newEventStart, setNewEventStart] = useState("")
 const [newEventEnd, setNewEventEnd] = useState("")
+  const [selectedDate, setSelectedDate] = useState(
+  new Date().toISOString().slice(0, 10)
+)
 
   const [clientForm, setClientForm] = useState({
     name: "",
@@ -143,10 +146,11 @@ const [newEventEnd, setNewEventEnd] = useState("")
     testConnection();
   }, []);
 
-  useEffect(() => {
-    if (activeView === "CRM") loadClients();
-    if (activeView === "Prospectos") loadProspects();
-  }, [activeView]);
+ useEffect(() => {
+  if (activeView === "CRM") loadClients();
+  if (activeView === "Prospectos") loadProspects();
+  if (activeView === "Agenda") loadCalendarEvents();
+}, [activeView]);
 
  async function loadClients() {
   setLoadingClients(true);
@@ -1189,6 +1193,53 @@ Seguimiento
       }}
     >
       <h3 style={{ marginTop: 0 }}>Agenda general</h3>
+
+      <h4 style={{ marginTop: 16 }}>Eventos del calendario</h4>
+
+{calendarEvents.length === 0 ? (
+  <p style={{ color: "#9fb3d9" }}>
+    No hay eventos programados
+  </p>
+) : (
+  calendarEvents.map(event => (
+    <div
+      key={event.id}
+      style={{
+        background: "#162a52",
+        padding: 12,
+        borderRadius: 10,
+        marginBottom: 10,
+        borderLeft: `4px solid ${event.color || "#2563eb"}`
+      }}
+    >
+      <div style={{ fontWeight: "bold" }}>
+        {event.title}
+      </div>
+
+      <div style={{ fontSize: 12, color: "#9fb3d9" }}>
+        {new Date(event.start_datetime).toLocaleString()}
+        {" — "}
+        {event.end_datetime
+          ? new Date(event.end_datetime).toLocaleString()
+          : "Sin hora fin"}
+      </div>
+    </div>
+  ))
+)}
+
+      <input
+  type="date"
+  value={selectedDate}
+  onChange={(e) => setSelectedDate(e.target.value)}
+  style={{
+    background: "#0b1220",
+    color: "#fff",
+    border: "1px solid #334155",
+    borderRadius: 8,
+    padding: "8px 12px",
+    marginBottom: 16
+  }}
+/>
 
       {tasks.length === 0 ? (
         <p style={{ color: "#9fb3d9" }}>
