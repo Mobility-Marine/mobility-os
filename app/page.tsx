@@ -56,6 +56,9 @@ export default function Home() {
   
   const [selectedProspect, setSelectedProspect] = useState<ProspectRow | null>(null);
 
+  const [newActivityType, setNewActivityType] = useState("");
+const [newActivityNotes, setNewActivityNotes] = useState("");
+
   const [clientForm, setClientForm] = useState({
     name: "",
     rfc: "",
@@ -898,6 +901,65 @@ padding:"10px 0"
 </div>
 </div>
 ))}
+
+<h3 style={{marginTop:25}}>Agregar actividad</h3>
+
+<select
+value={newActivityType}
+onChange={(e)=>setNewActivityType(e.target.value)}
+style={{...inputStyle, marginBottom:10}}
+>
+<option value="">Tipo de actividad</option>
+<option value="Llamada">Llamada</option>
+<option value="Correo">Correo</option>
+<option value="Reunión">Reunión</option>
+<option value="Cotización">Cotización</option>
+</select>
+
+<input
+placeholder="Notas"
+value={newActivityNotes}
+onChange={(e)=>setNewActivityNotes(e.target.value)}
+style={{...inputStyle, marginBottom:10}}
+/>
+
+<button
+onClick={async ()=>{
+
+if(!newActivityType){
+alert("Selecciona un tipo de actividad")
+return
+}
+
+const { error } = await supabase
+.from("prospect_followups")
+.insert({
+prospect_id: selectedProspect.id,
+activity_type: newActivityType,
+notes: newActivityNotes
+})
+
+if(error){
+alert("Error guardando actividad")
+return
+}
+
+setNewActivityType("")
+setNewActivityNotes("")
+
+loadFollowups(selectedProspect.id)
+
+}}
+style={{
+background:"#2563eb",
+border:"none",
+padding:"10px 14px",
+color:"#fff",
+borderRadius:6
+}}
+>
+Guardar actividad
+</button>
 
 <button
 onClick={async () => {
