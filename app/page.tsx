@@ -1493,105 +1493,121 @@ Seguimiento
   </div>
 )}
 
-     {/* ===== VISTA AÑO PRO ===== */}
+   {/* ===== VISTA AÑO ===== */}
 {calendarView === "year" && (
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(3, 1fr)",
-      gap: 16
-    }}
-  >
-    {Array.from({ length: 12 }).map((_, monthIndex) => {
+  <div style={{ display: "grid", gap: 16 }}>
 
-      const base = new Date(selectedDate)
-      const year = base.getFullYear()
+    {/* GRID 12 MESES */}
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(3, 1fr)",
+        gap: 16
+      }}
+    >
 
-      const firstDay = new Date(year, monthIndex, 1)
-      const startDay = (firstDay.getDay() + 6) % 7
-      const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
+      {Array.from({ length: 12 }).map((_, monthIndex) => {
 
-      const days = []
+        const year = new Date(selectedDate).getFullYear()
 
-      for (let i = 0; i < startDay; i++) days.push(null)
-      for (let i = 1; i <= daysInMonth; i++) days.push(i)
+        const firstDay = new Date(year, monthIndex, 1)
+        const startDay = (firstDay.getDay() + 6) % 7
 
-      const today = new Date()
+        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
 
-      return (
-        <div
-          key={monthIndex}
-          style={{
-            background: "#0f1f3d",
-            borderRadius: 10,
-            padding: 10
-          }}
-        >
-          {/* Nombre del mes */}
+        const days = []
+
+        const prevMonthDays = new Date(year, monthIndex, 0).getDate()
+
+        for (let i = startDay - 1; i >= 0; i--) {
+          days.push({
+            date: new Date(year, monthIndex - 1, prevMonthDays - i),
+            currentMonth: false
+          })
+        }
+
+        for (let i = 1; i <= daysInMonth; i++) {
+          days.push({
+            date: new Date(year, monthIndex, i),
+            currentMonth: true
+          })
+        }
+
+        while (days.length < 42) {
+          const d = days.length - daysInMonth - startDay + 1
+          days.push({
+            date: new Date(year, monthIndex + 1, d),
+            currentMonth: false
+          })
+        }
+
+        return (
           <div
+            key={monthIndex}
             style={{
-              textAlign: "center",
-              fontWeight: "bold",
-              marginBottom: 8
+              background: "#0f1f3d",
+              padding: 10,
+              borderRadius: 8
             }}
           >
-            {new Date(year, monthIndex).toLocaleString("es-MX", {
-              month: "long"
-            })}
-          </div>
 
-          {/* Días semana */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(7,1fr)",
-              fontSize: 11,
-              marginBottom: 4,
-              opacity: 0.7
-            }}
-          >
-            {["L","M","X","J","V","S","D"].map(d => (
-              <div key={d} style={{ textAlign: "center" }}>{d}</div>
-            ))}
-          </div>
+            {/* NOMBRE MES */}
+            <div
+              style={{
+                textAlign: "center",
+                fontWeight: "bold",
+                marginBottom: 8
+              }}
+            >
+              {new Date(year, monthIndex).toLocaleString("es-MX", {
+                month: "long"
+              })}
+            </div>
 
-          {/* Días */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(7,1fr)",
-              gap: 2,
-              fontSize: 12
-            }}
-          >
-            {days.map((day, i) => {
+            {/* MINI GRID */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(7, 1fr)",
+                fontSize: 10,
+                gap: 2
+              }}
+            >
 
-              if (!day) return <div key={i} />
-
-              const isToday =
-                today.getFullYear() === year &&
-                today.getMonth() === monthIndex &&
-                today.getDate() === day
-
-              return (
-                <div
-                  key={i}
-                  style={{
-                    textAlign: "center",
-                    padding: 4,
-                    borderRadius: 4,
-                    background: isToday ? "#2563eb" : "transparent",
-                    fontWeight: isToday ? "bold" : "normal"
-                  }}
-                >
-                  {day}
+              {["L","M","X","J","V","S","D"].map(d => (
+                <div key={d} style={{ textAlign: "center", opacity: 0.7 }}>
+                  {d}
                 </div>
-              )
-            })}
+              ))}
+
+              {days.map((day, i) => {
+                const today = new Date().toDateString()
+                const isToday = day.date.toDateString() === today
+
+                return (
+                  <div
+                    key={i}
+                    style={{
+                      padding: 2,
+                      textAlign: "center",
+                      borderRadius: 4,
+                      background: isToday ? "#2563eb" : "transparent",
+                      opacity: day.currentMonth ? 1 : 0.3
+                    }}
+                  >
+                    {day.date.getDate()}
+                  </div>
+                )
+              })}
+
+            </div>
+
           </div>
-        </div>
-      )
-    })}
+        )
+      })}
+
+    </div>
+
   </div>
 )}
 
