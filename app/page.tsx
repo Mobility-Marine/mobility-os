@@ -1300,12 +1300,48 @@ Seguimiento
     >
 
       {/* ===== TITULO ===== */}
-      <h3 style={{ marginTop: 0 }}>
-        {new Date(selectedDate).toLocaleDateString("es-MX", {
-          month: "long",
-          year: "numeric"
-        })}
-      </h3>
+    <h3 style={{ marginTop: 0 }}>
+
+  {calendarView === "day" &&
+    new Date(selectedDate).toLocaleDateString("es-MX", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric"
+    })
+  }
+
+  {calendarView === "week" && (() => {
+
+    const start = new Date(selectedDate)
+    start.setDate(start.getDate() - start.getDay() + 1)
+
+    const end = new Date(start)
+    end.setDate(start.getDate() + 6)
+
+    return `${start.toLocaleDateString("es-MX", {
+      day: "numeric",
+      month: "short"
+    })} — ${end.toLocaleDateString("es-MX", {
+      day: "numeric",
+      month: "short",
+      year: "numeric"
+    })}`
+
+  })()}
+
+  {calendarView === "month" &&
+    new Date(selectedDate).toLocaleDateString("es-MX", {
+      month: "long",
+      year: "numeric"
+    })
+  }
+
+  {calendarView === "year" &&
+    new Date(selectedDate).getFullYear()
+  }
+
+</h3>
 
       {/* ===== NAV ===== */}
       <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
