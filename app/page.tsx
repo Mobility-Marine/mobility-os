@@ -76,6 +76,13 @@ const [newActivityNotes, setNewActivityNotes] = useState("");
 
   const [tasks, setTasks] = useState<any[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+  // ✅ Siempre mostrar HOY al entrar a vista Día
+useEffect(() => {
+  if (calendarView === "day") {
+    const today = new Date()
+    setSelectedDate(today.toLocaleDateString("en-CA"))
+  }
+}, [calendarView])
   
 const [taskTitle, setTaskTitle] = useState("")
 const [taskDescription, setTaskDescription] = useState("")
