@@ -1748,7 +1748,7 @@ Seguimiento
       const hour = now.getHours()
       const minute = now.getMinutes()
 
-      const hourHeight = 40
+      const hourHeight = 64
       const offsetTop =
         (hour - 8) * hourHeight +
         (minute / 60) * hourHeight
