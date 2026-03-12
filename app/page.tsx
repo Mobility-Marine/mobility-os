@@ -61,7 +61,7 @@ export default function Home() {
 "Negociación",
 "Ganado",
 "Perdido"
-]
+];
   const [followups, setFollowups] = useState<any[]>([]);
   const [prospectHistory, setProspectHistory] = useState<any[]>([]);
   const [loadingProspects, setLoadingProspects] = useState(false);
@@ -488,7 +488,7 @@ async function handleDrop(e: React.DragEvent, newStage: string) {
       phone: "",
       lead_source: "",
       interested_service: "",
-      status: "nuevo",
+      status: "Nuevo",
       notes: "",
       estimated_value: 0,
        stage_position: 0
