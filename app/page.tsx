@@ -1267,27 +1267,27 @@ Seguimiento
   <div style={{ display: "grid", gap: 16 }}>
 
     {/* ===== SELECTOR ===== */}
-    <div style={{ display: "flex", gap: 8 }}>
-      {["day","week","month","year"].map(v => (
-        <button
-          key={v}
-          onClick={() => setCalendarView(v)}
-          style={{
-            background: calendarView === v ? "#2563eb" : "#0f1f3d",
-            border: "1px solid #2f5aa6",
-            padding: "6px 12px",
-            color: "#fff",
-            borderRadius: 6,
-            cursor: "pointer"
-          }}
-        >
-          {v === "day" && "Día"}
-          {v === "week" && "Semana"}
-          {v === "month" && "Mes"}
-          {v === "year" && "Año"}
-        </button>
-      ))}
-    </div>
+   <div style={{ display: "flex", gap: 8 }}>
+  {(["day", "week", "month", "year"] as const).map(v => (
+    <button
+      key={v}
+      onClick={() => setCalendarView(v)}
+      style={{
+        background: calendarView === v ? "#2563eb" : "#0f1f3d",
+        border: "1px solid #2f5aa6",
+        padding: "6px 12px",
+        color: "#fff",
+        borderRadius: 6,
+        cursor: "pointer"
+      }}
+    >
+      {v === "day" && "Día"}
+      {v === "week" && "Semana"}
+      {v === "month" && "Mes"}
+      {v === "year" && "Año"}
+    </button>
+  ))}
+</div>
 
     {/* ===== CONTENEDOR ===== */}
     <section
