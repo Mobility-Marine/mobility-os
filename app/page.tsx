@@ -75,15 +75,8 @@ const [loadingEvents, setLoadingEvents] = useState(false)
 const [newActivityNotes, setNewActivityNotes] = useState("");
 
   const [tasks, setTasks] = useState<any[]>([]);
-  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
-  // ✅ Siempre mostrar HOY al entrar a vista Día
-useEffect(() => {
-  if (calendarView === "day") {
-    const today = new Date()
-    setSelectedDate(today.toLocaleDateString("en-CA"))
-  }
-}, [calendarView])
-  
+ const [calendarEvents, setCalendarEvents] = useState<any[]>([])
+ 
 const [taskTitle, setTaskTitle] = useState("")
 const [taskDescription, setTaskDescription] = useState("")
 const [taskDueDate, setTaskDueDate] = useState("")
@@ -102,6 +95,14 @@ const [selectedDate, setSelectedDate] = useState(
   new Date().toISOString().slice(0, 10)
 )
 
+// ✅ Siempre mostrar HOY al entrar a vista Día
+useEffect(() => {
+  if (calendarView === "day") {
+    const today = new Date()
+    setSelectedDate(today.toLocaleDateString("en-CA"))
+  }
+}, [calendarView])
+  
   const [clientForm, setClientForm] = useState({
     name: "",
     rfc: "",
