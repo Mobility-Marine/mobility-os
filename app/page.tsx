@@ -159,8 +159,10 @@ useEffect(() => {
 
   if (activeView === "Prospectos") loadProspects();
 
-  if (activeView === "Agenda") {
-    loadCalendarEvents();
+ if (activeView === "Agenda") {
+  loadCalendarEvents();
+  setSelectedDate(new Date().toISOString().slice(0, 10));
+}
 
     const today = new Date().toISOString().slice(0, 10)
     setSelectedDate(today)
