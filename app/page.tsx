@@ -1297,275 +1297,64 @@ Seguimiento
 )}
 
 {calendarView === "month" && (
-  <div>
-    {/* Navegación arriba */}
-    <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-      <button
-        onClick={() => {
-          const d = new Date(selectedDate)
-          d.setMonth(d.getMonth() - 1)
-          setSelectedDate(d.toISOString().slice(0, 10))
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(7, 1fr)",
+      border: "1px solid #284577",
+      borderRadius: 12,
+      overflow: "hidden"
+    }}
+  >
+    {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
+      <div
+        key={d}
+        style={{
+          background: "#0f1f3d",
+          padding: 10,
+          textAlign: "center",
+          fontWeight: "bold",
+          borderBottom: "1px solid #284577"
         }}
-        style={navButtonStyle}
       >
-        ◀ Mes anterior
-      </button>
+        {d}
+      </div>
+    ))}
 
-      <button
-        onClick={() => {
-          const d = new Date(selectedDate)
-          d.setMonth(d.getMonth() + 1)
-          setSelectedDate(d.toISOString().slice(0, 10))
-        }}
-        style={navButtonStyle}
-      >
-        Mes siguiente ▶
-      </button>
-    </div>
+    {getMonthDays().map((day, i) => {
+      const today = new Date().toDateString()
+      const isToday = day.date.toDateString() === today
 
-    {/* Grid calendario */}
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(7, 1fr)",
-        border: "1px solid #284577",
-        borderRadius: 12,
-        overflow: "hidden"
-      }}
-    >
-      {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
+      return (
         <div
-          key={d}
+          key={i}
           style={{
-            background: "#0f1f3d",
-            padding: 10,
-            textAlign: "center",
-            fontWeight: "bold",
-            borderBottom: "1px solid #284577"
+            minHeight: 100,
+            padding: 8,
+            borderTop: "1px solid #284577",
+            borderLeft: "1px solid #284577",
+            background: day.currentMonth ? "#08142c" : "#0b1b3a",
+            opacity: day.currentMonth ? 1 : 0.4
           }}
         >
-          {d}
-        </div>
-      ))}
-
-      {getMonthDays().map((day, i) => {
-        const today = new Date().toDateString()
-        const isToday = day.date.toDateString() === today
-
-        return (
           <div
-            key={i}
             style={{
-              minHeight: 90,
-              padding: 6,
-              borderTop: "1px solid #284577",
-              borderLeft: "1px solid #284577",
-              background: day.currentMonth ? "#08142c" : "#0b1b3a",
-              opacity: day.currentMonth ? 1 : 0.4
+              fontSize: 13,
+              fontWeight: isToday ? "bold" : "normal",
+              color: isToday ? "#60a5fa" : "#fff"
             }}
           >
-            <div
-              style={{
-                fontSize: 12,
-                fontWeight: isToday ? "bold" : "normal",
-                color: isToday ? "#60a5fa" : "#fff"
-              }}
-            >
-              {day.date.getDate()}
-            </div>
+            {day.date.getDate()}
           </div>
-        )
-      })}
-    </div>
+        </div>
+      )
+    })}
   </div>
 )}
 
 {calendarView === "year" && (
   <div style={{color:"#9fb3d9"}}>Vista anual en construcción</div>
 )}
-    
-    {/* ===== CALENDARIO ===== */}
-    <section
-      style={{
-        background: "#12284d",
-        border: "1px solid #284577",
-        borderRadius: 16,
-        padding: 22,
-      }}
-    >
-   <h3 style={{ marginTop: 0 }}>
-  {new Date(selectedDate).toLocaleDateString("es-MX", {
-    month: "long",
-    year: "numeric"
-  })}
-
-  {" — "}
-
-  {calendarView === "week" && "Calendario semanal"}
-  {calendarView === "day" && "Calendario diario"}
-  {calendarView === "month" && "Calendario mensual"}
-  {calendarView === "year" && "Calendario anual"}
-</h3>
-
-   <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-
-  {/* BOTÓN ATRÁS */}
-  <button
-    onClick={() => {
-      const d = new Date(selectedDate)
-
-      if (calendarView === "week") {
-        d.setDate(d.getDate() - 7)
-      } else if (calendarView === "day") {
-        d.setDate(d.getDate() - 1)
-      } else if (calendarView === "month") {
-        d.setMonth(d.getMonth() - 1)
-      } else if (calendarView === "year") {
-        d.setFullYear(d.getFullYear() - 1)
-      }
-
-      setSelectedDate(d.toISOString().slice(0, 10))
-    }}
-    style={navButtonStyle}
-  >
-    ◀ Anterior
-  </button>
-
-  {/* BOTÓN HOY */}
-  <button
-    onClick={() => {
-      setSelectedDate(new Date().toLocaleDateString("en-CA"))
-    }}
-    style={navButtonStyle}
-  >
-    Hoy
-  </button>
-
-  {/* BOTÓN ADELANTE */}
-  <button
-    onClick={() => {
-      const d = new Date(selectedDate)
-
-      if (calendarView === "week") {
-        d.setDate(d.getDate() + 7)
-      } else if (calendarView === "day") {
-        d.setDate(d.getDate() + 1)
-      } else if (calendarView === "month") {
-        d.setMonth(d.getMonth() + 1)
-      } else if (calendarView === "year") {
-        d.setFullYear(d.getFullYear() + 1)
-      }
-
-      setSelectedDate(d.toISOString().slice(0, 10))
-    }}
-    style={navButtonStyle}
-  >
-    Siguiente ▶
-  </button>
-
-</div>
-
- {calendarView === "week" && (
-  <div style={{ overflowX: "auto" }}>
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "80px repeat(5, 1fr)",
-        border: "1px solid #284577",
-        borderRadius: 12,
-        overflow: "hidden"
-      }}
-    >
-
-      {/* Encabezado */}
-      <div style={{ background: "#0f1f3d" }} />
-
-      {getWeekDays().map(day => (
-        <div
-          key={day.toISOString()}
-          style={{
-            background: "#0f1f3d",
-            padding: 10,
-            borderLeft: "1px solid #284577",
-            textAlign: "center",
-            fontWeight: "bold"
-          }}
-        >
-          {day.toLocaleDateString("es-MX", {
-            weekday: "short",
-            day: "numeric"
-          })}
-        </div>
-      ))}
-
-      {/* Filas por hora */}
-      {generateHours().map(hour => (
-        <React.Fragment key={hour}>
-
-          <div
-            style={{
-              padding: 8,
-              borderTop: "1px solid #284577",
-              background: "#0b1b3a",
-              fontSize: 12
-            }}
-          >
-            {hour}
-          </div>
-
-          {getWeekDays().map(day => (
-            <div
-              key={hour + day.toISOString()}
-              onClick={() => {
-                const date = new Date(day)
-                const [h, m] = hour.split(":")
-                date.setHours(Number(h), Number(m))
-
-                setModalDateTime(date.toISOString().slice(0, 16))
-                setShowEventModal(true)
-              }}
-              style={{
-                borderLeft: "1px solid #284577",
-                borderTop: "1px solid #284577",
-                minHeight: 60,
-                padding: 4,
-                position: "relative",
-                cursor: "pointer"
-              }}
-            >
-              {calendarEvents
-                .filter(ev => {
-                  const evDate = new Date(ev.start_datetime)
-                  return (
-                    evDate.toDateString() === day.toDateString() &&
-                    evDate.toTimeString().slice(0, 5) === hour
-                  )
-                })
-                .map(ev => (
-                  <div
-                    key={ev.id}
-                    style={{
-                      background: ev.color || "#2563eb",
-                      padding: 4,
-                      borderRadius: 6,
-                      fontSize: 12,
-                      color: "#fff"
-                    }}
-                  >
-                    {ev.title}
-                  </div>
-                ))}
-            </div>
-          ))}
-
-        </React.Fragment>
-      ))}
-
-    </div>
-  </div>
-)}
-
-</section>
       
     {/* ===== CREAR EVENTO ===== */}
     <section
