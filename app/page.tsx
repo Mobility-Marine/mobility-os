@@ -1343,45 +1343,74 @@ Seguimiento
 
 </h3>
 
-      {/* ===== NAV ===== */}
-      <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-        <button
-          onClick={() => {
-            const d = new Date(selectedDate)
-            if (calendarView === "week") d.setDate(d.getDate() - 7)
-            else if (calendarView === "day") d.setDate(d.getDate() - 1)
-            else if (calendarView === "month") d.setMonth(d.getMonth() - 1)
-            else d.setFullYear(d.getFullYear() - 1)
-            setSelectedDate(d.toLocaleDateString("en-CA"))
-          }}
-          style={navButtonStyle}
-        >
-          ◀ Anterior
-        </button>
+     {/* ===== NAV ===== */}
+<div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
 
-        <button
-          onClick={() =>
-            setSelectedDate(new Date().toLocaleDateString("en-CA"))
-          }
-          style={navButtonStyle}
-        >
-          Hoy
-        </button>
+  {/* ANTERIOR */}
+  <button
+    onClick={() => {
+      const d = new Date(selectedDate)
 
-        <button
-          onClick={() => {
-            const d = new Date(selectedDate)
-            if (calendarView === "week") d.setDate(d.getDate() + 7)
-            else if (calendarView === "day") d.setDate(d.getDate() + 1)
-            else if (calendarView === "month") d.setMonth(d.getMonth() + 1)
-            else d.setFullYear(d.getFullYear() + 1)
-            setSelectedDate(d.toLocaleDateString("en-CA"))
-          }}
-          style={navButtonStyle}
-        >
-          Siguiente ▶
-        </button>
-      </div>
+      switch (calendarView) {
+        case "day":
+          d.setDate(d.getDate() - 1)
+          break
+        case "week":
+          d.setDate(d.getDate() - 7)
+          break
+        case "month":
+          d.setMonth(d.getMonth() - 1)
+          break
+        case "year":
+          d.setFullYear(d.getFullYear() - 1)
+          break
+      }
+
+      setSelectedDate(d.toLocaleDateString("en-CA"))
+    }}
+    style={navButtonStyle}
+  >
+    ◀ Anterior
+  </button>
+
+  {/* HOY */}
+  <button
+    onClick={() =>
+      setSelectedDate(new Date().toLocaleDateString("en-CA"))
+    }
+    style={navButtonStyle}
+  >
+    Hoy
+  </button>
+
+  {/* SIGUIENTE */}
+  <button
+    onClick={() => {
+      const d = new Date(selectedDate)
+
+      switch (calendarView) {
+        case "day":
+          d.setDate(d.getDate() + 1)
+          break
+        case "week":
+          d.setDate(d.getDate() + 7)
+          break
+        case "month":
+          d.setMonth(d.getMonth() + 1)
+          break
+        case "year":
+          d.setFullYear(d.getFullYear() + 1)
+          break
+      }
+
+      setSelectedDate(d.toLocaleDateString("en-CA"))
+    }}
+    style={navButtonStyle}
+  >
+    Siguiente ▶
+  </button>
+
+</div>
 
      {/* ===== DÍA ===== */}
 {calendarView === "day" && (
