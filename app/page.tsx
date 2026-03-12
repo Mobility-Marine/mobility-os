@@ -156,18 +156,14 @@ const [selectedDate, setSelectedDate] = useState(
 
 useEffect(() => {
   if (activeView === "CRM") loadClients();
-
   if (activeView === "Prospectos") loadProspects();
 
- if (activeView === "Agenda") {
-  loadCalendarEvents();
-  setSelectedDate(new Date().toISOString().slice(0, 10));
-}
+  if (activeView === "Agenda") {
+    loadCalendarEvents();
 
-    const today = new Date().toISOString().slice(0, 10)
-    setSelectedDate(today)
+    const today = new Date().toISOString().slice(0, 10);
+    setSelectedDate(today);
   }
-
 }, [activeView]);
 
  async function loadClients() {
