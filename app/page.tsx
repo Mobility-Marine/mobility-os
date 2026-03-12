@@ -1451,24 +1451,28 @@ Seguimiento
     })}
   </div>
 )}
-     {/* ===== SEMANA ===== */}
+    {/* ===== SEMANA ===== */}
 {calendarView === "week" && (() => {
 
-  const startOfWeek = new Date(selectedDate)
-  const day = (startOfWeek.getDay() + 6) % 7
-  startOfWeek.setDate(startOfWeek.getDate() - day)
+  const base = new Date(selectedDate)
 
-  const weekDays = Array.from({ length: 7 }).map((_, i) => {
-    const d = new Date(startOfWeek)
-    d.setDate(startOfWeek.getDate() + i)
+  // Lunes de la semana actual
+  const start = new Date(base)
+  start.setDate(base.getDate() - ((base.getDay() + 6) % 7))
+
+  const weekDays = Array.from({ length: 5 }).map((_, i) => {
+    const d = new Date(start)
+    d.setDate(start.getDate() + i)
     return d
   })
+
+  const hours = generateHours()
 
   return (
     <div
       style={{
         display: "grid",
-        gridTemplateColumns: "80px repeat(7, 1fr)",
+        gridTemplateColumns: "80px repeat(5, 1fr)",
         border: "1px solid #284577",
         borderRadius: 12,
         overflow: "hidden"
@@ -1476,60 +1480,56 @@ Seguimiento
     >
 
       {/* ===== ENCABEZADO ===== */}
-      <div style={{ background:"#0f1f3d" }} />
+      <div style={{ background: "#0f1f3d" }} />
 
-      {weekDays.map((d, i) => {
-
-        const today = new Date().toDateString()
-        const isToday = d.toDateString() === today
-
-        return (
-          <div
-            key={i}
-            style={{
-              background:"#0f1f3d",
-              padding:10,
-              textAlign:"center",
-              borderLeft:"1px solid #284577",
-              fontWeight:"bold",
-              color: isToday ? "#60a5fa" : "#fff"
-            }}
-          >
-            {d.toLocaleDateString("es-MX", {
-              weekday:"short",
-              day:"numeric"
-            })}
-          </div>
-        )
-      })}
+      {weekDays.map((day, i) => (
+        <div
+          key={i}
+          style={{
+            background: "#0f1f3d",
+            padding: 10,
+            textAlign: "center",
+            fontWeight: "bold",
+            borderLeft: "1px solid #284577"
+          }}
+        >
+          {day.toLocaleDateString("es-MX", {
+            weekday: "short",
+            day: "numeric"
+          })}
+        </div>
+      ))}
 
       {/* ===== HORAS + CELDAS ===== */}
-      {generateHours().map(hour => (
+      {hours.map(hour => (
         <React.Fragment key={hour}>
 
           {/* Hora */}
           <div
             style={{
-              padding:8,
-              borderTop:"1px solid #284577",
-              background:"#08142c",
-              fontWeight:"bold"
+              padding: 8,
+              borderTop: "1px solid #284577",
+              fontSize: 12,
+              color: "#9fb3d9"
             }}
           >
             {hour}
           </div>
 
-          {/* 7 días */}
-          {weekDays.map((d, i) => {
+          {/* Celdas por día */}
+          {weekDays.map((day, i) => {
 
-            const eventsAtCell = calendarEvents.filter(e => {
-              const ev = new Date(e.start_datetime)
-              const hourStr =
-                ev.getHours().toString().padStart(2,"0") + ":00"
+            const cellDate = new Date(day)
+            const h = parseInt(hour.split(":")[0])
+            cellDate.setHours(h, 0, 0, 0)
 
+            const events = calendarEvents.filter(e => {
+              const d = new Date(e.start_datetime)
               return (
-                ev.toDateString() === d.toDateString() &&
-                hourStr === hour
+                d.getFullYear() === cellDate.getFullYear() &&
+                d.getMonth() === cellDate.getMonth() &&
+                d.getDate() === cellDate.getDate() &&
+                d.getHours() === h
               )
             })
 
@@ -1537,36 +1537,31 @@ Seguimiento
               <div
                 key={i}
                 onClick={() => {
-
-                  const newDate = new Date(d)
-
-                  const [h] = hour.split(":")
-                  newDate.setHours(Number(h), 0)
-
-                  setNewEventStart(newDate.toISOString().slice(0,16))
-
-                  const end = new Date(newDate)
-                  end.setHours(end.getHours() + 1)
-                  setNewEventEnd(end.toISOString().slice(0,16))
+                  setModalDateTime(
+                    cellDate.toISOString().slice(0, 16)
+                  )
+                  setShowEventModal(true)
                 }}
                 style={{
-                  borderTop:"1px solid #284577",
-                  borderLeft:"1px solid #284577",
-                  minHeight:48,
-                  padding:4,
-                  cursor:"pointer"
+                  borderTop: "1px solid #284577",
+                  borderLeft: "1px solid #284577",
+                  minHeight: 50,
+                  padding: 4,
+                  cursor: "pointer",
+                  position: "relative"
                 }}
               >
 
-                {eventsAtCell.map(ev => (
+                {/* Eventos */}
+                {events.map(ev => (
                   <div
                     key={ev.id}
                     style={{
-                      background:"#2563eb",
-                      padding:"3px 5px",
-                      borderRadius:4,
-                      fontSize:11,
-                      marginBottom:2
+                      background: "#2563eb",
+                      padding: "3px 5px",
+                      borderRadius: 4,
+                      fontSize: 11,
+                      marginBottom: 2
                     }}
                   >
                     {ev.title}
@@ -1582,7 +1577,6 @@ Seguimiento
 
     </div>
   )
-
 })()}
 
       {/* ================== MES ================== */}
