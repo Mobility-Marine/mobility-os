@@ -1249,7 +1249,89 @@ Seguimiento
 )}
 
 {calendarView === "month" && (
-  <div style={{color:"#9fb3d9"}}>Vista mensual en construcción</div>
+  <div style={{ overflowX: "auto" }}>
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(7, 1fr)",
+        border: "1px solid #284577",
+        borderRadius: 12,
+        overflow: "hidden"
+      }}
+    >
+
+      {/* Encabezado días */}
+      {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
+        <div
+          key={d}
+          style={{
+            background: "#0f1f3d",
+            padding: 10,
+            textAlign: "center",
+            fontWeight: "bold",
+            borderBottom: "1px solid #284577"
+          }}
+        >
+          {d}
+        </div>
+      ))}
+
+      {/* Celdas del mes */}
+      {Array.from({ length: 35 }).map((_, i) => {
+
+        const date = new Date(selectedDate)
+        date.setDate(1)
+        date.setDate(i - date.getDay() + 1)
+
+        return (
+          <div
+            key={i}
+            onClick={() => {
+              const d = new Date(date)
+              d.setHours(10, 0)
+              setModalDateTime(d.toISOString().slice(0,16))
+              setShowEventModal(true)
+            }}
+            style={{
+              minHeight: 90,
+              borderTop: "1px solid #284577",
+              borderLeft: "1px solid #284577",
+              padding: 6,
+              cursor: "pointer",
+              position: "relative"
+            }}
+          >
+
+            <div style={{ fontSize: 12, opacity: 0.8 }}>
+              {date.getDate()}
+            </div>
+
+            {calendarEvents
+              .filter(ev => {
+                const evDate = new Date(ev.start_datetime)
+                return evDate.toDateString() === date.toDateString()
+              })
+              .map(ev => (
+                <div
+                  key={ev.id}
+                  style={{
+                    background: ev.color || "#2563eb",
+                    borderRadius: 4,
+                    padding: 2,
+                    fontSize: 11,
+                    marginTop: 2
+                  }}
+                >
+                  {ev.title}
+                </div>
+              ))}
+
+          </div>
+        )
+      })}
+
+    </div>
+  </div>
 )}
 
 {calendarView === "year" && (
