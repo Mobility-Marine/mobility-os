@@ -1347,50 +1347,110 @@ Seguimiento
         </button>
       </div>
 
-      {/* ================== DÍA ================== */}
-      {calendarView === "day" && (
-        <div>
-          {generateHours().map(hour => {
+     {/* ===== DÍA ===== */}
+{calendarView === "day" && (
+  <div
+    style={{
+      border: "1px solid #284577",
+      borderRadius: 12,
+      overflow: "hidden"
+    }}
+  >
+    <div
+      style={{
+        background: "#0f1f3d",
+        padding: 12,
+        fontWeight: "bold",
+        borderBottom: "1px solid #284577"
+      }}
+    >
+      {new Date(selectedDate).toLocaleDateString("es-MX", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric"
+      })}
+    </div>
 
-            const eventsAtHour = calendarEvents.filter(e => {
-              const d = new Date(e.start_datetime)
-              return (
-                d.toDateString() === new Date(selectedDate).toDateString() &&
-                d.getHours().toString().padStart(2,"0")+":00" === hour
-              )
-            })
+    {generateHours().map(hour => {
+      const eventsAtHour = calendarEvents.filter(ev => {
+        const eventDate = new Date(ev.start_datetime)
+        const selected = new Date(selectedDate)
 
-            return (
+        const sameDay =
+          eventDate.getFullYear() === selected.getFullYear() &&
+          eventDate.getMonth() === selected.getMonth() &&
+          eventDate.getDate() === selected.getDate()
+
+        const hourStr =
+          eventDate.getHours().toString().padStart(2, "0") + ":00"
+
+        return sameDay && hourStr === hour
+      })
+
+      return (
+        <div
+          key={hour}
+          onClick={() => {
+            const date = new Date(selectedDate)
+            const [h, m] = hour.split(":")
+            date.setHours(Number(h), Number(m), 0, 0)
+
+            const yyyy = date.getFullYear()
+            const mm = String(date.getMonth() + 1).padStart(2, "0")
+            const dd = String(date.getDate()).padStart(2, "0")
+            const hh = String(date.getHours()).padStart(2, "0")
+            const min = String(date.getMinutes()).padStart(2, "0")
+
+            setModalDateTime(`${yyyy}-${mm}-${dd}T${hh}:${min}`)
+            setShowEventModal(true)
+          }}
+          style={{
+            borderBottom: "1px solid #284577",
+            minHeight: 64,
+            display: "grid",
+            gridTemplateColumns: "100px 1fr",
+            cursor: "pointer"
+          }}
+        >
+          <div
+            style={{
+              padding: "10px 12px",
+              background: "#102244",
+              borderRight: "1px solid #284577",
+              fontWeight: "bold"
+            }}
+          >
+            {hour}
+          </div>
+
+          <div
+            style={{
+              padding: 8,
+              position: "relative"
+            }}
+          >
+            {eventsAtHour.map(ev => (
               <div
-                key={hour}
+                key={ev.id}
                 style={{
-                  borderBottom: "1px solid #284577",
-                  padding: 8,
-                  minHeight: 40
+                  background: ev.color || "#2563eb",
+                  padding: "6px 8px",
+                  borderRadius: 6,
+                  marginBottom: 6,
+                  fontSize: 12,
+                  color: "#fff"
                 }}
               >
-                <strong>{hour}</strong>
-
-                {eventsAtHour.map(ev => (
-                  <div
-                    key={ev.id}
-                    style={{
-                      background: "#2563eb",
-                      padding: "4px 6px",
-                      borderRadius: 4,
-                      marginTop: 4,
-                      fontSize: 12
-                    }}
-                  >
-                    {ev.title}
-                  </div>
-                ))}
+                {ev.title}
               </div>
-            )
-          })}
+            ))}
+          </div>
         </div>
-      )}
-
+      )
+    })}
+  </div>
+)}
       {/* ================== SEMANA ================== */}
       {calendarView === "week" && (
         <div
