@@ -1404,7 +1404,7 @@ Seguimiento
   </button>
 </div>
 
-     {/* ===== DÍA ===== */}
+   {/* ===== DÍA ===== */}
 {calendarView === "day" && (
   <div
     style={{
@@ -1413,6 +1413,7 @@ Seguimiento
       overflow: "hidden"
     }}
   >
+    {/* Encabezado */}
     <div
       style={{
         background: "#0f1f3d",
@@ -1446,60 +1447,68 @@ Seguimiento
       })
 
       return (
-      <div
-  key={hour}
-  onDragOver={(e) => e.preventDefault()}
-  onDrop={async (e) => {
-    const eventId = e.dataTransfer.getData("eventId")
-    if (!eventId) return
+        <div
+          key={hour}
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={async (e) => {
+            const eventId = e.dataTransfer.getData("eventId")
+            if (!eventId) return
 
-    const date = new Date(selectedDate + "T12:00:00")
-    const [h, m] = hour.split(":")
-    date.setHours(Number(h), Number(m), 0, 0)
+            const date = new Date(selectedDate + "T12:00:00")
+            const [h, m] = hour.split(":")
+            date.setHours(Number(h), Number(m), 0, 0)
 
-    const yyyy = date.getFullYear()
-    const mm = String(date.getMonth() + 1).padStart(2, "0")
-    const dd = String(date.getDate()).padStart(2, "0")
-    const hh = String(date.getHours()).padStart(2, "0")
-    const min = String(date.getMinutes()).padStart(2, "0")
+            const yyyy = date.getFullYear()
+            const mm = String(date.getMonth() + 1).padStart(2, "0")
+            const dd = String(date.getDate()).padStart(2, "0")
+            const hh = String(date.getHours()).padStart(2, "0")
+            const min = String(date.getMinutes()).padStart(2, "0")
 
-    const newDateTime = `${yyyy}-${mm}-${dd}T${hh}:${min}`
+            const newDateTime = `${yyyy}-${mm}-${dd}T${hh}:${min}`
 
-    await supabase
-      .from("calendar_events")
-      .update({
-        start_datetime: newDateTime,
-        end_datetime: newDateTime
-      })
-      .eq("id", eventId)
+            await supabase
+              .from("calendar_events")
+              .update({
+                start_datetime: newDateTime,
+                end_datetime: newDateTime
+              })
+              .eq("id", eventId)
 
-    loadCalendarEvents()
-  }}
-  onClick={() => {
-    const date = new Date(selectedDate + "T12:00:00")
-    const [h, m] = hour.split(":")
-    date.setHours(Number(h), Number(m), 0, 0)
+            loadCalendarEvents()
+          }}
+          onClick={() => {
+            const date = new Date(selectedDate + "T12:00:00")
+            const [h, m] = hour.split(":")
+            date.setHours(Number(h), Number(m), 0, 0)
 
-    const yyyy = date.getFullYear()
-    const mm = String(date.getMonth() + 1).padStart(2, "0")
-    const dd = String(date.getDate()).padStart(2, "0")
-    const hh = String(date.getHours()).padStart(2, "0")
-    const min = String(date.getMinutes()).padStart(2, "0")
+            const yyyy = date.getFullYear()
+            const mm = String(date.getMonth() + 1).padStart(2, "0")
+            const dd = String(date.getDate()).padStart(2, "0")
+            const hh = String(date.getHours()).padStart(2, "0")
+            const min = String(date.getMinutes()).padStart(2, "0")
 
-    setModalDateTime(`${yyyy}-${mm}-${dd}T${hh}:${min}`)
-    setShowEventModal(true)
-  }}
-  style={{
-    borderBottom: "1px solid #284577",
-    minHeight: 64,
-    display: "grid",
-    gridTemplateColumns: "100px 1fr",
-    cursor: "pointer"
-  }}
->
+            setModalDateTime(`${yyyy}-${mm}-${dd}T${hh}:${min}`)
+            setShowEventModal(true)
+          }}
+          style={{
+            borderBottom: "1px solid #284577",
+            minHeight: 70,
+            display: "grid",
+            gridTemplateColumns: "100px 1fr",
+            cursor: "pointer",
+            transition: "background 0.15s"
+          }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "#0b1f44")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background = "transparent")
+          }
+        >
+          {/* Hora */}
           <div
             style={{
-              padding: "10px 12px",
+              padding: "12px",
               background: "#102244",
               borderRight: "1px solid #284577",
               fontWeight: "bold"
@@ -1508,32 +1517,29 @@ Seguimiento
             {hour}
           </div>
 
-          <div
-            style={{
-              padding: 8,
-              position: "relative"
-            }}
-          >
-          {eventsAtHour.map(ev => (
-  <div
-    key={ev.id}
-    draggable
-    onDragStart={(e) => {
-      e.dataTransfer.setData("eventId", ev.id)
-    }}
-    style={{
-      background: ev.color || "#2563eb",
-      padding: "6px 8px",
-      borderRadius: 6,
-      marginBottom: 6,
-      fontSize: 12,
-      color: "#fff",
-      cursor: "grab"
-    }}
-  >
-    {ev.title}
-  </div>
-))}
+          {/* Eventos */}
+          <div style={{ padding: 8 }}>
+            {eventsAtHour.map(ev => (
+              <div
+                key={ev.id}
+                draggable
+                onDragStart={(e) => {
+                  e.dataTransfer.setData("eventId", ev.id)
+                }}
+                style={{
+                  background: ev.color || "#2563eb",
+                  padding: "8px 10px",
+                  borderRadius: 8,
+                  marginBottom: 6,
+                  fontSize: 13,
+                  color: "#fff",
+                  cursor: "grab",
+                  boxShadow: "0 2px 6px rgba(0,0,0,0.3)"
+                }}
+              >
+                {ev.title}
+              </div>
+            ))}
           </div>
         </div>
       )
@@ -1615,14 +1621,45 @@ Seguimiento
           return (
             <div
               key={i}
-              onClick={() => {
-                const dateStr =
-                  getLocalDateISO(day) +
-                  "T" +
-                  hour +
-                  ":00"
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={async (e) => {
+                const eventId = e.dataTransfer.getData("eventId")
+                if (!eventId) return
 
-                setModalDateTime(dateStr)
+                const newDate = new Date(day)
+                const [h, m] = hour.split(":")
+                newDate.setHours(Number(h), Number(m), 0, 0)
+
+                const yyyy = newDate.getFullYear()
+                const mm = String(newDate.getMonth() + 1).padStart(2, "0")
+                const dd = String(newDate.getDate()).padStart(2, "0")
+                const hh = String(newDate.getHours()).padStart(2, "0")
+                const min = String(newDate.getMinutes()).padStart(2, "0")
+
+                const newDateTime = `${yyyy}-${mm}-${dd}T${hh}:${min}`
+
+                await supabase
+                  .from("calendar_events")
+                  .update({
+                    start_datetime: newDateTime,
+                    end_datetime: newDateTime
+                  })
+                  .eq("id", eventId)
+
+                loadCalendarEvents()
+              }}
+              onClick={() => {
+                const newDate = new Date(day)
+                const [h, m] = hour.split(":")
+                newDate.setHours(Number(h), Number(m), 0, 0)
+
+                const yyyy = newDate.getFullYear()
+                const mm = String(newDate.getMonth() + 1).padStart(2, "0")
+                const dd = String(newDate.getDate()).padStart(2, "0")
+                const hh = String(newDate.getHours()).padStart(2, "0")
+                const min = String(newDate.getMinutes()).padStart(2, "0")
+
+                setModalDateTime(`${yyyy}-${mm}-${dd}T${hh}:${min}`)
                 setShowEventModal(true)
               }}
               style={{
@@ -1640,6 +1677,10 @@ Seguimiento
               {eventsHere.map(ev => (
                 <div
                   key={ev.id}
+                  draggable
+                  onDragStart={(e) => {
+                    e.dataTransfer.setData("eventId", ev.id)
+                  }}
                   style={{
                     background: "#2563eb",
                     padding: "3px 5px",
@@ -1648,7 +1689,8 @@ Seguimiento
                     fontSize: 11,
                     overflow: "hidden",
                     whiteSpace: "nowrap",
-                    textOverflow: "ellipsis"
+                    textOverflow: "ellipsis",
+                    cursor: "grab"
                   }}
                 >
                   {ev.title}
@@ -1678,18 +1720,17 @@ Seguimiento
       const hour = now.getHours()
       const minute = now.getMinutes()
 
-      const hourHeight = 40 // alto de cada fila
-      const offsetTop = (hour - 8) * hourHeight + (minute / 60) * hourHeight
-
-      const leftOffset =
-        80 + todayIndex * ((100 - 80) / 5)
+      const hourHeight = 40
+      const offsetTop =
+        (hour - 8) * hourHeight +
+        (minute / 60) * hourHeight
 
       return (
         <div
           style={{
             position: "absolute",
             top: 60 + offsetTop,
-            left: leftOffset,
+            left: 80 + todayIndex * ((100 - 80) / 5),
             right: 0,
             height: 2,
             background: "red",
@@ -1702,7 +1743,6 @@ Seguimiento
 
   </div>
 )}
-
    {/* ===== MES ===== */}
 {calendarView === "month" && (
   <div
@@ -1749,6 +1789,33 @@ Seguimiento
       return (
         <div
           key={i}
+
+          onDragOver={(e) => e.preventDefault()}
+
+          onDrop={async (e) => {
+            const eventId = e.dataTransfer.getData("eventId")
+            if (!eventId) return
+
+            const d = new Date(day.date)
+            d.setHours(9, 0, 0, 0)
+
+            const yyyy = d.getFullYear()
+            const mm = String(d.getMonth() + 1).padStart(2, "0")
+            const dd = String(d.getDate()).padStart(2, "0")
+
+            const newDateTime = `${yyyy}-${mm}-${dd}T09:00`
+
+            await supabase
+              .from("calendar_events")
+              .update({
+                start_datetime: newDateTime,
+                end_datetime: newDateTime
+              })
+              .eq("id", eventId)
+
+            loadCalendarEvents()
+          }}
+
           onClick={() => {
             const d = new Date(day.date)
             d.setHours(9, 0, 0, 0)
@@ -1760,6 +1827,7 @@ Seguimiento
             setModalDateTime(`${yyyy}-${mm}-${dd}T09:00`)
             setShowEventModal(true)
           }}
+
           style={{
             minHeight: 120,
             padding: 6,
@@ -1805,6 +1873,10 @@ Seguimiento
           {dayEvents.slice(0, 3).map(ev => (
             <div
               key={ev.id}
+              draggable
+              onDragStart={(e) => {
+                e.dataTransfer.setData("eventId", ev.id)
+              }}
               style={{
                 background: ev.color || "#2563eb",
                 padding: "3px 6px",
@@ -1813,7 +1885,8 @@ Seguimiento
                 fontSize: 11,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
-                textOverflow: "ellipsis"
+                textOverflow: "ellipsis",
+                cursor: "grab"
               }}
             >
               {ev.title}
@@ -1833,7 +1906,7 @@ Seguimiento
   </div>
 )}
 
-    {/* ===== VISTA AÑO ===== */}
+   {/* ===== VISTA AÑO ===== */}
 {calendarView === "year" && (
   <div
     style={{
@@ -1854,7 +1927,7 @@ Seguimiento
       const days = []
       const prevMonthDays = new Date(year, monthIndex, 0).getDate()
 
-      // Días del mes anterior
+      // Mes anterior
       for (let i = startDay - 1; i >= 0; i--) {
         days.push({
           date: new Date(year, monthIndex - 1, prevMonthDays - i),
@@ -1862,7 +1935,7 @@ Seguimiento
         })
       }
 
-      // Días del mes actual
+      // Mes actual
       for (let i = 1; i <= daysInMonth; i++) {
         days.push({
           date: new Date(year, monthIndex, i),
@@ -1936,6 +2009,33 @@ Seguimiento
               return (
                 <div
                   key={i}
+
+                  onDragOver={(e) => e.preventDefault()}
+
+                  onDrop={async (e) => {
+                    const eventId = e.dataTransfer.getData("eventId")
+                    if (!eventId) return
+
+                    const d = new Date(day.date)
+                    d.setHours(9, 0, 0, 0)
+
+                    const yyyy = d.getFullYear()
+                    const mm = String(d.getMonth() + 1).padStart(2, "0")
+                    const dd = String(d.getDate()).padStart(2, "0")
+
+                    const newDateTime = `${yyyy}-${mm}-${dd}T09:00`
+
+                    await supabase
+                      .from("calendar_events")
+                      .update({
+                        start_datetime: newDateTime,
+                        end_datetime: newDateTime
+                      })
+                      .eq("id", eventId)
+
+                    loadCalendarEvents()
+                  }}
+
                   onClick={() => {
 
                     const d = new Date(day.date)
@@ -1944,12 +2044,11 @@ Seguimiento
                     const yyyy = d.getFullYear()
                     const mm = String(d.getMonth() + 1).padStart(2, "0")
                     const dd = String(d.getDate()).padStart(2, "0")
-                    const hh = "09"
-                    const min = "00"
 
-                    setModalDateTime(`${yyyy}-${mm}-${dd}T${hh}:${min}`)
+                    setModalDateTime(`${yyyy}-${mm}-${dd}T09:00`)
                     setShowEventModal(true)
                   }}
+
                   style={{
                     padding: 4,
                     textAlign: "center",
