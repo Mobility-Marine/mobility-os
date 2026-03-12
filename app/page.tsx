@@ -1410,10 +1410,11 @@ Seguimiento
     style={{
       border: "1px solid #284577",
       borderRadius: 12,
-      overflow: "hidden"
+      overflow: "hidden",
+      position: "relative"
     }}
   >
-    {/* Encabezado */}
+    {/* ===== ENCABEZADO ===== */}
     <div
       style={{
         background: "#0f1f3d",
@@ -1430,7 +1431,9 @@ Seguimiento
       })}
     </div>
 
+    {/* ===== HORAS ===== */}
     {generateHours().map(hour => {
+
       const eventsAtHour = calendarEvents.filter(ev => {
         const eventDate = new Date(ev.start_datetime)
         const selected = new Date(selectedDate + "T12:00:00")
@@ -1492,23 +1495,16 @@ Seguimiento
           }}
           style={{
             borderBottom: "1px solid #284577",
-            minHeight: 70,
+            minHeight: 64,
             display: "grid",
             gridTemplateColumns: "100px 1fr",
-            cursor: "pointer",
-            transition: "background 0.15s"
+            cursor: "pointer"
           }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = "#0b1f44")
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background = "transparent")
-          }
         >
           {/* Hora */}
           <div
             style={{
-              padding: "12px",
+              padding: "10px 12px",
               background: "#102244",
               borderRight: "1px solid #284577",
               fontWeight: "bold"
@@ -1517,8 +1513,8 @@ Seguimiento
             {hour}
           </div>
 
-          {/* Eventos */}
-          <div style={{ padding: 8 }}>
+          {/* Contenido */}
+          <div style={{ padding: 8, position: "relative" }}>
             {eventsAtHour.map(ev => (
               <div
                 key={ev.id}
@@ -1528,13 +1524,12 @@ Seguimiento
                 }}
                 style={{
                   background: ev.color || "#2563eb",
-                  padding: "8px 10px",
-                  borderRadius: 8,
+                  padding: "6px 8px",
+                  borderRadius: 6,
                   marginBottom: 6,
-                  fontSize: 13,
+                  fontSize: 12,
                   color: "#fff",
-                  cursor: "grab",
-                  boxShadow: "0 2px 6px rgba(0,0,0,0.3)"
+                  cursor: "grab"
                 }}
               >
                 {ev.title}
@@ -1544,6 +1539,47 @@ Seguimiento
         </div>
       )
     })}
+
+    {/* ===== LÍNEA ROJA TIEMPO REAL ===== */}
+    {(() => {
+
+      const now = new Date()
+
+      const selected = new Date(selectedDate + "T12:00:00")
+
+      const sameDay =
+        now.getFullYear() === selected.getFullYear() &&
+        now.getMonth() === selected.getMonth() &&
+        now.getDate() === selected.getDate()
+
+      if (!sameDay) return null
+
+      const hour = now.getHours()
+      const minute = now.getMinutes()
+
+      const startHour = 0 // si tus horas empiezan en 00:00
+      const hourHeight = 64
+
+      const offsetTop =
+        (hour - startHour) * hourHeight +
+        (minute / 60) * hourHeight
+
+      return (
+        <div
+          style={{
+            position: "absolute",
+            top: 48 + offsetTop, // 48 = alto encabezado aprox
+            left: 100,
+            right: 0,
+            height: 2,
+            background: "red",
+            zIndex: 50
+          }}
+        />
+      )
+
+    })()}
+
   </div>
 )}
  {/* ===== SEMANA ===== */}
