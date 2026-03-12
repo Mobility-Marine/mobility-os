@@ -1388,28 +1388,60 @@ Seguimiento
   {calendarView === "year" && "Calendario anual"}
 </h3>
 
-      <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+   <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
 
+  {/* BOTÓN ATRÁS */}
   <button
     onClick={() => {
       const d = new Date(selectedDate)
-      d.setDate(d.getDate() - 7)
+
+      if (calendarView === "week") {
+        d.setDate(d.getDate() - 7)
+      } else if (calendarView === "day") {
+        d.setDate(d.getDate() - 1)
+      } else if (calendarView === "month") {
+        d.setMonth(d.getMonth() - 1)
+      } else if (calendarView === "year") {
+        d.setFullYear(d.getFullYear() - 1)
+      }
+
       setSelectedDate(d.toISOString().slice(0, 10))
     }}
     style={navButtonStyle}
   >
-    ◀ Semana anterior
+    ◀ Anterior
   </button>
 
+  {/* BOTÓN HOY */}
+  <button
+    onClick={() => {
+      setSelectedDate(new Date().toISOString().slice(0, 10))
+    }}
+    style={navButtonStyle}
+  >
+    Hoy
+  </button>
+
+  {/* BOTÓN ADELANTE */}
   <button
     onClick={() => {
       const d = new Date(selectedDate)
-      d.setDate(d.getDate() + 7)
+
+      if (calendarView === "week") {
+        d.setDate(d.getDate() + 7)
+      } else if (calendarView === "day") {
+        d.setDate(d.getDate() + 1)
+      } else if (calendarView === "month") {
+        d.setMonth(d.getMonth() + 1)
+      } else if (calendarView === "year") {
+        d.setFullYear(d.getFullYear() + 1)
+      }
+
       setSelectedDate(d.toISOString().slice(0, 10))
     }}
     style={navButtonStyle}
   >
-    Semana siguiente ▶
+    Siguiente ▶
   </button>
 
 </div>
