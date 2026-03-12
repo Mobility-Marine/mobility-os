@@ -74,8 +74,8 @@ const [loadingEvents, setLoadingEvents] = useState(false)
   const [newActivityType, setNewActivityType] = useState("");
 const [newActivityNotes, setNewActivityNotes] = useState("");
 
-  const [tasks, setTasks] = useState<any[]>([])
-  const [calendarEvents, setCalendarEvents] = useState<any[]>([])
+  const [tasks, setTasks] = useState<any[]>([]);
+  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   
 const [taskTitle, setTaskTitle] = useState("")
 const [taskDescription, setTaskDescription] = useState("")
@@ -499,11 +499,11 @@ async function handleDrop(e: React.DragEvent, newStage: string) {
   }
 
   const cards = [
-    { title: "Cotizaciones abiertas", value: "0" },
-    { title: "Embarques activos", value: "0" },
-    { title: "Facturas pendientes", value: "0" },
-    { title: "Empresas registradas", value: companyCount ?? "-" },
-  ];
+  { title: "Cotizaciones abiertas", value: "0" },
+  { title: "Embarques activos", value: "0" },
+  { title: "Facturas pendientes", value: "0" },
+  { title: "Empresas registradas", value: companyCount ?? "-" },
+];
 
   return (
     <div
