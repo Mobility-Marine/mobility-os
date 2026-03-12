@@ -87,6 +87,9 @@ const [modalDateTime, setModalDateTime] = useState("")
 const [newEventStart, setNewEventStart] = useState("")
 const [newEventEnd, setNewEventEnd] = useState("")
   const [selectedDate, setSelectedDate] = useState(
+    const [calendarView, setCalendarView] = useState<
+  "day" | "week" | "month" | "year"
+>("week")
   new Date().toISOString().slice(0, 10)
 )
 
@@ -1213,6 +1216,44 @@ Seguimiento
 {activeView === "Agenda" && (
   <div style={{ display: "grid", gap: 16 }}>
 
+<div style={{
+  display: "flex",
+  gap: 8,
+  marginBottom: 12
+}}>
+  {["day","week","month","year"].map(v => (
+    <button
+      key={v}
+      onClick={() => setCalendarView(v as any)}
+      style={{
+        background: calendarView === v ? "#2563eb" : "#0f1f3d",
+        border: "1px solid #2f5aa6",
+        padding: "6px 12px",
+        color: "#fff",
+        borderRadius: 6,
+        cursor: "pointer"
+      }}
+    >
+      {v === "day" && "Día"}
+      {v === "week" && "Semana"}
+      {v === "month" && "Mes"}
+      {v === "year" && "Año"}
+    </button>
+  ))}
+</div>
+
+    {calendarView === "day" && (
+  <div style={{color:"#9fb3d9"}}>Vista diaria en construcción</div>
+)}
+
+{calendarView === "month" && (
+  <div style={{color:"#9fb3d9"}}>Vista mensual en construcción</div>
+)}
+
+{calendarView === "year" && (
+  <div style={{color:"#9fb3d9"}}>Vista anual en construcción</div>
+)}
+    
     {/* ===== CALENDARIO ===== */}
     <section
       style={{
@@ -1222,7 +1263,12 @@ Seguimiento
         padding: 22,
       }}
     >
-      <h3 style={{ marginTop: 0 }}>Calendario semanal</h3>
+     <h3 style={{ marginTop: 0 }}>
+  {calendarView === "week" && "Calendario semanal"}
+  {calendarView === "day" && "Calendario diario"}
+  {calendarView === "month" && "Calendario mensual"}
+  {calendarView === "year" && "Calendario anual"}
+</h3>
 
       <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
 
@@ -1250,7 +1296,8 @@ Seguimiento
 
 </div>
 
-      <div style={{ overflowX: "auto" }}>
+    {calendarView === "week" && (
+  <div style={{ overflowX: "auto" }}>
         <div
           style={{
             display: "grid",
@@ -1260,7 +1307,7 @@ Seguimiento
             overflow: "hidden"
           }}
         >
-
+)}
           {/* Encabezado */}
           <div style={{ background: "#0f1f3d" }} />
 
