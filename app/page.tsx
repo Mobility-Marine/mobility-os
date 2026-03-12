@@ -1298,7 +1298,7 @@ Seguimiento
 
 </div>
 
-   {calendarView === "week" && (
+  {calendarView === "week" && (
   <div style={{ overflowX: "auto" }}>
     <div
       style={{
@@ -1309,94 +1309,96 @@ Seguimiento
         overflow: "hidden"
       }}
     >
-          {/* Encabezado */}
-          <div style={{ background: "#0f1f3d" }} />
 
-        {getWeekDays().map(day => (
-  <div
-    key={day.toISOString()}
-    style={{
-      background: "#0f1f3d",
-      padding: 10,
-      borderLeft: "1px solid #284577",
-      textAlign: "center",
-      fontWeight: "bold"
-    }}
-  >
-    {day.toLocaleDateString("es-MX", {
-      weekday: "short",
-      day: "numeric"
-    })}
-  </div>
-))}
+      {/* Encabezado */}
+      <div style={{ background: "#0f1f3d" }} />
 
-          {/* Filas por hora */}
-          {generateHours().map(hour => (
-  <React.Fragment key={hour}>
+      {getWeekDays().map(day => (
+        <div
+          key={day.toISOString()}
+          style={{
+            background: "#0f1f3d",
+            padding: 10,
+            borderLeft: "1px solid #284577",
+            textAlign: "center",
+            fontWeight: "bold"
+          }}
+        >
+          {day.toLocaleDateString("es-MX", {
+            weekday: "short",
+            day: "numeric"
+          })}
+        </div>
+      ))}
 
-    {/* Hora */}
-    <div
-      style={{
-        padding: 8,
-        borderTop: "1px solid #284577",
-        background: "#0b1b3a",
-        fontSize: 12
-      }}
-    >
-      {hour}
-    </div>
+      {/* Filas por hora */}
+      {generateHours().map(hour => (
+        <React.Fragment key={hour}>
 
-    {/* Celdas por día */}
-    {getWeekDays().map(day => (
-      <div
-        key={hour + day.toISOString()}
-        onClick={() => {
-          const date = new Date(day)
-          const [h, m] = hour.split(":")
-          date.setHours(Number(h), Number(m))
+          {/* Hora */}
+          <div
+            style={{
+              padding: 8,
+              borderTop: "1px solid #284577",
+              background: "#0b1b3a",
+              fontSize: 12
+            }}
+          >
+            {hour}
+          </div>
 
-          setModalDateTime(date.toISOString().slice(0, 16))
-          setShowEventModal(true)
-        }}
-        style={{
-          borderLeft: "1px solid #284577",
-          borderTop: "1px solid #284577",
-          minHeight: 60,
-          padding: 4,
-          position: "relative",
-          cursor: "pointer"
-        }}
-      >
-        {calendarEvents
-          .filter(ev => {
-            const evDate = new Date(ev.start_datetime)
-            return (
-              evDate.toDateString() === day.toDateString() &&
-              evDate.toTimeString().slice(0, 5) === hour
-            )
-          })
-          .map(ev => (
+          {/* Celdas */}
+          {getWeekDays().map(day => (
             <div
-              key={ev.id}
+              key={hour + day.toISOString()}
+              onClick={() => {
+                const date = new Date(day)
+                const [h, m] = hour.split(":")
+                date.setHours(Number(h), Number(m))
+
+                setModalDateTime(date.toISOString().slice(0, 16))
+                setShowEventModal(true)
+              }}
               style={{
-                background: ev.color || "#2563eb",
+                borderLeft: "1px solid #284577",
+                borderTop: "1px solid #284577",
+                minHeight: 60,
                 padding: 4,
-                borderRadius: 6,
-                fontSize: 12,
-                color: "#fff"
+                position: "relative",
+                cursor: "pointer"
               }}
             >
-              {ev.title}
+              {calendarEvents
+                .filter(ev => {
+                  const evDate = new Date(ev.start_datetime)
+                  return (
+                    evDate.toDateString() === day.toDateString() &&
+                    evDate.toTimeString().slice(0, 5) === hour
+                  )
+                })
+                .map(ev => (
+                  <div
+                    key={ev.id}
+                    style={{
+                      background: ev.color || "#2563eb",
+                      padding: 4,
+                      borderRadius: 6,
+                      fontSize: 12,
+                      color: "#fff"
+                    }}
+                  >
+                    {ev.title}
+                  </div>
+                ))}
             </div>
           ))}
-      </div>
-    ))}
 
-  </React.Fragment>
-))}
-        </div>
-      </div>
-    </section>
+        </React.Fragment>
+      ))}
+
+    </div>
+  </div>
+)}
 
     {/* ===== CREAR EVENTO ===== */}
     <section
