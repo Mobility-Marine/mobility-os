@@ -463,24 +463,27 @@ async function handleDrop(e: React.DragEvent, newStage: string) {
 
   return days
 }
-  function getMonthDays() {
-  const base = new Date(selectedDate)
-  const year = base.getFullYear()
-  const month = base.getMonth()
+ function getMonthDays() {
+
+  const baseDate = new Date(selectedDate)   // ✅ usar fecha seleccionada
+  const year = baseDate.getFullYear()
+  const month = baseDate.getMonth()
 
   const firstDay = new Date(year, month, 1)
   const lastDay = new Date(year, month + 1, 0)
 
+  const startWeekDay = (firstDay.getDay() + 6) % 7 // lunes=0
+  const totalDays = lastDay.getDate()
+
   const days = []
 
-  // Ajustar inicio al lunes
-  const startOffset = (firstDay.getDay() + 6) % 7
-
-  for (let i = 0; i < startOffset; i++) {
+  // Días vacíos al inicio
+  for (let i = 0; i < startWeekDay; i++) {
     days.push(null)
   }
 
-  for (let d = 1; d <= lastDay.getDate(); d++) {
+  // Días del mes
+  for (let d = 1; d <= totalDays; d++) {
     days.push(new Date(year, month, d))
   }
 
