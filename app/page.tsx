@@ -1573,39 +1573,114 @@ Seguimiento
   </div>
 )}
 
-      {/* ================== MES ================== */}
-      {calendarView === "month" && (
+     {/* ===== MES ===== */}
+{calendarView === "month" && (
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(7, 1fr)",
+      border: "1px solid #284577",
+      borderRadius: 12,
+      overflow: "hidden"
+    }}
+  >
+
+    {/* ENCABEZADOS */}
+    {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
+      <div
+        key={d}
+        style={{
+          background: "#0f1f3d",
+          padding: 10,
+          textAlign: "center",
+          fontWeight: "bold",
+          borderBottom: "1px solid #284577",
+          borderRight: "1px solid #284577"
+        }}
+      >
+        {d}
+      </div>
+    ))}
+
+    {/* DÍAS */}
+    {getMonthDays().map((day, i) => {
+
+      const todayStr = new Date().toDateString()
+      const isToday = day.date.toDateString() === todayStr
+
+      const dayEvents = calendarEvents.filter(e => {
+        const d = new Date(e.start_datetime)
+        return d.toDateString() === day.date.toDateString()
+      })
+
+      return (
         <div
+          key={i}
+          onClick={() => {
+            const d = new Date(day.date)
+            d.setHours(9, 0)
+            setModalDateTime(d.toISOString().slice(0, 16))
+            setShowEventModal(true)
+          }}
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(7,1fr)",
-            border: "1px solid #284577"
+            minHeight: 110,
+            padding: 6,
+            borderTop: "1px solid #284577",
+            borderRight: "1px solid #284577",
+            background: day.currentMonth ? "#08142c" : "#0b1b3a",
+            opacity: day.currentMonth ? 1 : 0.35,
+            cursor: "pointer",
+            position: "relative"
           }}
         >
-          {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
-            <div key={d} style={{ textAlign:"center", padding:10 }}>
-              {d}
+
+          {/* NÚMERO DE DÍA */}
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: "bold",
+              color: isToday ? "#60a5fa" : "#fff",
+              background: isToday ? "rgba(96,165,250,0.15)" : "transparent",
+              borderRadius: 6,
+              display: "inline-block",
+              padding: "2px 6px",
+              marginBottom: 4
+            }}
+          >
+            {day.date.getDate()}
+          </div>
+
+          {/* EVENTOS */}
+          {dayEvents.slice(0, 3).map(ev => (
+            <div
+              key={ev.id}
+              style={{
+                background: "#2563eb",
+                padding: "3px 5px",
+                borderRadius: 4,
+                marginBottom: 4,
+                fontSize: 11,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis"
+              }}
+            >
+              {ev.title}
             </div>
           ))}
 
-          {getMonthDays().map((day,i) => {
-            const events = calendarEvents.filter(e => {
-              const d = new Date(e.start_datetime)
-              return d.toDateString() === day.date.toDateString()
-            })
+          {dayEvents.length > 3 && (
+            <div style={{ fontSize: 10, opacity: 0.7 }}>
+              +{dayEvents.length - 3} más
+            </div>
+          )}
 
-            return (
-              <div key={i} style={{ minHeight:100, padding:6 }}>
-                <div>{day.date.getDate()}</div>
-
-                {events.map(ev => (
-                  <div key={ev.id}>{ev.title}</div>
-                ))}
-              </div>
-            )
-          })}
         </div>
-      )}
+      )
+    })}
+
+  </div>
+)}
 
       {/* ================== AÑO ================== */}
       {calendarView === "year" && (
