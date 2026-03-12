@@ -1298,18 +1298,17 @@ Seguimiento
 
 </div>
 
-    {calendarView === "week" && (
+   {calendarView === "week" && (
   <div style={{ overflowX: "auto" }}>
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "80px repeat(5, 1fr)",
-            border: "1px solid #284577",
-            borderRadius: 12,
-            overflow: "hidden"
-          }}
-        >
-)}
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "80px repeat(5, 1fr)",
+        border: "1px solid #284577",
+        borderRadius: 12,
+        overflow: "hidden"
+      }}
+    >
           {/* Encabezado */}
           <div style={{ background: "#0f1f3d" }} />
 
