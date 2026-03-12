@@ -1693,7 +1693,7 @@ Seguimiento
               style={{
                 borderTop: "1px solid #284577",
                 borderLeft: "1px solid #284577",
-                minHeight: 40,
+                minHeight: 53,
                 padding: 4,
                 cursor: "pointer",
                 background: isToday ? "#0b1f44" : "transparent",
@@ -1732,7 +1732,7 @@ Seguimiento
       </React.Fragment>
     ))}
 
-   {/* ===== LÍNEA HORA ACTUAL ===== */}
+  {/* ===== LÍNEA HORA ACTUAL ===== */}
 {(() => {
   const now = new Date()
   const today = now.toDateString()
@@ -1747,12 +1747,10 @@ Seguimiento
   const hour = now.getHours()
   const minute = now.getMinutes()
 
-  // En vista semana cada fila mide 40px
-  const hourHeight = 40
-  const headerHeight = 42
-
-  // Solo mostrar la línea si la hora actual está dentro del rango visible
   if (hour < 8 || hour > 20) return null
+
+  const hourHeight = 53
+  const headerHeight = 42
 
   const offsetTop =
     (hour - 8) * hourHeight + (minute / 60) * hourHeight
