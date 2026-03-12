@@ -102,11 +102,9 @@ const [selectedDate, setSelectedDate] = useState(
   getLocalDateISO()
 )
 
-// ✅ Siempre mostrar HOY al entrar a vista Día
 useEffect(() => {
   if (calendarView === "day") {
-    const today = new Date()
-    setSelectedDate(today.getLocalDateISO())
+    setSelectedDate(getLocalDateISO())
   }
 }, [calendarView])
   
@@ -181,7 +179,6 @@ useEffect(() => {
 useEffect(() => {
   if (activeView === "Agenda" && calendarView === "day") {
     setSelectedDate(getLocalDateISO())
-    setSelectedDate(today)
   }
 }, [calendarView, activeView])
  async function loadClients() {
@@ -1372,7 +1369,7 @@ Seguimiento
       else if (calendarView === "month") d.setMonth(d.getMonth() - 1)
       else if (calendarView === "year") d.setFullYear(d.getFullYear() - 1)
 
-      setSelectedDate(d.getLocalDateISO())
+     setSelectedDate(getLocalDateISO(d))
     }}
     style={navButtonStyle}
   >
@@ -1585,7 +1582,7 @@ Seguimiento
               key={i}
               onClick={() => {
                 const dateStr =
-                  day.getLocalDateISO() +
+                 getLocalDateISO(day) +
                   "T" +
                   hour +
                   ":00"
