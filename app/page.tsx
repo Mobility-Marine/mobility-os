@@ -92,7 +92,7 @@ const [calendarView, setCalendarView] = useState<
 >("week")
 
 const [selectedDate, setSelectedDate] = useState(
-  new Date().toLocaleDateString("en-CA")
+  new Date().toISOString().slice(0, 10)
 )
 
   const [clientForm, setClientForm] = useState({
@@ -160,9 +160,7 @@ useEffect(() => {
 
   if (activeView === "Agenda") {
     loadCalendarEvents();
-
-    const today = new Date().toLocaleDateString("en-CA");
-    setSelectedDate(today);
+    setSelectedDate(new Date().toISOString().slice(0, 10));
   }
 }, [activeView]);
 
@@ -1343,73 +1341,48 @@ Seguimiento
 
 </h3>
 
-     {/* ===== NAV ===== */}
+ {/* ===== NAV ===== */}
 <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
-
-  {/* ANTERIOR */}
   <button
     onClick={() => {
-      const d = new Date(selectedDate)
+      const d = new Date(selectedDate + "T12:00:00")
 
-      switch (calendarView) {
-        case "day":
-          d.setDate(d.getDate() - 1)
-          break
-        case "week":
-          d.setDate(d.getDate() - 7)
-          break
-        case "month":
-          d.setMonth(d.getMonth() - 1)
-          break
-        case "year":
-          d.setFullYear(d.getFullYear() - 1)
-          break
-      }
+      if (calendarView === "day") d.setDate(d.getDate() - 1)
+      else if (calendarView === "week") d.setDate(d.getDate() - 7)
+      else if (calendarView === "month") d.setMonth(d.getMonth() - 1)
+      else if (calendarView === "year") d.setFullYear(d.getFullYear() - 1)
 
-      setSelectedDate(d.toLocaleDateString("en-CA"))
+      setSelectedDate(d.toISOString().slice(0, 10))
     }}
     style={navButtonStyle}
   >
     ◀ Anterior
   </button>
 
-  {/* HOY */}
   <button
-    onClick={() =>
-      setSelectedDate(new Date().toLocaleDateString("en-CA"))
-    }
+    onClick={() => {
+      setSelectedDate(new Date().toISOString().slice(0, 10))
+    }}
     style={navButtonStyle}
   >
     Hoy
   </button>
 
-  {/* SIGUIENTE */}
   <button
     onClick={() => {
-      const d = new Date(selectedDate)
+      const d = new Date(selectedDate + "T12:00:00")
 
-      switch (calendarView) {
-        case "day":
-          d.setDate(d.getDate() + 1)
-          break
-        case "week":
-          d.setDate(d.getDate() + 7)
-          break
-        case "month":
-          d.setMonth(d.getMonth() + 1)
-          break
-        case "year":
-          d.setFullYear(d.getFullYear() + 1)
-          break
-      }
+      if (calendarView === "day") d.setDate(d.getDate() + 1)
+      else if (calendarView === "week") d.setDate(d.getDate() + 7)
+      else if (calendarView === "month") d.setMonth(d.getMonth() + 1)
+      else if (calendarView === "year") d.setFullYear(d.getFullYear() + 1)
 
-      setSelectedDate(d.toLocaleDateString("en-CA"))
+      setSelectedDate(d.toISOString().slice(0, 10))
     }}
     style={navButtonStyle}
   >
     Siguiente ▶
   </button>
-
 </div>
 
      {/* ===== DÍA ===== */}
