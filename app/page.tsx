@@ -1316,11 +1316,11 @@ Seguimiento
       }}
     >
 
-      {/* ===== TITULO ===== */}
-    <h3 style={{ marginTop: 0 }}>
+     {/* ===== TITULO ===== */}
+<h3 style={{ marginTop: 0 }}>
 
   {calendarView === "day" &&
-    new Date(selectedDate).toLocaleDateString("es-MX", {
+    new Date(selectedDate + "T12:00:00").toLocaleDateString("es-MX", {
       weekday: "long",
       day: "numeric",
       month: "long",
@@ -1330,7 +1330,7 @@ Seguimiento
 
   {calendarView === "week" && (() => {
 
-    const start = new Date(selectedDate)
+    const start = new Date(selectedDate + "T12:00:00")
     start.setDate(start.getDate() - start.getDay() + 1)
 
     const end = new Date(start)
@@ -1348,14 +1348,14 @@ Seguimiento
   })()}
 
   {calendarView === "month" &&
-    new Date(selectedDate).toLocaleDateString("es-MX", {
+    new Date(selectedDate + "T12:00:00").toLocaleDateString("es-MX", {
       month: "long",
       year: "numeric"
     })
   }
 
   {calendarView === "year" &&
-    new Date(selectedDate).getFullYear()
+    new Date(selectedDate + "T12:00:00").getFullYear()
   }
 
 </h3>
