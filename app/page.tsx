@@ -1421,7 +1421,7 @@ Seguimiento
         borderBottom: "1px solid #284577"
       }}
     >
-      {new Date(selectedDate).toLocaleDateString("es-MX", {
+      {new Date(selectedDate + "T12:00:00").toLocaleDateString("es-MX", {
         weekday: "long",
         day: "numeric",
         month: "long",
@@ -1432,7 +1432,7 @@ Seguimiento
     {generateHours().map(hour => {
       const eventsAtHour = calendarEvents.filter(ev => {
         const eventDate = new Date(ev.start_datetime)
-        const selected = new Date(selectedDate)
+        const selected = new Date(selectedDate + "T12:00:00")
 
         const sameDay =
           eventDate.getFullYear() === selected.getFullYear() &&
@@ -1449,7 +1449,7 @@ Seguimiento
         <div
           key={hour}
           onClick={() => {
-            const date = new Date(selectedDate)
+            const date = new Date(selectedDate + "T12:00:00")
             const [h, m] = hour.split(":")
             date.setHours(Number(h), Number(m), 0, 0)
 
