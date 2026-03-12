@@ -92,7 +92,7 @@ const [calendarView, setCalendarView] = useState<
 >("week")
 
 const [selectedDate, setSelectedDate] = useState(
-  new Date().toISOString().slice(0, 10)
+  new Date().toLocaleDateString("en-CA")
 )
 
   const [clientForm, setClientForm] = useState({
@@ -161,7 +161,7 @@ useEffect(() => {
   if (activeView === "Agenda") {
     loadCalendarEvents();
 
-    const today = new Date().toISOString().slice(0, 10);
+    const today = new Date().toLocaleDateString("en-CA");
     setSelectedDate(today);
   }
 }, [activeView]);
@@ -1393,12 +1393,14 @@ Seguimiento
         padding: 22,
       }}
     >
-    <h3 style={{ marginTop: 0 }}>
+   <h3 style={{ marginTop: 0 }}>
   {new Date(selectedDate).toLocaleDateString("es-MX", {
     month: "long",
     year: "numeric"
   })}
-</h3>
+
+  {" — "}
+
   {calendarView === "week" && "Calendario semanal"}
   {calendarView === "day" && "Calendario diario"}
   {calendarView === "month" && "Calendario mensual"}
@@ -1432,7 +1434,7 @@ Seguimiento
   {/* BOTÓN HOY */}
   <button
     onClick={() => {
-      setSelectedDate(new Date().toISOString().slice(0, 10))
+      setSelectedDate(new Date().toLocaleDateString("en-CA"))
     }}
     style={navButtonStyle}
   >
