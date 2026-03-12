@@ -1703,7 +1703,7 @@ Seguimiento
   </div>
 )}
 
-     {/* ===== MES ===== */}
+   {/* ===== MES ===== */}
 {calendarView === "month" && (
   <div
     style={{
@@ -1735,8 +1735,11 @@ Seguimiento
     {/* DÍAS */}
     {getMonthDays().map((day, i) => {
 
-      const todayStr = new Date().toDateString()
-      const isToday = day.date.toDateString() === todayStr
+      const today = new Date()
+      const isToday =
+        day.date.getFullYear() === today.getFullYear() &&
+        day.date.getMonth() === today.getMonth() &&
+        day.date.getDate() === today.getDate()
 
       const dayEvents = calendarEvents.filter(e => {
         const d = new Date(e.start_datetime)
@@ -1748,29 +1751,47 @@ Seguimiento
           key={i}
           onClick={() => {
             const d = new Date(day.date)
-            d.setHours(9, 0)
-            setModalDateTime(d.toISOString().slice(0, 16))
+            d.setHours(9, 0, 0, 0)
+
+            const yyyy = d.getFullYear()
+            const mm = String(d.getMonth() + 1).padStart(2, "0")
+            const dd = String(d.getDate()).padStart(2, "0")
+
+            setModalDateTime(`${yyyy}-${mm}-${dd}T09:00`)
             setShowEventModal(true)
           }}
           style={{
-            minHeight: 110,
+            minHeight: 120,
             padding: 6,
             borderTop: "1px solid #284577",
             borderRight: "1px solid #284577",
             background: day.currentMonth ? "#08142c" : "#0b1b3a",
             opacity: day.currentMonth ? 1 : 0.35,
             cursor: "pointer",
-            position: "relative"
+            position: "relative",
+            transition: "background 0.2s"
           }}
+          onMouseEnter={(e) =>
+            (e.currentTarget.style.background = "#0b1f44")
+          }
+          onMouseLeave={(e) =>
+            (e.currentTarget.style.background =
+              day.currentMonth ? "#08142c" : "#0b1b3a")
+          }
         >
 
           {/* NÚMERO DE DÍA */}
           <div
             style={{
-              fontSize: 12,
+              fontSize: 13,
               fontWeight: "bold",
               color: isToday ? "#60a5fa" : "#fff",
-              background: isToday ? "rgba(96,165,250,0.15)" : "transparent",
+              background: isToday
+                ? "rgba(96,165,250,0.15)"
+                : "transparent",
+              border: isToday
+                ? "1px solid #60a5fa"
+                : "none",
               borderRadius: 6,
               display: "inline-block",
               padding: "2px 6px",
@@ -1785,8 +1806,8 @@ Seguimiento
             <div
               key={ev.id}
               style={{
-                background: "#2563eb",
-                padding: "3px 5px",
+                background: ev.color || "#2563eb",
+                padding: "3px 6px",
                 borderRadius: 4,
                 marginBottom: 4,
                 fontSize: 11,
