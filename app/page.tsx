@@ -1406,30 +1406,92 @@ Seguimiento
         <div>Calendario semanal listo</div>
       )}
 
-      {/* ===== MES ===== */}
-      {calendarView === "month" && (
+    {/* ===== MES ===== */}
+{calendarView === "month" && (
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(7, 1fr)",
+      border: "1px solid #284577",
+      borderRadius: 12,
+      overflow: "hidden"
+    }}
+  >
+    {/* Encabezados */}
+    {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
+      <div
+        key={d}
+        style={{
+          background: "#0f1f3d",
+          padding: 10,
+          textAlign: "center",
+          fontWeight: "bold",
+          borderBottom: "1px solid #284577"
+        }}
+      >
+        {d}
+      </div>
+    ))}
+
+    {/* Días */}
+    {getMonthDays().map((day, i) => {
+
+      const dayEvents = calendarEvents.filter(e => {
+        const d = new Date(e.start_datetime)
+        return d.toDateString() === day.date.toDateString()
+      })
+
+      const today = new Date().toDateString()
+      const isToday = day.date.toDateString() === today
+
+      return (
         <div
+          key={i}
           style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(7, 1fr)",
-            border: "1px solid #284577",
-            borderRadius: 12,
-            overflow: "hidden"
+            minHeight: 110,
+            padding: 6,
+            borderTop: "1px solid #284577",
+            borderLeft: "1px solid #284577",
+            background: day.currentMonth ? "#08142c" : "#0b1b3a",
+            opacity: day.currentMonth ? 1 : 0.35
           }}
         >
-          {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
-            <div key={d} style={{ background:"#0f1f3d", padding:10, textAlign:"center" }}>
-              {d}
-            </div>
-          ))}
+          {/* Número del día */}
+          <div
+            style={{
+              fontSize: 12,
+              fontWeight: "bold",
+              color: isToday ? "#60a5fa" : "#fff",
+              marginBottom: 4
+            }}
+          >
+            {day.date.getDate()}
+          </div>
 
-          {getMonthDays().map((day,i)=>(
-            <div key={i} style={{ minHeight:90, padding:6 }}>
-              {day.date.getDate()}
+          {/* Eventos */}
+          {dayEvents.map(ev => (
+            <div
+              key={ev.id}
+              style={{
+                background: "#2563eb",
+                padding: "3px 5px",
+                borderRadius: 4,
+                marginBottom: 4,
+                fontSize: 11,
+                whiteSpace: "nowrap",
+                overflow: "hidden",
+                textOverflow: "ellipsis"
+              }}
+            >
+              {ev.title}
             </div>
           ))}
         </div>
-      )}
+      )
+    })}
+
+  </div>
+)}
 
       {/* ===== AÑO ===== */}
       {calendarView === "year" && (
