@@ -1224,6 +1224,32 @@ Seguimiento
     >
       <h3 style={{ marginTop: 0 }}>Calendario semanal</h3>
 
+      <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+
+  <button
+    onClick={() => {
+      const d = new Date(selectedDate)
+      d.setDate(d.getDate() - 7)
+      setSelectedDate(d.toISOString().slice(0, 10))
+    }}
+    style={navButtonStyle}
+  >
+    ◀ Semana anterior
+  </button>
+
+  <button
+    onClick={() => {
+      const d = new Date(selectedDate)
+      d.setDate(d.getDate() + 7)
+      setSelectedDate(d.toISOString().slice(0, 10))
+    }}
+    style={navButtonStyle}
+  >
+    Semana siguiente ▶
+  </button>
+
+</div>
+
       <div style={{ overflowX: "auto" }}>
         <div
           style={{
@@ -1894,4 +1920,14 @@ const thStyle: React.CSSProperties = {
 const tdStyle: React.CSSProperties = {
   padding: "12px 10px",
   borderBottom: "1px solid #22314f",
+};
+
+const navButtonStyle: React.CSSProperties = {
+  background: "#1d4ed8",
+  border: "none",
+  padding: "8px 12px",
+  color: "#fff",
+  borderRadius: 6,
+  cursor: "pointer",
+  fontSize: 13
 };
