@@ -91,15 +91,22 @@ const [calendarView, setCalendarView] = useState<
   "day" | "week" | "month" | "year"
 >("day")
 
+function getLocalDateISO(date = new Date()) {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, "0")
+  const d = String(date.getDate()).padStart(2, "0")
+  return `${y}-${m}-${d}`
+}
+  
 const [selectedDate, setSelectedDate] = useState(
-  new Date().toISOString().slice(0, 10)
+  getLocalDateISO()
 )
 
 // ✅ Siempre mostrar HOY al entrar a vista Día
 useEffect(() => {
   if (calendarView === "day") {
     const today = new Date()
-    setSelectedDate(today.toLocaleDateString("en-CA"))
+    setSelectedDate(today.getLocalDateISO())
   }
 }, [calendarView])
   
@@ -168,12 +175,12 @@ useEffect(() => {
 
   if (activeView === "Agenda") {
     loadCalendarEvents();
-    setSelectedDate(new Date().toLocaleDateString("en-CA"));
+    setSelectedDate(getLocalDateISO())
   }
 }, [activeView]);
 useEffect(() => {
   if (activeView === "Agenda" && calendarView === "day") {
-    const today = new Date().toLocaleDateString("en-CA")
+    setSelectedDate(getLocalDateISO())
     setSelectedDate(today)
   }
 }, [calendarView, activeView])
@@ -1365,7 +1372,7 @@ Seguimiento
       else if (calendarView === "month") d.setMonth(d.getMonth() - 1)
       else if (calendarView === "year") d.setFullYear(d.getFullYear() - 1)
 
-      setSelectedDate(d.toISOString().slice(0, 10))
+      setSelectedDate(d.getLocalDateISO())
     }}
     style={navButtonStyle}
   >
@@ -1374,7 +1381,7 @@ Seguimiento
 
   <button
     onClick={() => {
-      setSelectedDate(new Date().toISOString().slice(0, 10))
+      setSelectedDate(getLocalDateISO())
     }}
     style={navButtonStyle}
   >
@@ -1390,7 +1397,7 @@ Seguimiento
       else if (calendarView === "month") d.setMonth(d.getMonth() + 1)
       else if (calendarView === "year") d.setFullYear(d.getFullYear() + 1)
 
-      setSelectedDate(d.toISOString().slice(0, 10))
+      setSelectedDate(d.getLocalDateISO())
     }}
     style={navButtonStyle}
   >
@@ -1578,7 +1585,7 @@ Seguimiento
               key={i}
               onClick={() => {
                 const dateStr =
-                  day.toLocaleDateString("en-CA") +
+                  day.getLocalDateISO() +
                   "T" +
                   hour +
                   ":00"
