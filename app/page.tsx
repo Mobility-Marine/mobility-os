@@ -82,14 +82,16 @@ const [taskDescription, setTaskDescription] = useState("")
 const [taskDueDate, setTaskDueDate] = useState("")
 
 const [newEventTitle, setNewEventTitle] = useState("")
-  const [showEventModal, setShowEventModal] = useState(false)
+const [showEventModal, setShowEventModal] = useState(false)
 const [modalDateTime, setModalDateTime] = useState("")
 const [newEventStart, setNewEventStart] = useState("")
 const [newEventEnd, setNewEventEnd] = useState("")
-  const [selectedDate, setSelectedDate] = useState(
-    const [calendarView, setCalendarView] = useState<
+
+const [calendarView, setCalendarView] = useState<
   "day" | "week" | "month" | "year"
 >("week")
+
+const [selectedDate, setSelectedDate] = useState(
   new Date().toISOString().slice(0, 10)
 )
 
