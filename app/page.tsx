@@ -1351,53 +1351,56 @@ Seguimiento
 
       </div>
 
-      {/* ===== DÍA ===== */}
-      {calendarView === "day" && (
-        <div>
-         {generateHours().map(hour => {
+    {/* ===== DÍA ===== */}
+{calendarView === "day" && (
+  <div>
 
-  const eventsAtHour = calendarEvents.filter(e => {
-    const eventDate = new Date(e.start_datetime)
-    const hourStr = eventDate.getHours().toString().padStart(2,"0") + ":00"
+    {generateHours().map(hour => {
 
-    return (
-      eventDate.toDateString() === new Date(selectedDate).toDateString()
-      && hourStr === hour
-    )
-  })
+      const eventsAtHour = calendarEvents.filter(e => {
+        const eventDate = new Date(e.start_datetime)
+        const hourStr =
+          eventDate.getHours().toString().padStart(2, "0") + ":00"
 
-  return (
-    <div
-      key={hour}
-      style={{
-        borderBottom: "1px solid #284577",
-        padding: 8,
-        minHeight: 40,
-        position: "relative"
-      }}
-    >
+        return (
+          eventDate.toDateString() ===
+            new Date(selectedDate).toDateString() &&
+          hourStr === hour
+        )
+      })
 
-      <strong>{hour}</strong>
-
-      {eventsAtHour.map(ev => (
+      return (
         <div
-          key={ev.id}
+          key={hour}
           style={{
-            background: "#2563eb",
-            padding: "4px 6px",
-            borderRadius: 4,
-            marginTop: 4,
-            fontSize: 12
+            borderBottom: "1px solid #284577",
+            padding: 8,
+            minHeight: 40,
+            position: "relative"
           }}
         >
-          {ev.title}
+          <strong>{hour}</strong>
+
+          {eventsAtHour.map(ev => (
+            <div
+              key={ev.id}
+              style={{
+                background: "#2563eb",
+                padding: "4px 6px",
+                borderRadius: 4,
+                marginTop: 4,
+                fontSize: 12
+              }}
+            >
+              {ev.title}
+            </div>
+          ))}
         </div>
-      ))}
+      )
+    })}
 
-    </div>
-  )
-})}
-
+  </div>
+)}
       {/* ===== SEMANA ===== */}
       {calendarView === "week" && (
         <div>Calendario semanal listo</div>
