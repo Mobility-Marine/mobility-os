@@ -302,7 +302,7 @@ async function convertToClient() {
   setSelectedProspect(null);
 }
   
-  async function createClient() {
+  async function createNewClient() {
     const { data: companyData } = await supabase
       .from("companies")
       .select("id")
@@ -1149,7 +1149,7 @@ Seguimiento
               </div>
 
               <button
-                onClick={createClient}
+                onClick={createNewClient}
                 style={{
                   marginTop: 16,
                   background: "#2f5aa6",
