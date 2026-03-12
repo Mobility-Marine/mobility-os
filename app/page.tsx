@@ -1493,18 +1493,107 @@ Seguimiento
   </div>
 )}
 
-      {/* ===== AÑO ===== */}
-      {calendarView === "year" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
-          {Array.from({ length: 12 }).map((_, i) => (
-            <div key={i} style={{ background:"#0f1f3d", padding:16, textAlign:"center" }}>
-              {new Date(0, i).toLocaleString("es-MX", { month: "long" })}
-            </div>
-          ))}
-        </div>
-      )}
+     {/* ===== VISTA AÑO PRO ===== */}
+{calendarView === "year" && (
+  <div
+    style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(3, 1fr)",
+      gap: 16
+    }}
+  >
+    {Array.from({ length: 12 }).map((_, monthIndex) => {
 
-    </section>
+      const base = new Date(selectedDate)
+      const year = base.getFullYear()
+
+      const firstDay = new Date(year, monthIndex, 1)
+      const startDay = (firstDay.getDay() + 6) % 7
+      const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
+
+      const days = []
+
+      for (let i = 0; i < startDay; i++) days.push(null)
+      for (let i = 1; i <= daysInMonth; i++) days.push(i)
+
+      const today = new Date()
+
+      return (
+        <div
+          key={monthIndex}
+          style={{
+            background: "#0f1f3d",
+            borderRadius: 10,
+            padding: 10
+          }}
+        >
+          {/* Nombre del mes */}
+          <div
+            style={{
+              textAlign: "center",
+              fontWeight: "bold",
+              marginBottom: 8
+            }}
+          >
+            {new Date(year, monthIndex).toLocaleString("es-MX", {
+              month: "long"
+            })}
+          </div>
+
+          {/* Días semana */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(7,1fr)",
+              fontSize: 11,
+              marginBottom: 4,
+              opacity: 0.7
+            }}
+          >
+            {["L","M","X","J","V","S","D"].map(d => (
+              <div key={d} style={{ textAlign: "center" }}>{d}</div>
+            ))}
+          </div>
+
+          {/* Días */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(7,1fr)",
+              gap: 2,
+              fontSize: 12
+            }}
+          >
+            {days.map((day, i) => {
+
+              if (!day) return <div key={i} />
+
+              const isToday =
+                today.getFullYear() === year &&
+                today.getMonth() === monthIndex &&
+                today.getDate() === day
+
+              return (
+                <div
+                  key={i}
+                  style={{
+                    textAlign: "center",
+                    padding: 4,
+                    borderRadius: 4,
+                    background: isToday ? "#2563eb" : "transparent",
+                    fontWeight: isToday ? "bold" : "normal"
+                  }}
+                >
+                  {day}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )
+    })}
+  </div>
+)}
 
     {/* ===== CREAR EVENTO (AHORA SÍ ADENTRO) ===== */}
     <section
