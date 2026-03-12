@@ -1734,6 +1734,7 @@ Seguimiento
 
   {/* ===== LÍNEA HORA ACTUAL ===== */}
 {(() => {
+
   const now = new Date()
   const today = now.toDateString()
 
@@ -1744,33 +1745,33 @@ Seguimiento
 
   if (todayIndex === -1) return null
 
+  const startHour = 8
   const hour = now.getHours()
   const minute = now.getMinutes()
 
-  if (hour < 8 || hour > 20) return null
-
-  const hourHeight = 53
-  const headerHeight = 42
+  // 🔥 ALTURA REAL POR HORA (ajustada a tu layout)
+  const hourHeight = 48
 
   const offsetTop =
-    (hour - 8) * hourHeight + (minute / 60) * hourHeight
+    (hour - startHour) * hourHeight +
+    (minute / 60) * hourHeight
 
   return (
     <div
       style={{
         position: "absolute",
-        top: headerHeight + offsetTop,
+        top: 60 + offsetTop, // 60 = altura encabezado
         left: `calc(80px + ${todayIndex} * ((100% - 80px) / 5))`,
-        width: "calc((100% - 80px) / 5)",
+        width: `calc((100% - 80px) / 5)`,
         height: 2,
         background: "red",
-        zIndex: 50,
+        zIndex: 100,
         pointerEvents: "none"
       }}
     />
   )
-})()}
 
+})()}
   </div>
 )}
    {/* ===== MES ===== */}
