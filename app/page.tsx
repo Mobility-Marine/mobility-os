@@ -170,17 +170,19 @@ useEffect(() => {
 useEffect(() => {
   if (activeView === "CRM") loadClients();
   if (activeView === "Prospectos") loadProspects();
+}, [activeView]);
 
- useEffect(() => {
+useEffect(() => {
   if (activeView === "Agenda") {
-    loadCalendarEvents()
+    loadCalendarEvents();
   }
-}, [activeView])
+}, [activeView]);
+
 useEffect(() => {
   if (calendarView === "day") {
-    setSelectedDate(getLocalDateISO())
+    setSelectedDate(getLocalDateISO());
   }
-}, [calendarView])
+}, [calendarView]);
  async function loadClients() {
   setLoadingClients(true);
 
