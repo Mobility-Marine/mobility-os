@@ -1289,7 +1289,7 @@ Seguimiento
       ))}
     </div>
 
-    {/* ===== CALENDARIO ===== */}
+    {/* ===== CONTENEDOR CALENDARIO ===== */}
     <section
       style={{
         background: "#12284d",
@@ -1299,7 +1299,7 @@ Seguimiento
       }}
     >
 
-      {/* TÍTULO */}
+      {/* ===== TÍTULO ===== */}
       <h3 style={{ marginTop: 0 }}>
         {new Date(selectedDate).toLocaleDateString("es-MX", {
           month: "long",
@@ -1307,7 +1307,7 @@ Seguimiento
         })}
       </h3>
 
-      {/* NAVEGACIÓN */}
+      {/* ===== NAVEGACIÓN ===== */}
       <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
 
         <button
@@ -1351,267 +1351,55 @@ Seguimiento
 
       </div>
 
-    {/* ===== DÍA ===== */}
-{calendarView === "day" && (
-  <div>
-
-    {generateHours().map(hour => {
-
-      const eventsAtHour = calendarEvents.filter(e => {
-        const eventDate = new Date(e.start_datetime)
-        const hourStr =
-          eventDate.getHours().toString().padStart(2, "0") + ":00"
-
-        return (
-          eventDate.toDateString() ===
-            new Date(selectedDate).toDateString() &&
-          hourStr === hour
-        )
-      })
-
-      return (
-        <div
-          key={hour}
-          style={{
-            borderBottom: "1px solid #284577",
-            padding: 8,
-            minHeight: 40,
-            position: "relative"
-          }}
-        >
-          <strong>{hour}</strong>
-
-          {eventsAtHour.map(ev => (
-            <div
-              key={ev.id}
-              style={{
-                background: "#2563eb",
-                padding: "4px 6px",
-                borderRadius: 4,
-                marginTop: 4,
-                fontSize: 12
-              }}
-            >
-              {ev.title}
+      {/* ===== DÍA ===== */}
+      {calendarView === "day" && (
+        <div>
+          {generateHours().map(hour => (
+            <div key={hour} style={{ borderBottom:"1px solid #284577", padding:8 }}>
+              {hour}
             </div>
           ))}
         </div>
-      )
-    })}
+      )}
 
-  </div>
-)}
       {/* ===== SEMANA ===== */}
       {calendarView === "week" && (
         <div>Calendario semanal listo</div>
       )}
 
-    {/* ===== MES ===== */}
-{calendarView === "month" && (
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(7, 1fr)",
-      border: "1px solid #284577",
-      borderRadius: 12,
-      overflow: "hidden"
-    }}
-  >
-    {/* Encabezados */}
-    {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
-      <div
-        key={d}
-        style={{
-          background: "#0f1f3d",
-          padding: 10,
-          textAlign: "center",
-          fontWeight: "bold",
-          borderBottom: "1px solid #284577"
-        }}
-      >
-        {d}
-      </div>
-    ))}
-
-    {/* Días */}
-    {getMonthDays().map((day, i) => {
-
-      const dayEvents = calendarEvents.filter(e => {
-        const d = new Date(e.start_datetime)
-        return d.toDateString() === day.date.toDateString()
-      })
-
-      const today = new Date().toDateString()
-      const isToday = day.date.toDateString() === today
-
-      return (
+      {/* ===== MES ===== */}
+      {calendarView === "month" && (
         <div
-          key={i}
           style={{
-            minHeight: 110,
-            padding: 6,
-            borderTop: "1px solid #284577",
-            borderLeft: "1px solid #284577",
-            background: day.currentMonth ? "#08142c" : "#0b1b3a",
-            opacity: day.currentMonth ? 1 : 0.35
+            display:"grid",
+            gridTemplateColumns:"repeat(7,1fr)",
+            border:"1px solid #284577",
+            borderRadius:12,
+            overflow:"hidden"
           }}
         >
-          {/* Número del día */}
-          <div
-            style={{
-              fontSize: 12,
-              fontWeight: "bold",
-              color: isToday ? "#60a5fa" : "#fff",
-              marginBottom: 4
-            }}
-          >
-            {day.date.getDate()}
-          </div>
+          {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
+            <div key={d} style={{ background:"#0f1f3d", padding:10, textAlign:"center" }}>
+              {d}
+            </div>
+          ))}
 
-          {/* Eventos */}
-          {dayEvents.map(ev => (
-            <div
-              key={ev.id}
-              style={{
-                background: "#2563eb",
-                padding: "3px 5px",
-                borderRadius: 4,
-                marginBottom: 4,
-                fontSize: 11,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis"
-              }}
-            >
-              {ev.title}
+          {getMonthDays().map((day,i)=>(
+            <div key={i} style={{ minHeight:90, padding:6 }}>
+              {day.date.getDate()}
             </div>
           ))}
         </div>
-      )
-    })}
+      )}
 
-  </div>
-)}
+      {/* ===== AÑO ===== */}
+      {calendarView === "year" && (
+        <div>Vista anual lista</div>
+      )}
 
-   {/* ===== VISTA AÑO ===== */}
-{calendarView === "year" && (
-  <div style={{ display: "grid", gap: 16 }}>
+    </section>
 
-    {/* GRID 12 MESES */}
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
-        gap: 16
-      }}
-    >
-
-      {Array.from({ length: 12 }).map((_, monthIndex) => {
-
-        const year = new Date(selectedDate).getFullYear()
-
-        const firstDay = new Date(year, monthIndex, 1)
-        const startDay = (firstDay.getDay() + 6) % 7
-
-        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
-
-        const days = []
-
-        const prevMonthDays = new Date(year, monthIndex, 0).getDate()
-
-        for (let i = startDay - 1; i >= 0; i--) {
-          days.push({
-            date: new Date(year, monthIndex - 1, prevMonthDays - i),
-            currentMonth: false
-          })
-        }
-
-        for (let i = 1; i <= daysInMonth; i++) {
-          days.push({
-            date: new Date(year, monthIndex, i),
-            currentMonth: true
-          })
-        }
-
-        while (days.length < 42) {
-          const d = days.length - daysInMonth - startDay + 1
-          days.push({
-            date: new Date(year, monthIndex + 1, d),
-            currentMonth: false
-          })
-        }
-
-        return (
-          <div
-            key={monthIndex}
-            style={{
-              background: "#0f1f3d",
-              padding: 10,
-              borderRadius: 8
-            }}
-          >
-
-            {/* NOMBRE MES */}
-            <div
-              style={{
-                textAlign: "center",
-                fontWeight: "bold",
-                marginBottom: 8
-              }}
-            >
-              {new Date(year, monthIndex).toLocaleString("es-MX", {
-                month: "long"
-              })}
-            </div>
-
-            {/* MINI GRID */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(7, 1fr)",
-                fontSize: 10,
-                gap: 2
-              }}
-            >
-
-              {["L","M","X","J","V","S","D"].map(d => (
-                <div key={d} style={{ textAlign: "center", opacity: 0.7 }}>
-                  {d}
-                </div>
-              ))}
-
-              {days.map((day, i) => {
-                const today = new Date().toDateString()
-                const isToday = day.date.toDateString() === today
-
-                return (
-                  <div
-                    key={i}
-                    style={{
-                      padding: 2,
-                      textAlign: "center",
-                      borderRadius: 4,
-                      background: isToday ? "#2563eb" : "transparent",
-                      opacity: day.currentMonth ? 1 : 0.3
-                    }}
-                  >
-                    {day.date.getDate()}
-                  </div>
-                )
-              })}
-
-            </div>
-
-          </div>
-        )
-      })}
-
-    </div>
-
-  </div>
-)}
-
-    {/* ===== CREAR EVENTO (AHORA SÍ ADENTRO) ===== */}
+    {/* ===== CREAR EVENTO ===== */}
     <section
       style={{
         background: "#12284d",
@@ -1620,7 +1408,7 @@ Seguimiento
         padding: 22,
       }}
     >
-      <h3 style={{ marginTop: 0 }}>Crear evento</h3>
+      <h3>Crear evento</h3>
 
       <input
         placeholder="Título"
@@ -1644,17 +1432,37 @@ Seguimiento
       />
 
       <button
+        onClick={async () => {
+          if (!newEventTitle || !newEventStart || !newEventEnd) {
+            alert("Completa todos los campos")
+            return
+          }
+
+          const { error } = await supabase
+            .from("calendar_events")
+            .insert({
+              title: newEventTitle,
+              start_datetime: newEventStart,
+              end_datetime: newEventEnd
+            })
+
+          if (error) alert("Error creando evento")
+
+          setNewEventTitle("")
+          setNewEventStart("")
+          setNewEventEnd("")
+          loadCalendarEvents()
+        }}
         style={{
-          background: "#2563eb",
-          border: "none",
-          padding: "10px 14px",
-          color: "#fff",
-          borderRadius: 6
+          background:"#2563eb",
+          border:"none",
+          padding:"10px 14px",
+          color:"#fff",
+          borderRadius:6
         }}
       >
         Crear evento
       </button>
-
     </section>
 
   </div>
