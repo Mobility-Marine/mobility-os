@@ -1404,7 +1404,7 @@ Seguimiento
   </button>
 </div>
 
-   {/* ===== DÍA ===== */}
+  {/* ===== DÍA ===== */}
 {calendarView === "day" && (
   <div
     style={{
@@ -1433,7 +1433,6 @@ Seguimiento
 
     {/* ===== HORAS ===== */}
     {generateHours().map(hour => {
-
       const eventsAtHour = calendarEvents.filter(ev => {
         const eventDate = new Date(ev.start_datetime)
         const selected = new Date(selectedDate + "T12:00:00")
@@ -1501,7 +1500,6 @@ Seguimiento
             cursor: "pointer"
           }}
         >
-          {/* Hora */}
           <div
             style={{
               padding: "10px 12px",
@@ -1513,15 +1511,14 @@ Seguimiento
             {hour}
           </div>
 
-          {/* Contenido */}
-          <div style={{ padding: 8, position: "relative" }}>
+          <div style={{ padding: 8 }}>
             {eventsAtHour.map(ev => (
               <div
                 key={ev.id}
                 draggable
-                onDragStart={(e) => {
+                onDragStart={(e) =>
                   e.dataTransfer.setData("eventId", ev.id)
-                }}
+                }
                 style={{
                   background: ev.color || "#2563eb",
                   padding: "6px 8px",
@@ -1540,44 +1537,39 @@ Seguimiento
       )
     })}
 
-    {/* ===== LÍNEA ROJA TIEMPO REAL ===== */}
+    {/* ===== LÍNEA HORA ACTUAL ===== */}
     {(() => {
-
       const now = new Date()
-
       const selected = new Date(selectedDate + "T12:00:00")
 
-      const sameDay =
-        now.getFullYear() === selected.getFullYear() &&
-        now.getMonth() === selected.getMonth() &&
-        now.getDate() === selected.getDate()
-
-      if (!sameDay) return null
+      // Solo mostrar si es HOY
+      if (now.toDateString() !== selected.toDateString()) return null
 
       const hour = now.getHours()
       const minute = now.getMinutes()
 
-      const startHour = 0 // si tus horas empiezan en 00:00
-      const hourHeight = 64
+      // Solo dentro del horario visible 08–20
+      if (hour < 8 || hour > 20) return null
 
+      const hourHeight = 64
       const offsetTop =
-        (hour - startHour) * hourHeight +
+        (hour - 8) * hourHeight +
         (minute / 60) * hourHeight
 
       return (
         <div
           style={{
             position: "absolute",
-            top: 48 + offsetTop, // 48 = alto encabezado aprox
-            left: 100,
+            top: 44 + offsetTop, // 44 = altura encabezado
+            left: 0,
             right: 0,
             height: 2,
             background: "red",
-            zIndex: 50
+            zIndex: 100,
+            pointerEvents: "none"
           }}
         />
       )
-
     })()}
 
   </div>
