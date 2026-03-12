@@ -1354,13 +1354,49 @@ Seguimiento
       {/* ===== DÍA ===== */}
       {calendarView === "day" && (
         <div>
-          {generateHours().map(h => (
-            <div key={h} style={{ padding: 8, borderBottom: "1px solid #284577" }}>
-              {h}
-            </div>
-          ))}
+         {generateHours().map(hour => {
+
+  const eventsAtHour = calendarEvents.filter(e => {
+    const eventDate = new Date(e.start_datetime)
+    const hourStr = eventDate.getHours().toString().padStart(2,"0") + ":00"
+
+    return (
+      eventDate.toDateString() === new Date(selectedDate).toDateString()
+      && hourStr === hour
+    )
+  })
+
+  return (
+    <div
+      key={hour}
+      style={{
+        borderBottom: "1px solid #284577",
+        padding: 8,
+        minHeight: 40,
+        position: "relative"
+      }}
+    >
+
+      <strong>{hour}</strong>
+
+      {eventsAtHour.map(ev => (
+        <div
+          key={ev.id}
+          style={{
+            background: "#2563eb",
+            padding: "4px 6px",
+            borderRadius: 4,
+            marginTop: 4,
+            fontSize: 12
+          }}
+        >
+          {ev.title}
         </div>
-      )}
+      ))}
+
+    </div>
+  )
+})}
 
       {/* ===== SEMANA ===== */}
       {calendarView === "week" && (
