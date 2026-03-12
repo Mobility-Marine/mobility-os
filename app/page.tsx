@@ -163,7 +163,12 @@ useEffect(() => {
     setSelectedDate(new Date().toISOString().slice(0, 10));
   }
 }, [activeView]);
-
+useEffect(() => {
+  if (activeView === "Agenda" && calendarView === "day") {
+    const today = new Date().toLocaleDateString("en-CA")
+    setSelectedDate(today)
+  }
+}, [calendarView, activeView])
  async function loadClients() {
   setLoadingClients(true);
 
