@@ -461,28 +461,44 @@ async function handleDrop(e: React.DragEvent, newStage: string) {
 
   return days
 }
- function getMonthDays() {
+function getMonthDays() {
+  const base = new Date(selectedDate)
 
-  const baseDate = new Date(selectedDate)   // ✅ usar fecha seleccionada
-  const year = baseDate.getFullYear()
-  const month = baseDate.getMonth()
+  const year = base.getFullYear()
+  const month = base.getMonth()
 
   const firstDay = new Date(year, month, 1)
-  const lastDay = new Date(year, month + 1, 0)
+  const startDay = (firstDay.getDay() + 6) % 7 // Lunes = 0
 
-  const startWeekDay = (firstDay.getDay() + 6) % 7 // lunes=0
-  const totalDays = lastDay.getDate()
+  const daysInMonth = new Date(year, month + 1, 0).getDate()
 
   const days = []
 
-  // Días vacíos al inicio
-  for (let i = 0; i < startWeekDay; i++) {
-    days.push(null)
+  // Días del mes anterior para completar semana
+  const prevMonthDays = new Date(year, month, 0).getDate()
+
+  for (let i = startDay - 1; i >= 0; i--) {
+    days.push({
+      date: new Date(year, month - 1, prevMonthDays - i),
+      currentMonth: false
+    })
   }
 
-  // Días del mes
-  for (let d = 1; d <= totalDays; d++) {
-    days.push(new Date(year, month, d))
+  // Días del mes actual
+  for (let i = 1; i <= daysInMonth; i++) {
+    days.push({
+      date: new Date(year, month, i),
+      currentMonth: true
+    })
+  }
+
+  // Completar hasta 42 casillas (6 semanas)
+  while (days.length < 42) {
+    const d = days.length - daysInMonth - startDay + 1
+    days.push({
+      date: new Date(year, month + 1, d),
+      currentMonth: false
+    })
   }
 
   return days
@@ -1281,7 +1297,33 @@ Seguimiento
 )}
 
 {calendarView === "month" && (
-  <div style={{ overflowX: "auto" }}>
+  <div>
+    {/* Navegación arriba */}
+    <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
+      <button
+        onClick={() => {
+          const d = new Date(selectedDate)
+          d.setMonth(d.getMonth() - 1)
+          setSelectedDate(d.toISOString().slice(0, 10))
+        }}
+        style={navButtonStyle}
+      >
+        ◀ Mes anterior
+      </button>
+
+      <button
+        onClick={() => {
+          const d = new Date(selectedDate)
+          d.setMonth(d.getMonth() + 1)
+          setSelectedDate(d.toISOString().slice(0, 10))
+        }}
+        style={navButtonStyle}
+      >
+        Mes siguiente ▶
+      </button>
+    </div>
+
+    {/* Grid calendario */}
     <div
       style={{
         display: "grid",
@@ -1291,8 +1333,6 @@ Seguimiento
         overflow: "hidden"
       }}
     >
-
-      {/* Encabezado días */}
       {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
         <div
           key={d}
@@ -1308,60 +1348,34 @@ Seguimiento
         </div>
       ))}
 
-      {/* Celdas del mes */}
-      {Array.from({ length: 35 }).map((_, i) => {
-
-        const date = new Date(selectedDate)
-        date.setDate(1)
-        date.setDate(i - date.getDay() + 1)
+      {getMonthDays().map((day, i) => {
+        const today = new Date().toDateString()
+        const isToday = day.date.toDateString() === today
 
         return (
           <div
             key={i}
-            onClick={() => {
-              const d = new Date(date)
-              d.setHours(10, 0)
-              setModalDateTime(d.toISOString().slice(0,16))
-              setShowEventModal(true)
-            }}
             style={{
               minHeight: 90,
+              padding: 6,
               borderTop: "1px solid #284577",
               borderLeft: "1px solid #284577",
-              padding: 6,
-              cursor: "pointer",
-              position: "relative"
+              background: day.currentMonth ? "#08142c" : "#0b1b3a",
+              opacity: day.currentMonth ? 1 : 0.4
             }}
           >
-
-            <div style={{ fontSize: 12, opacity: 0.8 }}>
-              {date.getDate()}
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: isToday ? "bold" : "normal",
+                color: isToday ? "#60a5fa" : "#fff"
+              }}
+            >
+              {day.date.getDate()}
             </div>
-
-            {calendarEvents
-              .filter(ev => {
-                const evDate = new Date(ev.start_datetime)
-                return evDate.toDateString() === date.toDateString()
-              })
-              .map(ev => (
-                <div
-                  key={ev.id}
-                  style={{
-                    background: ev.color || "#2563eb",
-                    borderRadius: 4,
-                    padding: 2,
-                    fontSize: 11,
-                    marginTop: 2
-                  }}
-                >
-                  {ev.title}
-                </div>
-              ))}
-
           </div>
         )
       })}
-
     </div>
   </div>
 )}
@@ -1379,7 +1393,12 @@ Seguimiento
         padding: 22,
       }}
     >
-     <h3 style={{ marginTop: 0 }}>
+    <h3 style={{ marginTop: 0 }}>
+  {new Date(selectedDate).toLocaleDateString("es-MX", {
+    month: "long",
+    year: "numeric"
+  })}
+</h3>
   {calendarView === "week" && "Calendario semanal"}
   {calendarView === "day" && "Calendario diario"}
   {calendarView === "month" && "Calendario mensual"}
