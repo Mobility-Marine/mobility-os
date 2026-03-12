@@ -1540,7 +1540,7 @@ Seguimiento
     })}
   </div>
 )}
-   {/* ===== SEMANA ===== */}
+ {/* ===== SEMANA ===== */}
 {calendarView === "week" && (
   <div
     style={{
@@ -1548,7 +1548,8 @@ Seguimiento
       gridTemplateColumns: "80px repeat(5, 1fr)",
       border: "1px solid #284577",
       borderRadius: 12,
-      overflow: "hidden"
+      overflow: "hidden",
+      position: "relative"
     }}
   >
 
@@ -1616,7 +1617,7 @@ Seguimiento
               key={i}
               onClick={() => {
                 const dateStr =
-                 getLocalDateISO(day) +
+                  getLocalDateISO(day) +
                   "T" +
                   hour +
                   ":00"
@@ -1630,10 +1631,12 @@ Seguimiento
                 minHeight: 40,
                 padding: 4,
                 cursor: "pointer",
-                background: isToday ? "#0b1f44" : "transparent"
+                background: isToday ? "#0b1f44" : "transparent",
+                position: "relative"
               }}
             >
 
+              {/* EVENTOS */}
               {eventsHere.map(ev => (
                 <div
                   key={ev.id}
@@ -1658,6 +1661,44 @@ Seguimiento
 
       </React.Fragment>
     ))}
+
+    {/* ===== LÍNEA HORA ACTUAL ===== */}
+    {(() => {
+
+      const now = new Date()
+      const today = now.toDateString()
+
+      const weekDays = getWeekDays()
+      const todayIndex = weekDays.findIndex(
+        d => d.toDateString() === today
+      )
+
+      if (todayIndex === -1) return null
+
+      const hour = now.getHours()
+      const minute = now.getMinutes()
+
+      const hourHeight = 40 // alto de cada fila
+      const offsetTop = (hour - 8) * hourHeight + (minute / 60) * hourHeight
+
+      const leftOffset =
+        80 + todayIndex * ((100 - 80) / 5)
+
+      return (
+        <div
+          style={{
+            position: "absolute",
+            top: 60 + offsetTop,
+            left: leftOffset,
+            right: 0,
+            height: 2,
+            background: "red",
+            zIndex: 50
+          }}
+        />
+      )
+
+    })()}
 
   </div>
 )}
