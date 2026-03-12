@@ -1683,137 +1683,141 @@ Seguimiento
 )}
 
      {/* ===== VISTA AÑO ===== */}
-{calendarView === "year" && (
-  <div
-    style={{
-      display: "grid",
-      gridTemplateColumns: "repeat(3, 1fr)",
-      gap: 16
-    }}
-  >
-
-    {Array.from({ length: 12 }).map((_, monthIndex) => {
-
-      const year = new Date(selectedDate).getFullYear()
-
-      const firstDay = new Date(year, monthIndex, 1)
-      const startDay = (firstDay.getDay() + 6) % 7
-      const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
-
-      const days = []
-      const prevMonthDays = new Date(year, monthIndex, 0).getDate()
-
-      // Días del mes anterior
-      for (let i = startDay - 1; i >= 0; i--) {
-        days.push({
-          date: new Date(year, monthIndex - 1, prevMonthDays - i),
-          currentMonth: false
-        })
-      }
-
-      // Días del mes actual
-      for (let i = 1; i <= daysInMonth; i++) {
-        days.push({
-          date: new Date(year, monthIndex, i),
-          currentMonth: true
-        })
-      }
-
-      // Completar cuadrícula
-      while (days.length < 42) {
-        const d = days.length - daysInMonth - startDay + 1
-        days.push({
-          date: new Date(year, monthIndex + 1, d),
-          currentMonth: false
-        })
-      }
-
-      return (
+      {calendarView === "year" && (
         <div
-          key={monthIndex}
           style={{
-            background: "#0f1f3d",
-            padding: 10,
-            borderRadius: 8
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: 16
           }}
         >
 
-          {/* NOMBRE MES */}
-          <div
-            style={{
-              textAlign: "center",
-              fontWeight: "bold",
-              marginBottom: 6
-            }}
-          >
-            {new Date(year, monthIndex).toLocaleString("es-MX", {
-              month: "long"
-            })}
-          </div>
+          {Array.from({ length: 12 }).map((_, monthIndex) => {
 
-          {/* ENCABEZADO DÍAS */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(7, 1fr)",
-              fontSize: 10,
-              marginBottom: 4,
-              opacity: 0.7
-            }}
-          >
-            {["L","M","X","J","V","S","D"].map(d => (
-              <div key={d} style={{ textAlign: "center" }}>
-                {d}
-              </div>
-            ))}
-          </div>
+            const year = new Date(selectedDate).getFullYear()
 
-          {/* MINI CALENDARIO */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(7, 1fr)",
-              gap: 2
-            }}
-          >
-            {days.map((day, i) => {
+            const firstDay = new Date(year, monthIndex, 1)
+            const startDay = (firstDay.getDay() + 6) % 7
+            const daysInMonth = new Date(year, monthIndex + 1, 0).getDate()
 
-              const today = new Date().toDateString()
-              const isToday = day.date.toDateString() === today
+            const days = []
+            const prevMonthDays = new Date(year, monthIndex, 0).getDate()
 
-              return (
+            for (let i = startDay - 1; i >= 0; i--) {
+              days.push({
+                date: new Date(year, monthIndex - 1, prevMonthDays - i),
+                currentMonth: false
+              })
+            }
+
+            for (let i = 1; i <= daysInMonth; i++) {
+              days.push({
+                date: new Date(year, monthIndex, i),
+                currentMonth: true
+              })
+            }
+
+            while (days.length < 42) {
+              const d = days.length - daysInMonth - startDay + 1
+              days.push({
+                date: new Date(year, monthIndex + 1, d),
+                currentMonth: false
+              })
+            }
+
+            return (
+              <div
+                key={monthIndex}
+                style={{
+                  background: "#0f1f3d",
+                  padding: 10,
+                  borderRadius: 8
+                }}
+              >
+
+                {/* Nombre mes */}
                 <div
-                  key={i}
-                  onClick={() => {
-                    const d = new Date(day.date)
-                    d.setHours(9, 0)
-
-                    setModalDateTime(d.toISOString().slice(0, 16))
-                    setShowEventModal(true)
-                  }}
                   style={{
-                    padding: 4,
                     textAlign: "center",
-                    borderRadius: 4,
-                    cursor: "pointer",
-                    background: isToday ? "#2563eb" : "#08142c",
-                    opacity: day.currentMonth ? 1 : 0.3,
-                    border: "1px solid #1e335c",
-                    fontSize: 11
+                    fontWeight: "bold",
+                    marginBottom: 6
                   }}
                 >
-                  {day.date.getDate()}
+                  {new Date(year, monthIndex).toLocaleString("es-MX", {
+                    month: "long"
+                  })}
                 </div>
-              )
-            })}
-          </div>
+
+                {/* Encabezado días */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7, 1fr)",
+                    fontSize: 10,
+                    marginBottom: 4,
+                    opacity: 0.7
+                  }}
+                >
+                  {["L","M","X","J","V","S","D"].map(d => (
+                    <div key={d} style={{ textAlign: "center" }}>
+                      {d}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Mini calendario */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(7, 1fr)",
+                    gap: 2
+                  }}
+                >
+                  {days.map((day, i) => {
+
+                    const today = new Date().toDateString()
+                    const isToday =
+                      day.date.toDateString() === today
+
+                    return (
+                      <div
+                        key={i}
+                        onClick={() => {
+                          const d = new Date(day.date)
+                          d.setHours(9, 0)
+
+                          setModalDateTime(
+                            d.toISOString().slice(0, 16)
+                          )
+                          setShowEventModal(true)
+                        }}
+                        style={{
+                          padding: 4,
+                          textAlign: "center",
+                          borderRadius: 4,
+                          cursor: "pointer",
+                          background: isToday
+                            ? "#2563eb"
+                            : "#08142c",
+                          opacity: day.currentMonth ? 1 : 0.3,
+                          border: "1px solid #1e335c",
+                          fontSize: 11
+                        }}
+                      >
+                        {day.date.getDate()}
+                      </div>
+                    )
+                  })}
+                </div>
+
+              </div>
+            )
+          })}
 
         </div>
-      )
-    })}
+      )}
 
-  </div>
-)}
+    </section>
 
     {/* ===== CREAR EVENTO ===== */}
     <section
