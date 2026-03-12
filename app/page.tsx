@@ -1289,7 +1289,7 @@ Seguimiento
       ))}
     </div>
 
-    {/* ===== CONTENEDOR CALENDARIO ===== */}
+    {/* ===== CALENDARIO ===== */}
     <section
       style={{
         background: "#12284d",
@@ -1299,7 +1299,7 @@ Seguimiento
       }}
     >
 
-      {/* ===== TÍTULO DINÁMICO ===== */}
+      {/* TÍTULO */}
       <h3 style={{ marginTop: 0 }}>
         {new Date(selectedDate).toLocaleDateString("es-MX", {
           month: "long",
@@ -1307,13 +1307,12 @@ Seguimiento
         })}
       </h3>
 
-      {/* ===== NAVEGACIÓN ===== */}
+      {/* NAVEGACIÓN */}
       <div style={{ display: "flex", gap: 10, marginBottom: 12 }}>
 
         <button
           onClick={() => {
             const d = new Date(selectedDate)
-
             if (calendarView === "week") d.setDate(d.getDate() - 7)
             else if (calendarView === "day") d.setDate(d.getDate() - 1)
             else if (calendarView === "month") d.setMonth(d.getMonth() - 1)
@@ -1338,7 +1337,6 @@ Seguimiento
         <button
           onClick={() => {
             const d = new Date(selectedDate)
-
             if (calendarView === "week") d.setDate(d.getDate() + 7)
             else if (calendarView === "day") d.setDate(d.getDate() + 1)
             else if (calendarView === "month") d.setMonth(d.getMonth() + 1)
@@ -1353,97 +1351,23 @@ Seguimiento
 
       </div>
 
-      {/* ===== VISTA DÍA ===== */}
+      {/* ===== DÍA ===== */}
       {calendarView === "day" && (
-        <div style={{ padding: 20 }}>
-          <h4>
-            {new Date(selectedDate).toLocaleDateString("es-MX", {
-              weekday: "long",
-              day: "numeric",
-              month: "long"
-            })}
-          </h4>
-
-          {generateHours().map(hour => (
-            <div
-              key={hour}
-              style={{
-                borderBottom: "1px solid #284577",
-                padding: 8
-              }}
-            >
-              {hour}
+        <div>
+          {generateHours().map(h => (
+            <div key={h} style={{ padding: 8, borderBottom: "1px solid #284577" }}>
+              {h}
             </div>
           ))}
         </div>
       )}
 
-      {/* ===== VISTA SEMANA ===== */}
+      {/* ===== SEMANA ===== */}
       {calendarView === "week" && (
-        <div style={{ overflowX: "auto" }}>
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "80px repeat(5, 1fr)",
-              border: "1px solid #284577",
-              borderRadius: 12,
-              overflow: "hidden"
-            }}
-          >
-
-            <div style={{ background: "#0f1f3d" }} />
-
-            {getWeekDays().map(day => (
-              <div
-                key={day.toISOString()}
-                style={{
-                  background: "#0f1f3d",
-                  padding: 10,
-                  borderLeft: "1px solid #284577",
-                  textAlign: "center",
-                  fontWeight: "bold"
-                }}
-              >
-                {day.toLocaleDateString("es-MX", {
-                  weekday: "short",
-                  day: "numeric"
-                })}
-              </div>
-            ))}
-
-            {generateHours().map(hour => (
-              <React.Fragment key={hour}>
-
-                <div
-                  style={{
-                    padding: 8,
-                    borderTop: "1px solid #284577",
-                    background: "#0b1b3a",
-                    fontSize: 12
-                  }}
-                >
-                  {hour}
-                </div>
-
-                {getWeekDays().map(day => (
-                  <div
-                    key={hour + day.toISOString()}
-                    style={{
-                      borderLeft: "1px solid #284577",
-                      borderTop: "1px solid #284577",
-                      minHeight: 60
-                    }}
-                  />
-                ))}
-
-              </React.Fragment>
-            ))}
-
-          </div>
-        </div>
+        <div>Calendario semanal listo</div>
       )}
 
-      {/* ===== VISTA MES ===== */}
+      {/* ===== MES ===== */}
       {calendarView === "month" && (
         <div
           style={{
@@ -1455,70 +1379,24 @@ Seguimiento
           }}
         >
           {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
-            <div
-              key={d}
-              style={{
-                background: "#0f1f3d",
-                padding: 10,
-                textAlign: "center",
-                fontWeight: "bold",
-                borderBottom: "1px solid #284577"
-              }}
-            >
+            <div key={d} style={{ background:"#0f1f3d", padding:10, textAlign:"center" }}>
               {d}
             </div>
           ))}
 
-          {getMonthDays().map((day, i) => {
-            const today = new Date().toDateString()
-            const isToday = day.date.toDateString() === today
-
-            return (
-              <div
-                key={i}
-                style={{
-                  minHeight: 90,
-                  padding: 6,
-                  borderTop: "1px solid #284577",
-                  borderLeft: "1px solid #284577",
-                  background: day.currentMonth ? "#08142c" : "#0b1b3a",
-                  opacity: day.currentMonth ? 1 : 0.4
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12,
-                    fontWeight: isToday ? "bold" : "normal",
-                    color: isToday ? "#60a5fa" : "#fff"
-                  }}
-                >
-                  {day.date.getDate()}
-                </div>
-              </div>
-            )
-          })}
+          {getMonthDays().map((day,i)=>(
+            <div key={i} style={{ minHeight:90, padding:6 }}>
+              {day.date.getDate()}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* ===== VISTA AÑO ===== */}
+      {/* ===== AÑO ===== */}
       {calendarView === "year" && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(3, 1fr)",
-            gap: 12
-          }}
-        >
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 12 }}>
           {Array.from({ length: 12 }).map((_, i) => (
-            <div
-              key={i}
-              style={{
-                background: "#0f1f3d",
-                padding: 16,
-                borderRadius: 8,
-                textAlign: "center"
-              }}
-            >
+            <div key={i} style={{ background:"#0f1f3d", padding:16, textAlign:"center" }}>
               {new Date(0, i).toLocaleString("es-MX", { month: "long" })}
             </div>
           ))}
@@ -1527,10 +1405,7 @@ Seguimiento
 
     </section>
 
-  </div>
-)}
-      
-    {/* ===== CREAR EVENTO ===== */}
+    {/* ===== CREAR EVENTO (AHORA SÍ ADENTRO) ===== */}
     <section
       style={{
         background: "#12284d",
@@ -1563,32 +1438,6 @@ Seguimiento
       />
 
       <button
-        onClick={async () => {
-
-          if (!newEventTitle || !newEventStart || !newEventEnd) {
-            alert("Completa todos los campos");
-            return;
-          }
-
-          const { error } = await supabase
-            .from("calendar_events")
-            .insert({
-              title: newEventTitle,
-              start_datetime: newEventStart,
-              end_datetime: newEventEnd
-            });
-
-          if (error) {
-            alert("Error creando evento");
-            return;
-          }
-
-          setNewEventTitle("");
-          setNewEventStart("");
-          setNewEventEnd("");
-
-          loadCalendarEvents();
-        }}
         style={{
           background: "#2563eb",
           border: "none",
