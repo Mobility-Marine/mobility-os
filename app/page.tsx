@@ -1394,7 +1394,7 @@ Seguimiento
       else if (calendarView === "month") d.setMonth(d.getMonth() + 1)
       else if (calendarView === "year") d.setFullYear(d.getFullYear() + 1)
 
-      setSelectedDate(d.getLocalDateISO())
+      setSelectedDate(getLocalDateISO(d))
     }}
     style={navButtonStyle}
   >
