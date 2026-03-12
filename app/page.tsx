@@ -1973,7 +1973,9 @@ Seguimiento
 
   </div>
 )}
-
+      
+</section>
+    
     {/* ===== CREAR EVENTO ===== */}
     <section
       style={{
