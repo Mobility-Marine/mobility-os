@@ -1298,7 +1298,7 @@ Seguimiento
 
 </div>
 
-  {calendarView === "week" && (
+ {calendarView === "week" && (
   <div style={{ overflowX: "auto" }}>
     <div
       style={{
@@ -1335,7 +1335,6 @@ Seguimiento
       {generateHours().map(hour => (
         <React.Fragment key={hour}>
 
-          {/* Hora */}
           <div
             style={{
               padding: 8,
@@ -1347,7 +1346,6 @@ Seguimiento
             {hour}
           </div>
 
-          {/* Celdas */}
           {getWeekDays().map(day => (
             <div
               key={hour + day.toISOString()}
@@ -1399,7 +1397,6 @@ Seguimiento
     </div>
   </div>
 )}
-
     {/* ===== CREAR EVENTO ===== */}
     <section
       style={{
