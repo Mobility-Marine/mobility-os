@@ -1732,42 +1732,46 @@ Seguimiento
       </React.Fragment>
     ))}
 
-    {/* ===== LÍNEA HORA ACTUAL ===== */}
-    {(() => {
+   {/* ===== LÍNEA HORA ACTUAL ===== */}
+{(() => {
+  const now = new Date()
+  const today = now.toDateString()
 
-      const now = new Date()
-      const today = now.toDateString()
+  const weekDays = getWeekDays()
+  const todayIndex = weekDays.findIndex(
+    d => d.toDateString() === today
+  )
 
-      const weekDays = getWeekDays()
-      const todayIndex = weekDays.findIndex(
-        d => d.toDateString() === today
-      )
+  if (todayIndex === -1) return null
 
-      if (todayIndex === -1) return null
+  const hour = now.getHours()
+  const minute = now.getMinutes()
 
-      const hour = now.getHours()
-      const minute = now.getMinutes()
+  // En vista semana cada fila mide 40px
+  const hourHeight = 40
+  const headerHeight = 42
 
-      const hourHeight = 64
-      const offsetTop =
-        (hour - 8) * hourHeight +
-        (minute / 60) * hourHeight
+  // Solo mostrar la línea si la hora actual está dentro del rango visible
+  if (hour < 8 || hour > 20) return null
 
-      return (
-        <div
-          style={{
-            position: "absolute",
-            top: 60 + offsetTop,
-            left: 80 + todayIndex * ((100 - 80) / 5),
-            right: 0,
-            height: 2,
-            background: "red",
-            zIndex: 50
-          }}
-        />
-      )
+  const offsetTop =
+    (hour - 8) * hourHeight + (minute / 60) * hourHeight
 
-    })()}
+  return (
+    <div
+      style={{
+        position: "absolute",
+        top: headerHeight + offsetTop,
+        left: `calc(80px + ${todayIndex} * ((100% - 80px) / 5))`,
+        width: "calc((100% - 80px) / 5)",
+        height: 2,
+        background: "red",
+        zIndex: 50,
+        pointerEvents: "none"
+      }}
+    />
+  )
+})()}
 
   </div>
 )}
