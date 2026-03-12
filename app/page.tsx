@@ -84,6 +84,8 @@ const [taskDueDate, setTaskDueDate] = useState("")
 const [newEventTitle, setNewEventTitle] = useState("")
   const [showEventModal, setShowEventModal] = useState(false)
 const [modalDateTime, setModalDateTime] = useState("")
+  const [showEventModal, setShowEventModal] = useState(false)
+const [modalDateTime, setModalDateTime] = useState("")
 const [newEventStart, setNewEventStart] = useState("")
 const [newEventEnd, setNewEventEnd] = useState("")
   const [selectedDate, setSelectedDate] = useState(
@@ -1785,7 +1787,93 @@ Guardar cambios
   
 </div>
 )}
+{showEventModal && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.7)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 2000
+    }}
+  >
+    <div
+      style={{
+        background: "#0f172a",
+        padding: 24,
+        borderRadius: 12,
+        width: 400
+      }}
+    >
+      <h3>Nuevo evento</h3>
 
+      <input
+        placeholder="Título"
+        value={newEventTitle}
+        onChange={(e) => setNewEventTitle(e.target.value)}
+        style={{ ...inputStyle, marginBottom: 10 }}
+      />
+
+      <input
+        type="datetime-local"
+        value={modalDateTime}
+        onChange={(e) => setModalDateTime(e.target.value)}
+        style={{ ...inputStyle, marginBottom: 10 }}
+      />
+
+      <button
+        onClick={async () => {
+          if (!newEventTitle || !modalDateTime) {
+            alert("Completa todos los campos")
+            return
+          }
+
+          const { error } = await supabase
+            .from("calendar_events")
+            .insert({
+              title: newEventTitle,
+              start_datetime: modalDateTime,
+              end_datetime: modalDateTime
+            })
+
+          if (error) {
+            alert("Error creando evento")
+            return
+          }
+
+          setShowEventModal(false)
+          setNewEventTitle("")
+          loadCalendarEvents()
+        }}
+        style={{
+          background: "#2563eb",
+          border: "none",
+          padding: "10px 14px",
+          color: "#fff",
+          borderRadius: 6,
+          marginRight: 10
+        }}
+      >
+        Guardar
+      </button>
+
+      <button
+        onClick={() => setShowEventModal(false)}
+        style={{
+          background: "#475569",
+          border: "none",
+          padding: "10px 14px",
+          color: "#fff",
+          borderRadius: 6
+        }}
+      >
+        Cancelar
+      </button>
+    </div>
+  </div>
+)}
 </main>
     </div>
   );
