@@ -89,7 +89,7 @@ const [newEventEnd, setNewEventEnd] = useState("")
 
 const [calendarView, setCalendarView] = useState<
   "day" | "week" | "month" | "year"
->("week")
+>("day")
 
 const [selectedDate, setSelectedDate] = useState(
   new Date().toISOString().slice(0, 10)
@@ -456,17 +456,17 @@ async function handleDrop(e: React.DragEvent, newStage: string) {
 
   return hours
 }
-  function getWeekDays() {
-  const today = new Date()
-  const start = new Date(today)
-  start.setDate(today.getDate() - today.getDay() + 1)
+ function getWeekDays() {
+  const base = new Date(selectedDate + "T12:00:00")
+
+  const start = new Date(base)
+  start.setDate(base.getDate() - base.getDay() + 1)
 
   const days = []
 
   for (let i = 0; i < 5; i++) {
     const d = new Date(start)
     d.setDate(start.getDate() + i)
-
     days.push(d)
   }
 
