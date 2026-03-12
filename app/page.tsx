@@ -168,7 +168,7 @@ useEffect(() => {
 
   if (activeView === "Agenda") {
     loadCalendarEvents();
-    setSelectedDate(new Date().toISOString().slice(0, 10));
+    setSelectedDate(new Date().toLocaleDateString("en-CA"));
   }
 }, [activeView]);
 useEffect(() => {
