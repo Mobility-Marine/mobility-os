@@ -1451,59 +1451,139 @@ Seguimiento
     })}
   </div>
 )}
-      {/* ================== SEMANA ================== */}
-      {calendarView === "week" && (
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "80px repeat(5,1fr)",
-            border: "1px solid #284577"
-          }}
-        >
-          <div />
+     {/* ===== SEMANA ===== */}
+{calendarView === "week" && (() => {
 
-          {getWeekDays().map(day => (
-            <div
-              key={day.toISOString()}
-              style={{
-                textAlign: "center",
-                padding: 10,
-                background: "#0f1f3d",
-                fontWeight: "bold"
-              }}
-            >
-              {day.toLocaleDateString("es-MX", {
-                weekday: "short",
-                day: "numeric"
-              })}
-            </div>
-          ))}
+  const startOfWeek = new Date(selectedDate)
+  const day = (startOfWeek.getDay() + 6) % 7
+  startOfWeek.setDate(startOfWeek.getDate() - day)
 
-          {generateHours().map(hour => (
-            <React.Fragment key={hour}>
-              <div style={{ padding: 6 }}>{hour}</div>
+  const weekDays = Array.from({ length: 7 }).map((_, i) => {
+    const d = new Date(startOfWeek)
+    d.setDate(startOfWeek.getDate() + i)
+    return d
+  })
 
-              {getWeekDays().map(day => {
-                const events = calendarEvents.filter(e => {
-                  const d = new Date(e.start_datetime)
-                  return (
-                    d.toDateString() === day.toDateString() &&
-                    d.getHours().toString().padStart(2,"0")+":00" === hour
-                  )
-                })
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "80px repeat(7, 1fr)",
+        border: "1px solid #284577",
+        borderRadius: 12,
+        overflow: "hidden"
+      }}
+    >
 
-                return (
-                  <div key={hour+day}>
-                    {events.map(ev => (
-                      <div key={ev.id}>{ev.title}</div>
-                    ))}
+      {/* ===== ENCABEZADO ===== */}
+      <div style={{ background:"#0f1f3d" }} />
+
+      {weekDays.map((d, i) => {
+
+        const today = new Date().toDateString()
+        const isToday = d.toDateString() === today
+
+        return (
+          <div
+            key={i}
+            style={{
+              background:"#0f1f3d",
+              padding:10,
+              textAlign:"center",
+              borderLeft:"1px solid #284577",
+              fontWeight:"bold",
+              color: isToday ? "#60a5fa" : "#fff"
+            }}
+          >
+            {d.toLocaleDateString("es-MX", {
+              weekday:"short",
+              day:"numeric"
+            })}
+          </div>
+        )
+      })}
+
+      {/* ===== HORAS + CELDAS ===== */}
+      {generateHours().map(hour => (
+        <React.Fragment key={hour}>
+
+          {/* Hora */}
+          <div
+            style={{
+              padding:8,
+              borderTop:"1px solid #284577",
+              background:"#08142c",
+              fontWeight:"bold"
+            }}
+          >
+            {hour}
+          </div>
+
+          {/* 7 días */}
+          {weekDays.map((d, i) => {
+
+            const eventsAtCell = calendarEvents.filter(e => {
+              const ev = new Date(e.start_datetime)
+              const hourStr =
+                ev.getHours().toString().padStart(2,"0") + ":00"
+
+              return (
+                ev.toDateString() === d.toDateString() &&
+                hourStr === hour
+              )
+            })
+
+            return (
+              <div
+                key={i}
+                onClick={() => {
+
+                  const newDate = new Date(d)
+
+                  const [h] = hour.split(":")
+                  newDate.setHours(Number(h), 0)
+
+                  setNewEventStart(newDate.toISOString().slice(0,16))
+
+                  const end = new Date(newDate)
+                  end.setHours(end.getHours() + 1)
+                  setNewEventEnd(end.toISOString().slice(0,16))
+                }}
+                style={{
+                  borderTop:"1px solid #284577",
+                  borderLeft:"1px solid #284577",
+                  minHeight:48,
+                  padding:4,
+                  cursor:"pointer"
+                }}
+              >
+
+                {eventsAtCell.map(ev => (
+                  <div
+                    key={ev.id}
+                    style={{
+                      background:"#2563eb",
+                      padding:"3px 5px",
+                      borderRadius:4,
+                      fontSize:11,
+                      marginBottom:2
+                    }}
+                  >
+                    {ev.title}
                   </div>
-                )
-              })}
-            </React.Fragment>
-          ))}
-        </div>
-      )}
+                ))}
+
+              </div>
+            )
+          })}
+
+        </React.Fragment>
+      ))}
+
+    </div>
+  )
+
+})()}
 
       {/* ================== MES ================== */}
       {calendarView === "month" && (
