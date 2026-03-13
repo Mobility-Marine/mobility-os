@@ -2333,7 +2333,7 @@ Seguimiento
   </div>
 )}
         
-        {!["Dashboard", "CRM", "Prospectos"].includes(activeView) && (
+        {!["Dashboard", "CRM", "Prospectos", "Agenda"].includes(activeView) && (
           <section
             style={{
               background: "#12284d",
@@ -2599,7 +2599,7 @@ style={{...inputStyle, marginBottom:10}}
     </div>
 
     {/* BOTÓN COMPLETAR */}
-    {!task.completed && (
+    {task.status !== "done" && (
       <button
         onClick={async () => {
           await supabase
