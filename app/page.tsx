@@ -2288,14 +2288,16 @@ Seguimiento
             fontWeight: "bold"
           }}
         >
-                  Guardar evento
-      </button>
+                          >
+          Guardar evento
+        </button>
+
+      </div>
 
     </div>
   </div>
 )}
 
-/* ===== CIERRE CONTENEDOR AGENDA ===== */
 </section>
 
 </div>
