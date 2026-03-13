@@ -1745,12 +1745,12 @@ Seguimiento
 
   if (todayIndex === -1) return null
 
-  const startHour = 8
   const hour = now.getHours()
   const minute = now.getMinutes()
 
-  // 🔥 ALTURA REAL POR HORA (ajustada a tu layout)
-  const hourHeight = 48
+  const startHour = 8      // tu calendario empieza a las 08:00
+  const hourHeight = 40    // altura REAL de cada fila
+  const headerHeight = 60  // alto del encabezado de días
 
   const offsetTop =
     (hour - startHour) * hourHeight +
@@ -1760,12 +1760,12 @@ Seguimiento
     <div
       style={{
         position: "absolute",
-        top: 60 + offsetTop, // 60 = altura encabezado
-        left: `calc(80px + ${todayIndex} * ((100% - 80px) / 5))`,
-        width: `calc((100% - 80px) / 5)`,
+        top: headerHeight + offsetTop,
+        left: 80 + todayIndex * ((100 - 80) / 5),
+        right: 0,
         height: 2,
         background: "red",
-        zIndex: 100,
+        zIndex: 50,
         pointerEvents: "none"
       }}
     />
