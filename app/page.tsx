@@ -2160,7 +2160,7 @@ Seguimiento
       
 </section>
     
-    {/* ===== MODAL EVENTO — SAAS PRO ===== */}
+   {/* ===== MODAL EVENTO — SAAS EMPRESARIAL PRO ===== */}
 {showEventModal && (
   <div
     style={{
@@ -2181,34 +2181,45 @@ Seguimiento
         background: "#0f172a",
         padding: 26,
         borderRadius: 16,
-        width: 460,
+        width: 480,
         border: "1px solid #284577",
         boxShadow: "0 30px 80px rgba(0,0,0,0.8)"
       }}
     >
 
-      {/* ===== TITULO ===== */}
       <h2 style={{ marginTop: 0, marginBottom: 18 }}>
-        Nuevo evento
+        Evento
       </h2>
 
-      {/* ===== TITULO EVENTO ===== */}
+      {/* ===== TITULO ===== */}
       <input
         placeholder="Título del evento"
         value={newEventTitle}
         onChange={(e) => setNewEventTitle(e.target.value)}
+        style={{ ...inputStyle, marginBottom: 14 }}
+      />
+
+      {/* ===== DESCRIPCIÓN ===== */}
+      <textarea
+        placeholder="Descripción"
         style={{
           ...inputStyle,
-          fontSize: 16,
-          marginBottom: 16
+          height: 80,
+          resize: "none",
+          marginBottom: 14
         }}
       />
 
-      {/* ===== FECHA INICIO ===== */}
-      <label style={{ fontSize: 13, opacity: 0.8 }}>
-        Inicio
-      </label>
+      {/* ===== COLOR ===== */}
+      <label style={{ fontSize: 13 }}>Color</label>
+      <input
+        type="color"
+        defaultValue="#2563eb"
+        style={{ marginBottom: 16 }}
+      />
 
+      {/* ===== INICIO ===== */}
+      <label style={{ fontSize: 13 }}>Inicio</label>
       <input
         type="datetime-local"
         value={modalDateTime}
@@ -2216,24 +2227,21 @@ Seguimiento
           setModalDateTime(e.target.value)
           setNewEventStart(e.target.value)
         }}
-        style={{ ...inputStyle, marginBottom: 14 }}
+        style={{ ...inputStyle, marginBottom: 12 }}
       />
 
-      {/* ===== FECHA FIN ===== */}
-      <label style={{ fontSize: 13, opacity: 0.8 }}>
-        Fin
-      </label>
-
+      {/* ===== FIN ===== */}
+      <label style={{ fontSize: 13 }}>Fin</label>
       <input
         type="datetime-local"
         value={newEventEnd || modalDateTime}
         onChange={(e) => setNewEventEnd(e.target.value)}
-        style={{ ...inputStyle, marginBottom: 22 }}
+        style={{ ...inputStyle, marginBottom: 20 }}
       />
 
       {/* ===== BOTONES ===== */}
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-        
+
         <button
           onClick={() => setShowEventModal(false)}
           style={{
@@ -2248,55 +2256,80 @@ Seguimiento
           Cancelar
         </button>
 
-     <button
-  onClick={async () => {
+        {/* ===== ELIMINAR ===== */}
+        <button
+          onClick={async () => {
+            if (!modalDateTime) return
 
-    const start = newEventStart || modalDateTime
-    const end = newEventEnd || start
+            if (!confirm("Eliminar evento?")) return
 
-    if (!newEventTitle || !start) {
-      alert("Completa los campos")
-      return
-    }
+            await supabase
+              .from("calendar_events")
+              .delete()
+              .eq("start_datetime", modalDateTime)
 
-    const { error } = await supabase
-      .from("calendar_events")
-      .insert({
-        title: newEventTitle,
-        start_datetime: start,
-        end_datetime: end
-      })
+            setShowEventModal(false)
+            loadCalendarEvents()
+          }}
+          style={{
+            background: "#dc2626",
+            border: "none",
+            padding: "10px 16px",
+            color: "#fff",
+            borderRadius: 8,
+            cursor: "pointer"
+          }}
+        >
+          Eliminar
+        </button>
 
-    if (error) {
-      alert("Error creando evento")
-      return
-    }
+        {/* ===== GUARDAR ===== */}
+        <button
+          onClick={async () => {
 
-    setShowEventModal(false)
-    setNewEventTitle("")
-    setNewEventStart("")
-    setNewEventEnd("")
-    loadCalendarEvents()
-  }}
-  style={{
-    background: "#2563eb",
-    border: "none",
-    padding: "10px 16px",
-    color: "#fff",
-    borderRadius: 8,
-    cursor: "pointer",
-    fontWeight: "bold"
-  }}
->
-  Guardar evento
-</button>
+            const start = newEventStart || modalDateTime
+            const end = newEventEnd || start
+
+            if (!newEventTitle || !start) {
+              alert("Completa los campos")
+              return
+            }
+
+            const { error } = await supabase
+              .from("calendar_events")
+              .insert({
+                title: newEventTitle,
+                start_datetime: start,
+                end_datetime: end
+              })
+
+            if (error) {
+              alert("Error creando evento")
+              return
+            }
+
+            setShowEventModal(false)
+            setNewEventTitle("")
+            setNewEventStart("")
+            setNewEventEnd("")
+            loadCalendarEvents()
+          }}
+          style={{
+            background: "#2563eb",
+            border: "none",
+            padding: "10px 16px",
+            color: "#fff",
+            borderRadius: 8,
+            cursor: "pointer",
+            fontWeight: "bold"
+          }}
+        >
+          Guardar evento
+        </button>
 
       </div>
 
     </div>
-  </div>
-)}
-
   </div>
 )}
         
