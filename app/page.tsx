@@ -86,38 +86,72 @@ export default function Home() {
   const [taskDescription, setTaskDescription] = useState("");
   const [taskDueDate, setTaskDueDate] = useState("");
 
-  /* =========================================================
-   * AGENDA
-   * =======================================================*/
-  const [events, setEvents] = useState<any[]>([]);
-  const [loadingEvents, setLoadingEvents] = useState(false);
-  const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
+/* =========================================================
+ * AGENDA — SAAS EMPRESARIAL
+ * =======================================================*/
 
-  const [newEventTitle, setNewEventTitle] = useState("");
-  const [showEventModal, setShowEventModal] = useState(false);
-  const [modalDateTime, setModalDateTime] = useState("");
-  const [newEventStart, setNewEventStart] = useState("");
-  const [newEventEnd, setNewEventEnd] = useState("");
+const [events, setEvents] = useState<any[]>([]);
+const [loadingEvents, setLoadingEvents] = useState(false);
+const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
 
-  const [calendarView, setCalendarView] = useState<
-    "day" | "week" | "month" | "year"
-  >("day");
+/* ===== DATOS PRINCIPALES ===== */
 
-  function getLocalDateISO(date = new Date()) {
-    const y = date.getFullYear();
-    const m = String(date.getMonth() + 1).padStart(2, "0");
-    const d = String(date.getDate()).padStart(2, "0");
-    return `${y}-${m}-${d}`;
+const [newEventTitle, setNewEventTitle] = useState("");
+const [eventDescription, setEventDescription] = useState("");
+const [eventColor, setEventColor] = useState("#2563eb");
+
+const [showEventModal, setShowEventModal] = useState(false);
+
+const [modalDateTime, setModalDateTime] = useState("");
+const [newEventStart, setNewEventStart] = useState("");
+const [newEventEnd, setNewEventEnd] = useState("");
+
+/* ===== TIPO DE ACTIVIDAD ===== */
+
+const [eventType, setEventType] = useState<
+  "Reunión" | "Llamada" | "Visita" | "Seguimiento" | "Operación" | "Personal"
+>("Reunión");
+
+/* ===== PRIORIDAD ===== */
+
+const [eventPriority, setEventPriority] = useState<
+  "Baja" | "Media" | "Alta" | "Crítica"
+>("Media");
+
+/* ===== ESTADO ===== */
+
+const [eventStatus, setEventStatus] = useState<
+  "Programado" | "Confirmado" | "Completado" | "Cancelado"
+>("Programado");
+
+/* ===== VINCULACIÓN CRM ===== */
+
+const [linkedProspectId, setLinkedProspectId] = useState<string | null>(null);
+const [linkedClientId, setLinkedClientId] = useState<string | null>(null);
+
+/* ===== VISTA CALENDARIO ===== */
+
+const [calendarView, setCalendarView] = useState<
+  "day" | "week" | "month" | "year"
+>("day");
+
+/* ===== FECHA SELECCIONADA ===== */
+
+function getLocalDateISO(date = new Date()) {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+const [selectedDate, setSelectedDate] = useState(getLocalDateISO());
+
+useEffect(() => {
+  if (calendarView === "day") {
+    setSelectedDate(getLocalDateISO());
   }
-
-  const [selectedDate, setSelectedDate] = useState(getLocalDateISO());
-
-  useEffect(() => {
-    if (calendarView === "day") {
-      setSelectedDate(getLocalDateISO());
-    }
-  }, [calendarView]);
-
+}, [calendarView]);
+  
   /* =========================================================
    * FORMULARIOS
    * =======================================================*/
