@@ -2181,6 +2181,8 @@ Seguimiento
     </div>
   </div>
 )}
+      </div>
+)}
         
         {!["Dashboard", "CRM", "Prospectos"].includes(activeView) && (
           <section
