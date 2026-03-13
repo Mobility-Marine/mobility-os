@@ -2160,17 +2160,18 @@ Seguimiento
       
 </section>
     
-    {/* ===== MODAL EVENTO PRO ===== */}
+    {/* ===== MODAL EVENTO — SAAS PRO ===== */}
 {showEventModal && (
   <div
     style={{
       position: "fixed",
       inset: 0,
-      background: "rgba(0,0,0,0.75)",
+      background: "rgba(0,0,0,0.85)",
       display: "flex",
       alignItems: "center",
       justifyContent: "center",
-      zIndex: 3000
+      zIndex: 3000,
+      backdropFilter: "blur(4px)"
     }}
     onClick={() => setShowEventModal(false)}
   >
@@ -2178,38 +2179,69 @@ Seguimiento
       onClick={(e) => e.stopPropagation()}
       style={{
         background: "#0f172a",
-        padding: 24,
-        borderRadius: 14,
-        width: 420,
+        padding: 26,
+        borderRadius: 16,
+        width: 460,
         border: "1px solid #284577",
-        boxShadow: "0 20px 60px rgba(0,0,0,0.6)"
+        boxShadow: "0 30px 80px rgba(0,0,0,0.8)"
       }}
     >
-      <h3 style={{ marginTop: 0 }}>Nuevo evento</h3>
 
+      {/* ===== TITULO ===== */}
+      <h2 style={{ marginTop: 0, marginBottom: 18 }}>
+        Nuevo evento
+      </h2>
+
+      {/* ===== TITULO EVENTO ===== */}
       <input
-        placeholder="Título"
+        placeholder="Título del evento"
         value={newEventTitle}
         onChange={(e) => setNewEventTitle(e.target.value)}
-        style={{ ...inputStyle, marginBottom: 12 }}
+        style={{
+          ...inputStyle,
+          fontSize: 16,
+          marginBottom: 16
+        }}
       />
+
+      {/* ===== FECHA INICIO ===== */}
+      <label style={{ fontSize: 13, opacity: 0.8 }}>
+        Inicio
+      </label>
 
       <input
         type="datetime-local"
         value={modalDateTime}
-        onChange={(e) => setModalDateTime(e.target.value)}
-        style={{ ...inputStyle, marginBottom: 16 }}
+        onChange={(e) => {
+          setModalDateTime(e.target.value)
+          setNewEventStart(e.target.value)
+        }}
+        style={{ ...inputStyle, marginBottom: 14 }}
       />
 
+      {/* ===== FECHA FIN ===== */}
+      <label style={{ fontSize: 13, opacity: 0.8 }}>
+        Fin
+      </label>
+
+      <input
+        type="datetime-local"
+        value={newEventEnd || modalDateTime}
+        onChange={(e) => setNewEventEnd(e.target.value)}
+        style={{ ...inputStyle, marginBottom: 22 }}
+      />
+
+      {/* ===== BOTONES ===== */}
       <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        
         <button
           onClick={() => setShowEventModal(false)}
           style={{
             background: "#475569",
             border: "none",
-            padding: "10px 14px",
+            padding: "10px 16px",
             color: "#fff",
-            borderRadius: 6,
+            borderRadius: 8,
             cursor: "pointer"
           }}
         >
@@ -2218,8 +2250,12 @@ Seguimiento
 
         <button
           onClick={async () => {
-            if (!newEventTitle || !modalDateTime) {
-              alert("Completa todos los campos")
+
+            const start = newEventStart || modalDateTime
+            const end = newEventEnd || start
+
+            if (!newEventTitle || !start) {
+              alert("Completa los campos")
               return
             }
 
@@ -2227,8 +2263,8 @@ Seguimiento
               .from("calendar_events")
               .insert({
                 title: newEventTitle,
-                start_datetime: modalDateTime,
-                end_datetime: modalDateTime
+                start_datetime: start,
+                end_datetime: end
               })
 
             if (error) {
@@ -2238,25 +2274,27 @@ Seguimiento
 
             setShowEventModal(false)
             setNewEventTitle("")
+            setNewEventStart("")
+            setNewEventEnd("")
             loadCalendarEvents()
           }}
           style={{
             background: "#2563eb",
             border: "none",
-            padding: "10px 14px",
+            padding: "10px 16px",
             color: "#fff",
-            borderRadius: 6,
+            borderRadius: 8,
             cursor: "pointer",
             fontWeight: "bold"
           }}
         >
-          Guardar
+          Guardar evento
         </button>
+
       </div>
+
     </div>
   </div>
-)}
-      </div>
 )}
         
         {!["Dashboard", "CRM", "Prospectos"].includes(activeView) && (
