@@ -2290,7 +2290,7 @@ Seguimiento
         >
                           >
           Guardar evento
-        </button>
+               </button>
 
       </div>
 
@@ -2298,9 +2298,9 @@ Seguimiento
   </div>
 )}
 
-</section>
+  </section>
 
-</div>
+  </div>
 )}
         
         {!["Dashboard", "CRM", "Prospectos"].includes(activeView) && (
