@@ -1732,37 +1732,40 @@ Seguimiento
       </React.Fragment>
     ))}
 
-  {/* ===== LÍNEA HORA ACTUAL ===== */}
+{/* ===== LÍNEA HORA ACTUAL ===== */}
 {(() => {
 
   const now = new Date()
-  const today = now.toDateString()
+  const todayStr = now.toDateString()
 
   const weekDays = getWeekDays()
   const todayIndex = weekDays.findIndex(
-    d => d.toDateString() === today
+    d => d.toDateString() === todayStr
   )
 
   if (todayIndex === -1) return null
 
+  const startHour = 8
+  const rowHeight = 40
+  const headerHeight = 60
+
   const hour = now.getHours()
   const minute = now.getMinutes()
 
-  const startHour = 8      // tu calendario empieza a las 08:00
-  const hourHeight = 40    // altura REAL de cada fila
-  const headerHeight = 60  // alto del encabezado de días
-
   const offsetTop =
-    (hour - startHour) * hourHeight +
-    (minute / 60) * hourHeight
+    (hour - startHour) * rowHeight +
+    (minute / 60) * rowHeight
+
+  // 🔥 ANCHO REAL DE CADA COLUMNA
+  const dayWidth = `calc((100% - 80px) / 5)`
 
   return (
     <div
       style={{
         position: "absolute",
         top: headerHeight + offsetTop,
-        left: 80 + todayIndex * ((100 - 80) / 5),
-        right: 0,
+        left: `calc(80px + ${todayIndex} * ${dayWidth})`,
+        width: dayWidth,
         height: 2,
         background: "red",
         zIndex: 50,
