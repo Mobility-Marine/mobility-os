@@ -1,3 +1,5 @@
+// comentario temporal
+
 "use client";
 
 import React from "react";
