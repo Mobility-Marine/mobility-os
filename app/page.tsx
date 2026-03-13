@@ -2220,170 +2220,233 @@ useEffect(() => {
               )}
             </section>
 
-            {/* ===== MODAL EVENTO — SAAS EMPRESARIAL PRO ===== */}
-            {showEventModal && (
-              <div
-                style={{
-                  position: "fixed",
-                  inset: 0,
-                  background: "rgba(0,0,0,0.85)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  zIndex: 3000,
-                  backdropFilter: "blur(4px)",
-                }}
-                onClick={() => setShowEventModal(false)}
-              >
-                <div
-                  onClick={(e) => e.stopPropagation()}
-                  style={{
-                    background: "#0f172a",
-                    padding: 26,
-                    borderRadius: 16,
-                    width: 480,
-                    border: "1px solid #284577",
-                    boxShadow: "0 30px 80px rgba(0,0,0,0.8)",
-                  }}
-                >
-                  <h2 style={{ marginTop: 0, marginBottom: 18 }}>Evento</h2>
+{/* ===== MODAL EVENTO — SAAS EMPRESARIAL ULTRA ===== */}
+{showEventModal && (
 
-                  <input
-                    placeholder="Título del evento"
-                    value={newEventTitle}
-                    onChange={(e) => setNewEventTitle(e.target.value)}
-                    style={{ ...inputStyle, marginBottom: 14 }}
-                  />
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.85)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 3000,
+      backdropFilter: "blur(4px)"
+    }}
+    onClick={() => setShowEventModal(false)}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        background: "#0f172a",
+        padding: 28,
+        borderRadius: 16,
+        width: 520,
+        border: "1px solid #284577",
+        boxShadow: "0 30px 80px rgba(0,0,0,0.8)"
+      }}
+    >
 
-                  <textarea
-                    placeholder="Descripción"
-                    style={{
-                      ...inputStyle,
-                      height: 80,
-                      resize: "none",
-                      marginBottom: 14,
-                    }}
-                  />
+```
+  <h2 style={{ marginTop: 0, marginBottom: 18 }}>
+    Actividad / Evento
+  </h2>
 
-                  <label style={{ fontSize: 13 }}>Color</label>
-                  <input
-                    type="color"
-                    defaultValue="#2563eb"
-                    style={{ marginBottom: 16 }}
-                  />
+  {/* ===== TITULO ===== */}
+  <input
+    placeholder="Título"
+    value={newEventTitle}
+    onChange={(e) => setNewEventTitle(e.target.value)}
+    style={{ ...inputStyle, marginBottom: 12 }}
+  />
 
-                  <label style={{ fontSize: 13 }}>Inicio</label>
-                  <input
-                    type="datetime-local"
-                    value={modalDateTime}
-                    onChange={(e) => {
-                      setModalDateTime(e.target.value);
-                      setNewEventStart(e.target.value);
-                    }}
-                    style={{ ...inputStyle, marginBottom: 12 }}
-                  />
+  {/* ===== DESCRIPCIÓN ===== */}
+  <textarea
+    placeholder="Descripción"
+    value={eventDescription}
+    onChange={(e) => setEventDescription(e.target.value)}
+    style={{
+      ...inputStyle,
+      height: 80,
+      resize: "none",
+      marginBottom: 14
+    }}
+  />
 
-                  <label style={{ fontSize: 13 }}>Fin</label>
-                  <input
-                    type="datetime-local"
-                    value={newEventEnd || modalDateTime}
-                    onChange={(e) => setNewEventEnd(e.target.value)}
-                    style={{ ...inputStyle, marginBottom: 20 }}
-                  />
+  {/* ===== TIPO ===== */}
+  <label style={{ fontSize: 13 }}>Tipo de actividad</label>
+  <select
+    value={eventType}
+    onChange={(e) => setEventType(e.target.value as any)}
+    style={{ ...inputStyle, marginBottom: 12 }}
+  >
+    <option>Reunión</option>
+    <option>Llamada</option>
+    <option>Visita</option>
+    <option>Seguimiento</option>
+    <option>Operación</option>
+    <option>Personal</option>
+  </select>
 
-                  <div
-                    style={{
-                      display: "flex",
-                      gap: 10,
-                      justifyContent: "flex-end",
-                    }}
-                  >
-                    <button
-                      onClick={() => setShowEventModal(false)}
-                      style={{
-                        background: "#475569",
-                        border: "none",
-                        padding: "10px 16px",
-                        color: "#fff",
-                        borderRadius: 8,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Cancelar
-                    </button>
+  {/* ===== PRIORIDAD ===== */}
+  <label style={{ fontSize: 13 }}>Prioridad</label>
+  <select
+    value={eventPriority}
+    onChange={(e) => setEventPriority(e.target.value as any)}
+    style={{ ...inputStyle, marginBottom: 12 }}
+  >
+    <option>Baja</option>
+    <option>Media</option>
+    <option>Alta</option>
+    <option>Crítica</option>
+  </select>
 
-                    <button
-                      onClick={async () => {
-                        if (!modalDateTime) return;
-                        if (!confirm("Eliminar evento?")) return;
+  {/* ===== ESTADO ===== */}
+  <label style={{ fontSize: 13 }}>Estado</label>
+  <select
+    value={eventStatus}
+    onChange={(e) => setEventStatus(e.target.value as any)}
+    style={{ ...inputStyle, marginBottom: 14 }}
+  >
+    <option>Programado</option>
+    <option>Confirmado</option>
+    <option>Completado</option>
+    <option>Cancelado</option>
+  </select>
 
-                        await supabase
-                          .from("calendar_events")
-                          .delete()
-                          .eq("start_datetime", modalDateTime);
+  {/* ===== COLOR ===== */}
+  <label style={{ fontSize: 13 }}>Color</label>
+  <input
+    type="color"
+    value={eventColor}
+    onChange={(e) => setEventColor(e.target.value)}
+    style={{ marginBottom: 16 }}
+  />
 
-                        setShowEventModal(false);
-                        loadCalendarEvents();
-                      }}
-                      style={{
-                        background: "#dc2626",
-                        border: "none",
-                        padding: "10px 16px",
-                        color: "#fff",
-                        borderRadius: 8,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Eliminar
-                    </button>
+  {/* ===== FECHAS ===== */}
+  <label style={{ fontSize: 13 }}>Inicio</label>
+  <input
+    type="datetime-local"
+    value={modalDateTime}
+    onChange={(e) => {
+      setModalDateTime(e.target.value)
+      setNewEventStart(e.target.value)
+    }}
+    style={{ ...inputStyle, marginBottom: 12 }}
+  />
 
-                    <button
-                      onClick={async () => {
-                        const start = newEventStart || modalDateTime;
-                        const end = newEventEnd || start;
+  <label style={{ fontSize: 13 }}>Fin</label>
+  <input
+    type="datetime-local"
+    value={newEventEnd || modalDateTime}
+    onChange={(e) => setNewEventEnd(e.target.value)}
+    style={{ ...inputStyle, marginBottom: 20 }}
+  />
 
-                        if (!newEventTitle || !start) {
-                          alert("Completa los campos");
-                          return;
-                        }
+  {/* ===== BOTONES ===== */}
+  <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
 
-                        const { error } = await supabase
-                          .from("calendar_events")
-                          .insert({
-                            title: newEventTitle,
-                            start_datetime: start,
-                            end_datetime: end,
-                          });
+    <button
+      onClick={() => setShowEventModal(false)}
+      style={{
+        background: "#475569",
+        border: "none",
+        padding: "10px 16px",
+        color: "#fff",
+        borderRadius: 8,
+        cursor: "pointer"
+      }}
+    >
+      Cancelar
+    </button>
 
-                        if (error) {
-                          alert("Error creando evento");
-                          return;
-                        }
+    <button
+      onClick={async () => {
 
-                        setShowEventModal(false);
-                        setNewEventTitle("");
-                        setNewEventStart("");
-                        setNewEventEnd("");
-                        loadCalendarEvents();
-                      }}
-                      style={{
-                        background: "#2563eb",
-                        border: "none",
-                        padding: "10px 16px",
-                        color: "#fff",
-                        borderRadius: 8,
-                        cursor: "pointer",
-                        fontWeight: "bold",
-                      }}
-                    >
-                      Guardar evento
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
+        if (!modalDateTime) return
+        if (!confirm("Eliminar evento?")) return
+
+        await supabase
+          .from("calendar_events")
+          .delete()
+          .eq("start_datetime", modalDateTime)
+
+        setShowEventModal(false)
+        loadCalendarEvents()
+
+      }}
+      style={{
+        background: "#dc2626",
+        border: "none",
+        padding: "10px 16px",
+        color: "#fff",
+        borderRadius: 8,
+        cursor: "pointer"
+      }}
+    >
+      Eliminar
+    </button>
+
+    <button
+      onClick={async () => {
+
+        const start = newEventStart || modalDateTime
+        const end = newEventEnd || start
+
+        if (!newEventTitle || !start) {
+          alert("Completa los campos")
+          return
+        }
+
+        const { error } = await supabase
+          .from("calendar_events")
+          .insert({
+            title: newEventTitle,
+            description: eventDescription,
+            type: eventType,
+            priority: eventPriority,
+            status: eventStatus,
+            color: eventColor,
+            start_datetime: start,
+            end_datetime: end
+          })
+
+        if (error) {
+          alert("Error creando evento")
+          return
+        }
+
+        setShowEventModal(false)
+
+        setNewEventTitle("")
+        setEventDescription("")
+        setNewEventStart("")
+        setNewEventEnd("")
+
+        loadCalendarEvents()
+
+      }}
+      style={{
+        background: "#2563eb",
+        border: "none",
+        padding: "10px 16px",
+        color: "#fff",
+        borderRadius: 8,
+        cursor: "pointer",
+        fontWeight: "bold"
+      }}
+    >
+      Guardar actividad
+    </button>
+
+  </div>
+
+</div>
+```
+
+  </div>
+)}
 
         {/* =====================================================
          * MÓDULOS PENDIENTES
