@@ -1404,7 +1404,7 @@ Seguimiento
   </button>
 </div>
 
-  {/* ===== DÍA ===== */}
+{/* ===== DÍA ===== */}
 {calendarView === "day" && (
   <div
     style={{
@@ -1489,8 +1489,15 @@ Seguimiento
             const hh = String(date.getHours()).padStart(2, "0")
             const min = String(date.getMinutes()).padStart(2, "0")
 
-            setModalDateTime(`${yyyy}-${mm}-${dd}T${hh}:${min}`)
+            const iso = `${yyyy}-${mm}-${dd}T${hh}:${min}`
+
+            // 🔥 ABRIR MODAL
+            setModalDateTime(iso)
             setShowEventModal(true)
+
+            // 🔥 AUTOCOMPLETAR FORMULARIO
+            setNewEventStart(iso)
+            setNewEventEnd(iso)
           }}
           style={{
             borderBottom: "1px solid #284577",
@@ -1542,13 +1549,11 @@ Seguimiento
       const now = new Date()
       const selected = new Date(selectedDate + "T12:00:00")
 
-      // Solo mostrar si es HOY
       if (now.toDateString() !== selected.toDateString()) return null
 
       const hour = now.getHours()
       const minute = now.getMinutes()
 
-      // Solo dentro del horario visible 08–20
       if (hour < 8 || hour > 20) return null
 
       const hourHeight = 64
@@ -1560,7 +1565,7 @@ Seguimiento
         <div
           style={{
             position: "absolute",
-            top: 44 + offsetTop, // 44 = altura encabezado
+            top: 44 + offsetTop,
             left: 0,
             right: 0,
             height: 2,
@@ -1582,8 +1587,7 @@ Seguimiento
       gridTemplateColumns: "80px repeat(5, 1fr)",
       border: "1px solid #284577",
       borderRadius: 12,
-      overflow: "hidden",
-      position: "relative"
+      overflow: "hidden"
     }}
   >
 
@@ -1618,7 +1622,7 @@ Seguimiento
     {generateHours().map(hour => (
       <React.Fragment key={hour}>
 
-        {/* Hora */}
+        {/* Columna hora */}
         <div
           style={{
             borderTop: "1px solid #284577",
@@ -1649,20 +1653,22 @@ Seguimiento
           return (
             <div
               key={i}
+
               onDragOver={(e) => e.preventDefault()}
+
               onDrop={async (e) => {
                 const eventId = e.dataTransfer.getData("eventId")
                 if (!eventId) return
 
-                const newDate = new Date(day)
+                const date = new Date(day)
                 const [h, m] = hour.split(":")
-                newDate.setHours(Number(h), Number(m), 0, 0)
+                date.setHours(Number(h), Number(m), 0, 0)
 
-                const yyyy = newDate.getFullYear()
-                const mm = String(newDate.getMonth() + 1).padStart(2, "0")
-                const dd = String(newDate.getDate()).padStart(2, "0")
-                const hh = String(newDate.getHours()).padStart(2, "0")
-                const min = String(newDate.getMinutes()).padStart(2, "0")
+                const yyyy = date.getFullYear()
+                const mm = String(date.getMonth() + 1).padStart(2, "0")
+                const dd = String(date.getDate()).padStart(2, "0")
+                const hh = String(date.getHours()).padStart(2, "0")
+                const min = String(date.getMinutes()).padStart(2, "0")
 
                 const newDateTime = `${yyyy}-${mm}-${dd}T${hh}:${min}`
 
@@ -1676,41 +1682,41 @@ Seguimiento
 
                 loadCalendarEvents()
               }}
-              onClick={() => {
-                const newDate = new Date(day)
-                const [h, m] = hour.split(":")
-                newDate.setHours(Number(h), Number(m), 0, 0)
 
-                const yyyy = newDate.getFullYear()
-                const mm = String(newDate.getMonth() + 1).padStart(2, "0")
-                const dd = String(newDate.getDate()).padStart(2, "0")
-                const hh = String(newDate.getHours()).padStart(2, "0")
-                const min = String(newDate.getMinutes()).padStart(2, "0")
+              onClick={() => {
+                const date = new Date(day)
+                const [h, m] = hour.split(":")
+                date.setHours(Number(h), Number(m), 0, 0)
+
+                const yyyy = date.getFullYear()
+                const mm = String(date.getMonth() + 1).padStart(2, "0")
+                const dd = String(date.getDate()).padStart(2, "0")
+                const hh = String(date.getHours()).padStart(2, "0")
+                const min = String(date.getMinutes()).padStart(2, "0")
 
                 setModalDateTime(`${yyyy}-${mm}-${dd}T${hh}:${min}`)
                 setShowEventModal(true)
               }}
+
               style={{
                 borderTop: "1px solid #284577",
                 borderLeft: "1px solid #284577",
-                minHeight: 53,
+                minHeight: 40,
                 padding: 4,
                 cursor: "pointer",
-                background: isToday ? "#0b1f44" : "transparent",
-                position: "relative"
+                background: isToday ? "#0b1f44" : "transparent"
               }}
             >
 
-              {/* EVENTOS */}
               {eventsHere.map(ev => (
                 <div
                   key={ev.id}
                   draggable
-                  onDragStart={(e) => {
+                  onDragStart={(e) =>
                     e.dataTransfer.setData("eventId", ev.id)
-                  }}
+                  }
                   style={{
-                    background: "#2563eb",
+                    background: ev.color || "#2563eb",
                     padding: "3px 5px",
                     borderRadius: 4,
                     marginBottom: 2,
@@ -1731,6 +1737,7 @@ Seguimiento
 
       </React.Fragment>
     ))}
+
   </div>
 )}
    {/* ===== MES ===== */}
@@ -1745,7 +1752,7 @@ Seguimiento
     }}
   >
 
-    {/* ENCABEZADOS */}
+    {/* ===== ENCABEZADOS ===== */}
     {["Lun","Mar","Mié","Jue","Vie","Sáb","Dom"].map(d => (
       <div
         key={d}
@@ -1762,7 +1769,7 @@ Seguimiento
       </div>
     ))}
 
-    {/* DÍAS */}
+    {/* ===== DÍAS ===== */}
     {getMonthDays().map((day, i) => {
 
       const today = new Date()
@@ -1819,7 +1826,7 @@ Seguimiento
           }}
 
           style={{
-            minHeight: 120,
+            minHeight: 130,
             padding: 6,
             borderTop: "1px solid #284577",
             borderRight: "1px solid #284577",
@@ -1827,65 +1834,67 @@ Seguimiento
             opacity: day.currentMonth ? 1 : 0.35,
             cursor: "pointer",
             position: "relative",
-            transition: "background 0.2s"
+            transition: "background 0.15s ease"
           }}
-          onMouseEnter={(e) =>
-            (e.currentTarget.style.background = "#0b1f44")
-          }
-          onMouseLeave={(e) =>
-            (e.currentTarget.style.background =
-              day.currentMonth ? "#08142c" : "#0b1b3a")
-          }
+
+          onMouseEnter={(e) => {
+            if (!isToday)
+              e.currentTarget.style.background = "#0b1f44"
+          }}
+
+          onMouseLeave={(e) => {
+            if (!isToday)
+              e.currentTarget.style.background =
+                day.currentMonth ? "#08142c" : "#0b1b3a"
+          }}
         >
 
-          {/* NÚMERO DE DÍA */}
+          {/* ===== NÚMERO DE DÍA ===== */}
           <div
             style={{
               fontSize: 13,
               fontWeight: "bold",
-              color: isToday ? "#60a5fa" : "#fff",
+              color: isToday ? "#fff" : "#fff",
               background: isToday
-                ? "rgba(96,165,250,0.15)"
+                ? "#2563eb"
                 : "transparent",
-              border: isToday
-                ? "1px solid #60a5fa"
-                : "none",
               borderRadius: 6,
               display: "inline-block",
-              padding: "2px 6px",
-              marginBottom: 4
+              padding: "3px 7px",
+              marginBottom: 6
             }}
           >
             {day.date.getDate()}
           </div>
 
-          {/* EVENTOS */}
-          {dayEvents.slice(0, 3).map(ev => (
+          {/* ===== EVENTOS ===== */}
+          {dayEvents.slice(0, 4).map(ev => (
             <div
               key={ev.id}
               draggable
-              onDragStart={(e) => {
+              onDragStart={(e) =>
                 e.dataTransfer.setData("eventId", ev.id)
-              }}
+              }
               style={{
                 background: ev.color || "#2563eb",
-                padding: "3px 6px",
-                borderRadius: 4,
+                padding: "4px 6px",
+                borderRadius: 5,
                 marginBottom: 4,
                 fontSize: 11,
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
-                cursor: "grab"
+                cursor: "grab",
+                color: "#fff"
               }}
             >
               {ev.title}
             </div>
           ))}
 
-          {dayEvents.length > 3 && (
+          {dayEvents.length > 4 && (
             <div style={{ fontSize: 10, opacity: 0.7 }}>
-              +{dayEvents.length - 3} más
+              +{dayEvents.length - 4} más
             </div>
           )}
 
@@ -1993,8 +2002,11 @@ Seguimiento
           >
             {days.map((day, i) => {
 
-              const todayStr = new Date().toDateString()
-              const isToday = day.date.toDateString() === todayStr
+              const today = new Date()
+              const isToday =
+                day.date.getFullYear() === today.getFullYear() &&
+                day.date.getMonth() === today.getMonth() &&
+                day.date.getDate() === today.getDate()
 
               return (
                 <div
@@ -2027,7 +2039,6 @@ Seguimiento
                   }}
 
                   onClick={() => {
-
                     const d = new Date(day.date)
                     d.setHours(9, 0, 0, 0)
 
@@ -2047,8 +2058,17 @@ Seguimiento
                     background: isToday ? "#2563eb" : "#08142c",
                     opacity: day.currentMonth ? 1 : 0.3,
                     border: "1px solid #1e335c",
-                    fontSize: 11
+                    fontSize: 11,
+                    transition: "background 0.2s"
                   }}
+
+                  onMouseEnter={(e) =>
+                    (e.currentTarget.style.background = "#0b1f44")
+                  }
+                  onMouseLeave={(e) =>
+                    (e.currentTarget.style.background =
+                      isToday ? "#2563eb" : "#08142c")
+                  }
                 >
                   {day.date.getDate()}
                 </div>
@@ -2065,65 +2085,100 @@ Seguimiento
       
 </section>
     
-    {/* ===== CREAR EVENTO ===== */}
-    <section
+    {/* ===== MODAL EVENTO PRO ===== */}
+{showEventModal && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.75)",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      zIndex: 3000
+    }}
+    onClick={() => setShowEventModal(false)}
+  >
+    <div
+      onClick={(e) => e.stopPropagation()}
       style={{
-        background: "#12284d",
+        background: "#0f172a",
+        padding: 24,
+        borderRadius: 14,
+        width: 420,
         border: "1px solid #284577",
-        borderRadius: 16,
-        padding: 22
+        boxShadow: "0 20px 60px rgba(0,0,0,0.6)"
       }}
     >
-      <h3>Crear evento</h3>
+      <h3 style={{ marginTop: 0 }}>Nuevo evento</h3>
 
       <input
         placeholder="Título"
         value={newEventTitle}
-        onChange={(e)=>setNewEventTitle(e.target.value)}
-        style={{ ...inputStyle, marginBottom: 10 }}
+        onChange={(e) => setNewEventTitle(e.target.value)}
+        style={{ ...inputStyle, marginBottom: 12 }}
       />
 
       <input
         type="datetime-local"
-        value={newEventStart}
-        onChange={(e)=>setNewEventStart(e.target.value)}
-        style={{ ...inputStyle, marginBottom: 10 }}
+        value={modalDateTime}
+        onChange={(e) => setModalDateTime(e.target.value)}
+        style={{ ...inputStyle, marginBottom: 16 }}
       />
 
-      <input
-        type="datetime-local"
-        value={newEventEnd}
-        onChange={(e)=>setNewEventEnd(e.target.value)}
-        style={{ ...inputStyle, marginBottom: 10 }}
-      />
+      <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+        <button
+          onClick={() => setShowEventModal(false)}
+          style={{
+            background: "#475569",
+            border: "none",
+            padding: "10px 14px",
+            color: "#fff",
+            borderRadius: 6,
+            cursor: "pointer"
+          }}
+        >
+          Cancelar
+        </button>
 
-      <button
-        onClick={async()=>{
-          if (!newEventTitle || !newEventStart || !newEventEnd) return
+        <button
+          onClick={async () => {
+            if (!newEventTitle || !modalDateTime) {
+              alert("Completa todos los campos")
+              return
+            }
 
-          await supabase.from("calendar_events").insert({
-            title: newEventTitle,
-            start_datetime: newEventStart,
-            end_datetime: newEventEnd
-          })
+            const { error } = await supabase
+              .from("calendar_events")
+              .insert({
+                title: newEventTitle,
+                start_datetime: modalDateTime,
+                end_datetime: modalDateTime
+              })
 
-          setNewEventTitle("")
-          setNewEventStart("")
-          setNewEventEnd("")
-          loadCalendarEvents()
-        }}
-        style={{
-          background:"#2563eb",
-          border:"none",
-          padding:"10px 14px",
-          color:"#fff",
-          borderRadius:6
-        }}
-      >
-        Crear evento
-      </button>
-    </section>
+            if (error) {
+              alert("Error creando evento")
+              return
+            }
 
+            setShowEventModal(false)
+            setNewEventTitle("")
+            loadCalendarEvents()
+          }}
+          style={{
+            background: "#2563eb",
+            border: "none",
+            padding: "10px 14px",
+            color: "#fff",
+            borderRadius: 6,
+            cursor: "pointer",
+            fontWeight: "bold"
+          }}
+        >
+          Guardar
+        </button>
+      </div>
+    </div>
   </div>
 )}
         
