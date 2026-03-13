@@ -2297,8 +2297,6 @@ Seguimiento
   </div>
 )}
 
-  </section>
-
   </div>
 )}
         
