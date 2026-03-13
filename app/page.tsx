@@ -2288,13 +2288,17 @@ Seguimiento
             fontWeight: "bold"
           }}
         >
-          Guardar evento
-        </button>
-
-      </div>
+                  Guardar evento
+      </button>
 
     </div>
   </div>
+)}
+
+/* ===== CIERRE CONTENEDOR AGENDA ===== */
+</section>
+
+</div>
 )}
         
         {!["Dashboard", "CRM", "Prospectos"].includes(activeView) && (
