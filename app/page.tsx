@@ -1404,7 +1404,7 @@ Seguimiento
   </button>
 </div>
 
-{/* ===== DÍA — EVENTOS CON DURACIÓN REAL ===== */}
+{/* ===== DÍA — EVENTOS CON DURACIÓN REAL PRO ===== */}
 {calendarView === "day" && (
   <div
     style={{
@@ -1473,11 +1473,9 @@ Seguimiento
           borderBottom: "1px solid #284577",
           minHeight: 64,
           display: "grid",
-          gridTemplateColumns: "100px 1fr",
-          position: "relative"
+          gridTemplateColumns: "100px 1fr"
         }}
       >
-        {/* Columna hora */}
         <div
           style={{
             padding: "10px 12px",
@@ -1489,7 +1487,6 @@ Seguimiento
           {hour}
         </div>
 
-        {/* Espacio eventos */}
         <div />
       </div>
     ))}
@@ -1502,24 +1499,34 @@ Seguimiento
 
       const selected = new Date(selectedDate + "T12:00:00")
 
-      // Solo eventos del día actual
       if (
         start.getFullYear() !== selected.getFullYear() ||
         start.getMonth() !== selected.getMonth() ||
         start.getDate() !== selected.getDate()
       ) return null
 
-      const hourHeight = 64
+      const HOUR_HEIGHT = 64
+      const START_HOUR = 8
+      const END_HOUR = 20
 
-      const startOffset =
-        (start.getHours() - 8) * hourHeight +
-        (start.getMinutes() / 60) * hourHeight
+      let startMinutes =
+        (start.getHours() - START_HOUR) * 60 + start.getMinutes()
+
+      let endMinutes =
+        (end.getHours() - START_HOUR) * 60 + end.getMinutes()
+
+      // Recortar al horario visible
+      startMinutes = Math.max(startMinutes, 0)
+      endMinutes = Math.min(endMinutes, (END_HOUR - START_HOUR) * 60)
 
       const durationMinutes =
-        (end.getTime() - start.getTime()) / 60000 || 30
+        Math.max(endMinutes - startMinutes, 30)
+
+      const top =
+        (startMinutes / 60) * HOUR_HEIGHT
 
       const height =
-        (durationMinutes / 60) * hourHeight
+        (durationMinutes / 60) * HOUR_HEIGHT
 
       return (
         <div
@@ -1528,12 +1535,17 @@ Seguimiento
           onDragStart={(e) =>
             e.dataTransfer.setData("eventId", ev.id)
           }
+          onClick={(e) => {
+            e.stopPropagation()
+            setModalDateTime(ev.start_datetime)
+            setShowEventModal(true)
+          }}
           style={{
             position: "absolute",
-            top: 44 + startOffset,
+            top: 44 + top,
             left: 105,
             right: 10,
-            height: Math.max(height, 20),
+            height,
             background: ev.color || "#2563eb",
             borderRadius: 6,
             padding: "4px 8px",
@@ -1541,13 +1553,13 @@ Seguimiento
             color: "#fff",
             cursor: "grab",
             zIndex: 50,
-            boxShadow: "0 2px 8px rgba(0,0,0,0.4)"
+            boxShadow: "0 2px 8px rgba(0,0,0,0.4)",
+            overflow: "hidden"
           }}
         >
           {ev.title}
         </div>
       )
-
     })}
 
     {/* ===== LÍNEA HORA ACTUAL ===== */}
@@ -1562,10 +1574,11 @@ Seguimiento
 
       if (hour < 8 || hour > 20) return null
 
-      const hourHeight = 64
+      const HOUR_HEIGHT = 64
+
       const offsetTop =
-        (hour - 8) * hourHeight +
-        (minute / 60) * hourHeight
+        (hour - 8) * HOUR_HEIGHT +
+        (minute / 60) * HOUR_HEIGHT
 
       return (
         <div
@@ -1585,7 +1598,7 @@ Seguimiento
 
   </div>
 )}
- {/* ===== SEMANA ===== */}
+ {/* ===== SEMANA — EVENTOS CON DURACIÓN REAL ===== */}
 {calendarView === "week" && (
   <div
     style={{
@@ -1593,7 +1606,8 @@ Seguimiento
       gridTemplateColumns: "80px repeat(5, 1fr)",
       border: "1px solid #284577",
       borderRadius: 12,
-      overflow: "hidden"
+      overflow: "hidden",
+      position: "relative"
     }}
   >
 
@@ -1628,7 +1642,7 @@ Seguimiento
       )
     })}
 
-    {/* ===== FILAS DE HORAS ===== */}
+    {/* ===== GRID HORAS ===== */}
     {generateHours().map(hour => (
       <React.Fragment key={hour}>
 
@@ -1644,121 +1658,113 @@ Seguimiento
           {hour}
         </div>
 
-        {/* Celdas por día */}
-        {getWeekDays().map((day, i) => {
+        {/* Celdas vacías */}
+        {getWeekDays().map((day, i) => (
+          <div
+            key={i}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={async (e) => {
+              const eventId = e.dataTransfer.getData("eventId")
+              if (!eventId) return
 
-          const today = new Date()
+              const date = new Date(day)
+              const [h, m] = hour.split(":")
+              date.setHours(Number(h), Number(m), 0, 0)
 
-          const isToday =
-            day.getFullYear() === today.getFullYear() &&
-            day.getMonth() === today.getMonth() &&
-            day.getDate() === today.getDate()
+              const iso = date.toISOString().slice(0, 16)
 
-          const eventsHere = calendarEvents.filter(e => {
-            const d = new Date(e.start_datetime)
+              await supabase
+                .from("calendar_events")
+                .update({
+                  start_datetime: iso,
+                  end_datetime: iso
+                })
+                .eq("id", eventId)
 
-            const sameDay =
-              d.getFullYear() === day.getFullYear() &&
-              d.getMonth() === day.getMonth() &&
-              d.getDate() === day.getDate()
+              loadCalendarEvents()
+            }}
+            onClick={() => {
+              const date = new Date(day)
+              const [h, m] = hour.split(":")
+              date.setHours(Number(h), Number(m), 0, 0)
 
-            const h =
-              d.getHours().toString().padStart(2, "0") + ":00"
+              const iso = date.toISOString().slice(0, 16)
 
-            return sameDay && h === hour
-          })
-
-          return (
-            <div
-              key={i}
-
-              onDragOver={(e) => e.preventDefault()}
-
-              onDrop={async (e) => {
-                const eventId = e.dataTransfer.getData("eventId")
-                if (!eventId) return
-
-                const date = new Date(day)
-                const [h, m] = hour.split(":")
-                date.setHours(Number(h), Number(m), 0, 0)
-
-                const yyyy = date.getFullYear()
-                const mm = String(date.getMonth() + 1).padStart(2, "0")
-                const dd = String(date.getDate()).padStart(2, "0")
-                const hh = String(date.getHours()).padStart(2, "0")
-                const min = String(date.getMinutes()).padStart(2, "0")
-
-                const newDateTime = `${yyyy}-${mm}-${dd}T${hh}:${min}`
-
-                await supabase
-                  .from("calendar_events")
-                  .update({
-                    start_datetime: newDateTime,
-                    end_datetime: newDateTime
-                  })
-                  .eq("id", eventId)
-
-                loadCalendarEvents()
-              }}
-
-              onClick={() => {
-                const date = new Date(day)
-                const [h, m] = hour.split(":")
-                date.setHours(Number(h), Number(m), 0, 0)
-
-                const yyyy = date.getFullYear()
-                const mm = String(date.getMonth() + 1).padStart(2, "0")
-                const dd = String(date.getDate()).padStart(2, "0")
-                const hh = String(date.getHours()).padStart(2, "0")
-                const min = String(date.getMinutes()).padStart(2, "0")
-
-                setModalDateTime(`${yyyy}-${mm}-${dd}T${hh}:${min}`)
-                setShowEventModal(true)
-              }}
-
-              style={{
-                borderTop: "1px solid #284577",
-                borderLeft: "1px solid #284577",
-                minHeight: 40,
-                padding: 4,
-                cursor: "pointer",
-                background: isToday ? "#0b1f44" : "transparent"
-              }}
-            >
-
-              {eventsHere.map(ev => (
-                <div
-                  key={ev.id}
-                  draggable
-                  onDragStart={(e) =>
-                    e.dataTransfer.setData("eventId", ev.id)
-                  }
-                  style={{
-                    background: ev.color || "#2563eb",
-                    padding: "3px 5px",
-                    borderRadius: 4,
-                    marginBottom: 2,
-                    fontSize: 11,
-                    overflow: "hidden",
-                    whiteSpace: "nowrap",
-                    textOverflow: "ellipsis",
-                    cursor: "grab"
-                  }}
-                >
-                  {ev.title}
-                </div>
-              ))}
-
-            </div>
-          )
-        })}
+              setModalDateTime(iso)
+              setShowEventModal(true)
+            }}
+            style={{
+              borderTop: "1px solid #284577",
+              borderLeft: "1px solid #284577",
+              minHeight: 40,
+              cursor: "pointer"
+            }}
+          />
+        ))}
 
       </React.Fragment>
     ))}
 
+    {/* ===== EVENTOS CON DURACIÓN ===== */}
+    {calendarEvents.map(ev => {
+
+      const start = new Date(ev.start_datetime)
+      const end = new Date(ev.end_datetime)
+
+      const weekDays = getWeekDays()
+
+      const dayIndex = weekDays.findIndex(d =>
+        d.getFullYear() === start.getFullYear() &&
+        d.getMonth() === start.getMonth() &&
+        d.getDate() === start.getDate()
+      )
+
+      if (dayIndex === -1) return null
+
+      const hourHeight = 40
+
+      const startOffset =
+        (start.getHours() - 8) * hourHeight +
+        (start.getMinutes() / 60) * hourHeight
+
+      const durationMinutes =
+        (end.getTime() - start.getTime()) / 60000 || 30
+
+      const height =
+        (durationMinutes / 60) * hourHeight
+
+      return (
+        <div
+          key={ev.id}
+          draggable
+          onDragStart={(e) =>
+            e.dataTransfer.setData("eventId", ev.id)
+          }
+          style={{
+            position: "absolute",
+            top: 40 + startOffset,
+            left: 80 + dayIndex * ((100 - 80) / 5),
+            width: `calc((100% - 80px) / 5 - 8px)`,
+            height: Math.max(height, 20),
+            background: ev.color || "#2563eb",
+            borderRadius: 6,
+            padding: "4px 6px",
+            fontSize: 11,
+            color: "#fff",
+            cursor: "grab",
+            zIndex: 50,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.4)"
+          }}
+        >
+          {ev.title}
+        </div>
+      )
+
+    })}
+
   </div>
 )}
-   {/* ===== MES ===== */}
+   {/* ===== MES — EVENTOS PRO ===== */}
 {calendarView === "month" && (
   <div
     style={{
@@ -1791,6 +1797,7 @@ Seguimiento
     {getMonthDays().map((day, i) => {
 
       const today = new Date()
+
       const isToday =
         day.date.getFullYear() === today.getFullYear() &&
         day.date.getMonth() === today.getMonth() &&
@@ -1844,26 +1851,14 @@ Seguimiento
           }}
 
           style={{
-            minHeight: 130,
+            minHeight: 140,
             padding: 6,
             borderTop: "1px solid #284577",
             borderRight: "1px solid #284577",
             background: day.currentMonth ? "#08142c" : "#0b1b3a",
             opacity: day.currentMonth ? 1 : 0.35,
             cursor: "pointer",
-            position: "relative",
-            transition: "background 0.15s ease"
-          }}
-
-          onMouseEnter={(e) => {
-            if (!isToday)
-              e.currentTarget.style.background = "#0b1f44"
-          }}
-
-          onMouseLeave={(e) => {
-            if (!isToday)
-              e.currentTarget.style.background =
-                day.currentMonth ? "#08142c" : "#0b1b3a"
+            position: "relative"
           }}
         >
 
@@ -1872,43 +1867,82 @@ Seguimiento
             style={{
               fontSize: 13,
               fontWeight: "bold",
-              color: isToday ? "#fff" : "#fff",
-              background: isToday
-                ? "#2563eb"
-                : "transparent",
+              background: isToday ? "#2563eb" : "transparent",
               borderRadius: 6,
               display: "inline-block",
               padding: "3px 7px",
-              marginBottom: 6
+              marginBottom: 6,
+              color: "#fff"
             }}
           >
             {day.date.getDate()}
           </div>
 
           {/* ===== EVENTOS ===== */}
-          {dayEvents.slice(0, 4).map(ev => (
-            <div
-              key={ev.id}
-              draggable
-              onDragStart={(e) =>
-                e.dataTransfer.setData("eventId", ev.id)
-              }
-              style={{
-                background: ev.color || "#2563eb",
-                padding: "4px 6px",
-                borderRadius: 5,
-                marginBottom: 4,
-                fontSize: 11,
-                whiteSpace: "nowrap",
-                overflow: "hidden",
-                textOverflow: "ellipsis",
-                cursor: "grab",
-                color: "#fff"
-              }}
-            >
-              {ev.title}
-            </div>
-          ))}
+          {dayEvents.slice(0, 4).map(ev => {
+
+            const start = new Date(ev.start_datetime)
+            const end = new Date(ev.end_datetime)
+
+            const durationMin =
+              (end.getTime() - start.getTime()) / 60000 || 30
+
+            const hours = Math.floor(durationMin / 60)
+            const mins = durationMin % 60
+
+            const durationLabel =
+              hours > 0
+                ? `${hours}h ${mins}m`
+                : `${mins}m`
+
+            const timeLabel =
+              start.getHours().toString().padStart(2, "0") +
+              ":" +
+              start.getMinutes().toString().padStart(2, "0")
+
+            return (
+              <div
+                key={ev.id}
+                draggable
+                onDragStart={(e) =>
+                  e.dataTransfer.setData("eventId", ev.id)
+                }
+                style={{
+                  background: ev.color || "#2563eb",
+                  padding: "5px 7px",
+                  borderRadius: 6,
+                  marginBottom: 5,
+                  fontSize: 11,
+                  cursor: "grab",
+                  color: "#fff",
+                  lineHeight: 1.2
+                }}
+              >
+                <div style={{ fontWeight: "bold" }}>
+                  {timeLabel}
+                </div>
+
+                <div
+                  style={{
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap"
+                  }}
+                >
+                  {ev.title}
+                </div>
+
+                <div
+                  style={{
+                    fontSize: 10,
+                    opacity: 0.8
+                  }}
+                >
+                  {durationLabel}
+                </div>
+              </div>
+            )
+          })}
 
           {dayEvents.length > 4 && (
             <div style={{ fontSize: 10, opacity: 0.7 }}>
@@ -1922,8 +1956,7 @@ Seguimiento
 
   </div>
 )}
-
-   {/* ===== VISTA AÑO ===== */}
+  {/* ===== VISTA AÑO — INTERACTIVA PRO ===== */}
 {calendarView === "year" && (
   <div
     style={{
@@ -2021,10 +2054,21 @@ Seguimiento
             {days.map((day, i) => {
 
               const today = new Date()
+
               const isToday =
                 day.date.getFullYear() === today.getFullYear() &&
                 day.date.getMonth() === today.getMonth() &&
                 day.date.getDate() === today.getDate()
+
+              // Eventos del día
+              const dayEvents = calendarEvents.filter(ev => {
+                const d = new Date(ev.start_datetime)
+                return (
+                  d.getFullYear() === day.date.getFullYear() &&
+                  d.getMonth() === day.date.getMonth() &&
+                  d.getDate() === day.date.getDate()
+                )
+              })
 
               return (
                 <div
@@ -2039,17 +2083,13 @@ Seguimiento
                     const d = new Date(day.date)
                     d.setHours(9, 0, 0, 0)
 
-                    const yyyy = d.getFullYear()
-                    const mm = String(d.getMonth() + 1).padStart(2, "0")
-                    const dd = String(d.getDate()).padStart(2, "0")
-
-                    const newDateTime = `${yyyy}-${mm}-${dd}T09:00`
+                    const iso = d.toISOString().slice(0, 16)
 
                     await supabase
                       .from("calendar_events")
                       .update({
-                        start_datetime: newDateTime,
-                        end_datetime: newDateTime
+                        start_datetime: iso,
+                        end_datetime: iso
                       })
                       .eq("id", eventId)
 
@@ -2060,11 +2100,9 @@ Seguimiento
                     const d = new Date(day.date)
                     d.setHours(9, 0, 0, 0)
 
-                    const yyyy = d.getFullYear()
-                    const mm = String(d.getMonth() + 1).padStart(2, "0")
-                    const dd = String(d.getDate()).padStart(2, "0")
+                    const iso = d.toISOString().slice(0, 16)
 
-                    setModalDateTime(`${yyyy}-${mm}-${dd}T09:00`)
+                    setModalDateTime(iso)
                     setShowEventModal(true)
                   }}
 
@@ -2077,18 +2115,37 @@ Seguimiento
                     opacity: day.currentMonth ? 1 : 0.3,
                     border: "1px solid #1e335c",
                     fontSize: 11,
+                    position: "relative",
                     transition: "background 0.2s"
                   }}
 
                   onMouseEnter={(e) =>
                     (e.currentTarget.style.background = "#0b1f44")
                   }
+
                   onMouseLeave={(e) =>
                     (e.currentTarget.style.background =
                       isToday ? "#2563eb" : "#08142c")
                   }
                 >
                   {day.date.getDate()}
+
+                  {/* ===== INDICADOR DE EVENTOS ===== */}
+                  {dayEvents.length > 0 && (
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: 2,
+                        left: "50%",
+                        transform: "translateX(-50%)",
+                        width: 6,
+                        height: 6,
+                        borderRadius: "50%",
+                        background: "#60a5fa"
+                      }}
+                    />
+                  )}
+
                 </div>
               )
             })}
