@@ -1404,7 +1404,7 @@ Seguimiento
   </button>
 </div>
 
-{/* ===== DÍA ===== */}
+{/* ===== DÍA — EVENTOS CON DURACIÓN REAL ===== */}
 {calendarView === "day" && (
   <div
     style={{
@@ -1414,6 +1414,7 @@ Seguimiento
       position: "relative"
     }}
   >
+
     {/* ===== ENCABEZADO ===== */}
     <div
       style={{
@@ -1431,117 +1432,122 @@ Seguimiento
       })}
     </div>
 
-    {/* ===== HORAS ===== */}
-    {generateHours().map(hour => {
-      const eventsAtHour = calendarEvents.filter(ev => {
-        const eventDate = new Date(ev.start_datetime)
-        const selected = new Date(selectedDate + "T12:00:00")
+    {/* ===== GRID HORAS ===== */}
+    {generateHours().map(hour => (
+      <div
+        key={hour}
+        onDragOver={(e) => e.preventDefault()}
+        onDrop={async (e) => {
+          const eventId = e.dataTransfer.getData("eventId")
+          if (!eventId) return
 
-        const sameDay =
-          eventDate.getFullYear() === selected.getFullYear() &&
-          eventDate.getMonth() === selected.getMonth() &&
-          eventDate.getDate() === selected.getDate()
+          const date = new Date(selectedDate + "T12:00:00")
+          const [h, m] = hour.split(":")
+          date.setHours(Number(h), Number(m), 0, 0)
 
-        const hourStr =
-          eventDate.getHours().toString().padStart(2, "0") + ":00"
+          const iso = date.toISOString().slice(0, 16)
 
-        return sameDay && hourStr === hour
-      })
+          await supabase
+            .from("calendar_events")
+            .update({
+              start_datetime: iso,
+              end_datetime: iso
+            })
+            .eq("id", eventId)
+
+          loadCalendarEvents()
+        }}
+        onClick={() => {
+          const date = new Date(selectedDate + "T12:00:00")
+          const [h, m] = hour.split(":")
+          date.setHours(Number(h), Number(m), 0, 0)
+
+          const iso = date.toISOString().slice(0, 16)
+
+          setModalDateTime(iso)
+          setShowEventModal(true)
+          setNewEventStart(iso)
+          setNewEventEnd(iso)
+        }}
+        style={{
+          borderBottom: "1px solid #284577",
+          minHeight: 64,
+          display: "grid",
+          gridTemplateColumns: "100px 1fr",
+          position: "relative"
+        }}
+      >
+        {/* Columna hora */}
+        <div
+          style={{
+            padding: "10px 12px",
+            background: "#102244",
+            borderRight: "1px solid #284577",
+            fontWeight: "bold"
+          }}
+        >
+          {hour}
+        </div>
+
+        {/* Espacio eventos */}
+        <div />
+      </div>
+    ))}
+
+    {/* ===== EVENTOS CON DURACIÓN ===== */}
+    {calendarEvents.map(ev => {
+
+      const start = new Date(ev.start_datetime)
+      const end = new Date(ev.end_datetime)
+
+      const selected = new Date(selectedDate + "T12:00:00")
+
+      // Solo eventos del día actual
+      if (
+        start.getFullYear() !== selected.getFullYear() ||
+        start.getMonth() !== selected.getMonth() ||
+        start.getDate() !== selected.getDate()
+      ) return null
+
+      const hourHeight = 64
+
+      const startOffset =
+        (start.getHours() - 8) * hourHeight +
+        (start.getMinutes() / 60) * hourHeight
+
+      const durationMinutes =
+        (end.getTime() - start.getTime()) / 60000 || 30
+
+      const height =
+        (durationMinutes / 60) * hourHeight
 
       return (
         <div
-          key={hour}
-          onDragOver={(e) => e.preventDefault()}
-          onDrop={async (e) => {
-            const eventId = e.dataTransfer.getData("eventId")
-            if (!eventId) return
-
-            const date = new Date(selectedDate + "T12:00:00")
-            const [h, m] = hour.split(":")
-            date.setHours(Number(h), Number(m), 0, 0)
-
-            const yyyy = date.getFullYear()
-            const mm = String(date.getMonth() + 1).padStart(2, "0")
-            const dd = String(date.getDate()).padStart(2, "0")
-            const hh = String(date.getHours()).padStart(2, "0")
-            const min = String(date.getMinutes()).padStart(2, "0")
-
-            const newDateTime = `${yyyy}-${mm}-${dd}T${hh}:${min}`
-
-            await supabase
-              .from("calendar_events")
-              .update({
-                start_datetime: newDateTime,
-                end_datetime: newDateTime
-              })
-              .eq("id", eventId)
-
-            loadCalendarEvents()
-          }}
-          onClick={() => {
-            const date = new Date(selectedDate + "T12:00:00")
-            const [h, m] = hour.split(":")
-            date.setHours(Number(h), Number(m), 0, 0)
-
-            const yyyy = date.getFullYear()
-            const mm = String(date.getMonth() + 1).padStart(2, "0")
-            const dd = String(date.getDate()).padStart(2, "0")
-            const hh = String(date.getHours()).padStart(2, "0")
-            const min = String(date.getMinutes()).padStart(2, "0")
-
-            const iso = `${yyyy}-${mm}-${dd}T${hh}:${min}`
-
-            // 🔥 ABRIR MODAL
-            setModalDateTime(iso)
-            setShowEventModal(true)
-
-            // 🔥 AUTOCOMPLETAR FORMULARIO
-            setNewEventStart(iso)
-            setNewEventEnd(iso)
-          }}
+          key={ev.id}
+          draggable
+          onDragStart={(e) =>
+            e.dataTransfer.setData("eventId", ev.id)
+          }
           style={{
-            borderBottom: "1px solid #284577",
-            minHeight: 64,
-            display: "grid",
-            gridTemplateColumns: "100px 1fr",
-            cursor: "pointer"
+            position: "absolute",
+            top: 44 + startOffset,
+            left: 105,
+            right: 10,
+            height: Math.max(height, 20),
+            background: ev.color || "#2563eb",
+            borderRadius: 6,
+            padding: "4px 8px",
+            fontSize: 12,
+            color: "#fff",
+            cursor: "grab",
+            zIndex: 50,
+            boxShadow: "0 2px 8px rgba(0,0,0,0.4)"
           }}
         >
-          <div
-            style={{
-              padding: "10px 12px",
-              background: "#102244",
-              borderRight: "1px solid #284577",
-              fontWeight: "bold"
-            }}
-          >
-            {hour}
-          </div>
-
-          <div style={{ padding: 8 }}>
-            {eventsAtHour.map(ev => (
-              <div
-                key={ev.id}
-                draggable
-                onDragStart={(e) =>
-                  e.dataTransfer.setData("eventId", ev.id)
-                }
-                style={{
-                  background: ev.color || "#2563eb",
-                  padding: "6px 8px",
-                  borderRadius: 6,
-                  marginBottom: 6,
-                  fontSize: 12,
-                  color: "#fff",
-                  cursor: "grab"
-                }}
-              >
-                {ev.title}
-              </div>
-            ))}
-          </div>
+          {ev.title}
         </div>
       )
+
     })}
 
     {/* ===== LÍNEA HORA ACTUAL ===== */}
@@ -1566,7 +1572,7 @@ Seguimiento
           style={{
             position: "absolute",
             top: 44 + offsetTop,
-            left: 0,
+            left: 100,
             right: 0,
             height: 2,
             background: "red",
@@ -1596,8 +1602,12 @@ Seguimiento
 
     {getWeekDays().map((day, i) => {
 
-      const today = new Date().toDateString()
-      const isToday = day.toDateString() === today
+      const today = new Date()
+
+      const isToday =
+        day.getFullYear() === today.getFullYear() &&
+        day.getMonth() === today.getMonth() &&
+        day.getDate() === today.getDate()
 
       return (
         <div
@@ -1637,17 +1647,25 @@ Seguimiento
         {/* Celdas por día */}
         {getWeekDays().map((day, i) => {
 
-          const today = new Date().toDateString()
-          const isToday = day.toDateString() === today
+          const today = new Date()
+
+          const isToday =
+            day.getFullYear() === today.getFullYear() &&
+            day.getMonth() === today.getMonth() &&
+            day.getDate() === today.getDate()
 
           const eventsHere = calendarEvents.filter(e => {
             const d = new Date(e.start_datetime)
-            const h = d.getHours().toString().padStart(2, "0") + ":00"
 
-            return (
-              d.toDateString() === day.toDateString() &&
-              h === hour
-            )
+            const sameDay =
+              d.getFullYear() === day.getFullYear() &&
+              d.getMonth() === day.getMonth() &&
+              d.getDate() === day.getDate()
+
+            const h =
+              d.getHours().toString().padStart(2, "0") + ":00"
+
+            return sameDay && h === hour
           })
 
           return (
