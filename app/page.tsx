@@ -1731,50 +1731,6 @@ Seguimiento
 
       </React.Fragment>
     ))}
-
-{/* ===== LÍNEA HORA ACTUAL ===== */}
-{(() => {
-
-  const now = new Date()
-  const todayStr = now.toDateString()
-
-  const weekDays = getWeekDays()
-  const todayIndex = weekDays.findIndex(
-    d => d.toDateString() === todayStr
-  )
-
-  if (todayIndex === -1) return null
-
-  const startHour = 8
-  const rowHeight = 40
-  const headerHeight = 60
-
-  const hour = now.getHours()
-  const minute = now.getMinutes()
-
-  const offsetTop =
-    (hour - startHour) * rowHeight +
-    (minute / 60) * rowHeight
-
-  // 🔥 ANCHO REAL DE CADA COLUMNA
-  const dayWidth = `calc((100% - 80px) / 5)`
-
-  return (
-    <div
-      style={{
-        position: "absolute",
-        top: headerHeight + offsetTop,
-        left: `calc(80px + ${todayIndex} * ${dayWidth})`,
-        width: dayWidth,
-        height: 2,
-        background: "red",
-        zIndex: 50,
-        pointerEvents: "none"
-      }}
-    />
-  )
-
-})()}
   </div>
 )}
    {/* ===== MES ===== */}
