@@ -1,4 +1,4 @@
-"use client"; //comentario 
+"use client";
 
 import React from "react";
 import Agenda from "./components/Agenda";
