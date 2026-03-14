@@ -1366,8 +1366,11 @@ return (
         {/* =====================================================
          * AGENDA
          * ===================================================*/}
-        {activeView === "Agenda" && <Agenda />}
-          <div style={{ display: "grid", gap: 16 }}>
+        {activeView === "Agenda" && (
+  <>
+    <Agenda />
+
+    <div style={{ display: "grid", gap: 16 }}>
             {/* ===== SELECTOR ===== */}
             <div style={{ display: "flex", gap: 8 }}>
               {(["day", "week", "month", "year"] as const).map((v) => (
