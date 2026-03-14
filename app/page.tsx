@@ -2446,9 +2446,7 @@ return (
 
   </div>
 
-</div>
-
-     </div>
+    </div> {/* FIN GRID */}
   </>
 )}
 
