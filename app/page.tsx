@@ -1,6 +1,7 @@
 "use client"; //comentario 
 
 import React from "react";
+import Agenda from "./components/Agenda";
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@supabase/supabase-js";
 
@@ -1364,7 +1365,7 @@ useEffect(() => {
         {/* =====================================================
          * AGENDA
          * ===================================================*/}
-        {activeView === "Agenda" && (
+        {activeView === "Agenda" && <Agenda />}
           <div style={{ display: "grid", gap: 16 }}>
             {/* ===== SELECTOR ===== */}
             <div style={{ display: "flex", gap: 8 }}>
@@ -2248,7 +2249,6 @@ useEffect(() => {
       }}
     >
 
-```
   <h2 style={{ marginTop: 0, marginBottom: 18 }}>
     Actividad / Evento
   </h2>
