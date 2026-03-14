@@ -633,11 +633,10 @@ useEffect(() => {
     { title: "Empresas registradas", value: companyCount ?? "-" },
   ];
 
-  /* =========================================================
-   * RENDER
-   * =======================================================*/
-  return (
-    <div
+// RENDER
+
+return (
+  <div
       style={{
         minHeight: "100vh",
         background: "#08142c",
