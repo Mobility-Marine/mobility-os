@@ -14,7 +14,7 @@ export default function CreateCompanyPage() {
 
     setLoading(true);
 
-    // Usuario actual
+    // 🔐 Usuario actual
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
 
@@ -25,9 +25,11 @@ export default function CreateCompanyPage() {
     }
 
     try {
-      // 1️⃣ Crear empresa
-      const { data: company, error } = await supabase
-        .from("companies")
+      // ===============================
+      // 🏢 1️⃣ Crear TENANT
+      // ===============================
+      const { data: tenant, error: tenantError } = await supabase
+        .from("tenants")
         .insert({
           name,
           owner_user_id: user.id,
@@ -35,16 +37,52 @@ export default function CreateCompanyPage() {
         .select("id")
         .single();
 
-      if (error) throw error;
+      if (tenantError) throw tenantError;
 
-      // 2️⃣ Asociar usuario como owner
-      await supabase.from("company_users").insert({
-        company_id: company.id,
-        user_id: user.id,
-        role: "owner",
-        is_active: true,
-      });
+      // ===============================
+      // 🏢 2️⃣ Crear EMPRESA
+      // ===============================
+      const { data: company, error: companyError } = await supabase
+        .from("companies")
+        .insert({
+          name,
+          tenant_id: tenant.id,
+          owner_user_id: user.id,
+        })
+        .select("id")
+        .single();
 
+      if (companyError) throw companyError;
+
+      // ===============================
+      // 👤 3️⃣ Asociar usuario como owner
+      // ===============================
+      const { error: linkError } = await supabase
+        .from("company_users")
+        .insert({
+          company_id: company.id,
+          user_id: user.id,
+          role: "owner",
+          is_active: true,
+        });
+
+      if (linkError) throw linkError;
+
+      // ===============================
+      // ⭐ 4️⃣ Guardar empresa activa
+      // ===============================
+      const { error: settingsError } = await supabase
+        .from("user_settings")
+        .upsert({
+          user_id: user.id,
+          active_company_id: company.id,
+        });
+
+      if (settingsError) throw settingsError;
+
+      // ===============================
+      // 🚀 5️⃣ Entrar al sistema
+      // ===============================
       router.replace("/dashboard");
     } catch (err) {
       console.error(err);
@@ -54,7 +92,7 @@ export default function CreateCompanyPage() {
     setLoading(false);
   }
 
-   return (
+  return (
     <div style={{ padding: 40 }}>
       <h1>Crear empresa</h1>
 
