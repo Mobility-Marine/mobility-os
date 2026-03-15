@@ -197,31 +197,46 @@ export default function Home() {
               gap: 16,
             }}
           >
-            {/* SELECTOR EMPRESA */}
-            <select
-              value={companyId || ""}
-              onChange={(e) =>
-                setActiveCompany(e.target.value)
-              }
-              style={{
-                background: "#0f2045",
-                color: "#fff",
-                border: "1px solid #2a4a88",
-                padding: "10px 12px",
-                borderRadius: 8,
-                fontWeight: 600,
-              }}
-            >
-              {memberships.map((m) => (
-                <option
-                  key={m.id}
-                  value={m.company_id}
-                >
-                  Empresa{" "}
-                  {m.company_id.slice(0, 6)}
-                </option>
-              ))}
-            </select>
+            {/* SELECTOR EMPRESA PRO */}
+<div style={{ display: "flex", flexDirection: "column" }}>
+  <div
+    style={{
+      fontSize: 11,
+      color: "#9fb3d9",
+      marginBottom: 4,
+      textAlign: "left",
+    }}
+  >
+    Empresa
+  </div>
+
+  <select
+    value={companyId || ""}
+    onChange={(e) => setActiveCompany(e.target.value)}
+    disabled={memberships.length === 0}
+    style={{
+      background: "#0f2045",
+      color: "#fff",
+      border: "1px solid #2a4a88",
+      padding: "10px 12px",
+      borderRadius: 10,
+      fontWeight: 600,
+      minWidth: 200,
+      outline: "none",
+      cursor: memberships.length === 0 ? "not-allowed" : "pointer",
+    }}
+  >
+    {memberships.length === 0 && (
+      <option value="">Sin empresas</option>
+    )}
+
+    {memberships.map((m) => (
+      <option key={m.id} value={m.company_id}>
+        Empresa {m.company_id.slice(0, 6)}
+      </option>
+    ))}
+  </select>
+</div>
 
             {/* USUARIO */}
             <div style={{ textAlign: "right" }}>
