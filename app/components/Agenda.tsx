@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useMemo } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
+import { useTenant } from "@/lib/tenant/TenantProvider";
 
 type CalendarView = "day" | "week" | "month";
 
@@ -144,7 +145,8 @@ function clamp(n: number, min: number, max: number) {
 }
 
 export default function Agenda() {
-  const { user, companyId, loading } = useAuth();
+  const { user, loading } = useAuth();
+  const { companyId, loadingTenant } = useTenant();
   const [status, setStatus] = useState("Cargando agenda...");
   const [view, setView] = useState<CalendarView>("week");
   const [eventsLoading, setEventsLoading] = useState(false);
@@ -189,33 +191,36 @@ export default function Agenda() {
   }, [currentDate]);
 
   useEffect(() => {
-    initializeAgenda();
-  }, []);
+  initializeAgenda();
+}, [user, companyId]);
 
   useEffect(() => {
-    if (companyId) {
-      loadEvents();
-      loadCompanyUsers();
-    }
-  }, [companyId, selectedDate, view]);
+  if (companyId) {
+    loadEvents();
+    loadCompanyUsers();
+  } else {
+    setEvents([]);
+    setCompanyUsers([]);
+  }
+}, [companyId, selectedDate, view]);
 
 async function initializeAgenda() {
   try {
     setEventsLoading(true);
 
-    // 🔐 Usuario viene del AuthProvider
     if (!user) {
       setStatus("No hay usuario autenticado");
       return;
     }
 
-    // 🏢 Empresa viene del AuthProvider (multiempresa)
     if (!companyId) {
-      setStatus("Usuario sin empresa asignada");
+      setStatus("Usuario sin empresa activa");
+      setEvents([]);
+      setCompanyUsers([]);
       return;
     }
 
-    // ✅ Todo listo
+    setAuthUserId(user.id);
     setStatus("Agenda lista");
   } catch (error) {
     console.error(error);
@@ -1002,15 +1007,17 @@ async function initializeAgenda() {
 
       {renderTopActions()}
 
-      {loading ? (
-        <div style={panelStyle}>Cargando agenda...</div>
-      ) : (
-        <>
-          {view === "day" && renderDayView()}
-          {view === "week" && renderWeekView()}
-          {view === "month" && renderMonthView()}
-        </>
-      )}
+     {loading || loadingTenant || eventsLoading ? (
+  <div style={panelStyle}>Cargando agenda...</div>
+) : !companyId ? (
+  <div style={panelStyle}>No hay empresa activa seleccionada.</div>
+) : (
+  <>
+    {view === "day" && renderDayView()}
+    {view === "week" && renderWeekView()}
+    {view === "month" && renderMonthView()}
+  </>
+)}
 
       {showModal && (
         <div
