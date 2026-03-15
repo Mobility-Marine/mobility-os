@@ -363,133 +363,106 @@ async function loadCompanyUsers() {
     setShowModal(true);
   }
 
-  async function saveEvent() {
-    if (!companyId || !authUserId) {
-      alert("No hay empresa o usuario autenticado");
-      return;
-    }
+ async function saveEvent() {
+  if (!companyId || !authUserId) {
+    alert("No hay empresa o usuario autenticado");
+    return;
+  }
 
-    if (!formTitle || !formStart) {
-      alert("Completa título e inicio");
-      return;
-    }
+  if (!formTitle || !formStart) {
+    alert("Completa título e inicio");
+    return;
+  }
 
-    const endDateTime = formEnd || formStart;
+  const endDateTime = formEnd || formStart;
 
-    const payload = {
-      company_id: companyId,
-      title: formTitle,
-      description: formDescription || null,
-      event_type: formType,
-      start_datetime: new Date(formStart).toISOString(),
-      end_datetime: new Date(endDateTime).toISOString(),
-      location: formLocation || null,
-      meeting_link: formMeetingLink || null,
-      priority: formPriority,
-      status: formStatus,
-      color: formColor,
-      all_day: formAllDay,
-      visibility: formVisibility,
-      timezone: "America/Mexico_City",
-      created_by: authUserId,
-    };
+  const payload = {
+    company_id: companyId,
+    title: formTitle,
+    description: formDescription || null,
+    event_type: formType,
+    start_datetime: new Date(formStart).toISOString(),
+    end_datetime: new Date(endDateTime).toISOString(),
+    location: formLocation || null,
+    meeting_link: formMeetingLink || null,
+    priority: formPriority,
+    status: formStatus,
+    color: formColor,
+    all_day: formAllDay,
+    visibility: formVisibility,
+    timezone: "America/Mexico_City",
+    created_by: authUserId,
+  };
 
-    let eventId = selectedEvent?.id || null;
+  let eventId = selectedEvent?.id || null;
 
+  try {
     if (selectedEvent) {
-      const { error } = await supabase
-        .from("calendar_events")
-        .update(payload)
-        .eq("id", selectedEvent.id);
-
-      if (error) {
-        console.error(error);
-        alert("Error actualizando evento");
-        return;
-      }
-
+      await updateCalendarEvent(selectedEvent.id, payload);
       eventId = selectedEvent.id;
-
-   await updateCalendarEvent(selectedEvent.id, payload);
     } else {
-     const data = await createCalendarEvent(payload);
-
-      if (error || !data) {
-        console.error(error);
-        alert("Error creando evento");
-        return;
-      }
-
+      const data = await createCalendarEvent(payload);
       eventId = data.id;
     }
 
-    if (eventId) {
-      const attendeeRows: any[] = [];
+    setShowModal(false);
+    resetForm();
+    loadEvents();
+  } catch (err) {
+    console.error(err);
+    alert("Error guardando evento");
+  }
+}
+ async function saveEvent() {
+  if (!companyId || !authUserId) {
+    alert("No hay empresa o usuario autenticado");
+    return;
+  }
 
-      internalAttendees.forEach((userId) => {
-        attendeeRows.push({
-          event_id: eventId,
-          company_id: companyId,
-          user_id: userId,
-          attendee_type: "internal",
-          role: "required",
-          status: "pending",
-        });
-      });
+  if (!formTitle || !formStart) {
+    alert("Completa título e inicio");
+    return;
+  }
 
-      externalEmails
-        .split(",")
-        .map((email) => email.trim())
-        .filter(Boolean)
-        .forEach((email) => {
-          attendeeRows.push({
-            event_id: eventId,
-            company_id: companyId,
-            email,
-            attendee_type: "external",
-            role: "required",
-            status: "pending",
-          });
-        });
+  const endDateTime = formEnd || formStart;
 
-      if (attendeeRows.length > 0) {
-        const { error } = await supabase
-          .from("calendar_event_attendees")
-          .insert(attendeeRows);
+  const payload = {
+    company_id: companyId,
+    title: formTitle,
+    description: formDescription || null,
+    event_type: formType,
+    start_datetime: new Date(formStart).toISOString(),
+    end_datetime: new Date(endDateTime).toISOString(),
+    location: formLocation || null,
+    meeting_link: formMeetingLink || null,
+    priority: formPriority,
+    status: formStatus,
+    color: formColor,
+    all_day: formAllDay,
+    visibility: formVisibility,
+    timezone: "America/Mexico_City",
+    created_by: authUserId,
+  };
 
-        if (error) {
-          console.error(error);
-          alert("Evento guardado, pero hubo error con invitados");
-        }
-      }
+  let eventId = selectedEvent?.id || null;
+
+  try {
+    if (selectedEvent) {
+      await updateCalendarEvent(selectedEvent.id, payload);
+      eventId = selectedEvent.id;
+    } else {
+      const data = await createCalendarEvent(payload);
+      eventId = data.id;
     }
 
     setShowModal(false);
     resetForm();
     loadEvents();
+  } catch (err) {
+    console.error(err);
+    alert("Error guardando evento");
   }
-
-  async function deleteEvent() {
-    if (!selectedEvent) return;
-    if (!confirm("¿Eliminar este evento?")) return;
-
-   await deleteCalendarEvent(selectedEvent.id);
-
-    const { error } = await supabase
-      .from("calendar_events")
-      .delete()
-      .eq("id", selectedEvent.id);
-
-    if (error) {
-      console.error(error);
-      alert("Error eliminando evento");
-      return;
-    }
-
-    setShowModal(false);
-    resetForm();
-    loadEvents();
-  }
+}
 
   async function moveEvent(eventId: string, targetDate: Date) {
     const event = events.find((e) => e.id === eventId);
