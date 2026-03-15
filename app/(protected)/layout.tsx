@@ -18,7 +18,7 @@ export default function ProtectedLayout({
   }, []);
 
   async function checkAccess() {
-    // 🔐 1) Usuario autenticado
+    // 🔐 Usuario autenticado
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
 
@@ -27,7 +27,7 @@ export default function ProtectedLayout({
       return;
     }
 
-    // 🏢 2) Usuario pertenece a alguna empresa
+    // 🏢 Usuario pertenece a empresa
     const { data: companyLink } = await supabase
       .from("company_users")
       .select("company_id")
@@ -39,18 +39,16 @@ export default function ProtectedLayout({
       return;
     }
 
-    // ✅ Acceso permitido
     setLoading(false);
   }
 
-  // ⏳ Pantalla de carga
   if (loading) {
     return <div style={{ padding: 40 }}>Cargando Mobility OS...</div>;
   }
 
-  // 🏢 Activar multi-tenant context
   return (
     <TenantProvider>
       {children}
     </TenantProvider>
   );
+}
