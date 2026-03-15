@@ -199,51 +199,31 @@ export default function Agenda() {
     }
   }, [companyId, selectedDate, view]);
 
-  async function initializeAgenda() {
-    try {
-      setEventsLoading(true);
+async function initializeAgenda() {
+  try {
+    setEventsLoading(true);
 
-      const {
-        data: { user },
-        error: authError,
-      } = await supabase.auth.getUser();
-
-      if (authError) {
-        setStatus("Error obteniendo usuario autenticado");
-        setEventsLoading(false);
-        return;
-      }
-
-      if (!user) {
-        setStatus("No hay usuario autenticado");
-        setEventsLoading(false);
-        return;
-      }
-
-      setAuthUserId(user.id);
-
-      const { data: membership, error: membershipError } = await supabase
-        .from("company_users")
-        .select("company_id, user_id, role")
-        .eq("user_id", user.id)
-        .limit(1)
-        .single();
-
-      if (membershipError || !membership) {
-        setStatus("No se encontró relación del usuario con una empresa");
-        setEventsLoading(false);
-        return;
-      }
-
-      setCompanyId(membership.company_id);
-      setStatus("Agenda lista");
-    } catch (error) {
-      console.error(error);
-      setStatus("Error inicializando agenda");
-    } finally {
-      setEventsLoading(false);
+    // 🔐 Usuario viene del AuthProvider
+    if (!user) {
+      setStatus("No hay usuario autenticado");
+      return;
     }
+
+    // 🏢 Empresa viene del AuthProvider (multiempresa)
+    if (!companyId) {
+      setStatus("Usuario sin empresa asignada");
+      return;
+    }
+
+    // ✅ Todo listo
+    setStatus("Agenda lista");
+  } catch (error) {
+    console.error(error);
+    setStatus("Error inicializando agenda");
+  } finally {
+    setEventsLoading(false);
   }
+}
 
   async function loadCompanyUsers() {
     if (!companyId) return;
