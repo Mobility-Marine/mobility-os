@@ -56,14 +56,40 @@ export default function Home() {
     }
   }, [loading, user, router]);
 
-  // ⏳ Loader global
-  if (loading || loadingTenant || !user) {
-    return (
-      <div style={{ padding: 40 }}>
-        Verificando sesión...
-      </div>
-    );
-  }
+// ⏳ Loader global
+if (loading || loadingTenant || !user) {
+  return (
+    <div style={{ padding: 40 }}>
+      Verificando sesión...
+    </div>
+  );
+}
+
+// 🏢 Usuario sin empresa activa
+if (!companyId) {
+  return (
+    <div style={{ padding: 40 }}>
+      <h2>Usuario sin empresa activa</h2>
+      <p>Debes crear o unirte a una empresa para continuar.</p>
+
+      <button
+        onClick={() => router.push("/create-company")}
+        style={{
+          marginTop: 20,
+          padding: "12px 20px",
+          background: "#2563eb",
+          border: "none",
+          borderRadius: 8,
+          color: "#fff",
+          fontWeight: 600,
+          cursor: "pointer",
+        }}
+      >
+        Crear empresa
+      </button>
+    </div>
+  );
+}
 
   return (
     <div
@@ -168,25 +194,38 @@ export default function Home() {
               style={{ width: 38, height: 38 }}
             />
 
-            <div>
-              <div
-                style={{
-                  fontSize: 20,
-                  fontWeight: 600,
-                }}
-              >
-                {activeView}
-              </div>
+          <div>
+  <div
+    style={{
+      fontSize: 20,
+      fontWeight: 600,
+    }}
+  >
+    {activeView}
+  </div>
 
-              <div
-                style={{
-                  fontSize: 12,
-                  color: "#9fb3d9",
-                }}
-              >
-                Mobility OS Platform
-              </div>
-            </div>
+  <div
+    style={{
+      fontSize: 12,
+      color: "#9fb3d9",
+    }}
+  >
+    Mobility OS Platform
+  </div>
+
+  {/* 🏢 Empresa activa */}
+  {companyId && (
+    <div
+      style={{
+        fontSize: 11,
+        color: "#7fa1ff",
+        marginTop: 2,
+      }}
+    >
+      Tenant activo: {companyId.slice(0, 8)}
+    </div>
+  )}
+</div>
           </div>
 
           {/* DERECHA */}
@@ -212,7 +251,10 @@ export default function Home() {
 
   <select
     value={companyId || ""}
-    onChange={(e) => setActiveCompany(e.target.value)}
+    onChange={async (e) => {
+  await setActiveCompany(e.target.value);
+  window.location.reload();
+}}
     disabled={memberships.length === 0}
     style={{
       background: "#0f2045",
@@ -230,11 +272,11 @@ export default function Home() {
       <option value="">Sin empresas</option>
     )}
 
-    {memberships.map((m) => (
-      <option key={m.id} value={m.company_id}>
-        Empresa {m.company_id.slice(0, 6)}
-      </option>
-    ))}
+   {memberships.map((m) => (
+  <option key={m.id} value={m.company_id}>
+    {m.company_name || "Empresa"}
+  </option>
+))}
   </select>
 </div>
 
