@@ -1,7 +1,13 @@
 "use client";
 
 import React, { useEffect, useState, useMemo } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import {
+  getCalendarEventsByCompany,
+  getCalendarEventAttendees,
+  createCalendarEvent,
+  updateCalendarEvent,
+  deleteCalendarEvent,
+} from "@/services/agenda/agenda.service";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 
@@ -246,66 +252,45 @@ async function initializeAgenda() {
     setCompanyUsers((data as CompanyUserRow[]) || []);
   }
 
-  async function loadEvents() {
-    if (!companyId) return;
+ async function loadEvents() {
+  if (!companyId) return;
 
-    setEventsLoading(true);
+  setEventsLoading(true);
 
-    let fromDate = new Date(selectedDate + "T00:00:00");
-    let toDate = new Date(selectedDate + "T23:59:59");
+  let fromDate = new Date(selectedDate + "T00:00:00");
+  let toDate = new Date(selectedDate + "T23:59:59");
 
-    if (view === "week") {
-      fromDate = startOfWeek(currentDate);
-      toDate = endOfWeek(currentDate);
-    }
-
-    if (view === "month") {
-      const base = new Date(selectedDate + "T12:00:00");
-      fromDate = new Date(base.getFullYear(), base.getMonth(), 1, 0, 0, 0, 0);
-      toDate = new Date(
-        base.getFullYear(),
-        base.getMonth() + 1,
-        0,
-        23,
-        59,
-        59,
-        999
-      );
-    }
-
-    const { data, error } = await supabase
-      .from("calendar_events")
-      .select("*")
-      .eq("company_id", companyId)
-      .order("start_datetime", { ascending: true })
-      .gte("start_datetime", fromDate.toISOString())
-      .lte("start_datetime", toDate.toISOString())
-      .order("start_datetime", { ascending: true });
-
-    if (error) {
-      console.error(error);
-      setStatus("Error cargando eventos");
-      setEventsLoading(false);
-      return;
-    }
-
-    setEvents((data as EventRow[]) || []);
-    setEventsLoading(false);
+  if (view === "week") {
+    fromDate = startOfWeek(currentDate);
+    toDate = endOfWeek(currentDate);
   }
 
-  async function loadEventAttendees(eventId: string) {
-    const { data, error } = await supabase
-      .from("calendar_event_attendees")
-      .select("*")
-      .eq("event_id", eventId);
+  if (view === "month") {
+    const base = new Date(selectedDate + "T12:00:00");
+    fromDate = new Date(base.getFullYear(), base.getMonth(), 1);
+    toDate = new Date(base.getFullYear(), base.getMonth() + 1, 0, 23, 59, 59);
+  }
 
-    if (error) {
-      console.error(error);
-      return;
-    }
+  try {
+    const data = await getCalendarEventsByCompany(companyId, {
+      fromIso: fromDate.toISOString(),
+      toIso: toDate.toISOString(),
+    });
 
-    const attendees = (data as AttendeeRow[]) || [];
-    setLoadedAttendees(attendees);
+    setEvents(data || []);
+  } catch (error) {
+    console.error(error);
+    setStatus("Error cargando eventos");
+  } finally {
+    setEventsLoading(false);
+  }
+}
+
+ async function loadEventAttendees(eventId: string) {
+  try {
+    const attendees = await getCalendarEventAttendees(eventId);
+
+    setLoadedAttendees(attendees || []);
 
     setInternalAttendees(
       attendees
@@ -319,7 +304,10 @@ async function initializeAgenda() {
         .map((a) => a.email)
         .join(", ")
     );
+  } catch (error) {
+    console.error(error);
   }
+}
 
   function resetForm() {
     const now = new Date();
@@ -427,16 +415,9 @@ async function initializeAgenda() {
 
       eventId = selectedEvent.id;
 
-      await supabase
-        .from("calendar_event_attendees")
-        .delete()
-        .eq("event_id", selectedEvent.id);
+   await updateCalendarEvent(selectedEvent.id, payload);
     } else {
-      const { data, error } = await supabase
-        .from("calendar_events")
-        .insert(payload)
-        .select("id")
-        .single();
+     const data = await createCalendarEvent(payload);
 
       if (error || !data) {
         console.error(error);
@@ -497,10 +478,7 @@ async function initializeAgenda() {
     if (!selectedEvent) return;
     if (!confirm("¿Eliminar este evento?")) return;
 
-    await supabase
-      .from("calendar_event_attendees")
-      .delete()
-      .eq("event_id", selectedEvent.id);
+   await deleteCalendarEvent(selectedEvent.id);
 
     const { error } = await supabase
       .from("calendar_events")
