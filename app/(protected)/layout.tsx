@@ -3,6 +3,15 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
+import { TenantProvider } from "@/lib/tenant/TenantProvider";
+
+export default function ProtectedLayout({ children }) {
+  return (
+    <TenantProvider>
+      {children}
+    </TenantProvider>
+  );
+}
 
 export default function ProtectedLayout({
   children,
