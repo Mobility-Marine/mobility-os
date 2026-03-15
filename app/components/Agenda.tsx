@@ -146,7 +146,6 @@ function clamp(n: number, min: number, max: number) {
 export default function Agenda() {
   const { user, companyId, loading } = useAuth();
   const [status, setStatus] = useState("Cargando agenda...");
-  const [loading, setLoading] = useState(false);
   const [view, setView] = useState<CalendarView>("week");
   const [selectedDate, setSelectedDate] = useState(getLocalDateISO());
 
@@ -154,7 +153,6 @@ export default function Agenda() {
   const [selectedEvent, setSelectedEvent] = useState<EventRow | null>(null);
   const [showModal, setShowModal] = useState(false);
 
-  const [companyId, setCompanyId] = useState<string | null>(null);
   const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [companyUsers, setCompanyUsers] = useState<CompanyUserRow[]>([]);
 
