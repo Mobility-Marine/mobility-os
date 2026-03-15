@@ -3,10 +3,11 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 
-type CalendarView = "day" | "week" | "month" | "year";
+type CalendarView = "day" | "week" | "month";
 
 type EventRow = {
   id: string;
+  company_id: string | null;
   title: string;
   description: string | null;
   event_type: string | null;
@@ -17,42 +18,32 @@ type EventRow = {
   priority: string | null;
   status: string | null;
   color: string | null;
-  related_prospect_id?: string | null;
-  related_client_id?: string | null;
-  assigned_to?: string | null;
+  all_day?: boolean | null;
+  visibility?: string | null;
+  timezone?: string | null;
   created_by?: string | null;
-  type?: string | null;
-  prospect_id?: string | null;
-  client_id?: string | null;
 };
 
-const panelStyle: React.CSSProperties = {
-  background: "#12284d",
-  border: "1px solid #284577",
-  borderRadius: 16,
-  padding: 22,
+type AttendeeRow = {
+  id: string;
+  event_id: string;
+  user_id?: string | null;
+  email?: string | null;
+  attendee_type?: string | null;
+  role?: string | null;
+  status?: string | null;
 };
 
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  background: "#0b1220",
-  color: "#fff",
-  border: "1px solid #334155",
-  borderRadius: 10,
-  padding: "12px 14px",
-  outline: "none",
-  boxSizing: "border-box",
+type CompanyUserRow = {
+  id: string;
+  company_id: string;
+  user_id: string;
+  role: string | null;
 };
 
-const buttonStyle: React.CSSProperties = {
-  background: "#1d4ed8",
-  border: "none",
-  padding: "8px 12px",
-  color: "#fff",
-  borderRadius: 8,
-  cursor: "pointer",
-  fontSize: 13,
-};
+const HOURS_START = 7;
+const HOURS_END = 21;
+const HOUR_HEIGHT = 72;
 
 function getLocalDateISO(date = new Date()) {
   const y = date.getFullYear();
@@ -70,813 +61,25 @@ function formatDateTimeLocal(date: Date) {
   return `${y}-${m}-${d}T${hh}:${mm}`;
 }
 
-function combineDateAndHour(baseDate: string, hour: string) {
-  const date = new Date(`${baseDate}T12:00:00`);
-  const [h, m] = hour.split(":");
-  date.setHours(Number(h), Number(m), 0, 0);
-  return formatDateTimeLocal(date);
+function startOfWeek(date: Date) {
+  const d = new Date(date);
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  d.setHours(0, 0, 0, 0);
+  return d;
 }
 
-export default function Agenda() {
-  const [events, setEvents] = useState<EventRow[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [calendarView, setCalendarView] = useState<CalendarView>("week");
-  const [selectedDate, setSelectedDate] = useState(getLocalDateISO());
-  const [showModal, setShowModal] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  const [editingEventId, setEditingEventId] = useState<string | null>(null);
-
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    event_type: "Reunión",
-    start_datetime: "",
-    end_datetime: "",
-    location: "",
-    meeting_link: "",
-    priority: "Media",
-    status: "Programado",
-    color: "#2563eb",
-  });
-
-  useEffect(() => {
-    loadEvents();
-  }, []);
-
-  async function loadEvents() {
-    setLoading(true);
-
-    const { data, error } = await supabase
-      .from("calendar_events")
-      .select("*")
-      .order("start_datetime", { ascending: true });
-
-    if (error) {
-      alert("Error cargando agenda: " + error.message);
-      setLoading(false);
-      return;
-    }
-
-    setEvents((data as EventRow[]) || []);
-    setLoading(false);
-  }
-
-  function resetForm(startDateTime?: string) {
-    const start = startDateTime || combineDateAndHour(getLocalDateISO(), "09:00");
-    const endDate = new Date(start);
-    endDate.setHours(endDate.getHours() + 1);
-
-    setEditingEventId(null);
-    setForm({
-      title: "",
-      description: "",
-      event_type: "Reunión",
-      start_datetime: start,
-      end_datetime: formatDateTimeLocal(endDate),
-      location: "",
-      meeting_link: "",
-      priority: "Media",
-      status: "Programado",
-      color: "#2563eb",
-    });
-  }
-
-  function openCreateModal(startDateTime?: string) {
-    resetForm(startDateTime);
-    setShowModal(true);
-  }
-
-  function openEditModal(ev: EventRow) {
-    const start = formatDateTimeLocal(new Date(ev.start_datetime));
-    const end = ev.end_datetime
-      ? formatDateTimeLocal(new Date(ev.end_datetime))
-      : formatDateTimeLocal(new Date(new Date(ev.start_datetime).getTime() + 60 * 60 * 1000));
-
-    setEditingEventId(ev.id);
-    setForm({
-      title: ev.title || "",
-      description: ev.description || "",
-      event_type: ev.event_type || ev.type || "Reunión",
-      start_datetime: start,
-      end_datetime: end,
-      location: ev.location || "",
-      meeting_link: ev.meeting_link || "",
-      priority: ev.priority || "Media",
-      status: ev.status || "Programado",
-      color: ev.color || "#2563eb",
-    });
-    setShowModal(true);
-  }
-
-  async function saveEvent() {
-    if (!form.title.trim()) {
-      alert("Escribe el título del evento");
-      return;
-    }
-
-    if (!form.start_datetime || !form.end_datetime) {
-      alert("Completa inicio y fin");
-      return;
-    }
-
-    if (new Date(form.end_datetime) < new Date(form.start_datetime)) {
-      alert("La fecha de fin no puede ser menor que la de inicio");
-      return;
-    }
-
-    setSaving(true);
-
-    const payload = {
-      title: form.title.trim(),
-      description: form.description || null,
-      event_type: form.event_type || null,
-      start_datetime: new Date(form.start_datetime).toISOString(),
-      end_datetime: new Date(form.end_datetime).toISOString(),
-      location: form.location || null,
-      meeting_link: form.meeting_link || null,
-      priority: form.priority || null,
-      status: form.status || null,
-      color: form.color || "#2563eb",
-      type: form.event_type || "Reunión",
-    };
-
-    if (editingEventId) {
-      const { error } = await supabase
-        .from("calendar_events")
-        .update(payload)
-        .eq("id", editingEventId);
-
-      if (error) {
-        alert("Error actualizando evento: " + error.message);
-        setSaving(false);
-        return;
-      }
-    } else {
-      const { error } = await supabase.from("calendar_events").insert(payload);
-
-      if (error) {
-        alert("Error creando evento: " + error.message);
-        setSaving(false);
-        return;
-      }
-    }
-
-    setSaving(false);
-    setShowModal(false);
-    resetForm();
-    loadEvents();
-  }
-
-  async function deleteEvent() {
-    if (!editingEventId) return;
-    if (!confirm("¿Eliminar este evento?")) return;
-
-    const { error } = await supabase
-      .from("calendar_events")
-      .delete()
-      .eq("id", editingEventId);
-
-    if (error) {
-      alert("Error eliminando evento: " + error.message);
-      return;
-    }
-
-    setShowModal(false);
-    resetForm();
-    loadEvents();
-  }
-
-  function generateHours() {
-    const hours: string[] = [];
-    for (let h = 8; h <= 20; h++) {
-      hours.push(`${String(h).padStart(2, "0")}:00`);
-    }
-    return hours;
-  }
-
-  function getWeekDays() {
-    const base = new Date(`${selectedDate}T12:00:00`);
-    const start = new Date(base);
-    start.setDate(base.getDate() - ((base.getDay() + 6) % 7));
-
-    const days: Date[] = [];
-    for (let i = 0; i < 7; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      days.push(d);
-    }
-    return days;
-  }
-
-  function getMonthDays() {
-    const base = new Date(`${selectedDate}T12:00:00`);
-    const year = base.getFullYear();
-    const month = base.getMonth();
-
-    const firstDay = new Date(year, month, 1);
-    const startDay = (firstDay.getDay() + 6) % 7;
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    const days: { date: Date; currentMonth: boolean }[] = [];
-    const prevMonthDays = new Date(year, month, 0).getDate();
-
-    for (let i = startDay - 1; i >= 0; i--) {
-      days.push({
-        date: new Date(year, month - 1, prevMonthDays - i),
-        currentMonth: false,
-      });
-    }
-
-    for (let i = 1; i <= daysInMonth; i++) {
-      days.push({
-        date: new Date(year, month, i),
-        currentMonth: true,
-      });
-    }
-
-    while (days.length < 42) {
-      const d = days.length - daysInMonth - startDay + 1;
-      days.push({
-        date: new Date(year, month + 1, d),
-        currentMonth: false,
-      });
-    }
-
-    return days;
-  }
-
-  function navigate(direction: "prev" | "next" | "today") {
-    if (direction === "today") {
-      setSelectedDate(getLocalDateISO());
-      return;
-    }
-
-    const d = new Date(`${selectedDate}T12:00:00`);
-
-    if (calendarView === "day") d.setDate(d.getDate() + (direction === "next" ? 1 : -1));
-    if (calendarView === "week") d.setDate(d.getDate() + (direction === "next" ? 7 : -7));
-    if (calendarView === "month") d.setMonth(d.getMonth() + (direction === "next" ? 1 : -1));
-    if (calendarView === "year") d.setFullYear(d.getFullYear() + (direction === "next" ? 1 : -1));
-
-    setSelectedDate(getLocalDateISO(d));
-  }
-
-  const titleLabel = useMemo(() => {
-    if (calendarView === "day") {
-      return new Date(`${selectedDate}T12:00:00`).toLocaleDateString("es-MX", {
-        weekday: "long",
-        day: "numeric",
-        month: "long",
-        year: "numeric",
-      });
-    }
-
-    if (calendarView === "week") {
-      const weekDays = getWeekDays();
-      const start = weekDays[0];
-      const end = weekDays[6];
-
-      return `${start.toLocaleDateString("es-MX", {
-        day: "numeric",
-        month: "short",
-      })} — ${end.toLocaleDateString("es-MX", {
-        day: "numeric",
-        month: "short",
-        year: "numeric",
-      })}`;
-    }
-
-    if (calendarView === "month") {
-      return new Date(`${selectedDate}T12:00:00`).toLocaleDateString("es-MX", {
-        month: "long",
-        year: "numeric",
-      });
-    }
-
-    return String(new Date(`${selectedDate}T12:00:00`).getFullYear());
-  }, [calendarView, selectedDate]);
-
-  return (
-    <div style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
-        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-          {(["day", "week", "month", "year"] as const).map((view) => (
-            <button
-              key={view}
-              onClick={() => setCalendarView(view)}
-              style={{
-                ...buttonStyle,
-                background: calendarView === view ? "#2563eb" : "#0f1f3d",
-                border: "1px solid #2f5aa6",
-              }}
-            >
-              {view === "day" && "Día"}
-              {view === "week" && "Semana"}
-              {view === "month" && "Mes"}
-              {view === "year" && "Año"}
-            </button>
-          ))}
-        </div>
-
-        <button onClick={() => openCreateModal()} style={{ ...buttonStyle, padding: "10px 16px" }}>
-          Nuevo evento
-        </button>
-      </div>
-
-      <section style={panelStyle}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, gap: 12 }}>
-          <h3 style={{ margin: 0, textTransform: "capitalize" }}>{titleLabel}</h3>
-
-          <div style={{ display: "flex", gap: 8 }}>
-            <button onClick={() => navigate("prev")} style={buttonStyle}>◀ Anterior</button>
-            <button onClick={() => navigate("today")} style={buttonStyle}>Hoy</button>
-            <button onClick={() => navigate("next")} style={buttonStyle}>Siguiente ▶</button>
-          </div>
-        </div>
-
-        {loading && <p>Cargando agenda...</p>}
-
-        {!loading && calendarView === "day" && (
-          <DayView
-            selectedDate={selectedDate}
-            events={events}
-            onCreate={openCreateModal}
-            onEdit={openEditModal}
-          />
-        )}
-
-        {!loading && calendarView === "week" && (
-          <WeekView
-            selectedDate={selectedDate}
-            events={events}
-            onCreate={openCreateModal}
-            onEdit={openEditModal}
-          />
-        )}
-
-        {!loading && calendarView === "month" && (
-          <MonthView
-            selectedDate={selectedDate}
-            events={events}
-            onCreate={openCreateModal}
-            onEdit={openEditModal}
-          />
-        )}
-
-        {!loading && calendarView === "year" && (
-          <YearView
-            selectedDate={selectedDate}
-            events={events}
-            onCreate={openCreateModal}
-            onEdit={openEditModal}
-          />
-        )}
-      </section>
-
-      {showModal && (
-        <div
-          style={{
-            position: "fixed",
-            inset: 0,
-            background: "rgba(0,0,0,0.82)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 3000,
-            backdropFilter: "blur(4px)",
-            padding: 20,
-          }}
-          onClick={() => setShowModal(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              width: "100%",
-              maxWidth: 680,
-              background: "#0f172a",
-              border: "1px solid #284577",
-              borderRadius: 18,
-              padding: 24,
-              boxShadow: "0 30px 80px rgba(0,0,0,0.8)",
-            }}
-          >
-            <h2 style={{ marginTop: 0 }}>
-              {editingEventId ? "Editar evento" : "Nuevo evento"}
-            </h2>
-
-            <div style={{ display: "grid", gap: 12 }}>
-              <input
-                placeholder="Título"
-                value={form.title}
-                onChange={(e) => setForm((prev) => ({ ...prev, title: e.target.value }))}
-                style={inputStyle}
-              />
-
-              <textarea
-                placeholder="Descripción"
-                value={form.description}
-                onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))}
-                style={{ ...inputStyle, minHeight: 90, resize: "vertical" }}
-              />
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
-                <select
-                  value={form.event_type}
-                  onChange={(e) => setForm((prev) => ({ ...prev, event_type: e.target.value }))}
-                  style={inputStyle}
-                >
-                  <option value="Reunión">Reunión</option>
-                  <option value="Llamada">Llamada</option>
-                  <option value="Visita">Visita</option>
-                  <option value="Seguimiento">Seguimiento</option>
-                  <option value="Operación">Operación</option>
-                  <option value="Personal">Personal</option>
-                </select>
-
-                <select
-                  value={form.priority}
-                  onChange={(e) => setForm((prev) => ({ ...prev, priority: e.target.value }))}
-                  style={inputStyle}
-                >
-                  <option value="Baja">Baja</option>
-                  <option value="Media">Media</option>
-                  <option value="Alta">Alta</option>
-                  <option value="Crítica">Crítica</option>
-                </select>
-
-                <select
-                  value={form.status}
-                  onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}
-                  style={inputStyle}
-                >
-                  <option value="Programado">Programado</option>
-                  <option value="Confirmado">Confirmado</option>
-                  <option value="Completado">Completado</option>
-                  <option value="Cancelado">Cancelado</option>
-                </select>
-
-                <div>
-                  <label style={{ display: "block", marginBottom: 6, fontSize: 13 }}>Color</label>
-                  <input
-                    type="color"
-                    value={form.color}
-                    onChange={(e) => setForm((prev) => ({ ...prev, color: e.target.value }))}
-                    style={{ width: "100%", height: 44, background: "transparent", border: "none" }}
-                  />
-                </div>
-              </div>
-
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0, 1fr))", gap: 12 }}>
-                <input
-                  type="datetime-local"
-                  value={form.start_datetime}
-                  onChange={(e) => setForm((prev) => ({ ...prev, start_datetime: e.target.value }))}
-                  style={inputStyle}
-                />
-
-                <input
-                  type="datetime-local"
-                  value={form.end_datetime}
-                  onChange={(e) => setForm((prev) => ({ ...prev, end_datetime: e.target.value }))}
-                  style={inputStyle}
-                />
-
-                <input
-                  placeholder="Ubicación"
-                  value={form.location}
-                  onChange={(e) => setForm((prev) => ({ ...prev, location: e.target.value }))}
-                  style={inputStyle}
-                />
-
-                <input
-                  placeholder="Link de reunión"
-                  value={form.meeting_link}
-                  onChange={(e) => setForm((prev) => ({ ...prev, meeting_link: e.target.value }))}
-                  style={inputStyle}
-                />
-              </div>
-            </div>
-
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 20 }}>
-              <button
-                onClick={() => setShowModal(false)}
-                style={{ ...buttonStyle, background: "#475569" }}
-              >
-                Cancelar
-              </button>
-
-              {editingEventId && (
-                <button
-                  onClick={deleteEvent}
-                  style={{ ...buttonStyle, background: "#dc2626" }}
-                >
-                  Eliminar
-                </button>
-              )}
-
-              <button
-                onClick={saveEvent}
-                disabled={saving}
-                style={{ ...buttonStyle, background: "#2563eb", padding: "10px 16px" }}
-              >
-                {saving ? "Guardando..." : editingEventId ? "Guardar cambios" : "Crear evento"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
-  );
+function endOfWeek(date: Date) {
+  const start = startOfWeek(date);
+  const end = new Date(start);
+  end.setDate(start.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return end;
 }
 
-function DayView({
-  selectedDate,
-  events,
-  onCreate,
-  onEdit,
-}: {
-  selectedDate: string;
-  events: EventRow[];
-  onCreate: (dateTime?: string) => void;
-  onEdit: (event: EventRow) => void;
-}) {
-  const hours = Array.from({ length: 13 }, (_, i) => `${String(i + 8).padStart(2, "0")}:00`);
-  const selected = new Date(`${selectedDate}T12:00:00`);
-  const headerHeight = 48;
-  const hourHeight = 72;
-  const startHour = 8;
-  const endHour = 21;
-
-  const dayEvents = events.filter((ev) => {
-    const d = new Date(ev.start_datetime);
-    return (
-      d.getFullYear() === selected.getFullYear() &&
-      d.getMonth() === selected.getMonth() &&
-      d.getDate() === selected.getDate()
-    );
-  });
-
-  return (
-    <div
-      style={{
-        border: "1px solid #284577",
-        borderRadius: 12,
-        overflow: "hidden",
-        position: "relative",
-      }}
-    >
-      <div
-        style={{
-          background: "#0f1f3d",
-          padding: 12,
-          fontWeight: 700,
-          borderBottom: "1px solid #284577",
-        }}
-      >
-        {selected.toLocaleDateString("es-MX", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          year: "numeric",
-        })}
-      </div>
-
-      {hours.map((hour) => (
-        <div
-          key={hour}
-          onClick={() => onCreate(combineDateAndHour(selectedDate, hour))}
-          style={{
-            minHeight: hourHeight,
-            display: "grid",
-            gridTemplateColumns: "100px 1fr",
-            borderBottom: "1px solid #284577",
-            cursor: "pointer",
-          }}
-        >
-          <div
-            style={{
-              padding: "12px",
-              background: "#102244",
-              borderRight: "1px solid #284577",
-              fontWeight: 700,
-            }}
-          >
-            {hour}
-          </div>
-          <div />
-        </div>
-      ))}
-
-      {dayEvents.map((ev) => {
-        const start = new Date(ev.start_datetime);
-        const end = ev.end_datetime ? new Date(ev.end_datetime) : new Date(start.getTime() + 60 * 60 * 1000);
-
-        let startMinutes = (start.getHours() - startHour) * 60 + start.getMinutes();
-        let endMinutes = (end.getHours() - startHour) * 60 + end.getMinutes();
-
-        startMinutes = Math.max(startMinutes, 0);
-        endMinutes = Math.min(endMinutes, (endHour - startHour) * 60);
-
-        const durationMinutes = Math.max(endMinutes - startMinutes, 30);
-        const top = headerHeight + (startMinutes / 60) * hourHeight;
-        const height = (durationMinutes / 60) * hourHeight;
-
-        return (
-          <div
-            key={ev.id}
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(ev);
-            }}
-            style={{
-              position: "absolute",
-              top,
-              left: 108,
-              right: 8,
-              height,
-              background: ev.color || "#2563eb",
-              borderRadius: 8,
-              padding: "6px 10px",
-              color: "#fff",
-              cursor: "pointer",
-              boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
-              overflow: "hidden",
-            }}
-          >
-            <div style={{ fontWeight: 700 }}>{ev.title}</div>
-            <div style={{ fontSize: 12, opacity: 0.95 }}>
-              {start.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })} -{" "}
-              {end.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
-            </div>
-            {ev.location && <div style={{ fontSize: 12, marginTop: 4 }}>{ev.location}</div>}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function WeekView({
-  selectedDate,
-  events,
-  onCreate,
-  onEdit,
-}: {
-  selectedDate: string;
-  events: EventRow[];
-  onCreate: (dateTime?: string) => void;
-  onEdit: (event: EventRow) => void;
-}) {
-  const base = new Date(`${selectedDate}T12:00:00`);
-  const start = new Date(base);
-  start.setDate(base.getDate() - ((base.getDay() + 6) % 7));
-
-  const weekDays = Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(start);
-    d.setDate(start.getDate() + i);
-    return d;
-  });
-
-  const hours = Array.from({ length: 13 }, (_, i) => `${String(i + 8).padStart(2, "0")}:00`);
-  const hourHeight = 64;
-
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "80px repeat(7, 1fr)",
-        border: "1px solid #284577",
-        borderRadius: 12,
-        overflow: "hidden",
-        position: "relative",
-      }}
-    >
-      <div />
-
-      {weekDays.map((day, i) => {
-        const today = new Date();
-        const isToday =
-          day.getFullYear() === today.getFullYear() &&
-          day.getMonth() === today.getMonth() &&
-          day.getDate() === today.getDate();
-
-        return (
-          <div
-            key={i}
-            style={{
-              background: isToday ? "#1d4ed8" : "#0f1f3d",
-              padding: 10,
-              textAlign: "center",
-              fontWeight: 700,
-              borderLeft: "1px solid #284577",
-            }}
-          >
-            {day.toLocaleDateString("es-MX", {
-              weekday: "short",
-              day: "numeric",
-              month: "short",
-            })}
-          </div>
-        );
-      })}
-
-      {hours.map((hour) => (
-        <React.Fragment key={hour}>
-          <div
-            style={{
-              borderTop: "1px solid #284577",
-              padding: 8,
-              fontSize: 12,
-              color: "#9fb3d9",
-            }}
-          >
-            {hour}
-          </div>
-
-          {weekDays.map((day, i) => {
-            const dateISO = getLocalDateISO(day);
-
-            return (
-              <div
-                key={`${hour}-${i}`}
-                onClick={() => onCreate(combineDateAndHour(dateISO, hour))}
-                style={{
-                  borderTop: "1px solid #284577",
-                  borderLeft: "1px solid #284577",
-                  minHeight: hourHeight,
-                  cursor: "pointer",
-                }}
-              />
-            );
-          })}
-        </React.Fragment>
-      ))}
-
-      {events.map((ev) => {
-        const start = new Date(ev.start_datetime);
-        const end = ev.end_datetime ? new Date(ev.end_datetime) : new Date(start.getTime() + 60 * 60 * 1000);
-
-        const dayIndex = weekDays.findIndex(
-          (d) =>
-            d.getFullYear() === start.getFullYear() &&
-            d.getMonth() === start.getMonth() &&
-            d.getDate() === start.getDate()
-        );
-
-        if (dayIndex === -1) return null;
-
-        const startOffset = (start.getHours() - 8) * hourHeight + (start.getMinutes() / 60) * hourHeight;
-        const durationMinutes = Math.max((end.getTime() - start.getTime()) / 60000, 30);
-        const height = (durationMinutes / 60) * hourHeight;
-
-        return (
-          <div
-            key={ev.id}
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit(ev);
-            }}
-            style={{
-              position: "absolute",
-              top: 42 + startOffset,
-              left: `calc(80px + ${dayIndex} * ((100% - 80px) / 7) + 4px)`,
-              width: `calc((100% - 80px) / 7 - 8px)`,
-              height: Math.max(height, 24),
-              background: ev.color || "#2563eb",
-              borderRadius: 8,
-              padding: "4px 6px",
-              fontSize: 11,
-              color: "#fff",
-              cursor: "pointer",
-              zIndex: 20,
-              boxShadow: "0 3px 10px rgba(0,0,0,0.3)",
-              overflow: "hidden",
-            }}
-          >
-            <div style={{ fontWeight: 700 }}>{ev.title}</div>
-            <div>
-              {start.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-function MonthView({
-  selectedDate,
-  events,
-  onCreate,
-  onEdit,
-}: {
-  selectedDate: string;
-  events: EventRow[];
-  onCreate: (dateTime?: string) => void;
-  onEdit: (event: EventRow) => void;
-}) {
-  const base = new Date(`${selectedDate}T12:00:00`);
+function getMonthGrid(selectedDate: string) {
+  const base = new Date(selectedDate + "T12:00:00");
   const year = base.getFullYear();
   const month = base.getMonth();
 
@@ -909,276 +112,1172 @@ function MonthView({
     });
   }
 
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(7, 1fr)",
-        border: "1px solid #284577",
-        borderRadius: 12,
-        overflow: "hidden",
-      }}
-    >
-      {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => (
-        <div
-          key={d}
-          style={{
-            background: "#0f1f3d",
-            padding: 10,
-            textAlign: "center",
-            fontWeight: 700,
-            borderBottom: "1px solid #284577",
-            borderRight: "1px solid #284577",
-          }}
-        >
-          {d}
-        </div>
-      ))}
+  return days;
+}
 
-      {days.map((day, i) => {
-        const today = new Date();
-        const isToday =
-          day.date.getFullYear() === today.getFullYear() &&
-          day.date.getMonth() === today.getMonth() &&
-          day.date.getDate() === today.getDate();
+function getHours() {
+  const hours: string[] = [];
+  for (let h = HOURS_START; h <= HOURS_END; h++) {
+    hours.push(`${String(h).padStart(2, "0")}:00`);
+  }
+  return hours;
+}
 
-        const dayEvents = events.filter((e) => {
-          const d = new Date(e.start_datetime);
-          return d.toDateString() === day.date.toDateString();
+function getDayEvents(events: EventRow[], date: Date) {
+  return events.filter((ev) => {
+    const start = new Date(ev.start_datetime);
+    return (
+      start.getFullYear() === date.getFullYear() &&
+      start.getMonth() === date.getMonth() &&
+      start.getDate() === date.getDate()
+    );
+  });
+}
+
+function minutesFromStart(date: Date) {
+  return (date.getHours() - HOURS_START) * 60 + date.getMinutes();
+}
+
+function clamp(n: number, min: number, max: number) {
+  return Math.max(min, Math.min(n, max));
+}
+
+export default function Agenda() {
+  const [status, setStatus] = useState("Cargando agenda...");
+  const [loading, setLoading] = useState(false);
+  const [view, setView] = useState<CalendarView>("week");
+  const [selectedDate, setSelectedDate] = useState(getLocalDateISO());
+
+  const [events, setEvents] = useState<EventRow[]>([]);
+  const [selectedEvent, setSelectedEvent] = useState<EventRow | null>(null);
+  const [showModal, setShowModal] = useState(false);
+
+  const [companyId, setCompanyId] = useState<string | null>(null);
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
+  const [companyUsers, setCompanyUsers] = useState<CompanyUserRow[]>([]);
+
+  const [formTitle, setFormTitle] = useState("");
+  const [formDescription, setFormDescription] = useState("");
+  const [formType, setFormType] = useState("Reunión");
+  const [formPriority, setFormPriority] = useState("Media");
+  const [formStatus, setFormStatus] = useState("Programado");
+  const [formColor, setFormColor] = useState("#2563eb");
+  const [formLocation, setFormLocation] = useState("");
+  const [formMeetingLink, setFormMeetingLink] = useState("");
+  const [formStart, setFormStart] = useState("");
+  const [formEnd, setFormEnd] = useState("");
+  const [formAllDay, setFormAllDay] = useState(false);
+  const [formVisibility, setFormVisibility] = useState("company");
+
+  const [internalAttendees, setInternalAttendees] = useState<string[]>([]);
+  const [externalEmails, setExternalEmails] = useState("");
+  const [loadedAttendees, setLoadedAttendees] = useState<AttendeeRow[]>([]);
+
+  const currentDate = useMemo(
+    () => new Date(selectedDate + "T12:00:00"),
+    [selectedDate]
+  );
+
+  const weekDays = useMemo(() => {
+    const start = startOfWeek(currentDate);
+    return Array.from({ length: 7 }).map((_, i) => {
+      const d = new Date(start);
+      d.setDate(start.getDate() + i);
+      return d;
+    });
+  }, [currentDate]);
+
+  useEffect(() => {
+    initializeAgenda();
+  }, []);
+
+  useEffect(() => {
+    if (companyId) {
+      loadEvents();
+      loadCompanyUsers();
+    }
+  }, [companyId, selectedDate, view]);
+
+  async function initializeAgenda() {
+    try {
+      setLoading(true);
+
+      const {
+        data: { user },
+        error: authError,
+      } = await supabase.auth.getUser();
+
+      if (authError) {
+        setStatus("Error obteniendo usuario autenticado");
+        setLoading(false);
+        return;
+      }
+
+      if (!user) {
+        setStatus("No hay usuario autenticado");
+        setLoading(false);
+        return;
+      }
+
+      setAuthUserId(user.id);
+
+      const { data: membership, error: membershipError } = await supabase
+        .from("company_users")
+        .select("company_id, user_id, role")
+        .eq("user_id", user.id)
+        .limit(1)
+        .single();
+
+      if (membershipError || !membership) {
+        setStatus("No se encontró relación del usuario con una empresa");
+        setLoading(false);
+        return;
+      }
+
+      setCompanyId(membership.company_id);
+      setStatus("Agenda lista");
+    } catch (error) {
+      console.error(error);
+      setStatus("Error inicializando agenda");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function loadCompanyUsers() {
+    if (!companyId) return;
+
+    const { data, error } = await supabase
+      .from("company_users")
+      .select("id, company_id, user_id, role")
+      .eq("company_id", companyId);
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setCompanyUsers((data as CompanyUserRow[]) || []);
+  }
+
+  async function loadEvents() {
+    if (!companyId) return;
+
+    setLoading(true);
+
+    let fromDate = new Date(selectedDate + "T00:00:00");
+    let toDate = new Date(selectedDate + "T23:59:59");
+
+    if (view === "week") {
+      fromDate = startOfWeek(currentDate);
+      toDate = endOfWeek(currentDate);
+    }
+
+    if (view === "month") {
+      const base = new Date(selectedDate + "T12:00:00");
+      fromDate = new Date(base.getFullYear(), base.getMonth(), 1, 0, 0, 0, 0);
+      toDate = new Date(
+        base.getFullYear(),
+        base.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999
+      );
+    }
+
+    const { data, error } = await supabase
+      .from("calendar_events")
+      .select("*")
+      .eq("company_id", companyId)
+      .gte("start_datetime", fromDate.toISOString())
+      .lte("start_datetime", toDate.toISOString())
+      .order("start_datetime", { ascending: true });
+
+    if (error) {
+      console.error(error);
+      setStatus("Error cargando eventos");
+      setLoading(false);
+      return;
+    }
+
+    setEvents((data as EventRow[]) || []);
+    setLoading(false);
+  }
+
+  async function loadEventAttendees(eventId: string) {
+    const { data, error } = await supabase
+      .from("calendar_event_attendees")
+      .select("*")
+      .eq("event_id", eventId);
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    const attendees = (data as AttendeeRow[]) || [];
+    setLoadedAttendees(attendees);
+
+    setInternalAttendees(
+      attendees
+        .filter((a) => a.attendee_type === "internal" && a.user_id)
+        .map((a) => a.user_id as string)
+    );
+
+    setExternalEmails(
+      attendees
+        .filter((a) => a.attendee_type === "external" && a.email)
+        .map((a) => a.email)
+        .join(", ")
+    );
+  }
+
+  function resetForm() {
+    const now = new Date();
+    const later = new Date(now);
+    later.setHours(now.getHours() + 1);
+
+    setSelectedEvent(null);
+    setFormTitle("");
+    setFormDescription("");
+    setFormType("Reunión");
+    setFormPriority("Media");
+    setFormStatus("Programado");
+    setFormColor("#2563eb");
+    setFormLocation("");
+    setFormMeetingLink("");
+    setFormStart(formatDateTimeLocal(now));
+    setFormEnd(formatDateTimeLocal(later));
+    setFormAllDay(false);
+    setFormVisibility("company");
+    setInternalAttendees([]);
+    setExternalEmails("");
+    setLoadedAttendees([]);
+  }
+
+  function openNewEventModal(dateTime?: string) {
+    resetForm();
+
+    if (dateTime) {
+      const start = new Date(dateTime);
+      const end = new Date(start);
+      end.setHours(start.getHours() + 1);
+      setFormStart(formatDateTimeLocal(start));
+      setFormEnd(formatDateTimeLocal(end));
+    }
+
+    setShowModal(true);
+  }
+
+  async function openEditEventModal(event: EventRow) {
+    setSelectedEvent(event);
+    setFormTitle(event.title || "");
+    setFormDescription(event.description || "");
+    setFormType(event.event_type || event.event_type || "Reunión");
+    setFormPriority(event.priority || "Media");
+    setFormStatus(event.status || "Programado");
+    setFormColor(event.color || "#2563eb");
+    setFormLocation(event.location || "");
+    setFormMeetingLink(event.meeting_link || "");
+    setFormStart(formatDateTimeLocal(new Date(event.start_datetime)));
+    setFormEnd(
+      formatDateTimeLocal(
+        new Date(event.end_datetime || event.start_datetime)
+      )
+    );
+    setFormAllDay(Boolean(event.all_day));
+    setFormVisibility(event.visibility || "company");
+    await loadEventAttendees(event.id);
+    setShowModal(true);
+  }
+
+  async function saveEvent() {
+    if (!companyId || !authUserId) {
+      alert("No hay empresa o usuario autenticado");
+      return;
+    }
+
+    if (!formTitle || !formStart) {
+      alert("Completa título e inicio");
+      return;
+    }
+
+    const endDateTime = formEnd || formStart;
+
+    const payload = {
+      company_id: companyId,
+      title: formTitle,
+      description: formDescription || null,
+      event_type: formType,
+      start_datetime: new Date(formStart).toISOString(),
+      end_datetime: new Date(endDateTime).toISOString(),
+      location: formLocation || null,
+      meeting_link: formMeetingLink || null,
+      priority: formPriority,
+      status: formStatus,
+      color: formColor,
+      all_day: formAllDay,
+      visibility: formVisibility,
+      timezone: "America/Mexico_City",
+      created_by: authUserId,
+    };
+
+    let eventId = selectedEvent?.id || null;
+
+    if (selectedEvent) {
+      const { error } = await supabase
+        .from("calendar_events")
+        .update(payload)
+        .eq("id", selectedEvent.id);
+
+      if (error) {
+        console.error(error);
+        alert("Error actualizando evento");
+        return;
+      }
+
+      eventId = selectedEvent.id;
+
+      await supabase
+        .from("calendar_event_attendees")
+        .delete()
+        .eq("event_id", selectedEvent.id);
+    } else {
+      const { data, error } = await supabase
+        .from("calendar_events")
+        .insert(payload)
+        .select("id")
+        .single();
+
+      if (error || !data) {
+        console.error(error);
+        alert("Error creando evento");
+        return;
+      }
+
+      eventId = data.id;
+    }
+
+    if (eventId) {
+      const attendeeRows: any[] = [];
+
+      internalAttendees.forEach((userId) => {
+        attendeeRows.push({
+          event_id: eventId,
+          company_id: companyId,
+          user_id: userId,
+          attendee_type: "internal",
+          role: "required",
+          status: "pending",
+        });
+      });
+
+      externalEmails
+        .split(",")
+        .map((email) => email.trim())
+        .filter(Boolean)
+        .forEach((email) => {
+          attendeeRows.push({
+            event_id: eventId,
+            company_id: companyId,
+            email,
+            attendee_type: "external",
+            role: "required",
+            status: "pending",
+          });
         });
 
-        const dateISO = getLocalDateISO(day.date);
+      if (attendeeRows.length > 0) {
+        const { error } = await supabase
+          .from("calendar_event_attendees")
+          .insert(attendeeRows);
 
-        return (
+        if (error) {
+          console.error(error);
+          alert("Evento guardado, pero hubo error con invitados");
+        }
+      }
+    }
+
+    setShowModal(false);
+    resetForm();
+    loadEvents();
+  }
+
+  async function deleteEvent() {
+    if (!selectedEvent) return;
+    if (!confirm("¿Eliminar este evento?")) return;
+
+    await supabase
+      .from("calendar_event_attendees")
+      .delete()
+      .eq("event_id", selectedEvent.id);
+
+    const { error } = await supabase
+      .from("calendar_events")
+      .delete()
+      .eq("id", selectedEvent.id);
+
+    if (error) {
+      console.error(error);
+      alert("Error eliminando evento");
+      return;
+    }
+
+    setShowModal(false);
+    resetForm();
+    loadEvents();
+  }
+
+  async function moveEvent(eventId: string, targetDate: Date) {
+    const event = events.find((e) => e.id === eventId);
+    if (!event) return;
+
+    const start = new Date(event.start_datetime);
+    const end = new Date(event.end_datetime || event.start_datetime);
+    const durationMs = end.getTime() - start.getTime();
+
+    const newStart = new Date(targetDate);
+    const newEnd = new Date(newStart.getTime() + Math.max(durationMs, 30 * 60000));
+
+    const { error } = await supabase
+      .from("calendar_events")
+      .update({
+        start_datetime: newStart.toISOString(),
+        end_datetime: newEnd.toISOString(),
+      })
+      .eq("id", eventId);
+
+    if (error) {
+      console.error(error);
+      alert("No se pudo mover el evento");
+      return;
+    }
+
+    loadEvents();
+  }
+
+  function renderTopActions() {
+    return (
+      <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+        <button onClick={() => openNewEventModal()} style={primaryButton}>
+          Nuevo evento
+        </button>
+
+        <div style={{ display: "flex", gap: 8 }}>
+          {(["day", "week", "month"] as CalendarView[]).map((v) => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              style={{
+                ...secondaryButton,
+                background: view === v ? "#2563eb" : "#102244",
+              }}
+            >
+              {v === "day" ? "Día" : v === "week" ? "Semana" : "Mes"}
+            </button>
+          ))}
+        </div>
+
+        <button
+          onClick={() => setSelectedDate(getLocalDateISO())}
+          style={secondaryButton}
+        >
+          Hoy
+        </button>
+
+        <button
+          onClick={() => {
+            const d = new Date(currentDate);
+            if (view === "day") d.setDate(d.getDate() - 1);
+            if (view === "week") d.setDate(d.getDate() - 7);
+            if (view === "month") d.setMonth(d.getMonth() - 1);
+            setSelectedDate(getLocalDateISO(d));
+          }}
+          style={secondaryButton}
+        >
+          ◀
+        </button>
+
+        <button
+          onClick={() => {
+            const d = new Date(currentDate);
+            if (view === "day") d.setDate(d.getDate() + 1);
+            if (view === "week") d.setDate(d.getDate() + 7);
+            if (view === "month") d.setMonth(d.getMonth() + 1);
+            setSelectedDate(getLocalDateISO(d));
+          }}
+          style={secondaryButton}
+        >
+          ▶
+        </button>
+      </div>
+    );
+  }
+
+  function renderDayView() {
+    const dayEvents = getDayEvents(events, currentDate);
+
+    return (
+      <div
+        style={{
+          border: "1px solid #284577",
+          borderRadius: 14,
+          overflow: "hidden",
+          position: "relative",
+          background: "#0f1f3d",
+        }}
+      >
+        <div
+          style={{
+            padding: 14,
+            fontWeight: 700,
+            borderBottom: "1px solid #284577",
+            background: "#12284d",
+          }}
+        >
+          {currentDate.toLocaleDateString("es-MX", {
+            weekday: "long",
+            day: "numeric",
+            month: "long",
+            year: "numeric",
+          })}
+        </div>
+
+        {getHours().map((hour) => (
           <div
-            key={i}
-            onClick={() => onCreate(`${dateISO}T09:00`)}
+            key={hour}
+            onDragOver={(e) => e.preventDefault()}
+            onDrop={(e) => {
+              const eventId = e.dataTransfer.getData("eventId");
+              if (!eventId) return;
+              const [h, m] = hour.split(":");
+              const date = new Date(currentDate);
+              date.setHours(Number(h), Number(m), 0, 0);
+              moveEvent(eventId, date);
+            }}
+            onClick={() => {
+              const [h, m] = hour.split(":");
+              const date = new Date(currentDate);
+              date.setHours(Number(h), Number(m), 0, 0);
+              openNewEventModal(formatDateTimeLocal(date));
+            }}
             style={{
-              minHeight: 140,
-              padding: 6,
-              borderTop: "1px solid #284577",
-              borderRight: "1px solid #284577",
-              background: day.currentMonth ? "#08142c" : "#0b1b3a",
-              opacity: day.currentMonth ? 1 : 0.35,
+              display: "grid",
+              gridTemplateColumns: "90px 1fr",
+              minHeight: HOUR_HEIGHT,
+              borderBottom: "1px solid #284577",
               cursor: "pointer",
             }}
           >
             <div
               style={{
-                fontSize: 13,
+                padding: 12,
+                background: "#102244",
+                borderRight: "1px solid #284577",
                 fontWeight: 700,
-                background: isToday ? "#2563eb" : "transparent",
-                borderRadius: 6,
-                display: "inline-block",
-                padding: "3px 7px",
-                marginBottom: 6,
-                color: "#fff",
               }}
             >
-              {day.date.getDate()}
+              {hour}
             </div>
-
-            {dayEvents.slice(0, 4).map((ev) => {
-              const start = new Date(ev.start_datetime);
-              const end = ev.end_datetime ? new Date(ev.end_datetime) : new Date(start.getTime() + 60 * 60 * 1000);
-              const durationMin = Math.max((end.getTime() - start.getTime()) / 60000, 30);
-              const hours = Math.floor(durationMin / 60);
-              const mins = durationMin % 60;
-
-              return (
-                <div
-                  key={ev.id}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onEdit(ev);
-                  }}
-                  style={{
-                    background: ev.color || "#2563eb",
-                    padding: "5px 7px",
-                    borderRadius: 6,
-                    marginBottom: 5,
-                    fontSize: 11,
-                    color: "#fff",
-                    lineHeight: 1.2,
-                    cursor: "pointer",
-                  }}
-                >
-                  <div style={{ fontWeight: 700 }}>
-                    {start.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
-                  </div>
-                  <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                    {ev.title}
-                  </div>
-                  <div style={{ fontSize: 10, opacity: 0.85 }}>
-                    {hours > 0 ? `${hours}h ${mins}m` : `${mins}m`}
-                  </div>
-                </div>
-              );
-            })}
-
-            {dayEvents.length > 4 && (
-              <div style={{ fontSize: 10, opacity: 0.7 }}>
-                +{dayEvents.length - 4} más
-              </div>
-            )}
+            <div />
           </div>
-        );
-      })}
-    </div>
-  );
-}
+        ))}
 
-function YearView({
-  selectedDate,
-  events,
-  onCreate,
-  onEdit,
-}: {
-  selectedDate: string;
-  events: EventRow[];
-  onCreate: (dateTime?: string) => void;
-  onEdit: (event: EventRow) => void;
-}) {
-  const year = new Date(`${selectedDate}T12:00:00`).getFullYear();
+        {dayEvents.map((ev) => {
+          const start = new Date(ev.start_datetime);
+          const end = new Date(ev.end_datetime || ev.start_datetime);
 
-  return (
-    <div
-      style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(3, 1fr)",
-        gap: 16,
-      }}
-    >
-      {Array.from({ length: 12 }).map((_, monthIndex) => {
-        const firstDay = new Date(year, monthIndex, 1);
-        const startDay = (firstDay.getDay() + 6) % 7;
-        const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-        const prevMonthDays = new Date(year, monthIndex, 0).getDate();
+          const startMin = clamp(minutesFromStart(start), 0, (HOURS_END - HOURS_START + 1) * 60);
+          const endMin = clamp(minutesFromStart(end), 30, (HOURS_END - HOURS_START + 1) * 60);
 
-        const days: { date: Date; currentMonth: boolean }[] = [];
+          const top = 49 + (startMin / 60) * HOUR_HEIGHT;
+          const height = Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT, 30);
 
-        for (let i = startDay - 1; i >= 0; i--) {
-          days.push({
-            date: new Date(year, monthIndex - 1, prevMonthDays - i),
-            currentMonth: false,
-          });
-        }
-
-        for (let i = 1; i <= daysInMonth; i++) {
-          days.push({
-            date: new Date(year, monthIndex, i),
-            currentMonth: true,
-          });
-        }
-
-        while (days.length < 42) {
-          const d = days.length - daysInMonth - startDay + 1;
-          days.push({
-            date: new Date(year, monthIndex + 1, d),
-            currentMonth: false,
-          });
-        }
-
-        return (
-          <div
-            key={monthIndex}
-            style={{
-              background: "#0f1f3d",
-              padding: 10,
-              borderRadius: 10,
-            }}
-          >
+          return (
             <div
+              key={ev.id}
+              draggable
+              onDragStart={(e) => e.dataTransfer.setData("eventId", ev.id)}
+              onClick={(e) => {
+                e.stopPropagation();
+                openEditEventModal(ev);
+              }}
               style={{
+                position: "absolute",
+                top,
+                left: 96,
+                right: 10,
+                height,
+                background: ev.color || "#2563eb",
+                borderRadius: 8,
+                padding: "6px 10px",
+                color: "#fff",
+                cursor: "grab",
+                boxShadow: "0 6px 18px rgba(0,0,0,0.25)",
+                overflow: "hidden",
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>{ev.title}</div>
+              <div style={{ fontSize: 12, opacity: 0.9 }}>
+                {start.toLocaleTimeString("es-MX", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}{" "}
+                -{" "}
+                {end.toLocaleTimeString("es-MX", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  function renderWeekView() {
+    return (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "80px repeat(7, 1fr)",
+          border: "1px solid #284577",
+          borderRadius: 14,
+          overflow: "hidden",
+          background: "#0f1f3d",
+          position: "relative",
+        }}
+      >
+        <div style={{ background: "#12284d" }} />
+
+        {weekDays.map((day, i) => {
+          const isToday = getLocalDateISO(day) === getLocalDateISO(new Date());
+
+          return (
+            <div
+              key={i}
+              style={{
+                padding: 10,
                 textAlign: "center",
                 fontWeight: 700,
-                marginBottom: 8,
-                textTransform: "capitalize",
+                background: isToday ? "#1d4ed8" : "#12284d",
+                borderLeft: "1px solid #284577",
               }}
             >
-              {new Date(year, monthIndex).toLocaleString("es-MX", {
-                month: "long",
+              {day.toLocaleDateString("es-MX", {
+                weekday: "short",
+                day: "numeric",
+                month: "short",
               })}
             </div>
+          );
+        })}
 
+        {getHours().map((hour) => (
+          <React.Fragment key={hour}>
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(7, 1fr)",
-                fontSize: 10,
-                marginBottom: 4,
-                opacity: 0.7,
+                borderTop: "1px solid #284577",
+                padding: 8,
+                fontSize: 12,
+                background: "#102244",
               }}
             >
-              {["L", "M", "X", "J", "V", "S", "D"].map((d) => (
-                <div key={d} style={{ textAlign: "center" }}>
-                  {d}
-                </div>
-              ))}
+              {hour}
             </div>
 
+            {weekDays.map((day, i) => (
+              <div
+                key={i}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  const eventId = e.dataTransfer.getData("eventId");
+                  if (!eventId) return;
+                  const [h, m] = hour.split(":");
+                  const date = new Date(day);
+                  date.setHours(Number(h), Number(m), 0, 0);
+                  moveEvent(eventId, date);
+                }}
+                onClick={() => {
+                  const [h, m] = hour.split(":");
+                  const date = new Date(day);
+                  date.setHours(Number(h), Number(m), 0, 0);
+                  openNewEventModal(formatDateTimeLocal(date));
+                }}
+                style={{
+                  minHeight: 58,
+                  borderTop: "1px solid #284577",
+                  borderLeft: "1px solid #284577",
+                  cursor: "pointer",
+                }}
+              />
+            ))}
+          </React.Fragment>
+        ))}
+
+        {events.map((ev) => {
+          const start = new Date(ev.start_datetime);
+          const end = new Date(ev.end_datetime || ev.start_datetime);
+
+          const dayIndex = weekDays.findIndex(
+            (d) =>
+              d.getFullYear() === start.getFullYear() &&
+              d.getMonth() === start.getMonth() &&
+              d.getDate() === start.getDate()
+          );
+
+          if (dayIndex === -1) return null;
+
+          const startMin = clamp(minutesFromStart(start), 0, (HOURS_END - HOURS_START + 1) * 60);
+          const endMin = clamp(minutesFromStart(end), 30, (HOURS_END - HOURS_START + 1) * 60);
+
+          const top = 42 + (startMin / 60) * 58;
+          const height = Math.max(((endMin - startMin) / 60) * 58, 26);
+
+          return (
             <div
+              key={ev.id}
+              draggable
+              onDragStart={(e) => e.dataTransfer.setData("eventId", ev.id)}
+              onClick={() => openEditEventModal(ev)}
               style={{
-                display: "grid",
-                gridTemplateColumns: "repeat(7, 1fr)",
-                gap: 2,
+                position: "absolute",
+                top,
+                left: `calc(80px + ${dayIndex} * ((100% - 80px) / 7) + 4px)`,
+                width: `calc((100% - 80px) / 7 - 8px)`,
+                height,
+                background: ev.color || "#2563eb",
+                borderRadius: 8,
+                padding: "4px 6px",
+                fontSize: 11,
+                color: "#fff",
+                cursor: "grab",
+                boxShadow: "0 4px 14px rgba(0,0,0,0.25)",
+                overflow: "hidden",
               }}
             >
-              {days.map((day, i) => {
-                const today = new Date();
-                const isToday =
-                  day.date.getFullYear() === today.getFullYear() &&
-                  day.date.getMonth() === today.getMonth() &&
-                  day.date.getDate() === today.getDate();
+              <div style={{ fontWeight: 700 }}>{ev.title}</div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
-                const hasEvents = events.some((ev) => {
-                  const d = new Date(ev.start_datetime);
-                  return (
-                    d.getFullYear() === day.date.getFullYear() &&
-                    d.getMonth() === day.date.getMonth() &&
-                    d.getDate() === day.date.getDate()
-                  );
-                });
+  function renderMonthView() {
+    const monthDays = getMonthGrid(selectedDate);
+
+    return (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(7, 1fr)",
+          border: "1px solid #284577",
+          borderRadius: 14,
+          overflow: "hidden",
+          background: "#0f1f3d",
+        }}
+      >
+        {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => (
+          <div
+            key={d}
+            style={{
+              padding: 12,
+              textAlign: "center",
+              fontWeight: 700,
+              background: "#12284d",
+              borderBottom: "1px solid #284577",
+              borderRight: "1px solid #284577",
+            }}
+          >
+            {d}
+          </div>
+        ))}
+
+        {monthDays.map((day, i) => {
+          const isToday = getLocalDateISO(day.date) === getLocalDateISO(new Date());
+          const dayEvents = getDayEvents(events, day.date);
+
+          return (
+            <div
+              key={i}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                const eventId = e.dataTransfer.getData("eventId");
+                if (!eventId) return;
+                const d = new Date(day.date);
+                d.setHours(9, 0, 0, 0);
+                moveEvent(eventId, d);
+              }}
+              onClick={() => {
+                const d = new Date(day.date);
+                d.setHours(9, 0, 0, 0);
+                openNewEventModal(formatDateTimeLocal(d));
+              }}
+              style={{
+                minHeight: 150,
+                padding: 8,
+                borderTop: "1px solid #284577",
+                borderRight: "1px solid #284577",
+                background: day.currentMonth ? "#08142c" : "#0b1b3a",
+                opacity: day.currentMonth ? 1 : 0.35,
+                cursor: "pointer",
+              }}
+            >
+              <div
+                style={{
+                  display: "inline-block",
+                  padding: "3px 8px",
+                  borderRadius: 8,
+                  background: isToday ? "#2563eb" : "transparent",
+                  fontWeight: 700,
+                  marginBottom: 6,
+                }}
+              >
+                {day.date.getDate()}
+              </div>
+
+              {dayEvents.slice(0, 4).map((ev) => {
+                const start = new Date(ev.start_datetime);
+                const end = new Date(ev.end_datetime || ev.start_datetime);
 
                 return (
                   <div
-                    key={i}
-                    onClick={() => onCreate(`${getLocalDateISO(day.date)}T09:00`)}
+                    key={ev.id}
+                    draggable
+                    onDragStart={(e) => e.dataTransfer.setData("eventId", ev.id)}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditEventModal(ev);
+                    }}
                     style={{
-                      padding: 4,
-                      textAlign: "center",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                      background: isToday ? "#2563eb" : "#08142c",
-                      opacity: day.currentMonth ? 1 : 0.3,
-                      border: "1px solid #1e335c",
+                      background: ev.color || "#2563eb",
+                      color: "#fff",
+                      borderRadius: 6,
+                      padding: "4px 6px",
+                      marginBottom: 4,
                       fontSize: 11,
-                      position: "relative",
                     }}
                   >
-                    <span>{day.date.getDate()}</span>
-
-                    {hasEvents && (
-                      <div
-                        style={{
-                          position: "absolute",
-                          bottom: 2,
-                          left: "50%",
-                          transform: "translateX(-50%)",
-                          width: 6,
-                          height: 6,
-                          borderRadius: "50%",
-                          background: "#60a5fa",
-                        }}
-                      />
-                    )}
+                    <div style={{ fontWeight: 700 }}>
+                      {start.toLocaleTimeString("es-MX", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </div>
+                    <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {ev.title}
+                    </div>
+                    <div style={{ fontSize: 10, opacity: 0.9 }}>
+                      {Math.max(
+                        Math.round(
+                          (end.getTime() - start.getTime()) / 60000
+                        ),
+                        30
+                      )} min
+                    </div>
                   </div>
                 );
               })}
+
+              {dayEvents.length > 4 && (
+                <div style={{ fontSize: 11, opacity: 0.8 }}>
+                  +{dayEvents.length - 4} más
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: "grid", gap: 18 }}>
+      <div>
+        <h2 style={{ margin: 0, fontSize: 34 }}>Agenda</h2>
+        <p style={{ color: "#9fb3d9", marginTop: 8 }}>
+          Agenda Ultra Pro multiempresa
+        </p>
+      </div>
+
+      <div
+        style={{
+          background: "#12284d",
+          border: "1px solid #284577",
+          padding: "12px 14px",
+          borderRadius: 12,
+          color: "#dbe7ff",
+          fontSize: 14,
+        }}
+      >
+        {status}
+      </div>
+
+      {renderTopActions()}
+
+      {loading ? (
+        <div style={panelStyle}>Cargando agenda...</div>
+      ) : (
+        <>
+          {view === "day" && renderDayView()}
+          {view === "week" && renderWeekView()}
+          {view === "month" && renderMonthView()}
+        </>
+      )}
+
+      {showModal && (
+        <div
+          onClick={() => setShowModal(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.75)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 5000,
+            padding: 20,
+          }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: "100%",
+              maxWidth: 760,
+              maxHeight: "92vh",
+              overflowY: "auto",
+              background: "#0f172a",
+              border: "1px solid #284577",
+              borderRadius: 16,
+              padding: 22,
+              boxShadow: "0 30px 80px rgba(0,0,0,0.45)",
+            }}
+          >
+            <h3 style={{ marginTop: 0 }}>
+              {selectedEvent ? "Editar evento" : "Nuevo evento"}
+            </h3>
+
+            <div style={formGrid}>
+              <input
+                placeholder="Título"
+                value={formTitle}
+                onChange={(e) => setFormTitle(e.target.value)}
+                style={inputStyle}
+              />
+
+              <select value={formType} onChange={(e) => setFormType(e.target.value)} style={inputStyle}>
+                <option>Reunión</option>
+                <option>Llamada</option>
+                <option>Visita</option>
+                <option>Seguimiento</option>
+                <option>Operación</option>
+                <option>Personal</option>
+              </select>
+
+              <textarea
+                placeholder="Descripción"
+                value={formDescription}
+                onChange={(e) => setFormDescription(e.target.value)}
+                style={{ ...inputStyle, minHeight: 90, gridColumn: "1 / -1", resize: "vertical" }}
+              />
+
+              <input
+                type="datetime-local"
+                value={formStart}
+                onChange={(e) => setFormStart(e.target.value)}
+                style={inputStyle}
+              />
+
+              <input
+                type="datetime-local"
+                value={formEnd}
+                onChange={(e) => setFormEnd(e.target.value)}
+                style={inputStyle}
+              />
+
+              <input
+                placeholder="Ubicación"
+                value={formLocation}
+                onChange={(e) => setFormLocation(e.target.value)}
+                style={inputStyle}
+              />
+
+              <input
+                placeholder="Meeting link"
+                value={formMeetingLink}
+                onChange={(e) => setFormMeetingLink(e.target.value)}
+                style={inputStyle}
+              />
+
+              <select value={formPriority} onChange={(e) => setFormPriority(e.target.value)} style={inputStyle}>
+                <option>Baja</option>
+                <option>Media</option>
+                <option>Alta</option>
+                <option>Crítica</option>
+              </select>
+
+              <select value={formStatus} onChange={(e) => setFormStatus(e.target.value)} style={inputStyle}>
+                <option>Programado</option>
+                <option>Confirmado</option>
+                <option>Completado</option>
+                <option>Cancelado</option>
+              </select>
+
+              <select value={formVisibility} onChange={(e) => setFormVisibility(e.target.value)} style={inputStyle}>
+                <option value="company">Empresa</option>
+                <option value="private">Privado</option>
+                <option value="team">Equipo</option>
+              </select>
+
+              <div style={{ ...inputStyle, display: "flex", alignItems: "center", gap: 10 }}>
+                <label>Color</label>
+                <input
+                  type="color"
+                  value={formColor}
+                  onChange={(e) => setFormColor(e.target.value)}
+                  style={{ width: 44, height: 30, border: "none", background: "transparent" }}
+                />
+              </div>
+
+              <div style={{ ...inputStyle, display: "flex", alignItems: "center", gap: 10 }}>
+                <input
+                  id="all-day"
+                  type="checkbox"
+                  checked={formAllDay}
+                  onChange={(e) => setFormAllDay(e.target.checked)}
+                />
+                <label htmlFor="all-day">Todo el día</label>
+              </div>
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={labelStyle}>Invitados internos</label>
+                <select
+                  multiple
+                  value={internalAttendees}
+                  onChange={(e) => {
+                    const values = Array.from(e.target.selectedOptions).map((o) => o.value);
+                    setInternalAttendees(values);
+                  }}
+                  style={{ ...inputStyle, minHeight: 120 }}
+                >
+                  {companyUsers.map((u) => (
+                    <option key={u.id} value={u.user_id}>
+                      {u.user_id} {u.role ? `— ${u.role}` : ""}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ gridColumn: "1 / -1" }}>
+                <label style={labelStyle}>Invitados externos</label>
+                <input
+                  placeholder="correo1@empresa.com, correo2@empresa.com"
+                  value={externalEmails}
+                  onChange={(e) => setExternalEmails(e.target.value)}
+                  style={inputStyle}
+                />
+              </div>
+            </div>
+
+            {selectedEvent && loadedAttendees.length > 0 && (
+              <div style={{ marginTop: 18 }}>
+                <h4 style={{ marginBottom: 8 }}>Invitados cargados</h4>
+                <div style={{ display: "grid", gap: 8 }}>
+                  {loadedAttendees.map((a) => (
+                    <div key={a.id} style={miniCardStyle}>
+                      {a.email || a.user_id || "Invitado"} — {a.attendee_type} — {a.status}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
+              <button onClick={() => setShowModal(false)} style={secondaryButton}>
+                Cancelar
+              </button>
+
+              {selectedEvent && (
+                <button
+                  onClick={deleteEvent}
+                  style={{
+                    ...secondaryButton,
+                    background: "#b91c1c",
+                  }}
+                >
+                  Eliminar
+                </button>
+              )}
+
+              <button onClick={saveEvent} style={primaryButton}>
+                {selectedEvent ? "Guardar cambios" : "Crear evento"}
+              </button>
             </div>
           </div>
-        );
-      })}
+        </div>
+      )}
     </div>
   );
 }
+
+const panelStyle: React.CSSProperties = {
+  background: "#12284d",
+  border: "1px solid #284577",
+  borderRadius: 16,
+  padding: 20,
+};
+
+const formGrid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
+  gap: 12,
+};
+
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  background: "#0b1220",
+  color: "#fff",
+  border: "1px solid #334155",
+  borderRadius: 10,
+  padding: "12px 14px",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+const labelStyle: React.CSSProperties = {
+  display: "block",
+  marginBottom: 8,
+  color: "#cbd5e1",
+  fontSize: 13,
+};
+
+const primaryButton: React.CSSProperties = {
+  background: "#2563eb",
+  color: "#fff",
+  border: "none",
+  borderRadius: 10,
+  padding: "10px 16px",
+  cursor: "pointer",
+  fontWeight: 700,
+};
+
+const secondaryButton: React.CSSProperties = {
+  background: "#102244",
+  color: "#fff",
+  border: "1px solid #284577",
+  borderRadius: 10,
+  padding: "10px 16px",
+  cursor: "pointer",
+};
+
+const miniCardStyle: React.CSSProperties = {
+  background: "#12284d",
+  border: "1px solid #284577",
+  borderRadius: 10,
+  padding: "10px 12px",
+};
