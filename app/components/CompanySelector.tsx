@@ -1,66 +1,53 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
+import { useTenant } from "@/lib/tenant/TenantProvider";
 
 export default function CompanySelector() {
-  const [companies, setCompanies] = useState<any[]>([]);
-  const [activeCompany, setActiveCompany] = useState<string>("");
+  const { companyId, memberships, loadingTenant, setActiveCompany } =
+    useTenant();
 
-  useEffect(() => {
-    loadCompanies();
-
-    const saved = localStorage.getItem("activeCompanyId");
-    if (saved) setActiveCompany(saved);
-  }, []);
-
-  async function loadCompanies() {
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
-
-    if (!user) return;
-
-    const { data } = await supabase
-      .from("company_users")
-      .select("company_id, companies(name)")
-      .eq("user_id", user.id);
-
-    setCompanies(data || []);
+  if (loadingTenant) {
+    return (
+      <select
+        disabled
+        style={{
+          background: "#0f2045",
+          color: "#fff",
+          border: "1px solid #2a4a88",
+          padding: "10px 12px",
+          borderRadius: 8,
+          fontWeight: 600,
+        }}
+      >
+        <option>Cargando...</option>
+      </select>
+    );
   }
-
- async function changeCompany(companyId: string) {
-  setActiveCompany(companyId);
-
-  const { data: userData } = await supabase.auth.getUser();
-  const user = userData.user;
-
-  if (!user) return;
-
-  // Guardar empresa activa en DB
-  await supabase
-    .from("user_settings")
-    .upsert({
-      user_id: user.id,
-      active_company_id: companyId,
-      updated_at: new Date().toISOString(),
-    });
-
-  // Recargar para que TenantProvider actualice contexto
-  window.location.reload();
-}
 
   return (
     <select
-      value={activeCompany}
-      onChange={(e) => changeCompany(e.target.value)}
+      value={companyId || ""}
+      onChange={(e) => setActiveCompany(e.target.value)}
+      disabled={memberships.length === 0}
+      style={{
+        background: "#0f2045",
+        color: "#fff",
+        border: "1px solid #2a4a88",
+        padding: "10px 12px",
+        borderRadius: 8,
+        fontWeight: 600,
+        minWidth: 220,
+      }}
     >
-      <option value="">Seleccionar empresa</option>
-
-      {companies.map((c) => (
-        <option key={c.company_id} value={c.company_id}>
-          {c.companies.name}
-        </option>
-      ))}
+      {memberships.length === 0 ? (
+        <option value="">Sin empresas</option>
+      ) : (
+        memberships.map((m) => (
+          <option key={m.id} value={m.company_id}>
+            {m.company_name || "Empresa"}
+          </option>
+        ))
+      )}
     </select>
   );
 }
