@@ -1,6 +1,11 @@
 import { supabase } from "@/lib/supabaseClient";
 
-// 🔹 Obtener eventos por empresa
+/* =========================================================
+   📅 AGENDA SERVICE — Mobility OS
+   Capa de acceso a datos para calendario multiempresa
+   ========================================================= */
+
+/* 🔹 Obtener eventos por empresa */
 export async function getCalendarEventsByCompany(
   companyId: string,
   options?: { fromIso?: string; toIso?: string }
@@ -26,7 +31,7 @@ export async function getCalendarEventsByCompany(
   return data;
 }
 
-// 🔹 Obtener asistentes de evento
+/* 🔹 Obtener asistentes de evento */
 export async function getCalendarEventAttendees(eventId: string) {
   const { data, error } = await supabase
     .from("calendar_event_attendees")
@@ -38,7 +43,7 @@ export async function getCalendarEventAttendees(eventId: string) {
   return data;
 }
 
-// 🔹 Crear evento
+/* 🔹 Crear evento */
 export async function createCalendarEvent(payload: any) {
   const { data, error } = await supabase
     .from("calendar_events")
@@ -51,7 +56,7 @@ export async function createCalendarEvent(payload: any) {
   return data;
 }
 
-// 🔹 Actualizar evento
+/* 🔹 Actualizar evento */
 export async function updateCalendarEvent(id: string, payload: any) {
   const { error } = await supabase
     .from("calendar_events")
@@ -61,7 +66,7 @@ export async function updateCalendarEvent(id: string, payload: any) {
   if (error) throw error;
 }
 
-// 🔹 Eliminar evento
+/* 🔹 Eliminar evento */
 export async function deleteCalendarEvent(id: string) {
   const { error } = await supabase
     .from("calendar_events")
@@ -69,4 +74,20 @@ export async function deleteCalendarEvent(id: string) {
     .eq("id", id);
 
   if (error) throw error;
+}
+
+/* =========================================================
+   👥 ORGANIZACIÓN / MULTIEMPRESA
+   ========================================================= */
+
+/* 🔹 Obtener usuarios de la empresa */
+export async function getCompanyUsers(companyId: string) {
+  const { data, error } = await supabase
+    .from("company_users")
+    .select("id, company_id, user_id, role")
+    .eq("company_id", companyId);
+
+  if (error) throw error;
+
+  return data;
 }
