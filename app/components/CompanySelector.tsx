@@ -28,13 +28,26 @@ export default function CompanySelector() {
     setCompanies(data || []);
   }
 
-  async function changeCompany(companyId: string) {
-    setActiveCompany(companyId);
+ async function changeCompany(companyId: string) {
+  setActiveCompany(companyId);
 
-    localStorage.setItem("activeCompanyId", companyId);
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
 
-    window.location.reload();
-  }
+  if (!user) return;
+
+  // Guardar empresa activa en DB
+  await supabase
+    .from("user_settings")
+    .upsert({
+      user_id: user.id,
+      active_company_id: companyId,
+      updated_at: new Date().toISOString(),
+    });
+
+  // Recargar para que TenantProvider actualice contexto
+  window.location.reload();
+}
 
   return (
     <select
