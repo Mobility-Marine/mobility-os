@@ -54,7 +54,7 @@ export default function CreateCompanyPage() {
     setLoading(false);
   }
 
-  return (
+   return (
     <div style={{ padding: 40 }}>
       <h1>Crear empresa</h1>
 
@@ -75,5 +75,5 @@ export default function CreateCompanyPage() {
         {loading ? "Creando..." : "Crear empresa"}
       </button>
     </div>
-    }
-:::
+  );
+}
