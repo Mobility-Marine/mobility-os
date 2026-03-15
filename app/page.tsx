@@ -22,7 +22,7 @@ export default function Home() {
   const router = useRouter();
 
   const [activeView, setActiveView] = useState<ViewName>("Dashboard");
-  const [status, setStatus] = useState("Sistema listo");
+  const [status] = useState("Sistema listo");
 
   const modules: ViewName[] = useMemo(
     () => [
@@ -47,38 +47,46 @@ export default function Home() {
     }
   }, [loading, user, router]);
 
-  // ⏳ Loader mientras valida sesión
+  // ⏳ Loader
   if (loading || !user) {
-    return (
-      <div style={{ padding: 40 }}>
-        Verificando sesión...
-      </div>
-    );
+    return <div style={{ padding: 40 }}>Verificando sesión...</div>;
   }
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "#08142c",
+        background: "#070f24",
         color: "#fff",
-        fontFamily: "Arial",
+        fontFamily: "Inter, Arial",
         display: "grid",
-        gridTemplateColumns: "260px 1fr",
+        gridTemplateColumns: "280px 1fr",
       }}
     >
       {/* SIDEBAR */}
       <aside
         style={{
-          background: "#0b1b3a",
-          borderRight: "1px solid #1e335c",
+          background: "#0b1733",
+          borderRight: "1px solid #1f2f5a",
           padding: 24,
+          display: "flex",
+          flexDirection: "column",
         }}
       >
-        <h2>Mobility OS</h2>
-        <p style={{ color: "#9fb3d9" }}>Mobility Marine</p>
+        {/* LOGO */}
+        <div style={{ marginBottom: 28 }}>
+          <img
+            src="/logo.png"
+            alt="Mobility OS"
+            style={{ width: "100%", maxWidth: 180 }}
+          />
+          <p style={{ color: "#9fb3d9", marginTop: 6 }}>
+            Mobility Marine
+          </p>
+        </div>
 
-        <div style={{ marginTop: 24 }}>
+        {/* MENÚ */}
+        <div style={{ flex: 1 }}>
           {modules.map((m) => (
             <div
               key={m}
@@ -88,36 +96,54 @@ export default function Home() {
                 borderRadius: 10,
                 marginBottom: 8,
                 cursor: "pointer",
-                background: activeView === m ? "#16315f" : "transparent",
+                background:
+                  activeView === m ? "#1b3a7a" : "transparent",
                 border:
                   activeView === m
-                    ? "1px solid #2f5aa6"
+                    ? "1px solid #3b6ed6"
                     : "1px solid transparent",
+                transition: "0.15s",
               }}
             >
               {m}
             </div>
           ))}
         </div>
+
+        {/* USUARIO */}
+        <div
+          style={{
+            paddingTop: 16,
+            borderTop: "1px solid #1f2f5a",
+            fontSize: 14,
+            color: "#9fb3d9",
+          }}
+        >
+          Conectado como:
+          <div style={{ color: "#fff", marginTop: 4 }}>
+            {user.email}
+          </div>
+        </div>
       </aside>
 
       {/* MAIN */}
-      <main style={{ padding: 28 }}>
+      <main style={{ padding: 32 }}>
         <header
           style={{
             display: "flex",
             justifyContent: "space-between",
-            marginBottom: 24,
+            marginBottom: 28,
           }}
         >
-          <h1>{activeView}</h1>
+          <h1 style={{ fontSize: 28 }}>{activeView}</h1>
 
           <div
             style={{
-              background: "#102244",
-              padding: "10px 14px",
+              background: "#0f2045",
+              padding: "10px 16px",
               borderRadius: 10,
-              border: "1px solid #284577",
+              border: "1px solid #2a4a88",
+              fontSize: 14,
             }}
           >
             {status}
