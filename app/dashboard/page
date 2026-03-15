@@ -1,0 +1,39 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
+
+export default function DashboardPage() {
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    checkCompany();
+  }, []);
+
+  async function checkCompany() {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+
+    if (!userId) return;
+
+    // Buscar si el usuario pertenece a alguna empresa
+    const { data } = await supabase
+      .from("company_users")
+      .select("company_id")
+      .eq("user_id", userId)
+      .limit(1);
+
+    if (!data || data.length === 0) {
+      // ❌ No tiene empresa → enviar a crear empresa
+      router.replace("/create-company");
+    } else {
+      setLoading(false);
+    }
+  }
+
+  if (loading) return <div>Cargando...</div>;
+
+  return <div>Dashboard principal</div>;
+}
