@@ -4,6 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import Agenda from "./components/Agenda";
+import { supabase } from "@/lib/supabaseClient";
 
 type ViewName =
   | "Dashboard"
@@ -187,7 +188,10 @@ export default function Home() {
 
     {/* LOGOUT */}
     <button
-      onClick={() => router.push("/login")}
+     onClick={async () => {
+  await supabase.auth.signOut();
+  router.replace("/login");
+}}
       style={{
         background: "#1f3a8a",
         border: "none",
