@@ -17,7 +17,8 @@ type ViewName =
   | "Facturación"
   | "Reportes"
   | "Proveedores"
-  | "Comercio Exterior";
+  | "Comercio Exterior"
+  | "Empresa";
 
 export default function Home() {
   const { user, loading } = useAuth();
@@ -33,21 +34,22 @@ export default function Home() {
   const [activeView, setActiveView] =
     useState<ViewName>("Dashboard");
 
-  const modules: ViewName[] = useMemo(
-    () => [
-      "Dashboard",
-      "Prospectos",
-      "CRM",
-      "Agenda",
-      "Cotizaciones",
-      "Embarques",
-      "Facturación",
-      "Reportes",
-      "Proveedores",
-      "Comercio Exterior",
-    ],
-    []
-  );
+ const modules: ViewName[] = useMemo(
+  () => [
+    "Dashboard",
+    "Prospectos",
+    "CRM",
+    "Agenda",
+    "Cotizaciones",
+    "Embarques",
+    "Facturación",
+    "Reportes",
+    "Proveedores",
+    "Comercio Exterior",
+    "Empresa",
+  ],
+  []
+);
 
   // 🔐 Redirección si no hay sesión
   useEffect(() => {
@@ -127,28 +129,31 @@ if (!companyId) {
         {/* MENÚ */}
         <div style={{ flex: 1 }}>
           {modules.map((m) => (
-            <div
-              key={m}
-              onClick={() => setActiveView(m)}
-              style={{
-                padding: "12px 14px",
-                borderRadius: 10,
-                marginBottom: 8,
-                cursor: "pointer",
-                background:
-                  activeView === m
-                    ? "#1b3a7a"
-                    : "transparent",
-                border:
-                  activeView === m
-                    ? "1px solid #3b6ed6"
-                    : "1px solid transparent",
-              }}
-            >
-              {m}
-            </div>
-          ))}
-        </div>
+  <div
+    key={m}
+    onClick={() => {
+      if (m === "Empresa") {
+        router.push("/company");
+        return;
+      }
+      setActiveView(m);
+    }}
+    style={{
+      padding: "12px 14px",
+      borderRadius: 10,
+      marginBottom: 8,
+      cursor: "pointer",
+      background:
+        activeView === m ? "#1b3a7a" : "transparent",
+      border:
+        activeView === m
+          ? "1px solid #3b6ed6"
+          : "1px solid transparent",
+    }}
+  >
+    {m}
+  </div>
+))}
 
         {/* USUARIO */}
         <div
