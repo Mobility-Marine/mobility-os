@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import Agenda from "./components/Agenda";
 import { supabase } from "@/lib/supabaseClient";
+import { useTenant } from "@/lib/tenant/TenantProvider";
 
 type ViewName =
   | "Dashboard"
@@ -20,6 +21,7 @@ type ViewName =
 
 export default function Home() {
   const { user, loading } = useAuth();
+  const { companyId, memberships, loadingTenant, setActiveCompany } = useTenant();
   const router = useRouter();
 
   const [activeView, setActiveView] = useState<ViewName>("Dashboard");
@@ -49,9 +51,9 @@ export default function Home() {
   }, [loading, user, router]);
 
   // ⏳ Loader
-  if (loading || !user) {
-    return <div style={{ padding: 40 }}>Verificando sesión...</div>;
-  }
+  if (loading || loadingTenant || !user) {
+  return <div style={{ padding: 40 }}>Verificando sesión...</div>;
+}
 
   return (
     <div
@@ -161,19 +163,71 @@ export default function Home() {
   </div>
 
   {/* DERECHA */}
-  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-    {/* ESTADO */}
-    <div
-      style={{
-        background: "#0f2045",
-        padding: "8px 14px",
-        borderRadius: 10,
-        border: "1px solid #2a4a88",
-        fontSize: 13,
-      }}
-    >
-      Sistema activo
-    </div>
+<div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+
+  {/* SELECTOR DE EMPRESA */}
+  <select
+    value={companyId || ""}
+    onChange={(e) => setActiveCompany(e.target.value)}
+    style={{
+      background: "#0f2045",
+      color: "#fff",
+      border: "1px solid #2a4a88",
+      padding: "10px 12px",
+      borderRadius: 8,
+      fontWeight: 600,
+    }}
+  >
+    {memberships.map((m) => (
+      <option key={m.id} value={m.company_id}>
+        Empresa {m.company_id.slice(0, 6)}
+      </option>
+    ))}
+  </select>
+
+  {/* ESTADO */}
+  <div
+    style={{
+      background: "#0f2045",
+      padding: "8px 14px",
+      borderRadius: 10,
+      border: "1px solid #2a4a88",
+      fontSize: 13,
+    }}
+  >
+    Sistema activo
+  </div>
+
+  {/* USUARIO */}
+  <div
+    style={{
+      textAlign: "right",
+      fontSize: 13,
+    }}
+  >
+    <div style={{ color: "#9fb3d9" }}>Usuario</div>
+    <div style={{ fontWeight: 600 }}>{user.email}</div>
+  </div>
+
+  {/* LOGOUT */}
+  <button
+    onClick={async () => {
+      await supabase.auth.signOut();
+      router.replace("/login");
+    }}
+    style={{
+      background: "#1f3a8a",
+      border: "none",
+      padding: "10px 14px",
+      borderRadius: 8,
+      color: "#fff",
+      cursor: "pointer",
+      fontWeight: 600,
+    }}
+  >
+    Salir
+  </button>
+</div>
 
     {/* USUARIO */}
     <div
