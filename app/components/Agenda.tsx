@@ -147,6 +147,7 @@ export default function Agenda() {
   const { user, companyId, loading } = useAuth();
   const [status, setStatus] = useState("Cargando agenda...");
   const [view, setView] = useState<CalendarView>("week");
+  const [eventsLoading, setEventsLoading] = useState(false);
   const [selectedDate, setSelectedDate] = useState(getLocalDateISO());
 
   const [events, setEvents] = useState<EventRow[]>([]);
@@ -200,7 +201,7 @@ export default function Agenda() {
 
   async function initializeAgenda() {
     try {
-      setLoading(true);
+      setEventsLoading(true);
 
       const {
         data: { user },
@@ -209,13 +210,13 @@ export default function Agenda() {
 
       if (authError) {
         setStatus("Error obteniendo usuario autenticado");
-        setLoading(false);
+        setEventsLoading(false);
         return;
       }
 
       if (!user) {
         setStatus("No hay usuario autenticado");
-        setLoading(false);
+        setEventsLoading(false);
         return;
       }
 
@@ -230,7 +231,7 @@ export default function Agenda() {
 
       if (membershipError || !membership) {
         setStatus("No se encontró relación del usuario con una empresa");
-        setLoading(false);
+        setEventsLoading(false);
         return;
       }
 
@@ -240,7 +241,7 @@ export default function Agenda() {
       console.error(error);
       setStatus("Error inicializando agenda");
     } finally {
-      setLoading(false);
+      setEventsLoading(false);
     }
   }
 
@@ -263,7 +264,7 @@ export default function Agenda() {
   async function loadEvents() {
     if (!companyId) return;
 
-    setLoading(true);
+    setEventsLoading(true);
 
     let fromDate = new Date(selectedDate + "T00:00:00");
     let toDate = new Date(selectedDate + "T23:59:59");
@@ -299,12 +300,12 @@ export default function Agenda() {
     if (error) {
       console.error(error);
       setStatus("Error cargando eventos");
-      setLoading(false);
+      setEventsLoading(false);
       return;
     }
 
     setEvents((data as EventRow[]) || []);
-    setLoading(false);
+    setEventsLoading(false);
   }
 
   async function loadEventAttendees(eventId: string) {
