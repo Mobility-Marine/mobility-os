@@ -91,7 +91,6 @@ if (!companyId) {
       </button>
     </div>
   );
-}
 
   return (
     <div
