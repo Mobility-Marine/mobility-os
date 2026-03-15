@@ -128,27 +128,80 @@ export default function Home() {
 
       {/* MAIN */}
       <main style={{ padding: 32 }}>
-        <header
-          style={{
-            display: "flex",
-            justifyContent: "space-between",
-            marginBottom: 28,
-          }}
-        >
-          <h1 style={{ fontSize: 28 }}>{activeView}</h1>
+       <header
+  style={{
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 28,
+    background: "#0b1733",
+    padding: "12px 18px",
+    borderRadius: 12,
+    border: "1px solid #1f2f5a",
+  }}
+>
+  {/* IZQUIERDA */}
+  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+    <img
+      src="/logo.png"
+      alt="Mobility OS"
+      style={{ width: 38, height: 38 }}
+    />
 
-          <div
-            style={{
-              background: "#0f2045",
-              padding: "10px 16px",
-              borderRadius: 10,
-              border: "1px solid #2a4a88",
-              fontSize: 14,
-            }}
-          >
-            {status}
-          </div>
-        </header>
+    <div>
+      <div style={{ fontSize: 20, fontWeight: 600 }}>
+        {activeView}
+      </div>
+
+      <div style={{ fontSize: 12, color: "#9fb3d9" }}>
+        Mobility OS Platform
+      </div>
+    </div>
+  </div>
+
+  {/* DERECHA */}
+  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+    {/* ESTADO */}
+    <div
+      style={{
+        background: "#0f2045",
+        padding: "8px 14px",
+        borderRadius: 10,
+        border: "1px solid #2a4a88",
+        fontSize: 13,
+      }}
+    >
+      Sistema activo
+    </div>
+
+    {/* USUARIO */}
+    <div
+      style={{
+        textAlign: "right",
+        fontSize: 13,
+      }}
+    >
+      <div style={{ color: "#9fb3d9" }}>Usuario</div>
+      <div style={{ fontWeight: 600 }}>{user.email}</div>
+    </div>
+
+    {/* LOGOUT */}
+    <button
+      onClick={() => router.push("/login")}
+      style={{
+        background: "#1f3a8a",
+        border: "none",
+        padding: "10px 14px",
+        borderRadius: 8,
+        color: "#fff",
+        cursor: "pointer",
+        fontWeight: 600,
+      }}
+    >
+      Salir
+    </button>
+  </div>
+</header>
 
         {/* DASHBOARD */}
         {activeView === "Dashboard" && (
