@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/lib/auth/AuthProvider";
 import Agenda from "./components/Agenda";
 
 type ViewName =
@@ -16,6 +18,9 @@ type ViewName =
   | "Comercio Exterior";
 
 export default function Home() {
+  const { user, loading } = useAuth();
+  const router = useRouter();
+
   const [activeView, setActiveView] = useState<ViewName>("Dashboard");
   const [status, setStatus] = useState("Sistema listo");
 
@@ -35,6 +40,22 @@ export default function Home() {
     []
   );
 
+  // 🔐 Redirección si no hay sesión
+  useEffect(() => {
+    if (!loading && !user) {
+      router.replace("/login");
+    }
+  }, [loading, user, router]);
+
+  // ⏳ Loader mientras valida sesión
+  if (loading || !user) {
+    return (
+      <div style={{ padding: 40 }}>
+        Verificando sesión...
+      </div>
+    );
+  }
+
   return (
     <div
       style={{
@@ -46,7 +67,7 @@ export default function Home() {
         gridTemplateColumns: "260px 1fr",
       }}
     >
-      {/* SIDEBAR */}
+      {/* SIDEBAR /}
       <aside
         style={{
           background: "#0b1b3a",
@@ -80,7 +101,7 @@ export default function Home() {
         </div>
       </aside>
 
-      {/* MAIN */}
+      {/ MAIN /}
       <main style={{ padding: 28 }}>
         <header
           style={{
@@ -103,15 +124,15 @@ export default function Home() {
           </div>
         </header>
 
-        {/* DASHBOARD */}
+        {/ DASHBOARD /}
         {activeView === "Dashboard" && (
           <p>Sistema listo para operar.</p>
         )}
 
-        {/* AGENDA */}
+        {/ AGENDA /}
         {activeView === "Agenda" && <Agenda />}
 
-        {/* OTROS */}
+        {/ OTROS */}
         {!["Dashboard", "Agenda"].includes(activeView) && (
           <p>Módulo en construcción.</p>
         )}
