@@ -10,6 +10,7 @@ import {
 } from "@/services/agenda/agenda.service";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useTenant } from "@/lib/tenant/TenantProvider";
+import { getCompanyUsers } from "@/services/agenda/agenda.service";
 
 type CalendarView = "day" | "week" | "month";
 
@@ -236,22 +237,16 @@ async function initializeAgenda() {
   }
 }
 
-  async function loadCompanyUsers() {
-    if (!companyId) return;
+async function loadCompanyUsers() {
+  if (!companyId) return;
 
-    const { data, error } = await supabase
-      .from("company_users")
-      .select("id, company_id, user_id, role")
-      .eq("company_id", companyId);
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-
+  try {
+    const data = await getCompanyUsers(companyId);
     setCompanyUsers((data as CompanyUserRow[]) || []);
+  } catch (error) {
+    console.error(error);
   }
-
+}
  async function loadEvents() {
   if (!companyId) return;
 
