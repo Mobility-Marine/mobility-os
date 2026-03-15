@@ -1,17 +1,10 @@
+}
 "use client";
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
-import { TenantProvider } from "@/lib/tenant/TenantProvider";
-
-export default function ProtectedLayout({ children }) {
-  return (
-    <TenantProvider>
-      {children}
-    </TenantProvider>
-  );
-}
+import TenantProvider from "@/lib/tenant/TenantProvider";
 
 export default function ProtectedLayout({
   children,
@@ -26,7 +19,7 @@ export default function ProtectedLayout({
   }, []);
 
   async function checkAccess() {
-    // 1️⃣ Usuario autenticado
+    // 🔐 1) Usuario autenticado
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
 
@@ -35,7 +28,7 @@ export default function ProtectedLayout({
       return;
     }
 
-    // 2️⃣ Usuario pertenece a alguna empresa
+    // 🏢 2) Usuario pertenece a alguna empresa
     const { data: companyLink } = await supabase
       .from("company_users")
       .select("company_id")
@@ -47,10 +40,18 @@ export default function ProtectedLayout({
       return;
     }
 
+    // ✅ Acceso permitido
     setLoading(false);
   }
 
-  if (loading) return <div>Cargando Mobility OS...</div>;
+  // ⏳ Pantalla de carga
+  if (loading) {
+    return <div style={{ padding: 40 }}>Cargando Mobility OS...</div>;
+  }
 
-  return <>{children}</>;
-}
+  // 🏢 Activar multi-tenant context
+  return (
+    <TenantProvider>
+      {children}
+    </TenantProvider>
+  );
