@@ -3,9 +3,9 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
-import Agenda from "./components/Agenda";
-import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
+import { supabase } from "@/lib/supabaseClient";
+import Agenda from "./components/Agenda";
 
 type ViewName =
   | "Dashboard"
@@ -21,11 +21,17 @@ type ViewName =
 
 export default function Home() {
   const { user, loading } = useAuth();
-  const { companyId, memberships, loadingTenant, setActiveCompany } = useTenant();
+  const {
+    companyId,
+    memberships,
+    loadingTenant,
+    setActiveCompany,
+  } = useTenant();
+
   const router = useRouter();
 
-  const [activeView, setActiveView] = useState<ViewName>("Dashboard");
-  const [status] = useState("Sistema listo");
+  const [activeView, setActiveView] =
+    useState<ViewName>("Dashboard");
 
   const modules: ViewName[] = useMemo(
     () => [
@@ -50,10 +56,14 @@ export default function Home() {
     }
   }, [loading, user, router]);
 
-  // ⏳ Loader
+  // ⏳ Loader global
   if (loading || loadingTenant || !user) {
-  return <div style={{ padding: 40 }}>Verificando sesión...</div>;
-}
+    return (
+      <div style={{ padding: 40 }}>
+        Verificando sesión...
+      </div>
+    );
+  }
 
   return (
     <div
@@ -100,12 +110,13 @@ export default function Home() {
                 marginBottom: 8,
                 cursor: "pointer",
                 background:
-                  activeView === m ? "#1b3a7a" : "transparent",
+                  activeView === m
+                    ? "#1b3a7a"
+                    : "transparent",
                 border:
                   activeView === m
                     ? "1px solid #3b6ed6"
                     : "1px solid transparent",
-                transition: "0.15s",
               }}
             >
               {m}
@@ -131,135 +142,122 @@ export default function Home() {
 
       {/* MAIN */}
       <main style={{ padding: 32 }}>
-       <header
-  style={{
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "space-between",
-    marginBottom: 28,
-    background: "#0b1733",
-    padding: "12px 18px",
-    borderRadius: 12,
-    border: "1px solid #1f2f5a",
-  }}
->
-  {/* IZQUIERDA */}
-  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-    <img
-      src="/logo.png"
-      alt="Mobility OS"
-      style={{ width: 38, height: 38 }}
-    />
+        <header
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            marginBottom: 28,
+            background: "#0b1733",
+            padding: "12px 18px",
+            borderRadius: 12,
+            border: "1px solid #1f2f5a",
+          }}
+        >
+          {/* IZQUIERDA */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+            }}
+          >
+            <img
+              src="/logo.png"
+              alt="Mobility OS"
+              style={{ width: 38, height: 38 }}
+            />
 
-    <div>
-      <div style={{ fontSize: 20, fontWeight: 600 }}>
-        {activeView}
-      </div>
+            <div>
+              <div
+                style={{
+                  fontSize: 20,
+                  fontWeight: 600,
+                }}
+              >
+                {activeView}
+              </div>
 
-      <div style={{ fontSize: 12, color: "#9fb3d9" }}>
-        Mobility OS Platform
-      </div>
-    </div>
-  </div>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "#9fb3d9",
+                }}
+              >
+                Mobility OS Platform
+              </div>
+            </div>
+          </div>
 
-  {/* DERECHA */}
-<div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          {/* DERECHA */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 16,
+            }}
+          >
+            {/* SELECTOR EMPRESA */}
+            <select
+              value={companyId || ""}
+              onChange={(e) =>
+                setActiveCompany(e.target.value)
+              }
+              style={{
+                background: "#0f2045",
+                color: "#fff",
+                border: "1px solid #2a4a88",
+                padding: "10px 12px",
+                borderRadius: 8,
+                fontWeight: 600,
+              }}
+            >
+              {memberships.map((m) => (
+                <option
+                  key={m.id}
+                  value={m.company_id}
+                >
+                  Empresa{" "}
+                  {m.company_id.slice(0, 6)}
+                </option>
+              ))}
+            </select>
 
-  {/* SELECTOR DE EMPRESA */}
-  <select
-    value={companyId || ""}
-    onChange={(e) => setActiveCompany(e.target.value)}
-    style={{
-      background: "#0f2045",
-      color: "#fff",
-      border: "1px solid #2a4a88",
-      padding: "10px 12px",
-      borderRadius: 8,
-      fontWeight: 600,
-    }}
-  >
-    {memberships.map((m) => (
-      <option key={m.id} value={m.company_id}>
-        Empresa {m.company_id.slice(0, 6)}
-      </option>
-    ))}
-  </select>
+            {/* USUARIO */}
+            <div style={{ textAlign: "right" }}>
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "#9fb3d9",
+                }}
+              >
+                Usuario
+              </div>
+              <div style={{ fontWeight: 600 }}>
+                {user.email}
+              </div>
+            </div>
 
-  {/* ESTADO */}
-  <div
-    style={{
-      background: "#0f2045",
-      padding: "8px 14px",
-      borderRadius: 10,
-      border: "1px solid #2a4a88",
-      fontSize: 13,
-    }}
-  >
-    Sistema activo
-  </div>
-
-  {/* USUARIO */}
-  <div
-    style={{
-      textAlign: "right",
-      fontSize: 13,
-    }}
-  >
-    <div style={{ color: "#9fb3d9" }}>Usuario</div>
-    <div style={{ fontWeight: 600 }}>{user.email}</div>
-  </div>
-
-  {/* LOGOUT */}
-  <button
-    onClick={async () => {
-      await supabase.auth.signOut();
-      router.replace("/login");
-    }}
-    style={{
-      background: "#1f3a8a",
-      border: "none",
-      padding: "10px 14px",
-      borderRadius: 8,
-      color: "#fff",
-      cursor: "pointer",
-      fontWeight: 600,
-    }}
-  >
-    Salir
-  </button>
-</div>
-
-    {/* USUARIO */}
-    <div
-      style={{
-        textAlign: "right",
-        fontSize: 13,
-      }}
-    >
-      <div style={{ color: "#9fb3d9" }}>Usuario</div>
-      <div style={{ fontWeight: 600 }}>{user.email}</div>
-    </div>
-
-    {/* LOGOUT */}
-    <button
-     onClick={async () => {
-  await supabase.auth.signOut();
-  router.replace("/login");
-}}
-      style={{
-        background: "#1f3a8a",
-        border: "none",
-        padding: "10px 14px",
-        borderRadius: 8,
-        color: "#fff",
-        cursor: "pointer",
-        fontWeight: 600,
-      }}
-    >
-      Salir
-    </button>
-  </div>
-</header>
+            {/* LOGOUT */}
+            <button
+              onClick={async () => {
+                await supabase.auth.signOut();
+                router.replace("/login");
+              }}
+              style={{
+                background: "#1f3a8a",
+                border: "none",
+                padding: "10px 14px",
+                borderRadius: 8,
+                color: "#fff",
+                cursor: "pointer",
+                fontWeight: 600,
+              }}
+            >
+              Salir
+            </button>
+          </div>
+        </header>
 
         {/* DASHBOARD */}
         {activeView === "Dashboard" && (
@@ -270,9 +268,9 @@ export default function Home() {
         {activeView === "Agenda" && <Agenda />}
 
         {/* OTROS */}
-        {!["Dashboard", "Agenda"].includes(activeView) && (
-          <p>Módulo en construcción.</p>
-        )}
+        {!["Dashboard", "Agenda"].includes(
+          activeView
+        ) && <p>Módulo en construcción.</p>}
       </main>
     </div>
   );
