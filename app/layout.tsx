@@ -1,4 +1,5 @@
 import AuthProvider from "@/lib/auth/AuthProvider";
+import TenantProvider from "@/lib/tenant/TenantProvider";
 
 export const metadata = {
   title: "Mobility OS",
@@ -14,7 +15,7 @@ export default function RootLayout({
     <html lang="es">
       <body>
         <AuthProvider>
-          {children}
+          <TenantProvider>{children}</TenantProvider>
         </AuthProvider>
       </body>
     </html>
