@@ -103,7 +103,7 @@ if (!companyId) {
         gridTemplateColumns: "280px 1fr",
       }}
     >
-      {/* SIDEBAR O */}
+      {/* SIDEBAR */}
       <aside
         style={{
           background: "#0b1733",
