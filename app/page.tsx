@@ -67,7 +67,7 @@ export default function Home() {
         gridTemplateColumns: "260px 1fr",
       }}
     >
-      {/* SIDEBAR /}
+      {/* SIDEBAR */}
       <aside
         style={{
           background: "#0b1b3a",
@@ -101,7 +101,7 @@ export default function Home() {
         </div>
       </aside>
 
-      {/ MAIN /}
+      {/* MAIN */}
       <main style={{ padding: 28 }}>
         <header
           style={{
@@ -124,15 +124,15 @@ export default function Home() {
           </div>
         </header>
 
-        {/ DASHBOARD /}
+        {/* DASHBOARD */}
         {activeView === "Dashboard" && (
           <p>Sistema listo para operar.</p>
         )}
 
-        {/ AGENDA /}
+        {/* AGENDA */}
         {activeView === "Agenda" && <Agenda />}
 
-        {/ OTROS */}
+        {/* OTROS */}
         {!["Dashboard", "Agenda"].includes(activeView) && (
           <p>Módulo en construcción.</p>
         )}
