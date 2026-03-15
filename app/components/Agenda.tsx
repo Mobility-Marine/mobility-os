@@ -414,6 +414,24 @@ async function loadCompanyUsers() {
   }
 }
 
+ async function deleteEvent() {
+  if (!selectedEvent) return;
+
+  const confirmed = confirm("¿Eliminar este evento?");
+  if (!confirmed) return;
+
+  try {
+    await deleteCalendarEvent(selectedEvent.id);
+
+    setShowModal(false);
+    resetForm();
+    loadEvents();
+  } catch (error) {
+    console.error(error);
+    alert("No se pudo eliminar el evento");
+  }
+}
+  
  async function moveEvent(eventId: string, targetDate: Date) {
   const event = events.find((e) => e.id === eventId);
   if (!event) return;
