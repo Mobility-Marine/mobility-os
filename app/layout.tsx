@@ -1,6 +1,8 @@
+import AuthProvider from "@/lib/auth/AuthProvider";
+
 export const metadata = {
   title: "Mobility OS",
-  description: "Logistics & Foreign Trade Management System"
+  description: "Logistics & Foreign Trade Management System",
 };
 
 export default function RootLayout({
@@ -11,7 +13,9 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
-        {children}
+        <AuthProvider>
+          {children}
+        </AuthProvider>
       </body>
     </html>
   );
