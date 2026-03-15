@@ -413,84 +413,32 @@ async function loadCompanyUsers() {
     alert("Error guardando evento");
   }
 }
- async function saveEvent() {
-  if (!companyId || !authUserId) {
-    alert("No hay empresa o usuario autenticado");
-    return;
-  }
 
-  if (!formTitle || !formStart) {
-    alert("Completa título e inicio");
-    return;
-  }
+ async function moveEvent(eventId: string, targetDate: Date) {
+  const event = events.find((e) => e.id === eventId);
+  if (!event) return;
 
-  const endDateTime = formEnd || formStart;
+  const start = new Date(event.start_datetime);
+  const end = new Date(event.end_datetime || event.start_datetime);
+  const durationMs = end.getTime() - start.getTime();
 
-  const payload = {
-    company_id: companyId,
-    title: formTitle,
-    description: formDescription || null,
-    event_type: formType,
-    start_datetime: new Date(formStart).toISOString(),
-    end_datetime: new Date(endDateTime).toISOString(),
-    location: formLocation || null,
-    meeting_link: formMeetingLink || null,
-    priority: formPriority,
-    status: formStatus,
-    color: formColor,
-    all_day: formAllDay,
-    visibility: formVisibility,
-    timezone: "America/Mexico_City",
-    created_by: authUserId,
-  };
-
-  let eventId = selectedEvent?.id || null;
+  const newStart = new Date(targetDate);
+  const newEnd = new Date(
+    newStart.getTime() + Math.max(durationMs, 30 * 60000)
+  );
 
   try {
-    if (selectedEvent) {
-      await updateCalendarEvent(selectedEvent.id, payload);
-      eventId = selectedEvent.id;
-    } else {
-      const data = await createCalendarEvent(payload);
-      eventId = data.id;
-    }
+    await updateCalendarEvent(eventId, {
+      start_datetime: newStart.toISOString(),
+      end_datetime: newEnd.toISOString(),
+    });
 
-    setShowModal(false);
-    resetForm();
     loadEvents();
-  } catch (err) {
-    console.error(err);
-    alert("Error guardando evento");
+  } catch (error) {
+    console.error(error);
+    alert("No se pudo mover el evento");
   }
 }
-
-  async function moveEvent(eventId: string, targetDate: Date) {
-    const event = events.find((e) => e.id === eventId);
-    if (!event) return;
-
-    const start = new Date(event.start_datetime);
-    const end = new Date(event.end_datetime || event.start_datetime);
-    const durationMs = end.getTime() - start.getTime();
-
-    const newStart = new Date(targetDate);
-    const newEnd = new Date(newStart.getTime() + Math.max(durationMs, 30 * 60000));
-
-    const { error } = await supabase
-      .from("calendar_events")
-      .update({
-        start_datetime: newStart.toISOString(),
-        end_datetime: newEnd.toISOString(),
-      })
-      .eq("id", eventId);
-
-    if (error) {
-      console.error(error);
-      alert("No se pudo mover el evento");
-      return;
-    }
-
-    loadEvents();
-  }
 
   function renderTopActions() {
     return (
