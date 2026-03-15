@@ -6,159 +6,212 @@ import { supabase } from "@/lib/supabaseClient";
 type EventRow = {
   id: string;
   title: string;
-  description?: string;
-  event_type?: string;
   start_datetime: string;
-  end_datetime?: string;
-  location?: string;
-  meeting_link?: string;
-  priority?: string;
-  status?: string;
+  end_datetime: string;
   color?: string;
 };
 
 export default function Agenda() {
   const [events, setEvents] = useState<EventRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<"day" | "week" | "month">("day");
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [showModal, setShowModal] = useState(false);
-
-  const [form, setForm] = useState({
-    title: "",
-    description: "",
-    event_type: "Reunión",
-    start_datetime: "",
-    end_datetime: "",
-    location: "",
-    meeting_link: "",
-    priority: "Media",
-    status: "pending",
-    color: "#2563eb",
-  });
-
-  // ===== CARGAR EVENTOS =====
-  const loadEvents = async () => {
-    setLoading(true);
-
-    const { data, error } = await supabase
-      .from("calendar_events")
-      .select("*")
-      .order("start_datetime", { ascending: true });
-
-    if (!error && data) setEvents(data);
-
-    setLoading(false);
-  };
+  const [newTitle, setNewTitle] = useState("");
+  const [newStart, setNewStart] = useState("");
+  const [newEnd, setNewEnd] = useState("");
 
   useEffect(() => {
     loadEvents();
   }, []);
 
-  // ===== CREAR EVENTO =====
-  const createEvent = async () => {
-    if (!form.title || !form.start_datetime) {
-      alert("Título y fecha son obligatorios");
-      return;
-    }
+  async function loadEvents() {
+    const { data } = await supabase
+      .from("calendar_events")
+      .select("*")
+      .order("start_datetime");
 
-    const { error } = await supabase.from("calendar_events").insert([form]);
+    setEvents(data || []);
+  }
 
-    if (!error) {
-      setShowModal(false);
-      setForm({
-        title: "",
-        description: "",
-        event_type: "Reunión",
-        start_datetime: "",
-        end_datetime: "",
-        location: "",
-        meeting_link: "",
-        priority: "Media",
-        status: "pending",
-        color: "#2563eb",
-      });
-      loadEvents();
-    }
-  };
+  async function createEvent() {
+    if (!newTitle || !newStart) return;
 
-  // ===== ELIMINAR EVENTO =====
-  const deleteEvent = async (id: string) => {
-    if (!confirm("¿Eliminar este evento?")) return;
+    await supabase.from("calendar_events").insert({
+      title: newTitle,
+      start_datetime: newStart,
+      end_datetime: newEnd || newStart,
+      color: "#2563eb",
+    });
 
-    await supabase.from("calendar_events").delete().eq("id", id);
+    setShowModal(false);
+    setNewTitle("");
+    setNewStart("");
+    setNewEnd("");
     loadEvents();
-  };
+  }
+
+  function generateHours() {
+    const hours = [];
+    for (let h = 8; h <= 20; h++) {
+      hours.push(`${String(h).padStart(2, "0")}:00`);
+    }
+    return hours;
+  }
+
+  function eventsForDay(date: Date) {
+    return events.filter((e) => {
+      const d = new Date(e.start_datetime);
+      return d.toDateString() === date.toDateString();
+    });
+  }
 
   return (
-    <div style={{ padding: 30 }}>
-      <h1 style={{ fontSize: 28, marginBottom: 20 }}>Agenda</h1>
+    <div style={{ padding: 20 }}>
+      {/* HEADER */}
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
+        <button onClick={() => setView("day")}>Día</button>
+        <button onClick={() => setView("week")}>Semana</button>
+        <button onClick={() => setView("month")}>Mes</button>
 
-      <button
-        onClick={() => setShowModal(true)}
-        style={{
-          background: "#2563eb",
-          color: "#fff",
-          padding: "10px 18px",
-          borderRadius: 8,
-          marginBottom: 20,
-          border: "none",
-          cursor: "pointer",
-        }}
-      >
-        Nuevo evento
-      </button>
+        <button
+          onClick={() => setShowModal(true)}
+          style={{
+            marginLeft: "auto",
+            background: "#2563eb",
+            color: "#fff",
+            padding: "8px 16px",
+            borderRadius: 6,
+          }}
+        >
+          Nuevo evento
+        </button>
+      </div>
 
-      {/* ===== LISTA DE EVENTOS ===== */}
-
-      {loading ? (
-        <p>Cargando eventos...</p>
-      ) : events.length === 0 ? (
-        <p>No hay eventos</p>
-      ) : (
-        events.map((ev) => (
-          <div
-            key={ev.id}
-            style={{
-              background: "#1e293b",
-              padding: 15,
-              borderRadius: 10,
-              marginBottom: 12,
-              borderLeft: `6px solid ${ev.color || "#2563eb"}`,
-            }}
-          >
-            <h3>{ev.title}</h3>
-            <p>{ev.description}</p>
-
-            <p>
-              📅 {new Date(ev.start_datetime).toLocaleString()}
-              {ev.end_datetime &&
-                " → " + new Date(ev.end_datetime).toLocaleString()}
-            </p>
-
-            {ev.location && <p>📍 {ev.location}</p>}
-
-            <button
-              onClick={() => deleteEvent(ev.id)}
+      {/* ================= DAY VIEW ================= */}
+      {view === "day" && (
+        <div style={{ position: "relative" }}>
+          {generateHours().map((hour) => (
+            <div
+              key={hour}
               style={{
-                marginTop: 8,
-                background: "#ef4444",
-                color: "#fff",
-                border: "none",
-                padding: "6px 10px",
-                borderRadius: 6,
-                cursor: "pointer",
+                borderBottom: "1px solid #334155",
+                height: 60,
+                display: "flex",
+                alignItems: "center",
+                paddingLeft: 10,
               }}
             >
-              Eliminar
-            </button>
-          </div>
-        ))
+              {hour}
+            </div>
+          ))}
+
+          {eventsForDay(selectedDate).map((ev) => {
+            const start = new Date(ev.start_datetime);
+            const end = new Date(ev.end_datetime);
+
+            const top =
+              (start.getHours() - 8) * 60 + start.getMinutes();
+            const duration =
+              (end.getTime() - start.getTime()) / 60000;
+
+            return (
+              <div
+                key={ev.id}
+                style={{
+                  position: "absolute",
+                  top,
+                  left: 80,
+                  right: 20,
+                  height: Math.max(duration, 30),
+                  background: ev.color || "#2563eb",
+                  borderRadius: 6,
+                  padding: 6,
+                  color: "#fff",
+                }}
+              >
+                {ev.title}
+              </div>
+            );
+          })}
+        </div>
       )}
 
-      {/* ===== MODAL CREAR EVENTO ===== */}
+      {/* ================= WEEK VIEW ================= */}
+      {view === "week" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)" }}>
+          {Array.from({ length: 7 }).map((_, i) => {
+            const d = new Date(selectedDate);
+            d.setDate(d.getDate() - d.getDay() + i);
 
+            return (
+              <div key={i} style={{ border: "1px solid #334155", minHeight: 200 }}>
+                <div style={{ padding: 6, fontWeight: "bold" }}>
+                  {d.toLocaleDateString()}
+                </div>
+
+                {eventsForDay(d).map((ev) => (
+                  <div
+                    key={ev.id}
+                    style={{
+                      background: ev.color || "#2563eb",
+                      margin: 4,
+                      padding: 4,
+                      borderRadius: 4,
+                      color: "#fff",
+                      fontSize: 12,
+                    }}
+                  >
+                    {ev.title}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ================= MONTH VIEW ================= */}
+      {view === "month" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)" }}>
+          {Array.from({ length: 35 }).map((_, i) => {
+            const d = new Date(selectedDate);
+            d.setDate(i - d.getDay() + 1);
+
+            return (
+              <div
+                key={i}
+                style={{
+                  border: "1px solid #334155",
+                  minHeight: 120,
+                  padding: 4,
+                }}
+              >
+                <div style={{ fontSize: 12 }}>{d.getDate()}</div>
+
+                {eventsForDay(d).map((ev) => (
+                  <div
+                    key={ev.id}
+                    style={{
+                      background: ev.color || "#2563eb",
+                      marginTop: 4,
+                      padding: 3,
+                      borderRadius: 4,
+                      fontSize: 11,
+                      color: "#fff",
+                    }}
+                  >
+                    {ev.title}
+                  </div>
+                ))}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ================= MODAL ================= */}
       {showModal && (
         <div
-          onClick={() => setShowModal(false)}
           style={{
             position: "fixed",
             inset: 0,
@@ -166,111 +219,51 @@ export default function Agenda() {
             display: "flex",
             justifyContent: "center",
             alignItems: "center",
-            zIndex: 9999,
           }}
+          onClick={() => setShowModal(false)}
         >
           <div
             onClick={(e) => e.stopPropagation()}
             style={{
               background: "#0f172a",
-              padding: 30,
-              borderRadius: 12,
-              width: 420,
+              padding: 20,
+              borderRadius: 10,
+              width: 400,
             }}
           >
-            <h2 style={{ marginBottom: 20 }}>Nuevo evento</h2>
+            <h2>Nuevo evento</h2>
 
             <input
               placeholder="Título"
-              value={form.title}
-              onChange={(e) =>
-                setForm({ ...form, title: e.target.value })
-              }
+              value={newTitle}
+              onChange={(e) => setNewTitle(e.target.value)}
               style={{ width: "100%", marginBottom: 10 }}
             />
 
-            <textarea
-              placeholder="Descripción"
-              value={form.description}
-              onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
-              }
-              style={{ width: "100%", marginBottom: 10 }}
-            />
-
-            <label>Inicio</label>
             <input
               type="datetime-local"
-              value={form.start_datetime}
-              onChange={(e) =>
-                setForm({ ...form, start_datetime: e.target.value })
-              }
+              value={newStart}
+              onChange={(e) => setNewStart(e.target.value)}
               style={{ width: "100%", marginBottom: 10 }}
             />
 
-            <label>Fin</label>
             <input
               type="datetime-local"
-              value={form.end_datetime}
-              onChange={(e) =>
-                setForm({ ...form, end_datetime: e.target.value })
-              }
+              value={newEnd}
+              onChange={(e) => setNewEnd(e.target.value)}
               style={{ width: "100%", marginBottom: 10 }}
-            />
-
-            <input
-              placeholder="Ubicación"
-              value={form.location}
-              onChange={(e) =>
-                setForm({ ...form, location: e.target.value })
-              }
-              style={{ width: "100%", marginBottom: 10 }}
-            />
-
-            <input
-              placeholder="Link reunión"
-              value={form.meeting_link}
-              onChange={(e) =>
-                setForm({ ...form, meeting_link: e.target.value })
-              }
-              style={{ width: "100%", marginBottom: 10 }}
-            />
-
-            <label>Color</label>
-            <input
-              type="color"
-              value={form.color}
-              onChange={(e) =>
-                setForm({ ...form, color: e.target.value })
-              }
-              style={{ width: "100%", marginBottom: 20 }}
             />
 
             <button
               onClick={createEvent}
               style={{
-                background: "#10b981",
+                background: "#2563eb",
                 color: "#fff",
-                border: "none",
-                padding: "10px 14px",
-                borderRadius: 8,
-                marginRight: 10,
+                padding: "8px 16px",
+                borderRadius: 6,
               }}
             >
               Guardar
-            </button>
-
-            <button
-              onClick={() => setShowModal(false)}
-              style={{
-                background: "#374151",
-                color: "#fff",
-                border: "none",
-                padding: "10px 14px",
-                borderRadius: 8,
-              }}
-            >
-              Cancelar
             </button>
           </div>
         </div>
