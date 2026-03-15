@@ -1,7 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useAuth } from "@/lib/auth/AuthProvider";
 
 type CalendarView = "day" | "week" | "month";
 
@@ -143,6 +144,7 @@ function clamp(n: number, min: number, max: number) {
 }
 
 export default function Agenda() {
+  const { user, companyId, loading } = useAuth();
   const [status, setStatus] = useState("Cargando agenda...");
   const [loading, setLoading] = useState(false);
   const [view, setView] = useState<CalendarView>("week");
@@ -291,6 +293,7 @@ export default function Agenda() {
       .from("calendar_events")
       .select("*")
       .eq("company_id", companyId)
+      .order("start_datetime", { ascending: true })
       .gte("start_datetime", fromDate.toISOString())
       .lte("start_datetime", toDate.toISOString())
       .order("start_datetime", { ascending: true });
