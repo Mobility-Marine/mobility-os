@@ -83,7 +83,7 @@ export default function CreateCompanyPage() {
       // ===============================
       // 🚀 5️⃣ Entrar al sistema
       // ===============================
-      router.replace("/dashboard");
+      router.replace("/");
     } catch (err) {
       console.error(err);
       alert("Error creando empresa");
