@@ -18,7 +18,6 @@ export default function ProtectedLayout({
   }, []);
 
   async function checkAccess() {
-    // 🔐 Usuario autenticado
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
 
@@ -27,7 +26,6 @@ export default function ProtectedLayout({
       return;
     }
 
-    // 🏢 Usuario pertenece a empresa
     const { data: companyLink } = await supabase
       .from("company_users")
       .select("company_id")
@@ -48,7 +46,39 @@ export default function ProtectedLayout({
 
   return (
     <TenantProvider>
-      {children}
+      <div
+        style={{
+          display: "flex",
+          minHeight: "100vh",
+          background: "#0b1220",
+          color: "#fff",
+        }}
+      >
+        {/* 🧭 SIDEBAR */}
+        <aside
+          style={{
+            width: 260,
+            background: "#0f172a",
+            padding: 20,
+            borderRight: "1px solid #1e293b",
+          }}
+        >
+          <h2 style={{ marginBottom: 20 }}>Mobility OS</h2>
+
+          <nav style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+            <a href="/dashboard">Dashboard</a>
+            <a href="/agenda">Agenda</a>
+            <a href="/crm">CRM</a>
+            <a href="/company">Empresa</a>
+            <a href="/reports">Reportes</a>
+          </nav>
+        </aside>
+
+        {/* 📦 CONTENIDO */}
+        <main style={{ flex: 1, padding: 30 }}>
+          {children}
+        </main>
+      </div>
     </TenantProvider>
   );
 }
