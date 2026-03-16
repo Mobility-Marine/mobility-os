@@ -21,7 +21,8 @@ export default function LoginPage() {
     setLoading(true);
     setStatus("Iniciando sesión...");
 
-    const { error } = await supabase.auth.signInWithPassword({
+    // 🔐 Login
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -32,8 +33,36 @@ export default function LoginPage() {
       return;
     }
 
-    // 🔐 Redirigir al sistema protegido
-    router.replace("/dashboard");
+    const user = data.user;
+
+    if (!user) {
+      setStatus("Error obteniendo usuario");
+      setLoading(false);
+      return;
+    }
+
+    // 🏢 Verificar si pertenece a alguna empresa
+    const { data: memberships, error: membershipError } = await supabase
+      .from("company_users")
+      .select("company_id")
+      .eq("user_id", user.id)
+      .limit(1);
+
+    if (membershipError) {
+      console.error(membershipError);
+      setStatus("Error verificando empresa");
+      setLoading(false);
+      return;
+    }
+
+    // 🆕 Usuario SIN empresa → onboarding
+    if (!memberships || memberships.length === 0) {
+      router.replace("/create-company");
+      return;
+    }
+
+    // ✅ Usuario con empresa → entrar al sistema
+    router.replace("/");
   }
 
   return (
@@ -82,7 +111,7 @@ export default function LoginPage() {
           {loading ? "Entrando..." : "Entrar"}
         </button>
 
-        {/* ⭐ Botón de registro */}
+        {/* ⭐ Crear cuenta */}
         <button
           onClick={() => router.replace("/signup")}
           style={secondaryButton}
