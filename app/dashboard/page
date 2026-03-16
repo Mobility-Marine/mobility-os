@@ -14,19 +14,25 @@ export default function DashboardPage() {
 
   async function checkCompany() {
     const { data: userData } = await supabase.auth.getUser();
-    const userId = userData.user?.id;
 
-    if (!userId) return;
+    if (!userData.user) {
+      router.replace("/login");
+      return;
+    }
 
-    // Buscar si el usuario pertenece a alguna empresa
-    const { data } = await supabase
+    // ✅ Dejar que RLS filtre automáticamente
+    const { data, error } = await supabase
       .from("company_users")
       .select("company_id")
-      .eq("user_id", userId)
       .limit(1);
 
+    if (error) {
+      console.error(error);
+      router.replace("/create-company");
+      return;
+    }
+
     if (!data || data.length === 0) {
-      // ❌ No tiene empresa → enviar a crear empresa
       router.replace("/create-company");
     } else {
       setLoading(false);
@@ -35,5 +41,5 @@ export default function DashboardPage() {
 
   if (loading) return <div>Cargando...</div>;
 
-  return <div>Dashboard principal</div>;
+  return <div>Dashboard principal 🚀</div>;
 }
