@@ -71,7 +71,7 @@ export default function CompanyManagementPage() {
         + Crear nueva empresa
       </button>
 
-      {/* ⚙️ Acciones avanzadas */}
+      {/* ⚙️ Administración empresa activa */}
       {companyId && (
         <>
           <h2 style={{ marginTop: 40 }}>
@@ -85,6 +85,7 @@ export default function CompanyManagementPage() {
               marginTop: 20,
               display: "flex",
               gap: 20,
+              flexWrap: "wrap",
             }}
           >
             <button
@@ -105,6 +106,24 @@ export default function CompanyManagementPage() {
               onClick={() => router.push("/company/roles")}
             >
               Roles
+            </button>
+
+            {/* 🛡️ NUEVO — Permisos */}
+            <button
+              onClick={() =>
+                router.push("/company/permissions")
+              }
+              style={{
+                background: "#7c3aed",
+                color: "#fff",
+                border: "none",
+                padding: "10px 14px",
+                borderRadius: 6,
+                fontWeight: 600,
+                cursor: "pointer",
+              }}
+            >
+              Permisos
             </button>
           </div>
         </>
