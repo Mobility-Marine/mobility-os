@@ -18,13 +18,14 @@ export async function createCompanyWithTenant(name: string) {
 
   // 2. Crear empresa
   const { data: company } = await supabase
-    .from("companies")
-    .insert({
-      name,
-      tenant_id: tenant.id,
-    })
-    .select()
-    .single();
+  .from("companies")
+  .insert({
+    name,
+    tenant_id: tenant.id,
+    owner_user_id: userId,
+  })
+  .select()
+  .single();
 
   // 3. Asociar usuario al tenant
   await supabase.from("tenant_users").insert({
