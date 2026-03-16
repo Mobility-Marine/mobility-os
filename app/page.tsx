@@ -22,10 +22,13 @@ type ViewName =
 
 export default function Home() {
   const { user, loading } = useAuth();
-  const { companyId, memberships, loadingTenant, setActiveCompany } = useTenant();
+  const { companyId, memberships, loadingTenant, setActiveCompany } =
+    useTenant();
+
   const router = useRouter();
 
-  const [activeView, setActiveView] = useState<ViewName>("Dashboard");
+  const [activeView, setActiveView] =
+    useState<ViewName>("Dashboard");
 
   const modules: ViewName[] = useMemo(
     () => [
@@ -44,37 +47,25 @@ export default function Home() {
     []
   );
 
+  // 🔐 Si no hay sesión → login
   useEffect(() => {
     if (!loading && !user) {
       router.replace("/login");
     }
   }, [loading, user, router]);
 
-  if (loading || loadingTenant || !user) {
-    return <div style={{ padding: 40 }}>Verificando sesión...</div>;
-  }
+  // 🏢 ONBOARDING AUTOMÁTICO
+  useEffect(() => {
+    if (!loading && !loadingTenant && user && !companyId) {
+      router.replace("/create-company");
+    }
+  }, [loading, loadingTenant, user, companyId, router]);
 
-  if (!companyId) {
+  // ⏳ Loader global
+  if (loading || loadingTenant || !user) {
     return (
       <div style={{ padding: 40 }}>
-        <h2>Usuario sin empresa activa</h2>
-        <p>Debes crear o unirte a una empresa para continuar.</p>
-
-        <button
-          onClick={() => router.push("/create-company")}
-          style={{
-            marginTop: 20,
-            padding: "12px 20px",
-            background: "#2563eb",
-            border: "none",
-            borderRadius: 8,
-            color: "#fff",
-            fontWeight: 600,
-            cursor: "pointer",
-          }}
-        >
-          Crear empresa
-        </button>
+        Verificando sesión...
       </div>
     );
   }
@@ -90,6 +81,7 @@ export default function Home() {
         gridTemplateColumns: "280px 1fr",
       }}
     >
+      {/* SIDEBAR */}
       <aside
         style={{
           background: "#0b1733",
@@ -99,15 +91,19 @@ export default function Home() {
           flexDirection: "column",
         }}
       >
+        {/* LOGO */}
         <div style={{ marginBottom: 28 }}>
           <img
             src="/logo.png"
             alt="Mobility OS"
             style={{ width: "100%", maxWidth: 180 }}
           />
-          <p style={{ color: "#9fb3d9", marginTop: 6 }}>Mobility Marine</p>
+          <p style={{ color: "#9fb3d9", marginTop: 6 }}>
+            Mobility Marine
+          </p>
         </div>
 
+        {/* MENÚ */}
         <div style={{ flex: 1 }}>
           {modules.map((m) => (
             <div
@@ -124,7 +120,10 @@ export default function Home() {
                 borderRadius: 10,
                 marginBottom: 8,
                 cursor: "pointer",
-                background: activeView === m ? "#1b3a7a" : "transparent",
+                background:
+                  activeView === m
+                    ? "#1b3a7a"
+                    : "transparent",
                 border:
                   activeView === m
                     ? "1px solid #3b6ed6"
@@ -136,6 +135,7 @@ export default function Home() {
           ))}
         </div>
 
+        {/* USUARIO */}
         <div
           style={{
             paddingTop: 16,
@@ -145,10 +145,13 @@ export default function Home() {
           }}
         >
           Conectado como:
-          <div style={{ color: "#fff", marginTop: 4 }}>{user.email}</div>
+          <div style={{ color: "#fff", marginTop: 4 }}>
+            {user.email}
+          </div>
         </div>
       </aside>
 
+      {/* MAIN */}
       <main style={{ padding: 32 }}>
         <header
           style={{
@@ -162,6 +165,7 @@ export default function Home() {
             border: "1px solid #1f2f5a",
           }}
         >
+          {/* IZQUIERDA */}
           <div
             style={{
               display: "flex",
@@ -208,6 +212,7 @@ export default function Home() {
             </div>
           </div>
 
+          {/* DERECHA */}
           <div
             style={{
               display: "flex",
@@ -215,13 +220,13 @@ export default function Home() {
               gap: 16,
             }}
           >
+            {/* SELECTOR EMPRESA */}
             <div style={{ display: "flex", flexDirection: "column" }}>
               <div
                 style={{
                   fontSize: 11,
                   color: "#9fb3d9",
                   marginBottom: 4,
-                  textAlign: "left",
                 }}
               >
                 Empresa
@@ -242,11 +247,13 @@ export default function Home() {
                   borderRadius: 10,
                   fontWeight: 600,
                   minWidth: 200,
-                  outline: "none",
-                  cursor: memberships.length === 0 ? "not-allowed" : "pointer",
                 }}
               >
-                {memberships.length === 0 && <option value="">Sin empresas</option>}
+                {memberships.length === 0 && (
+                  <option value="">
+                    Sin empresas
+                  </option>
+                )}
 
                 {memberships.map((m) => (
                   <option key={m.id} value={m.company_id}>
@@ -256,6 +263,7 @@ export default function Home() {
               </select>
             </div>
 
+            {/* USUARIO */}
             <div style={{ textAlign: "right" }}>
               <div
                 style={{
@@ -265,9 +273,12 @@ export default function Home() {
               >
                 Usuario
               </div>
-              <div style={{ fontWeight: 600 }}>{user.email}</div>
+              <div style={{ fontWeight: 600 }}>
+                {user.email}
+              </div>
             </div>
 
+            {/* LOGOUT */}
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
@@ -288,13 +299,16 @@ export default function Home() {
           </div>
         </header>
 
-        {activeView === "Dashboard" && <p>Sistema listo para operar.</p>}
+        {/* CONTENIDO */}
+        {activeView === "Dashboard" && (
+          <p>Sistema listo para operar.</p>
+        )}
 
         {activeView === "Agenda" && <Agenda />}
 
-        {!["Dashboard", "Agenda"].includes(activeView) && (
-          <p>Módulo en construcción.</p>
-        )}
+        {!["Dashboard", "Agenda"].includes(
+          activeView
+        ) && <p>Módulo en construcción.</p>}
       </main>
     </div>
   );
