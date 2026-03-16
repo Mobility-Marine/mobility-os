@@ -14,8 +14,16 @@ export default function CreateCompanyPage() {
 
     setLoading(true);
 
-    // 🔐 Usuario actual
-    const { data: userData } = await supabase.auth.getUser();
+    const { data: userData, error: userError } =
+      await supabase.auth.getUser();
+
+    if (userError) {
+      alert("Error obteniendo usuario");
+      console.error(userError);
+      setLoading(false);
+      return;
+    }
+
     const user = userData.user;
 
     if (!user) {
@@ -25,6 +33,8 @@ export default function CreateCompanyPage() {
     }
 
     try {
+      console.log("Usuario:", user.id);
+
       // ===============================
       // 🏢 1️⃣ Crear TENANT
       // ===============================
@@ -37,7 +47,12 @@ export default function CreateCompanyPage() {
         .select("id")
         .single();
 
-      if (tenantError) throw tenantError;
+      if (tenantError) {
+        console.error("TENANT ERROR:", tenantError);
+        throw tenantError;
+      }
+
+      console.log("Tenant creado:", tenant);
 
       // ===============================
       // 🏢 2️⃣ Crear EMPRESA
@@ -52,7 +67,12 @@ export default function CreateCompanyPage() {
         .select("id")
         .single();
 
-      if (companyError) throw companyError;
+      if (companyError) {
+        console.error("COMPANY ERROR:", companyError);
+        throw companyError;
+      }
+
+      console.log("Company creada:", company);
 
       // ===============================
       // 👤 3️⃣ Asociar usuario como owner
@@ -66,7 +86,10 @@ export default function CreateCompanyPage() {
           is_active: true,
         });
 
-      if (linkError) throw linkError;
+      if (linkError) {
+        console.error("LINK ERROR:", linkError);
+        throw linkError;
+      }
 
       // ===============================
       // ⭐ 4️⃣ Guardar empresa activa
@@ -78,15 +101,19 @@ export default function CreateCompanyPage() {
           active_company_id: company.id,
         });
 
-      if (settingsError) throw settingsError;
+      if (settingsError) {
+        console.error("SETTINGS ERROR:", settingsError);
+        throw settingsError;
+      }
 
       // ===============================
       // 🚀 5️⃣ Entrar al sistema
       // ===============================
-      router.replace("/");
-    } catch (err) {
-      console.error(err);
-      alert("Error creando empresa");
+      router.replace("/dashboard");
+
+    } catch (err: any) {
+      console.error("ERROR REAL:", err);
+      alert(err?.message || "Error creando empresa");
     }
 
     setLoading(false);
