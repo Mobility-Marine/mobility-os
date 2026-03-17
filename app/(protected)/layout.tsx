@@ -5,6 +5,7 @@ import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { supabase } from "@/lib/supabaseClient";
+import { executeCommand } from "@/lib/actions/actionEngine";
 
 type NavItem = {
   name: string;
