@@ -460,244 +460,214 @@ export default function ProtectedLayout({
       </aside>
 
       <main
+  style={{
+    minWidth: 0,
+    display: "flex",
+    flexDirection: "column",
+  }}
+>
+  <header
+    style={{
+      height: 86,
+      borderBottom: "1px solid #181d24",
+      background:
+        "radial-gradient(circle at top center, rgba(122,162,255,0.05), transparent 24%), #0a0d12",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "space-between",
+      padding: "0 24px",
+      gap: 18,
+    }}
+  >
+    {/* IZQUIERDA — TÍTULO */}
+    <div style={{ minWidth: 0 }}>
+      <div
         style={{
-          minWidth: 0,
-          display: "flex",
-          flexDirection: "column",
+          fontSize: 11,
+          textTransform: "uppercase",
+          letterSpacing: 1.1,
+          color: "#8b98ab",
+          fontWeight: 700,
         }}
       >
-        <header
+        {current.sectionTitle}
+      </div>
+
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: 30,
+          lineHeight: 1,
+          fontWeight: 780,
+          color: "#f7f9fb",
+        }}
+      >
+        {current.itemName}
+      </div>
+    </div>
+
+    {/* DERECHA — COMMAND HUB */}
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        flexWrap: "nowrap",
+        justifyContent: "flex-end",
+        overflowX: "auto",
+        WebkitOverflowScrolling: "touch",
+        paddingBottom: 2,
+        scrollbarWidth: "none",
+      }}
+    >
+      {/* BUSCADOR GLOBAL */}
+      <form onSubmit={handleGlobalSearch}>
+        <input
+          value={globalSearch}
+          onChange={(e) => setGlobalSearch(e.target.value)}
+          placeholder="Buscar o ejecutar…"
           style={{
-            height: 86,
-            borderBottom: "1px solid #181d24",
-            background:
-              "radial-gradient(circle at top center, rgba(122,162,255,0.05), transparent 24%), #0a0d12",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 24px",
-            gap: 18,
+            width: 260,
+            height: 40,
+            padding: "0 14px",
+            borderRadius: 10,
+            background: "#0f141b",
+            border: "1px solid #263140",
+            color: "#f7f9fb",
+            fontWeight: 500,
+            outline: "none",
           }}
-        >
-          <div style={{ minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: 11,
-                textTransform: "uppercase",
-                letterSpacing: 1.1,
-                color: "#8b98ab",
-                fontWeight: 700,
-              }}
-            >
-              {current.sectionTitle}
-            </div>
+        />
+      </form>
 
-            <div
-              style={{
-                marginTop: 4,
-                fontSize: 30,
-                lineHeight: 1,
-                fontWeight: 780,
-                color: "#f7f9fb",
-              }}
-            >
-              {current.itemName}
-            </div>
-          </div>
+      {/* NOTIFICACIONES */}
+      <button type="button" style={iconButton} title="Notificaciones">
+        🔔
+      </button>
 
-         <div
-  style={{
-    display: "flex",
-    alignItems: "center",
-    gap: 10,
-    flexWrap: "nowrap",
-    justifyContent: "flex-end",
+      {/* MENSAJES */}
+      <button type="button" style={iconButton} title="Mensajes internos">
+        💬
+      </button>
 
-    overflowX: "auto",
-    WebkitOverflowScrolling: "touch",
+      {/* IA GLOBAL */}
+      <button
+        type="button"
+        style={{
+          ...iconButton,
+          width: "auto",
+          minWidth: 48,
+          padding: "0 12px",
+          background: "#7aa2ff",
+          color: "#0a0d12",
+          fontWeight: 800,
+          border: "1px solid #7aa2ff",
+        }}
+        title="Mobility AI"
+      >
+        IA
+      </button>
 
-    paddingBottom: 2,
-    scrollbarWidth: "none",
-  }}
->
-            <form onSubmit={handleGlobalSearch}>
-              <input
-                value={globalSearch}
-                onChange={(e) => setGlobalSearch(e.target.value)}
-                placeholder="Buscar o ejecutar…"
-                style={{
-                  width: 260,
-                  height: 40,
-                  padding: "0 14px",
-                  borderRadius: 10,
-                  background: "#0f141b",
-                  border: "1px solid #263140",
-                  color: "#f7f9fb",
-                  fontWeight: 500,
-                  outline: "none",
-                }}
-              />
-            </form>
+      {/* TENANT */}
+      {companyId && (
+        <div style={headerPill}>
+          Tenant: {companyId.slice(0, 8)}
+        </div>
+      )}
 
-            <button
-              type="button"
-              style={iconButton}
-              title="Notificaciones"
-            >
-              🔔
-            </button>
+      {/* SELECTOR EMPRESA */}
+      <select
+        value={companyId || ""}
+        onChange={async (e) => {
+          await setActiveCompany(e.target.value);
+          window.location.reload();
+        }}
+        style={{
+          minWidth: 200,
+          height: 40,
+          padding: "0 12px",
+          borderRadius: 10,
+          background: "#0f141b",
+          border: "1px solid #263140",
+          color: "#f7f9fb",
+          fontWeight: 650,
+        }}
+      >
+        {memberships.map((m) => (
+          <option key={m.id} value={m.company_id}>
+            {m.company_name}
+          </option>
+        ))}
+      </select>
 
-            <button
-              type="button"
-              style={iconButton}
-              title="Mensajes internos"
-            >
-              💬
-            </button>
+      {/* AVATAR USUARIO — SOLO CÍRCULO */}
+      <div
+        style={{
+          width: 40,
+          height: 40,
+          borderRadius: "50%",
+          background: "#7aa2ff",
+          color: "#0a0d12",
+          fontWeight: 800,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          cursor: "pointer",
+          border: "1px solid #7aa2ff",
+          boxShadow: "0 6px 18px rgba(122,162,255,0.35)",
+        }}
+        title={user?.email || "Usuario"}
+      >
+        {userInitial}
+      </div>
 
-            <button
-              type="button"
-              style={{
-                ...iconButton,
-                width: "auto",
-                minWidth: 48,
-                padding: "0 12px",
-                background: "#7aa2ff",
-                color: "#0a0d12",
-                fontWeight: 800,
-                border: "1px solid #7aa2ff",
-              }}
-              title="Mobility AI"
-            >
-              IA
-            </button>
+      {/* SALIR */}
+      <button
+        onClick={async () => {
+          await supabase.auth.signOut();
+          router.replace("/login");
+        }}
+        style={{
+          height: 40,
+          padding: "0 16px",
+          borderRadius: 10,
+          background: "#f4f6f8",
+          color: "#0a0d12",
+          border: "1px solid #f4f6f8",
+          fontWeight: 750,
+          cursor: "pointer",
+        }}
+      >
+        Salir
+      </button>
+    </div>
+  </header>
 
-            {companyId && (
-              <div style={headerPill}>
-                Tenant: {companyId.slice(0, 8)}
-              </div>
-            )}
-
-            <select
-              value={companyId || ""}
-              onChange={async (e) => {
-                await setActiveCompany(e.target.value);
-                window.location.reload();
-              }}
-              style={{
-                minWidth: 200,
-                height: 40,
-                padding: "0 12px",
-                borderRadius: 10,
-                background: "#0f141b",
-                border: "1px solid #263140",
-                color: "#f7f9fb",
-                fontWeight: 650,
-              }}
-            >
-              {memberships.map((m) => (
-                <option key={m.id} value={m.company_id}>
-                  {m.company_name}
-                </option>
-              ))}
-            </select>
-
-           <div
-  style={{
-    width: 40,
-    height: 40,
-    borderRadius: "50%",
-    background: "#7aa2ff",
-    color: "#0a0d12",
-    fontWeight: 800,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-    cursor: "pointer",
-    border: "1px solid #7aa2ff",
-    boxShadow: "0 6px 18px rgba(122,162,255,0.35)",
-  }}
-  title={user?.email || "Usuario"}
->
-  {userInitial}
-</div>
-              <div
-                style={{
-                  width: 28,
-                  height: 28,
-                  borderRadius: "50%",
-                  background: "#7aa2ff",
-                  color: "#0a0d12",
-                  fontWeight: 800,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  flexShrink: 0,
-                  fontSize: 12,
-                }}
-              >
-                {userInitial}
-              </div>
-
-              <div
-                style={{
-                  fontSize: 12,
-                  color: "#c6d0dc",
-                  fontWeight: 650,
-                  overflow: "hidden",
-                  textOverflow: "ellipsis",
-                  whiteSpace: "nowrap",
-                }}
-              >
-                {user?.email}
-              </div>
-            </div>
-
-            <button
-              onClick={async () => {
-                await supabase.auth.signOut();
-                router.replace("/login");
-              }}
-              style={{
-                height: 40,
-                padding: "0 16px",
-                borderRadius: 10,
-                background: "#f4f6f8",
-                color: "#0a0d12",
-                border: "1px solid #f4f6f8",
-                fontWeight: 750,
-                cursor: "pointer",
-              }}
-            >
-              Salir
-            </button>
-          </div>
-        </header>
-
-        <section
-          style={{
-            flex: 1,
-            minHeight: "calc(100vh - 86px)",
-            background: "#07090d",
-            padding: 24,
-          }}
-        >
-          <div
-            style={{
-              minHeight: "calc(100vh - 134px)",
-              borderRadius: 20,
-              background:
-                "radial-gradient(circle at top center, rgba(122,162,255,0.04), transparent 18%), #0b0f14",
-              border: "1px solid #181d24",
-              padding: 28,
-              boxShadow: "0 18px 50px rgba(0,0,0,0.24)",
-            }}
-          >
-            {children}
-          </div>
-        </section>
-      </main>
+  {/* CONTENIDO */}
+  <section
+    style={{
+      flex: 1,
+      minHeight: "calc(100vh - 86px)",
+      background: "#07090d",
+      padding: 24,
+    }}
+  >
+    <div
+      style={{
+        minHeight: "calc(100vh - 134px)",
+        borderRadius: 20,
+        background:
+          "radial-gradient(circle at top center, rgba(122,162,255,0.04), transparent 18%), #0b0f14",
+        border: "1px solid #181d24",
+        padding: 28,
+        boxShadow: "0 18px 50px rgba(0,0,0,0.24)",
+      }}
+    >
+      {children}
+    </div>
+  </section>
+</main>
     </div>
   );
 }
