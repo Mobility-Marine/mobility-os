@@ -37,7 +37,7 @@ export default function ProtectedLayout({
         gridTemplateColumns: "260px 1fr",
       }}
     >
-      {/* SIDEBAR */}
+      {/* SIDEBAR O*/}
       <aside
         style={{
           background: "#0b1733",
