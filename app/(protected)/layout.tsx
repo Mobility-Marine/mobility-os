@@ -781,7 +781,10 @@ export default function ProtectedLayout({
       setCommandResult(null);
 
       try {
-        const result = await executeCommand(commandText);
+        const result = await executeCommand(commandText, {
+  companyId,
+  userId: user?.id,
+});
 
         setCommandResult(
           typeof result === "string"
