@@ -1,22 +1,37 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { supabase } from "@/lib/supabaseClient";
 
-const sidebarStructure = [
+type NavItem = {
+  name: string;
+  path: string;
+};
+
+type NavSection = {
+  key: string;
+  title: string;
+  subtitle: string;
+  items: NavItem[];
+};
+
+const sidebarStructure: NavSection[] = [
   {
-    section: "GENERAL",
-    alwaysOpen: true,
+    key: "general",
+    title: "General",
+    subtitle: "Base operativa",
     items: [
       { name: "Dashboard", path: "/dashboard" },
       { name: "Agenda", path: "/agenda" },
     ],
   },
   {
-    section: "COMERCIAL",
+    key: "comercial",
+    title: "Comercial",
+    subtitle: "Ventas y relación",
     items: [
       { name: "Prospectos", path: "/comercial/prospectos" },
       { name: "CRM", path: "/comercial/crm" },
@@ -27,30 +42,42 @@ const sidebarStructure = [
     ],
   },
   {
-    section: "LOGÍSTICA",
+    key: "logistica",
+    title: "Logística",
+    subtitle: "Operación del servicio",
     items: [
       { name: "Embarques", path: "/logistica/embarques" },
       { name: "Transporte", path: "/logistica/transporte" },
       { name: "Comercio Exterior", path: "/logistica/comercio-exterior" },
       { name: "Tracking", path: "/logistica/tracking" },
       { name: "Documentación", path: "/logistica/documentacion" },
-      { name: "Proveedores logísticos", path: "/logistica/proveedores-logisticos" },
+      {
+        name: "Proveedores logísticos",
+        path: "/logistica/proveedores-logisticos",
+      },
       { name: "Órdenes de servicio", path: "/logistica/ordenes-servicio" },
     ],
   },
   {
-    section: "COMPRAS & ABASTECIMIENTO",
+    key: "abastecimiento",
+    title: "Compras & Abastecimiento",
+    subtitle: "Compras e inventario",
     items: [
       { name: "Proveedores", path: "/abastecimiento/proveedores" },
       { name: "Compras", path: "/abastecimiento/compras" },
-      { name: "Órdenes de compra", path: "/abastecimiento/ordenes-compra" },
+      {
+        name: "Órdenes de compra",
+        path: "/abastecimiento/ordenes-compra",
+      },
       { name: "Inventarios", path: "/abastecimiento/inventarios" },
       { name: "Recepciones", path: "/abastecimiento/recepciones" },
       { name: "Costos", path: "/abastecimiento/costos" },
     ],
   },
   {
-    section: "FINANZAS",
+    key: "finanzas",
+    title: "Finanzas",
+    subtitle: "Control económico",
     items: [
       { name: "Facturación", path: "/finanzas/facturacion" },
       { name: "Cuentas por cobrar", path: "/finanzas/cxc" },
@@ -61,7 +88,9 @@ const sidebarStructure = [
     ],
   },
   {
-    section: "ADMINISTRACIÓN",
+    key: "administracion",
+    title: "Administración",
+    subtitle: "Plataforma y soporte",
     items: [
       { name: "Reportes", path: "/reports" },
       { name: "Empresa", path: "/company" },
@@ -70,6 +99,14 @@ const sidebarStructure = [
     ],
   },
 ];
+
+function getCurrentPageTitle(pathname: string) {
+  for (const section of sidebarStructure) {
+    const item = section.items.find((x) => x.path === pathname);
+    if (item) return item.name;
+  }
+  return "Mobility OS";
+}
 
 export default function ProtectedLayout({
   children,
@@ -80,159 +117,362 @@ export default function ProtectedLayout({
   const pathname = usePathname();
 
   const { user } = useAuth();
-  const { companyId, memberships, setActiveCompany } =
-    useTenant();
+  const { companyId, memberships, setActiveCompany } = useTenant();
+
+  const activeSectionKey = useMemo(() => {
+    return (
+      sidebarStructure.find((section) =>
+        section.items.some((item) => item.path === pathname)
+      )?.key ?? "general"
+    );
+  }, [pathname]);
 
   const [openSections, setOpenSections] = useState<string[]>([]);
 
-  const toggleSection = (section: string) => {
+  useEffect(() => {
     setOpenSections((prev) =>
-      prev.includes(section)
-        ? prev.filter((s) => s !== section)
-        : [...prev, section]
+      prev.includes(activeSectionKey) ? prev : [...prev, activeSectionKey]
     );
-  };
+  }, [activeSectionKey]);
+
+  const currentPageTitle = getCurrentPageTitle(pathname);
+
+  function toggleSection(sectionKey: string) {
+    setOpenSections((prev) =>
+      prev.includes(sectionKey)
+        ? prev.filter((key) => key !== sectionKey)
+        : [...prev, sectionKey]
+    );
+  }
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "radial-gradient(circle at top, #0b1733, #060c1b)",
-        color: "#e8edff",
+        background:
+          "radial-gradient(circle at top left, #112a63 0%, #091327 34%, #050913 68%, #03050b 100%)",
+        color: "#e9eefc",
         fontFamily:
-          "-apple-system, BlinkMacSystemFont, Inter, Segoe UI, sans-serif",
+          "-apple-system, BlinkMacSystemFont, Inter, Segoe UI, Roboto, sans-serif",
         display: "grid",
-        gridTemplateColumns: "300px 1fr",
+        gridTemplateColumns: "336px 1fr",
       }}
     >
-      {/* SIDEBAR */}
       <aside
         style={{
-          background: "linear-gradient(180deg,#0b1630,#070f24)",
-          borderRight: "1px solid #16254b",
-          padding: 24,
-          display: "flex",
-          flexDirection: "column",
+          padding: 22,
+          borderRight: "1px solid rgba(115,146,255,0.10)",
+          background:
+            "linear-gradient(180deg, rgba(7,14,30,0.90) 0%, rgba(5,10,22,0.94) 100%)",
+          backdropFilter: "blur(18px)",
           overflowY: "auto",
         }}
       >
-        {/* LOGO */}
-        <div style={{ marginBottom: 32 }}>
-          <img src="/logo.png" alt="Mobility OS" style={{ width: 180 }} />
-          <div style={{ fontSize: 12, color: "#8fa7d6", marginTop: 10 }}>
+        <div
+          style={{
+            marginBottom: 18,
+            padding: 18,
+            borderRadius: 24,
+            background:
+              "linear-gradient(180deg, rgba(17,31,67,0.95) 0%, rgba(9,18,40,0.92) 100%)",
+            border: "1px solid rgba(115,146,255,0.14)",
+            boxShadow:
+              "0 24px 44px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.03)",
+          }}
+        >
+          <img
+            src="/logo.png"
+            alt="Mobility OS"
+            style={{
+              width: 188,
+              display: "block",
+              filter: "drop-shadow(0 0 20px rgba(59,130,246,0.25))",
+            }}
+          />
+          <div
+            style={{
+              marginTop: 14,
+              color: "#8ea6d9",
+              fontSize: 12,
+              letterSpacing: 0.5,
+            }}
+          >
             Mobility Marine
           </div>
         </div>
 
-        {/* MENÚ */}
-        <nav style={{ flex: 1 }}>
+        <div
+          style={{
+            marginBottom: 18,
+            padding: 16,
+            borderRadius: 20,
+            background:
+              "linear-gradient(180deg, rgba(14,27,59,0.88) 0%, rgba(8,16,34,0.86) 100%)",
+            border: "1px solid rgba(115,146,255,0.10)",
+          }}
+        >
+          <div
+            style={{
+              fontSize: 11,
+              color: "#7fa1ff",
+              textTransform: "uppercase",
+              letterSpacing: 1.2,
+              fontWeight: 800,
+              marginBottom: 6,
+            }}
+          >
+            Módulo actual
+          </div>
+          <div
+            style={{
+              fontSize: 22,
+              lineHeight: 1.15,
+              fontWeight: 800,
+              color: "#f4f7ff",
+            }}
+          >
+            {currentPageTitle}
+          </div>
+        </div>
+
+        <nav>
           {sidebarStructure.map((section) => {
-            const isOpen =
-              section.alwaysOpen || openSections.includes(section.section);
+            const open = openSections.includes(section.key);
+            const hasActiveItem = section.items.some(
+              (item) => item.path === pathname
+            );
 
             return (
               <div
-                key={section.section}
+                key={section.key}
                 style={{
-                  marginBottom: 16,
-                  background: "#0f1c3f",
-                  borderRadius: 14,
-                  border: "1px solid #1f2f5a",
-                  padding: 10,
+                  marginBottom: 14,
+                  borderRadius: 22,
+                  overflow: "hidden",
+                  background: hasActiveItem
+                    ? "linear-gradient(180deg, rgba(20,37,80,0.92) 0%, rgba(9,18,41,0.90) 100%)"
+                    : "linear-gradient(180deg, rgba(11,18,38,0.82) 0%, rgba(7,12,26,0.72) 100%)",
+                  border: hasActiveItem
+                    ? "1px solid rgba(96,147,255,0.24)"
+                    : "1px solid rgba(115,146,255,0.08)",
+                  boxShadow: hasActiveItem
+                    ? "0 16px 34px rgba(9,22,54,0.36)"
+                    : "none",
                 }}
               >
-                {/* SECTION HEADER */}
-                <div
-                  onClick={() =>
-                    !section.alwaysOpen && toggleSection(section.section)
-                  }
+                <button
+                  onClick={() => toggleSection(section.key)}
                   style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    color: "#7fa1ff",
-                    letterSpacing: 1,
-                    marginBottom: isOpen ? 10 : 0,
-                    cursor: section.alwaysOpen ? "default" : "pointer",
+                    width: "100%",
+                    background: "transparent",
+                    border: "none",
+                    padding: 16,
+                    cursor: "pointer",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    textAlign: "left",
+                    color: "#e9eefc",
                   }}
                 >
-                  {section.section}
-                </div>
+                  <div>
+                    <div
+                      style={{
+                        fontSize: 11,
+                        color: hasActiveItem ? "#9bb6ff" : "#7e9ad3",
+                        textTransform: "uppercase",
+                        letterSpacing: 1.2,
+                        fontWeight: 800,
+                      }}
+                    >
+                      {section.title}
+                    </div>
+                    <div
+                      style={{
+                        marginTop: 5,
+                        fontSize: 12,
+                        color: "#7e94c2",
+                      }}
+                    >
+                      {section.subtitle}
+                    </div>
+                  </div>
 
-                {/* ITEMS */}
-                {isOpen &&
-                  section.items.map((item) => {
-                    const active = pathname === item.path;
+                  <div
+                    style={{
+                      width: 32,
+                      height: 32,
+                      borderRadius: 999,
+                      display: "grid",
+                      placeItems: "center",
+                      background: "rgba(255,255,255,0.04)",
+                      border: "1px solid rgba(255,255,255,0.06)",
+                      color: "#dbe5ff",
+                      fontSize: 14,
+                      fontWeight: 700,
+                      flexShrink: 0,
+                    }}
+                  >
+                    {open ? "−" : "+"}
+                  </div>
+                </button>
 
-                    return (
-                      <div
-                        key={item.name}
-                        onClick={() => router.push(item.path)}
-                        style={{
-                          padding: "12px 14px",
-                          borderRadius: 10,
-                          marginBottom: 6,
-                          cursor: "pointer",
-                          fontWeight: 500,
-                          background: active
-                            ? "linear-gradient(135deg,#2563eb,#1d4ed8)"
-                            : "transparent",
-                          boxShadow: active
-                            ? "0 8px 20px rgba(37,99,235,.35)"
-                            : "none",
-                        }}
-                      >
-                        {item.name}
-                      </div>
-                    );
-                  })}
+                {open && (
+                  <div
+                    style={{
+                      padding: "0 12px 12px 12px",
+                      display: "grid",
+                      gap: 8,
+                    }}
+                  >
+                    {section.items.map((item) => {
+                      const active = pathname === item.path;
+
+                      return (
+                        <button
+                          key={item.name}
+                          onClick={() => router.push(item.path)}
+                          style={{
+                            width: "100%",
+                            textAlign: "left",
+                            padding: "13px 16px",
+                            borderRadius: 16,
+                            border: active
+                              ? "1px solid rgba(101,152,255,0.58)"
+                              : "1px solid rgba(255,255,255,0.05)",
+                            cursor: "pointer",
+                            color: active ? "#ffffff" : "#dce6ff",
+                            fontSize: 14,
+                            fontWeight: active ? 700 : 550,
+                            background: active
+                              ? "linear-gradient(135deg, #2e6cff 0%, #1f4ed8 100%)"
+                              : "linear-gradient(180deg, rgba(255,255,255,0.03) 0%, rgba(255,255,255,0.015) 100%)",
+                            boxShadow: active
+                              ? "0 16px 28px rgba(33,92,255,0.34)"
+                              : "none",
+                            transition: "all .18s ease",
+                          }}
+                        >
+                          {item.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
         </nav>
 
-        {/* USER */}
         <div
           style={{
-            borderTop: "1px solid #1f2f5a",
-            paddingTop: 14,
-            fontSize: 13,
-            color: "#8fa7d6",
+            marginTop: 18,
+            paddingTop: 18,
+            borderTop: "1px solid rgba(115,146,255,0.10)",
           }}
         >
-          Conectado como
-          <div style={{ color: "#fff", fontWeight: 600 }}>
-            {user?.email}
+          <div
+            style={{
+              fontSize: 12,
+              color: "#8fa7d6",
+              marginBottom: 8,
+            }}
+          >
+            Sesión activa
+          </div>
+
+          <div
+            style={{
+              padding: 14,
+              borderRadius: 16,
+              background:
+                "linear-gradient(180deg, rgba(14,27,59,0.84) 0%, rgba(8,16,34,0.82) 100%)",
+              border: "1px solid rgba(115,146,255,0.08)",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 13,
+                fontWeight: 700,
+                color: "#ffffff",
+                wordBreak: "break-word",
+                lineHeight: 1.35,
+              }}
+            >
+              {user?.email}
+            </div>
           </div>
         </div>
       </aside>
 
-      {/* MAIN */}
-      <main style={{ padding: 28 }}>
-        {/* HEADER */}
+      <main
+        style={{
+          padding: 28,
+          display: "flex",
+          flexDirection: "column",
+          gap: 22,
+        }}
+      >
         <header
           style={{
+            borderRadius: 26,
+            padding: 24,
+            background:
+              "linear-gradient(135deg, rgba(14,29,69,0.92) 0%, rgba(7,15,36,0.88) 100%)",
+            border: "1px solid rgba(115,146,255,0.14)",
+            boxShadow:
+              "0 26px 54px rgba(0,0,0,0.30), inset 0 1px 0 rgba(255,255,255,0.03)",
+            backdropFilter: "blur(14px)",
             display: "flex",
             justifyContent: "space-between",
             alignItems: "center",
-            marginBottom: 24,
-            background: "linear-gradient(135deg,#0f1c3f,#0b1733)",
-            border: "1px solid #1f2f5a",
-            borderRadius: 18,
-            padding: "18px 24px",
+            gap: 16,
+            flexWrap: "wrap",
           }}
         >
           <div>
-            <div style={{ fontWeight: 700, fontSize: 18 }}>
+            <div
+              style={{
+                fontSize: 13,
+                color: "#8fa7d6",
+                marginBottom: 6,
+                letterSpacing: 0.2,
+              }}
+            >
               Mobility OS Platform
             </div>
+            <div
+              style={{
+                fontSize: 30,
+                fontWeight: 800,
+                color: "#f5f8ff",
+                lineHeight: 1.1,
+              }}
+            >
+              {currentPageTitle}
+            </div>
             {companyId && (
-              <div style={{ fontSize: 12, color: "#7fa1ff" }}>
+              <div
+                style={{
+                  marginTop: 8,
+                  fontSize: 13,
+                  color: "#7fa1ff",
+                  fontWeight: 700,
+                }}
+              >
                 Tenant activo: {companyId.slice(0, 8)}
               </div>
             )}
           </div>
 
-          <div style={{ display: "flex", gap: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 12,
+              flexWrap: "wrap",
+            }}
+          >
             <select
               value={companyId || ""}
               onChange={async (e) => {
@@ -240,11 +480,15 @@ export default function ProtectedLayout({
                 window.location.reload();
               }}
               style={{
-                background: "#070f24",
-                color: "#fff",
-                border: "1px solid #2a4a88",
-                padding: "10px 14px",
-                borderRadius: 12,
+                minWidth: 220,
+                padding: "12px 16px",
+                borderRadius: 16,
+                background:
+                  "linear-gradient(180deg, rgba(5,10,24,0.96) 0%, rgba(7,15,36,0.96) 100%)",
+                color: "#ffffff",
+                border: "1px solid rgba(95,147,255,0.35)",
+                fontWeight: 700,
+                boxShadow: "inset 0 1px 0 rgba(255,255,255,0.03)",
               }}
             >
               {memberships.map((m) => (
@@ -260,13 +504,15 @@ export default function ProtectedLayout({
                 router.replace("/login");
               }}
               style={{
-                background: "linear-gradient(135deg,#1f3a8a,#2563eb)",
-                border: "none",
-                padding: "10px 16px",
-                borderRadius: 12,
-                color: "#fff",
-                fontWeight: 600,
+                padding: "12px 18px",
+                borderRadius: 16,
+                border: "1px solid rgba(95,147,255,0.42)",
+                background:
+                  "linear-gradient(135deg, #2e6cff 0%, #1f4ed8 100%)",
+                color: "#ffffff",
+                fontWeight: 800,
                 cursor: "pointer",
+                boxShadow: "0 16px 28px rgba(33,92,255,0.30)",
               }}
             >
               Salir
@@ -274,18 +520,22 @@ export default function ProtectedLayout({
           </div>
         </header>
 
-        {/* CONTENT CARD */}
-        <div
+        <section
           style={{
-            background: "linear-gradient(180deg,#0f1c3f,#0b1733)",
-            border: "1px solid #1f2f5a",
-            borderRadius: 20,
-            padding: 28,
+            flex: 1,
             minHeight: "72vh",
+            borderRadius: 30,
+            padding: 32,
+            background:
+              "linear-gradient(180deg, rgba(14,28,66,0.94) 0%, rgba(7,14,35,0.90) 100%)",
+            border: "1px solid rgba(115,146,255,0.12)",
+            boxShadow:
+              "0 30px 60px rgba(0,0,0,0.34), inset 0 1px 0 rgba(255,255,255,0.03)",
+            backdropFilter: "blur(14px)",
           }}
         >
           {children}
-        </div>
+        </section>
       </main>
     </div>
   );
