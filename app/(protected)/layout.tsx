@@ -119,6 +119,35 @@ function getCurrentItem(pathname: string) {
   };
 }
 
+const iconButton: React.CSSProperties = {
+  height: 40,
+  width: 40,
+  minWidth: 40,
+  borderRadius: 10,
+  background: "#0f141b",
+  border: "1px solid #1b222c",
+  color: "#c5cfdb",
+  fontSize: 16,
+  cursor: "pointer",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  transition: "all .18s ease",
+};
+
+const headerPill: React.CSSProperties = {
+  height: 40,
+  display: "inline-flex",
+  alignItems: "center",
+  padding: "0 12px",
+  borderRadius: 10,
+  background: "#0f141b",
+  border: "1px solid #1b222c",
+  fontSize: 12,
+  fontWeight: 650,
+  color: "#b8c3d1",
+};
+
 export default function ProtectedLayout({
   children,
 }: {
@@ -133,6 +162,7 @@ export default function ProtectedLayout({
   const current = useMemo(() => getCurrentItem(pathname), [pathname]);
 
   const [openSections, setOpenSections] = useState<string[]>([]);
+  const [globalSearch, setGlobalSearch] = useState("");
 
   useEffect(() => {
     setOpenSections((prev) =>
@@ -150,6 +180,43 @@ export default function ProtectedLayout({
     );
   }
 
+  function handleGlobalSearch(e: React.FormEvent) {
+    e.preventDefault();
+    const query = globalSearch.trim().toLowerCase();
+
+    if (!query) return;
+
+    for (const section of navSections) {
+      const exactItem = section.items.find(
+        (item) =>
+          item.name.toLowerCase() === query ||
+          item.path.toLowerCase() === query
+      );
+
+      if (exactItem) {
+        router.push(exactItem.path);
+        setGlobalSearch("");
+        return;
+      }
+    }
+
+    for (const section of navSections) {
+      const partialItem = section.items.find(
+        (item) =>
+          item.name.toLowerCase().includes(query) ||
+          item.path.toLowerCase().includes(query)
+      );
+
+      if (partialItem) {
+        router.push(partialItem.path);
+        setGlobalSearch("");
+        return;
+      }
+    }
+  }
+
+  const userInitial = user?.email?.charAt(0).toUpperCase() || "U";
+
   return (
     <div
       style={{
@@ -164,7 +231,8 @@ export default function ProtectedLayout({
     >
       <aside
         style={{
-          background: "#0b0f14",
+          background:
+            "radial-gradient(circle at top left, rgba(122,162,255,0.06), transparent 24%), #0b0f14",
           borderRight: "1px solid #181d24",
           padding: 20,
           overflowY: "auto",
@@ -173,10 +241,12 @@ export default function ProtectedLayout({
         <div
           style={{
             padding: 18,
-            borderRadius: 16,
-            background: "#0f141b",
+            borderRadius: 18,
+            background:
+              "linear-gradient(180deg, rgba(17,22,30,0.96) 0%, rgba(13,17,24,0.96) 100%)",
             border: "1px solid #1b222c",
             marginBottom: 18,
+            boxShadow: "0 16px 40px rgba(0,0,0,0.28)",
           }}
         >
           <img
@@ -226,9 +296,12 @@ export default function ProtectedLayout({
                 style={{
                   marginBottom: 10,
                   border: "1px solid #171d25",
-                  borderRadius: 14,
+                  borderRadius: 16,
                   overflow: "hidden",
                   background: hasActive ? "#0f141b" : "#0c1117",
+                  boxShadow: hasActive
+                    ? "0 10px 24px rgba(0,0,0,0.18)"
+                    : "none",
                 }}
               >
                 <button
@@ -346,11 +419,31 @@ export default function ProtectedLayout({
           <div
             style={{
               padding: 12,
-              borderRadius: 12,
+              borderRadius: 14,
               background: "#0f141b",
               border: "1px solid #1b222c",
+              display: "flex",
+              alignItems: "center",
+              gap: 10,
             }}
           >
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background: "#7aa2ff",
+                color: "#0a0d12",
+                fontWeight: 800,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              {userInitial}
+            </div>
+
             <div
               style={{
                 fontSize: 13,
@@ -375,14 +468,15 @@ export default function ProtectedLayout({
       >
         <header
           style={{
-            height: 72,
+            height: 86,
             borderBottom: "1px solid #181d24",
-            background: "#0a0d12",
+            background:
+              "radial-gradient(circle at top center, rgba(122,162,255,0.05), transparent 24%), #0a0d12",
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
             padding: "0 24px",
-            gap: 16,
+            gap: 18,
           }}
         >
           <div style={{ minWidth: 0 }}>
@@ -397,6 +491,7 @@ export default function ProtectedLayout({
             >
               {current.sectionTitle}
             </div>
+
             <div
               style={{
                 marginTop: 4,
@@ -419,19 +514,61 @@ export default function ProtectedLayout({
               justifyContent: "flex-end",
             }}
           >
-            {companyId && (
-              <div
+            <form onSubmit={handleGlobalSearch}>
+              <input
+                value={globalSearch}
+                onChange={(e) => setGlobalSearch(e.target.value)}
+                placeholder="Buscar o ejecutar…"
                 style={{
-                  padding: "10px 12px",
+                  width: 260,
+                  height: 40,
+                  padding: "0 14px",
                   borderRadius: 10,
                   background: "#0f141b",
-                  border: "1px solid #1b222c",
-                  fontSize: 12,
-                  fontWeight: 650,
-                  color: "#b8c3d1",
+                  border: "1px solid #263140",
+                  color: "#f7f9fb",
+                  fontWeight: 500,
+                  outline: "none",
                 }}
-              >
-                Tenant activo: {companyId.slice(0, 8)}
+              />
+            </form>
+
+            <button
+              type="button"
+              style={iconButton}
+              title="Notificaciones"
+            >
+              🔔
+            </button>
+
+            <button
+              type="button"
+              style={iconButton}
+              title="Mensajes internos"
+            >
+              💬
+            </button>
+
+            <button
+              type="button"
+              style={{
+                ...iconButton,
+                width: "auto",
+                minWidth: 48,
+                padding: "0 12px",
+                background: "#7aa2ff",
+                color: "#0a0d12",
+                fontWeight: 800,
+                border: "1px solid #7aa2ff",
+              }}
+              title="Mobility AI"
+            >
+              IA
+            </button>
+
+            {companyId && (
+              <div style={headerPill}>
+                Tenant: {companyId.slice(0, 8)}
               </div>
             )}
 
@@ -442,9 +579,9 @@ export default function ProtectedLayout({
                 window.location.reload();
               }}
               style={{
-                minWidth: 220,
-                height: 42,
-                padding: "0 14px",
+                minWidth: 200,
+                height: 40,
+                padding: "0 12px",
                 borderRadius: 10,
                 background: "#0f141b",
                 border: "1px solid #263140",
@@ -459,13 +596,59 @@ export default function ProtectedLayout({
               ))}
             </select>
 
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+                height: 40,
+                padding: "0 8px 0 6px",
+                borderRadius: 10,
+                background: "#0f141b",
+                border: "1px solid #1b222c",
+                maxWidth: 180,
+              }}
+              title={user?.email || "Usuario"}
+            >
+              <div
+                style={{
+                  width: 28,
+                  height: 28,
+                  borderRadius: "50%",
+                  background: "#7aa2ff",
+                  color: "#0a0d12",
+                  fontWeight: 800,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                  fontSize: 12,
+                }}
+              >
+                {userInitial}
+              </div>
+
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "#c6d0dc",
+                  fontWeight: 650,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {user?.email}
+              </div>
+            </div>
+
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
                 router.replace("/login");
               }}
               style={{
-                height: 42,
+                height: 40,
                 padding: "0 16px",
                 borderRadius: 10,
                 background: "#f4f6f8",
@@ -483,18 +666,20 @@ export default function ProtectedLayout({
         <section
           style={{
             flex: 1,
-            minHeight: "calc(100vh - 72px)",
+            minHeight: "calc(100vh - 86px)",
             background: "#07090d",
             padding: 24,
           }}
         >
           <div
             style={{
-              minHeight: "calc(100vh - 120px)",
-              borderRadius: 18,
-              background: "#0b0f14",
+              minHeight: "calc(100vh - 134px)",
+              borderRadius: 20,
+              background:
+                "radial-gradient(circle at top center, rgba(122,162,255,0.04), transparent 18%), #0b0f14",
               border: "1px solid #181d24",
               padding: 28,
+              boxShadow: "0 18px 50px rgba(0,0,0,0.24)",
             }}
           >
             {children}
