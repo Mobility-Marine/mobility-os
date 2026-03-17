@@ -6,31 +6,73 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { supabase } from "@/lib/supabaseClient";
 
-const modules = [
-  { name: "Dashboard", path: "/dashboard" },
+const sidebarStructure = [
+  {
+    section: "GENERAL",
+    items: [
+      { name: "Dashboard", path: "/dashboard" },
+      { name: "Agenda", path: "/agenda" },
+    ],
+  },
 
-  { name: "Prospectos", path: "/prospectos" },
-  { name: "CRM", path: "/crm" },
-  { name: "Cotizaciones", path: "/cotizaciones" },
-  { name: "Agenda", path: "/agenda" },
-  { name: "Clientes", path: "/clientes" },
+  {
+    section: "COMERCIAL",
+    items: [
+      { name: "Prospectos", path: "/comercial/prospectos" },
+      { name: "CRM", path: "/comercial/crm" },
+      { name: "Clientes", path: "/comercial/clientes" },
+      { name: "Cotizaciones", path: "/comercial/cotizaciones" },
+      { name: "Productos", path: "/comercial/productos" },
+      { name: "Pedidos", path: "/comercial/pedidos" },
+    ],
+  },
 
-  { name: "Operaciones", path: "/operaciones" },
-  { name: "Embarques", path: "/embarques" },
-  { name: "Transporte", path: "/transporte" },
-  { name: "Comercio Exterior", path: "/comercio-exterior" },
-  { name: "Proveedores", path: "/proveedores" },
-  { name: "Compras", path: "/compras" },
-  { name: "Inventarios", path: "/inventarios" },
+  {
+    section: "LOGÍSTICA",
+    items: [
+      { name: "Embarques", path: "/logistica/embarques" },
+      { name: "Transporte", path: "/logistica/transporte" },
+      { name: "Comercio Exterior", path: "/logistica/comercio-exterior" },
+      { name: "Tracking", path: "/logistica/tracking" },
+      { name: "Documentación", path: "/logistica/documentacion" },
+      { name: "Proveedores logísticos", path: "/logistica/proveedores" },
+      { name: "Órdenes de servicio", path: "/logistica/ordenes-servicio" },
+    ],
+  },
 
-  { name: "Facturación", path: "/facturacion" },
-  { name: "Cuentas por Cobrar", path: "/cxc" },
-  { name: "Cuentas por Pagar", path: "/cxp" },
-  { name: "Contabilidad", path: "/contabilidad" },
-  { name: "Bancos", path: "/bancos" },
+  {
+    section: "COMPRAS & ABASTECIMIENTO",
+    items: [
+      { name: "Proveedores", path: "/abastecimiento/proveedores" },
+      { name: "Compras", path: "/abastecimiento/compras" },
+      { name: "Órdenes de compra", path: "/abastecimiento/ordenes-compra" },
+      { name: "Inventarios", path: "/abastecimiento/inventarios" },
+      { name: "Recepciones", path: "/abastecimiento/recepciones" },
+      { name: "Costos", path: "/abastecimiento/costos" },
+    ],
+  },
 
-  { name: "Reportes", path: "/reportes" },
-  { name: "Empresa", path: "/company" },
+  {
+    section: "FINANZAS",
+    items: [
+      { name: "Facturación", path: "/finanzas/facturacion" },
+      { name: "Cuentas por cobrar", path: "/finanzas/cxc" },
+      { name: "Cuentas por pagar", path: "/finanzas/cxp" },
+      { name: "Bancos", path: "/finanzas/bancos" },
+      { name: "Contabilidad", path: "/finanzas/contabilidad" },
+      { name: "Impuestos", path: "/finanzas/impuestos" },
+    ],
+  },
+
+  {
+    section: "ADMINISTRACIÓN",
+    items: [
+      { name: "Reportes", path: "/reports" },
+      { name: "Empresa", path: "/company" },
+      { name: "Configuración", path: "/settings" },
+      { name: "Ayuda", path: "/help" },
+    ],
+  },
 ];
 
 export default function ProtectedLayout({
@@ -54,7 +96,7 @@ export default function ProtectedLayout({
         fontFamily:
           "-apple-system, BlinkMacSystemFont, Inter, Segoe UI, Roboto, sans-serif",
         display: "grid",
-        gridTemplateColumns: "260px 1fr",
+        gridTemplateColumns: "280px 1fr",
       }}
     >
       {/* SIDEBAR */}
@@ -65,10 +107,11 @@ export default function ProtectedLayout({
           padding: "28px 20px",
           display: "flex",
           flexDirection: "column",
+          overflowY: "auto",
         }}
       >
         {/* LOGO */}
-        <div style={{ marginBottom: 36 }}>
+        <div style={{ marginBottom: 30 }}>
           <img
             src="/logo.png"
             alt="Mobility OS"
@@ -89,37 +132,54 @@ export default function ProtectedLayout({
           </div>
         </div>
 
-        {/* MENÚ */}
+        {/* MENÚ POR ÁREAS */}
         <nav style={{ flex: 1 }}>
-          {modules.map((m) => {
-            const active = pathname === m.path;
-
-            return (
+          {sidebarStructure.map((section) => (
+            <div key={section.section} style={{ marginBottom: 18 }}>
               <div
-                key={m.name}
-                onClick={() => router.push(m.path)}
                 style={{
-                  padding: "13px 16px",
-                  borderRadius: 14,
-                  marginBottom: 8,
-                  cursor: "pointer",
-                  fontWeight: 500,
-                  transition: "all .15s ease",
-                  background: active
-                    ? "linear-gradient(135deg,#1e40af,#2563eb)"
-                    : "transparent",
-                  border: active
-                    ? "1px solid #3b82f6"
-                    : "1px solid transparent",
-                  boxShadow: active
-                    ? "0 6px 18px rgba(37,99,235,0.35)"
-                    : "none",
+                  fontSize: 11,
+                  color: "#6f87b8",
+                  marginBottom: 6,
+                  fontWeight: 600,
+                  letterSpacing: 1,
                 }}
               >
-                {m.name}
+                {section.section}
               </div>
-            );
-          })}
+
+              {section.items.map((item) => {
+                const active = pathname === item.path;
+
+                return (
+                  <div
+                    key={item.name}
+                    onClick={() => router.push(item.path)}
+                    style={{
+                      padding: "12px 14px",
+                      borderRadius: 12,
+                      marginBottom: 6,
+                      cursor: "pointer",
+                      fontWeight: 500,
+                      fontSize: 14,
+                      transition: "all .15s ease",
+                      background: active
+                        ? "linear-gradient(135deg,#1e40af,#2563eb)"
+                        : "transparent",
+                      border: active
+                        ? "1px solid #3b82f6"
+                        : "1px solid transparent",
+                      boxShadow: active
+                        ? "0 6px 18px rgba(37,99,235,0.35)"
+                        : "none",
+                    }}
+                  >
+                    {item.name}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
         </nav>
 
         {/* USUARIO */}
