@@ -521,24 +521,31 @@ export default function ProtectedLayout({
       }}
     >
       {/* BUSCADOR GLOBAL */}
-      <form onSubmit={handleGlobalSearch}>
-        <input
-          value={globalSearch}
-          onChange={(e) => setGlobalSearch(e.target.value)}
-          placeholder="Buscar o ejecutar…"
-          style={{
-            width: 260,
-            height: 40,
-            padding: "0 14px",
-            borderRadius: 10,
-            background: "#0f141b",
-            border: "1px solid #263140",
-            color: "#f7f9fb",
-            fontWeight: 500,
-            outline: "none",
-          }}
-        />
-      </form>
+   <form
+  onSubmit={handleGlobalSearch}
+  style={{
+    flexGrow: 1,
+    minWidth: 160,
+    maxWidth: 420,
+  }}
+>
+  <input
+    value={globalSearch}
+    onChange={(e) => setGlobalSearch(e.target.value)}
+    placeholder="Buscar o ejecutar…"
+    style={{
+      width: "100%",
+      height: 40,
+      padding: "0 14px",
+      borderRadius: 10,
+      background: "#0f141b",
+      border: "1px solid #263140",
+      color: "#f7f9fb",
+      fontWeight: 500,
+      outline: "none",
+    }}
+  />
+</form>
 
       {/* NOTIFICACIONES */}
       <button type="button" style={iconButton} title="Notificaciones">
@@ -569,11 +576,42 @@ export default function ProtectedLayout({
       </button>
 
       {/* TENANT */}
-      {companyId && (
-        <div style={headerPill}>
-          Tenant: {companyId.slice(0, 8)}
-        </div>
-      )}
+    {companyId && (
+  <div
+    style={{
+      height: 40,
+      padding: "4px 12px",
+      borderRadius: 10,
+      background: "#0f141b",
+      border: "1px solid #1b222c",
+      display: "flex",
+      flexDirection: "column",
+      justifyContent: "center",
+      lineHeight: 1.05,
+    }}
+  >
+    <div
+      style={{
+        fontSize: 10,
+        color: "#7f8da3",
+        fontWeight: 700,
+        letterSpacing: 0.5,
+      }}
+    >
+      TENANT
+    </div>
+
+    <div
+      style={{
+        fontSize: 13,
+        color: "#cfe1ff",
+        fontWeight: 700,
+      }}
+    >
+      {companyId.slice(0, 8)}
+    </div>
+  </div>
+)}
 
       {/* SELECTOR EMPRESA */}
       <select
