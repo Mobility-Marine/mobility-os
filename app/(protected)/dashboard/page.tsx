@@ -34,7 +34,11 @@ export default function DashboardPage() {
   }
 
   if (loading)
-    return <div style={{ padding: 32 }}>Inicializando Command Center…</div>;
+    return (
+      <div style={{ padding: 32 }}>
+        Inicializando Command Center…
+      </div>
+    );
 
   const now = new Date().toLocaleString("es-MX", {
     weekday: "long",
@@ -46,9 +50,11 @@ export default function DashboardPage() {
 
   return (
     <div style={container}>
-      {/* GLOBAL STATUS BAR */}
+      {/* STATUS BAR */}
       <div style={statusBar}>
-        <div style={statusTitle}>Mobility OS — Command Center</div>
+        <div style={statusTitle}>
+          Mobility OS — Command Center
+        </div>
 
         <div style={statusItems}>
           <Status label="Estado" value="Operativo" color="#22c55e" />
@@ -74,7 +80,7 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* STREAM EN TIEMPO REAL */}
+        {/* STREAM TIEMPO REAL */}
         <div style={activityPanel}>
           <PanelTitle>Actividad en tiempo real</PanelTitle>
 
@@ -213,150 +219,151 @@ function Stat({
   );
 }
 
-/* ===== ESTILOS TESLA OPS ===== */
+/* ===== ESTILOS TIPADOS (Vercel-safe) ===== */
 
-const container = {
+const container: React.CSSProperties = {
   padding: 28,
   display: "grid",
   gap: 22,
 };
 
-const statusBar = {
+const statusBar: React.CSSProperties = {
   background: "#0b0f14",
   border: "1px solid #1f2937",
   borderRadius: 14,
   padding: "14px 18px",
 };
 
-const statusTitle = {
+const statusTitle: React.CSSProperties = {
   fontWeight: 700,
   marginBottom: 10,
   fontSize: 15,
 };
 
-const statusItems = {
+const statusItems: React.CSSProperties = {
   display: "flex",
   gap: 24,
   flexWrap: "wrap",
 };
 
-const statusItem = {
+const statusItem: React.CSSProperties = {
   display: "flex",
-  flexDirection: "column" as const,
+  flexDirection: "column",
 };
 
-const statusLabel = {
+const statusLabel: React.CSSProperties = {
   fontSize: 11,
   color: "#9ca3af",
 };
 
-const statusValue = {
+const statusValue: React.CSSProperties = {
   fontWeight: 600,
   fontSize: 14,
   color: "#e5e7eb",
 };
 
-const mainGrid = {
+const mainGrid: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "2fr 1fr",
   gap: 20,
 };
 
-const mainPanel = {
+const mainPanel: React.CSSProperties = {
   background: "#0b0f14",
   border: "1px solid #1f2937",
   borderRadius: 18,
   padding: 22,
 };
 
-const activityPanel = {
+const activityPanel: React.CSSProperties = {
   background: "#0b0f14",
   border: "1px solid #1f2937",
   borderRadius: 18,
   padding: 22,
 };
 
-const panelTitle = {
+const panelTitle: React.CSSProperties = {
   fontWeight: 700,
   marginBottom: 16,
   fontSize: 16,
 };
 
-const bigValue = {
+const bigValue: React.CSSProperties = {
   fontSize: 48,
   fontWeight: 800,
   lineHeight: 1,
 };
 
-const bigLabel = {
+const bigLabel: React.CSSProperties = {
   color: "#9ca3af",
   marginTop: 4,
 };
 
-const metricsRow = {
+const metricsRow: React.CSSProperties = {
   display: "flex",
   gap: 20,
   marginTop: 20,
 };
 
-const miniMetric = {
+const miniMetric: React.CSSProperties = {
   display: "flex",
-  flexDirection: "column" as const,
+  flexDirection: "column",
 };
 
-const miniValue = {
+const miniValue: React.CSSProperties = {
   fontWeight: 700,
   fontSize: 20,
 };
 
-const miniLabel = {
+const miniLabel: React.CSSProperties = {
   color: "#9ca3af",
   fontSize: 12,
 };
 
-const activityRow = {
+const activityRow: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   padding: "8px 0",
   borderBottom: "1px solid #1f2937",
 };
 
-const activityText = {
+const activityText: React.CSSProperties = {
   fontSize: 14,
 };
 
-const activityTime = {
+const activityTime: React.CSSProperties = {
   color: "#9ca3af",
   fontSize: 12,
 };
 
-const secondaryGrid = {
+const secondaryGrid: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+  gridTemplateColumns:
+    "repeat(auto-fit, minmax(260px, 1fr))",
   gap: 18,
 };
 
-const card = {
+const card: React.CSSProperties = {
   background: "#0b0f14",
   border: "1px solid #1f2937",
   borderRadius: 16,
   padding: 18,
 };
 
-const cardTitle = {
+const cardTitle: React.CSSProperties = {
   fontWeight: 700,
   marginBottom: 12,
 };
 
-const statRow = {
+const statRow: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
 };
 
-const statLabel = {
+const statLabel: React.CSSProperties = {
   color: "#9ca3af",
 };
 
-const statValue = {
+const statValue: React.CSSProperties = {
   fontWeight: 600,
 };
