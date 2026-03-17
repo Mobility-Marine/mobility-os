@@ -8,7 +8,15 @@ import { supabase } from "@/lib/supabaseClient";
 
 const modules = [
   { name: "Dashboard", path: "/dashboard" },
+  { name: "Prospectos", path: "/prospectos" },
+  { name: "CRM", path: "/crm" },
   { name: "Agenda", path: "/agenda" },
+  { name: "Cotizaciones", path: "/cotizaciones" },
+  { name: "Embarques", path: "/embarques" },
+  { name: "Facturación", path: "/facturacion" },
+  { name: "Reportes", path: "/reportes" },
+  { name: "Proveedores", path: "/proveedores" },
+  { name: "Comercio Exterior", path: "/comercio-exterior" },
   { name: "Empresa", path: "/company" },
 ];
 
