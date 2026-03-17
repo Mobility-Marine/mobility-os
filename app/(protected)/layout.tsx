@@ -239,6 +239,8 @@ export default function ProtectedLayout({
 
   const userInitial = user?.email?.charAt(0).toUpperCase() || "U";
 
+  const [commandText, setCommandText] = useState("");
+
   return (
     <div
       style={{
@@ -768,20 +770,44 @@ export default function ProtectedLayout({
         }}
       >
         <input
-          autoFocus
-          placeholder="Escribe un comando, módulo o pregunta…"
-          style={{
-            flex: 1,
-            height: 48,
-            borderRadius: 12,
-            background: "#070a0f",
-            border: "1px solid #263140",
-            padding: "0 16px",
-            color: "#fff",
-            fontSize: 16,
-            outline: "none",
-          }}
-        />
+  autoFocus
+  value={commandText}
+  onChange={(e) => setCommandText(e.target.value)}
+  onKeyDown={async (e) => {
+    if (e.key === "Enter") {
+      if (!commandText.trim()) return;
+
+      setIsExecuting(true);
+      setCommandResult(null);
+
+      try {
+        const result = await executeCommand(commandText);
+
+        setCommandResult(
+          typeof result === "string"
+            ? result
+            : JSON.stringify(result, null, 2)
+        );
+      } catch (err: any) {
+        setCommandResult(err.message || "Error ejecutando comando");
+      } finally {
+        setIsExecuting(false);
+      }
+    }
+  }}
+  placeholder="Escribe un comando, módulo o pregunta…"
+  style={{
+    flex: 1,
+    height: 48,
+    borderRadius: 12,
+    background: "#070a0f",
+    border: "1px solid #263140",
+    padding: "0 16px",
+    color: "#fff",
+    fontSize: 16,
+    outline: "none",
+  }}
+/>
 
         <div
           style={{
@@ -794,6 +820,37 @@ export default function ProtectedLayout({
         </div>
       </div>
 
+{isExecuting && (
+  <div
+    style={{
+      padding: 20,
+      textAlign: "center",
+      color: "#7aa2ff",
+      fontWeight: 700,
+    }}
+  >
+    Ejecutando comando…
+  </div>
+)}
+
+{commandResult && (
+  <div
+    style={{
+      padding: 16,
+      margin: 10,
+      borderRadius: 12,
+      background: "#0b1118",
+      border: "1px solid #263140",
+      whiteSpace: "pre-wrap",
+      fontSize: 13,
+      color: "#cfe1ff",
+      fontFamily: "monospace",
+    }}
+  >
+    {commandResult}
+  </div>
+)}
+      
       {/* RESULTADOS */}
       <div
         style={{
