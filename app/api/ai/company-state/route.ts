@@ -59,7 +59,7 @@ export async function GET(req: Request) {
 
         supabase
           .from("invoices")
-          .select("id, status, total, created_at")
+          .select("id, status, amount, created_at")
           .eq("company_id", companyId),
       ]);
 
