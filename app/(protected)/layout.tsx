@@ -508,25 +508,26 @@ export default function ProtectedLayout({
 
     {/* DERECHA — COMMAND HUB */}
     <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: 10,
-        flexWrap: "nowrap",
-        justifyContent: "flex-end",
-        overflowX: "auto",
-        WebkitOverflowScrolling: "touch",
-        paddingBottom: 2,
-        scrollbarWidth: "none",
-      }}
-    >
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+    justifyContent: "flex-end",
+
+    flexShrink: 0,
+    maxWidth: "70%",     // 🔥 evita que invada el título
+    minWidth: 0,
+
+    overflow: "hidden",  // evita superposición
+  }}
+>
       {/* BUSCADOR GLOBAL */}
-   <form
+ <form
   onSubmit={handleGlobalSearch}
   style={{
     flexGrow: 1,
-    minWidth: 160,
-    maxWidth: 420,
+    minWidth: 120,
+    maxWidth: 360,
   }}
 >
   <input
