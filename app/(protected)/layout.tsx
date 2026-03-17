@@ -86,99 +86,111 @@ export default function ProtectedLayout({ children }) {
         background: "radial-gradient(circle at 20% 20%, #0a1a3f, #050b18)",
         color: "#e8edff",
         display: "grid",
-        gridTemplateColumns: "300px 1fr",
+        gridTemplateColumns: "320px 1fr",
         fontFamily: "Inter, system-ui, sans-serif",
       }}
     >
       {/* SIDEBAR */}
       <aside
         style={{
-          background: "linear-gradient(180deg,#0b1630,#070f24)",
-          borderRight: "1px solid #182952",
-          padding: "28px 22px",
+          padding: 24,
+          borderRight: "1px solid rgba(120,150,255,0.15)",
+          backdropFilter: "blur(12px)",
+          background: "rgba(6,12,27,0.75)",
           overflowY: "auto",
         }}
       >
         {/* LOGO */}
-        <div style={{ marginBottom: 34 }}>
+        <div style={{ marginBottom: 26 }}>
           <img
             src="/logo.png"
             alt="Mobility OS"
             style={{
-              width: 180,
-              filter: "drop-shadow(0 0 18px rgba(59,130,246,0.35))",
+              width: 190,
+              filter: "drop-shadow(0 0 20px rgba(59,130,246,0.35))",
             }}
           />
-          <div style={{ fontSize: 12, color: "#8fa7d6", marginTop: 12 }}>
+          <div style={{ fontSize: 12, color: "#8fa7d6", marginTop: 10 }}>
             Mobility Marine
           </div>
         </div>
 
-        {/* MENÚ */}
-        <nav>
-          {sidebarStructure.map((section) => {
-            const isOpen = openSection === section.section;
+        {/* ÁREAS */}
+        {sidebarStructure.map((section) => {
+          const isOpen = openSection === section.section;
 
-            return (
-              <div key={section.section} style={{ marginBottom: 18 }}>
-                {/* HEADER ÁREA */}
-                <div
-                  onClick={() =>
-                    setOpenSection(isOpen ? "" : section.section)
-                  }
-                  style={{
-                    fontSize: 12,
-                    fontWeight: 700,
-                    letterSpacing: 1,
-                    color: "#7fa1ff",
-                    marginBottom: 8,
-                    cursor: "pointer",
-                  }}
-                >
-                  {section.section}
-                </div>
-
-                {/* MÓDULOS */}
-                {isOpen &&
-                  section.items.map((item) => {
-                    const active = pathname === item.path;
-
-                    return (
-                      <div
-                        key={item.name}
-                        onClick={() => router.push(item.path)}
-                        style={{
-                          padding: "12px 14px",
-                          borderRadius: 12,
-                          marginBottom: 6,
-                          cursor: "pointer",
-                          fontWeight: 500,
-                          background: active
-                            ? "linear-gradient(135deg,#2563eb,#1d4ed8)"
-                            : "transparent",
-                          border: active
-                            ? "1px solid #3b82f6"
-                            : "1px solid transparent",
-                          boxShadow: active
-                            ? "0 8px 24px rgba(37,99,235,0.45)"
-                            : "none",
-                        }}
-                      >
-                        {item.name}
-                      </div>
-                    );
-                  })}
+          return (
+            <div
+              key={section.section}
+              style={{
+                marginBottom: 18,
+                borderRadius: 16,
+                padding: "12px 12px",
+                background: isOpen
+                  ? "rgba(37,99,235,0.08)"
+                  : "transparent",
+                border: "1px solid rgba(120,150,255,0.08)",
+              }}
+            >
+              {/* HEADER ÁREA */}
+              <div
+                onClick={() =>
+                  setOpenSection(isOpen ? "" : section.section)
+                }
+                style={{
+                  fontSize: 13,
+                  fontWeight: 700,
+                  letterSpacing: 1,
+                  color: "#7fa1ff",
+                  cursor: "pointer",
+                  marginBottom: isOpen ? 10 : 0,
+                }}
+              >
+                {section.section}
               </div>
-            );
-          })}
-        </nav>
+
+              {/* MÓDULOS */}
+              {isOpen &&
+                section.items.map((item) => {
+                  const active = pathname === item.path;
+
+                  return (
+                    <div
+                      key={item.name}
+                      onClick={() => router.push(item.path)}
+                      style={{
+                        padding: "12px 14px",
+                        borderRadius: 12,
+                        marginBottom: 6,
+                        cursor: "pointer",
+                        fontWeight: 500,
+                        fontSize: 14,
+                        background: active
+                          ? "linear-gradient(135deg,#2563eb,#1d4ed8)"
+                          : "rgba(255,255,255,0.02)",
+                        border: active
+                          ? "1px solid #3b82f6"
+                          : "1px solid rgba(255,255,255,0.05)",
+                        boxShadow: active
+                          ? "0 10px 28px rgba(37,99,235,0.45)"
+                          : "none",
+                        transition: "all .15s ease",
+                      }}
+                    >
+                      {item.name}
+                    </div>
+                  );
+                })}
+            </div>
+          );
+        })}
 
         {/* USUARIO */}
         <div
           style={{
-            marginTop: 24,
-            paddingTop: 18,
-            borderTop: "1px solid #182952",
+            marginTop: 20,
+            paddingTop: 16,
+            borderTop: "1px solid rgba(120,150,255,0.15)",
             fontSize: 13,
             color: "#8fa7d6",
           }}
@@ -198,10 +210,11 @@ export default function ProtectedLayout({ children }) {
             display: "flex",
             justifyContent: "space-between",
             marginBottom: 28,
-            background: "linear-gradient(135deg,#0f1c3f,#0b1733)",
-            border: "1px solid #1f2f5a",
-            borderRadius: 18,
             padding: "18px 24px",
+            borderRadius: 18,
+            background: "rgba(15,28,63,0.8)",
+            border: "1px solid rgba(120,150,255,0.2)",
+            backdropFilter: "blur(8px)",
           }}
         >
           <div>
@@ -259,11 +272,12 @@ export default function ProtectedLayout({ children }) {
         {/* CONTENIDO */}
         <div
           style={{
-            background: "linear-gradient(180deg,#0f1c3f,#0b1733)",
-            border: "1px solid #1f2f5a",
-            borderRadius: 22,
-            padding: 28,
+            background: "rgba(15,28,63,0.85)",
+            border: "1px solid rgba(120,150,255,0.15)",
+            borderRadius: 24,
+            padding: 32,
             minHeight: "72vh",
+            backdropFilter: "blur(6px)",
           }}
         >
           {children}
