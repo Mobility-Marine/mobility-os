@@ -163,6 +163,8 @@ export default function ProtectedLayout({
 
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [globalSearch, setGlobalSearch] = useState("");
+  
+  const [hubOpen, setHubOpen] = useState(false);
 
   useEffect(() => {
     setOpenSections((prev) =>
@@ -171,6 +173,22 @@ export default function ProtectedLayout({
         : [...prev, current.sectionKey]
     );
   }, [current.sectionKey]);
+
+  useEffect(() => {
+  function handler(e: KeyboardEvent) {
+    const isMac = navigator.platform.toUpperCase().includes("MAC");
+
+    if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === "k") {
+      e.preventDefault();
+      setHubOpen((v) => !v);
+    }
+
+    if (e.key === "Escape") setHubOpen(false);
+  }
+
+  window.addEventListener("keydown", handler);
+  return () => window.removeEventListener("keydown", handler);
+}, []);
 
   function toggleSection(sectionKey: string) {
     setOpenSections((prev) =>
@@ -560,21 +578,22 @@ export default function ProtectedLayout({
     </button>
 
     <button
-      type="button"
-      style={{
-        ...iconButton,
-        width: "auto",
-        minWidth: 48,
-        padding: "0 12px",
-        background: "#7aa2ff",
-        color: "#0a0d12",
-        fontWeight: 800,
-        border: "1px solid #7aa2ff",
-      }}
-      title="Mobility AI"
-    >
-      IA
-    </button>
+  type="button"
+  onClick={() => setHubOpen(true)}
+  style={{
+    ...iconButton,
+    width: "auto",
+    minWidth: 48,
+    padding: "0 12px",
+    background: "#7aa2ff",
+    color: "#0a0d12",
+    fontWeight: 800,
+    border: "1px solid #7aa2ff",
+  }}
+  title="Command Hub"
+>
+  IA
+</button>
 
     {companyId && (
       <div
@@ -705,6 +724,143 @@ export default function ProtectedLayout({
       {children}
     </div>
   </section>
+
+{hubOpen && (
+  <div
+    onClick={() => setHubOpen(false)}
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(6,8,12,0.72)",
+      backdropFilter: "blur(10px)",
+      display: "flex",
+      alignItems: "flex-start",
+      justifyContent: "center",
+      paddingTop: "10vh",
+      zIndex: 9999,
+    }}
+  >
+    {/* PANEL */}
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        width: "min(900px, 92vw)",
+        borderRadius: 20,
+        background:
+          "linear-gradient(180deg,#0f141b 0%, #0b0f14 100%)",
+        border: "1px solid #1b2430",
+        boxShadow: "0 40px 120px rgba(0,0,0,0.55)",
+        overflow: "hidden",
+      }}
+    >
+      {/* HEADER */}
+      <div
+        style={{
+          padding: 18,
+          borderBottom: "1px solid #1a212c",
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+        }}
+      >
+        <input
+          autoFocus
+          placeholder="Escribe un comando, módulo o pregunta…"
+          style={{
+            flex: 1,
+            height: 48,
+            borderRadius: 12,
+            background: "#070a0f",
+            border: "1px solid #263140",
+            padding: "0 16px",
+            color: "#fff",
+            fontSize: 16,
+            outline: "none",
+          }}
+        />
+
+        <div
+          style={{
+            fontSize: 12,
+            color: "#7f8da3",
+            fontWeight: 600,
+          }}
+        >
+          ESC
+        </div>
+      </div>
+
+      {/* RESULTADOS */}
+      <div
+        style={{
+          maxHeight: "60vh",
+          overflowY: "auto",
+          padding: 10,
+          display: "grid",
+          gap: 6,
+        }}
+      >
+        {navSections.flatMap((section) =>
+          section.items.map((item) => (
+            <button
+              key={item.path}
+              onClick={() => {
+                router.push(item.path);
+                setHubOpen(false);
+              }}
+              style={{
+                textAlign: "left",
+                padding: "14px 16px",
+                borderRadius: 12,
+                background: "#0f141b",
+                border: "1px solid #1b2430",
+                cursor: "pointer",
+                display: "flex",
+                flexDirection: "column",
+                gap: 4,
+              }}
+            >
+              <div
+                style={{
+                  fontSize: 15,
+                  fontWeight: 700,
+                  color: "#eaf0f8",
+                }}
+              >
+                {item.name}
+              </div>
+
+              <div
+                style={{
+                  fontSize: 12,
+                  color: "#7f8da3",
+                }}
+              >
+                {section.title}
+              </div>
+            </button>
+          ))
+        )}
+      </div>
+
+      {/* FOOTER */}
+      <div
+        style={{
+          padding: "10px 14px",
+          borderTop: "1px solid #1a212c",
+          fontSize: 12,
+          color: "#7f8da3",
+          display: "flex",
+          justifyContent: "space-between",
+        }}
+      >
+        <span>⌘/Ctrl + K</span>
+        <span>Mobility OS Command Hub</span>
+      </div>
+    </div>
+  </div>
+)}
+        
 </main>
     </div>
   );
