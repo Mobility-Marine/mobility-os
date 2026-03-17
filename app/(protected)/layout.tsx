@@ -8,15 +8,28 @@ import { supabase } from "@/lib/supabaseClient";
 
 const modules = [
   { name: "Dashboard", path: "/dashboard" },
+
   { name: "Prospectos", path: "/prospectos" },
   { name: "CRM", path: "/crm" },
-  { name: "Agenda", path: "/agenda" },
   { name: "Cotizaciones", path: "/cotizaciones" },
+  { name: "Agenda", path: "/agenda" },
+  { name: "Clientes", path: "/clientes" },
+
+  { name: "Operaciones", path: "/operaciones" },
   { name: "Embarques", path: "/embarques" },
-  { name: "Facturación", path: "/facturacion" },
-  { name: "Reportes", path: "/reportes" },
-  { name: "Proveedores", path: "/proveedores" },
+  { name: "Transporte", path: "/transporte" },
   { name: "Comercio Exterior", path: "/comercio-exterior" },
+  { name: "Proveedores", path: "/proveedores" },
+  { name: "Compras", path: "/compras" },
+  { name: "Inventarios", path: "/inventarios" },
+
+  { name: "Facturación", path: "/facturacion" },
+  { name: "Cuentas por Cobrar", path: "/cxc" },
+  { name: "Cuentas por Pagar", path: "/cxp" },
+  { name: "Contabilidad", path: "/contabilidad" },
+  { name: "Bancos", path: "/bancos" },
+
+  { name: "Reportes", path: "/reportes" },
   { name: "Empresa", path: "/company" },
 ];
 
