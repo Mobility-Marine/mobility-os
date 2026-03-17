@@ -9,8 +9,6 @@ export default function CompanyManagementPage() {
 
   return (
     <div style={container}>
-      
-      {/* 🏢 Header */}
       <div style={header}>
         <div>
           <h1 style={title}>Empresas</h1>
@@ -20,7 +18,6 @@ export default function CompanyManagementPage() {
         </div>
       </div>
 
-      {/* 🏢 Lista de empresas */}
       <div style={card}>
         <div style={sectionHeader}>
           <h2 style={sectionTitle}>Workspaces</h2>
@@ -34,9 +31,7 @@ export default function CompanyManagementPage() {
         </div>
 
         {memberships.length === 0 && (
-          <p style={emptyText}>
-            No perteneces a ninguna empresa.
-          </p>
+          <p style={emptyText}>No perteneces a ninguna empresa.</p>
         )}
 
         <div style={{ display: "grid", gap: 12 }}>
@@ -52,13 +47,8 @@ export default function CompanyManagementPage() {
                 }}
               >
                 <div>
-                  <div style={companyName}>
-                    {m.company_name}
-                  </div>
-
-                  <div style={companyMeta}>
-                    Rol: {m.role}
-                  </div>
+                  <div style={companyName}>{m.company_name}</div>
+                  <div style={companyMeta}>Rol: {m.role}</div>
                 </div>
 
                 <button
@@ -67,7 +57,7 @@ export default function CompanyManagementPage() {
                     window.location.reload();
                   }}
                   style={{
-                    ...activateButton,
+                    ...actionButton,
                     ...(isActive ? activeBadge : {}),
                   }}
                 >
@@ -79,15 +69,12 @@ export default function CompanyManagementPage() {
         </div>
       </div>
 
-      {/* ⚙️ Administración empresa activa */}
       {companyId && (
         <div style={card}>
           <div style={sectionHeader}>
             <h2 style={sectionTitle}>Administración</h2>
 
-            <span style={idBadge}>
-              ID: {companyId}
-            </span>
+            <span style={idBadge}>ID: {companyId}</span>
           </div>
 
           <div style={navGrid}>
@@ -140,15 +127,25 @@ function NavButton({
   );
 }
 
-//
-// 🎨 ESTILOS ENTERPRISE
-//
+const UI = {
+  bgCard: "#0b0f14",
+  bgCardSoft: "#0f141b",
+  bgItem: "#10161f",
+  bgItemActive: "#131a23",
+  border: "#1f2937",
+  borderSoft: "#273142",
+  text: "#f3f4f6",
+  textSoft: "#9ca3af",
+  textMuted: "#6b7280",
+  solid: "#f3f4f6",
+  solidText: "#0b0f14",
+};
 
 const container: React.CSSProperties = {
   padding: 32,
   display: "grid",
   gap: 24,
-  maxWidth: 1100,
+  maxWidth: 1120,
 };
 
 const header: React.CSSProperties = {
@@ -159,19 +156,22 @@ const header: React.CSSProperties = {
 
 const title: React.CSSProperties = {
   fontSize: 34,
-  fontWeight: 700,
-  letterSpacing: "-0.02em",
+  fontWeight: 750,
+  letterSpacing: "-0.03em",
+  color: UI.text,
+  margin: 0,
 };
 
 const subtitle: React.CSSProperties = {
-  opacity: 0.65,
-  marginTop: 6,
+  marginTop: 8,
+  color: UI.textSoft,
+  fontSize: 15,
 };
 
 const card: React.CSSProperties = {
-  background: "#0b1220",
+  background: UI.bgCard,
   borderRadius: 16,
-  border: "1px solid rgba(255,255,255,0.08)",
+  border: `1px solid ${UI.border}`,
   padding: 24,
 };
 
@@ -180,25 +180,29 @@ const sectionHeader: React.CSSProperties = {
   justifyContent: "space-between",
   alignItems: "center",
   marginBottom: 18,
+  gap: 16,
+  flexWrap: "wrap",
 };
 
 const sectionTitle: React.CSSProperties = {
   fontSize: 20,
-  fontWeight: 600,
+  fontWeight: 650,
+  color: UI.text,
+  margin: 0,
 };
 
 const primaryButton: React.CSSProperties = {
-  background: "#2563eb",
-  color: "#fff",
+  background: UI.solid,
+  color: UI.solidText,
   border: "none",
   borderRadius: 10,
   padding: "10px 16px",
-  fontWeight: 600,
+  fontWeight: 650,
   cursor: "pointer",
 };
 
 const emptyText: React.CSSProperties = {
-  opacity: 0.6,
+  color: UI.textSoft,
   fontSize: 14,
 };
 
@@ -208,44 +212,49 @@ const companyItem: React.CSSProperties = {
   alignItems: "center",
   padding: 18,
   borderRadius: 12,
-  border: "1px solid rgba(255,255,255,0.08)",
-  background: "#0f172a",
-  transition: "all 0.2s ease",
+  border: `1px solid ${UI.border}`,
+  background: UI.bgItem,
+  gap: 16,
 };
 
 const companyItemActive: React.CSSProperties = {
-  border: "1px solid #3b82f6",
-  background: "#0f1b34",
+  background: UI.bgItemActive,
+  border: `1px solid ${UI.borderSoft}`,
 };
 
 const companyName: React.CSSProperties = {
-  fontWeight: 600,
+  fontWeight: 650,
   fontSize: 16,
+  color: UI.text,
 };
 
 const companyMeta: React.CSSProperties = {
   fontSize: 13,
-  opacity: 0.6,
+  color: UI.textSoft,
   marginTop: 4,
 };
 
-const activateButton: React.CSSProperties = {
+const actionButton: React.CSSProperties = {
   padding: "8px 14px",
-  borderRadius: 8,
-  border: "none",
-  background: "#1f2937",
-  color: "#fff",
-  fontWeight: 600,
+  borderRadius: 9,
+  border: `1px solid ${UI.borderSoft}`,
+  background: "transparent",
+  color: UI.text,
+  fontWeight: 650,
   cursor: "pointer",
+  whiteSpace: "nowrap",
 };
 
 const activeBadge: React.CSSProperties = {
-  background: "#22c55e",
+  background: UI.solid,
+  color: UI.solidText,
+  border: "none",
 };
 
 const idBadge: React.CSSProperties = {
   fontSize: 12,
-  opacity: 0.6,
+  color: UI.textSoft,
+  wordBreak: "break-all",
 };
 
 const navGrid: React.CSSProperties = {
@@ -257,13 +266,15 @@ const navGrid: React.CSSProperties = {
 const navButton: React.CSSProperties = {
   padding: "14px 16px",
   borderRadius: 12,
-  border: "1px solid rgba(255,255,255,0.08)",
-  background: "#0f172a",
-  color: "#fff",
-  fontWeight: 600,
+  border: `1px solid ${UI.border}`,
+  background: UI.bgItem,
+  color: UI.text,
+  fontWeight: 650,
   cursor: "pointer",
 };
 
 const navButtonHighlight: React.CSSProperties = {
-  background: "#7c3aed",
+  background: UI.solid,
+  color: UI.solidText,
+  border: "none",
 };
