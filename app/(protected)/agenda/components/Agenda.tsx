@@ -167,6 +167,72 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(n, max));
 }
 
+// ===== HEADER TEMPORAL ENTERPRISE =====
+
+function getWeekNumber(date: Date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil(((d.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+}
+
+function renderTimeHeader(
+  view: CalendarView,
+  currentDate: Date
+) {
+  const d = new Date(currentDate);
+
+  let label = "";
+
+  if (view === "day") {
+    label = d.toLocaleDateString("es-MX", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+  }
+
+  if (view === "week") {
+    const start = startOfWeek(d);
+    const end = endOfWeek(d);
+
+    label = `Semana ${getWeekNumber(d)} — ${start.toLocaleDateString("es-MX", {
+      day: "numeric",
+      month: "long",
+    })} al ${end.toLocaleDateString("es-MX", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    })}`;
+  }
+
+  if (view === "month") {
+    label = d.toLocaleDateString("es-MX", {
+      month: "long",
+      year: "numeric",
+    });
+  }
+
+  if (view === "year") {
+    label = d.getFullYear().toString();
+  }
+
+  return (
+    <div
+      style={{
+        fontSize: 22,
+        fontWeight: 700,
+        marginBottom: 12,
+        color: "#e5e7eb",
+      }}
+    >
+      {label}
+    </div>
+  );
+}
+
 function getYearMonths(selectedDate: string) {
   const base = new Date(selectedDate + "T12:00:00");
   const year = base.getFullYear();
@@ -740,11 +806,7 @@ export default function Agenda() {
                 borderLeft: `1px solid ${UI.border}`,
               }}
             >
-              {day.toLocaleDateString("es-MX", {
-                weekday: "short",
-                day: "numeric",
-                month: "short",
-              })}
+           {day.toLocaleDateString("es-MX", { weekday: "short" })}
             </div>
           );
         })}
@@ -986,66 +1048,68 @@ export default function Agenda() {
   }
 
   function renderYearView() {
-    const currentYear = currentDate.getFullYear();
+  const year = currentDate.getFullYear();
 
-    return (
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-          gap: 12,
-        }}
-      >
-        {yearMonths.map((monthDate, index) => {
-          const monthEvents = events.filter((ev) => {
-            const d = new Date(ev.start_datetime);
-            return (
-              d.getFullYear() === currentYear &&
-              d.getMonth() === monthDate.getMonth()
-            );
-          });
+  const months = Array.from({ length: 12 }).map((_, i) => {
+    const date = new Date(year, i, 1);
+    const grid = getMonthGrid(getLocalDateISO(date));
 
-          return (
-            <button
-              key={index}
-              onClick={() => {
-                setSelectedDate(getLocalDateISO(monthDate));
-                setView("month");
-              }}
-              style={{
-                background: UI.bgSoft,
-                border: `1px solid ${UI.border}`,
-                borderRadius: 12,
-                padding: 16,
-                textAlign: "left",
-                cursor: "pointer",
-                color: UI.text,
-              }}
-            >
+    return { date, grid };
+  });
+
+  return (
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, 1fr)",
+        gap: 16,
+      }}
+    >
+      {months.map(({ date, grid }) => (
+        <div
+          key={date.toISOString()}
+          onClick={() => {
+            setSelectedDate(getLocalDateISO(date));
+            setView("month");
+          }}
+          style={{
+            border: "1px solid #1f2937",
+            borderRadius: 12,
+            padding: 12,
+            background: "#0b1220",
+            cursor: "pointer",
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 8 }}>
+            {date.toLocaleDateString("es-MX", { month: "long" })}
+          </div>
+
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(7, 1fr)",
+              gap: 2,
+              fontSize: 11,
+            }}
+          >
+            {grid.map((d, i) => (
               <div
+                key={i}
                 style={{
-                  fontWeight: 700,
-                  marginBottom: 6,
-                  textTransform: "capitalize",
+                  padding: 4,
+                  textAlign: "center",
+                  opacity: d.currentMonth ? 1 : 0.3,
                 }}
               >
-                {monthDate.toLocaleDateString("es-MX", { month: "long" })}
+                {d.date.getDate()}
               </div>
-
-              <div
-                style={{
-                  fontSize: 12,
-                  color: UI.textSoft,
-                }}
-              >
-                {monthEvents.length} evento{monthEvents.length === 1 ? "" : "s"}
-              </div>
-            </button>
-          );
-        })}
-      </div>
-    );
-  }
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
   return (
     <div style={{ display: "grid", gap: 18 }}>
@@ -1073,6 +1137,8 @@ export default function Agenda() {
 
       {renderTopActions()}
 
+      {renderTimeHeader(view, currentDate)}
+      
       {loading || loadingTenant || eventsLoading ? (
         <div style={panelStyle}>Cargando programación...</div>
       ) : !companyId ? (
