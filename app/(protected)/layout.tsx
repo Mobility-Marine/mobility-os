@@ -505,15 +505,27 @@ export default function ProtectedLayout({
             </div>
           </div>
 
-          <div
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: 10,
-              flexWrap: "wrap",
-              justifyContent: "flex-end",
-            }}
-          >
+         <div
+  style={{
+    display: "flex",
+    alignItems: "center",
+    gap: 10,
+
+    /* 🔥 CLAVE: todo en una sola línea */
+    flexWrap: "nowrap",
+
+    justifyContent: "flex-end",
+
+    /* 🔥 Evita que rompa layout */
+    overflowX: "auto",
+
+    /* 🔥 Se ve profesional cuando hay muchos botones */
+    paddingBottom: 2,
+
+    /* 🔥 Oculta scrollbar feo en la mayoría de navegadores */
+    scrollbarWidth: "none",
+  }}
+>
             <form onSubmit={handleGlobalSearch}>
               <input
                 value={globalSearch}
