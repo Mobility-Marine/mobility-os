@@ -769,50 +769,37 @@ export default function ProtectedLayout({
           gap: 12,
         }}
       >
-        <input
+       <input
   autoFocus
   value={commandText}
   onChange={(e) => setCommandText(e.target.value)}
- onKeyDown={async (e) => {
-  if (e.key === "Enter") {
-    if (!commandText.trim()) return;
+  onKeyDown={async (e) => {
+    if (e.key === "Enter") {
+      if (!commandText.trim()) return;
 
-    setIsExecuting(true);
-    setCommandResult(null);
-
-    try {
-      let result;
+      setIsExecuting(true);
+      setCommandResult(null);
 
       try {
-        // 👉 Primero intenta acción interna
-        result = await executeCommand(commandText, {
-          companyId,
-          userId: user?.id,
-        });
-      } catch {
-        // 👉 Si no hay acción, usa IA
-        const aiResponse = await fetch("/api/ai/command", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ prompt: commandText }),
-        });
+        let result;
 
-        const aiData = await aiResponse.json();
-        result = aiData.result;
-      }
+        try {
+          // 👉 Acción interna
+          result = await executeCommand(commandText, {
+            companyId,
+            userId: user?.id,
+          });
+        } catch {
+          // 👉 Fallback IA
+          const aiResponse = await fetch("/api/ai/command", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ prompt: commandText }),
+          });
 
-      setCommandResult(
-        typeof result === "string"
-          ? result
-          : JSON.stringify(result, null, 2)
-      );
-    } catch (err: any) {
-      setCommandResult(err.message || "Error ejecutando comando");
-    } finally {
-      setIsExecuting(false);
-    }
-  }
-}}
+          const aiData = await aiResponse.json();
+          result = aiData.result;
+        }
 
         setCommandResult(
           typeof result === "string"
@@ -839,7 +826,6 @@ export default function ProtectedLayout({
     outline: "none",
   }}
 />
-
         <div
           style={{
             fontSize: 12,
