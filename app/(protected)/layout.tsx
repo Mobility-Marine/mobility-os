@@ -192,7 +192,7 @@ export default function ProtectedLayout({ children }) {
 
       {/* MAIN */}
       <main style={{ padding: 32 }}>
-        {/ HEADER /}
+        {/* HEADER */}
         <header
           style={{
             display: "flex",
