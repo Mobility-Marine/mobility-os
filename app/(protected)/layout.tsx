@@ -510,19 +510,13 @@ export default function ProtectedLayout({
     display: "flex",
     alignItems: "center",
     gap: 10,
-
-    /* 🔥 CLAVE: todo en una sola línea */
     flexWrap: "nowrap",
-
     justifyContent: "flex-end",
 
-    /* 🔥 Evita que rompa layout */
     overflowX: "auto",
+    WebkitOverflowScrolling: "touch",
 
-    /* 🔥 Se ve profesional cuando hay muchos botones */
     paddingBottom: 2,
-
-    /* 🔥 Oculta scrollbar feo en la mayoría de navegadores */
     scrollbarWidth: "none",
   }}
 >
@@ -608,20 +602,26 @@ export default function ProtectedLayout({
               ))}
             </select>
 
-            <div
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 8,
-                height: 40,
-                padding: "0 8px 0 6px",
-                borderRadius: 10,
-                background: "#0f141b",
-                border: "1px solid #1b222c",
-                maxWidth: 180,
-              }}
-              title={user?.email || "Usuario"}
-            >
+           <div
+  style={{
+    width: 40,
+    height: 40,
+    borderRadius: "50%",
+    background: "#7aa2ff",
+    color: "#0a0d12",
+    fontWeight: 800,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    flexShrink: 0,
+    cursor: "pointer",
+    border: "1px solid #7aa2ff",
+    boxShadow: "0 6px 18px rgba(122,162,255,0.35)",
+  }}
+  title={user?.email || "Usuario"}
+>
+  {userInitial}
+</div>
               <div
                 style={{
                   width: 28,
