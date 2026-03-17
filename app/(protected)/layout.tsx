@@ -37,7 +37,7 @@ export default function ProtectedLayout({
         gridTemplateColumns: "260px 1fr",
       }}
     >
-      {/* SIDEBAR O*/}
+      {/* SIDEBAR */}
       <aside
         style={{
           background: "#0b1733",
@@ -115,7 +115,7 @@ export default function ProtectedLayout({
 
       {/* MAIN */}
       <main style={{ padding: 28 }}>
-        {/ HEADER /}
+        {/* HEADER */}
         <header
           style={{
             display: "flex",
