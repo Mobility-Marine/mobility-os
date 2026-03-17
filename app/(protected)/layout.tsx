@@ -790,15 +790,20 @@ export default function ProtectedLayout({
             userId: user?.id,
           });
         } catch {
-          // 👉 Fallback IA
-          const aiResponse = await fetch("/api/ai/command", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ prompt: commandText }),
-          });
+          // 👉 Si no hay acción interna, usar COO IA
 
-          const aiData = await aiResponse.json();
-          result = aiData.result;
+const cooResponse = await fetch("/api/ai/coo", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    prompt: commandText,
+    companyId,
+  }),
+});
+
+const cooData = await cooResponse.json();
+
+result = cooData.result;
         }
 
         setCommandResult(
