@@ -212,7 +212,7 @@ export default function ProtectedLayout({
 
       {/* MAIN */}
       <main style={{ padding: 32 }}>
-        {/ HEADER /}
+        {/* HEADER */}
         <header
           style={{
             display: "flex",
