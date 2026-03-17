@@ -9,6 +9,7 @@ import { supabase } from "@/lib/supabaseClient";
 const sidebarStructure = [
   {
     section: "GENERAL",
+    alwaysOpen: true,
     items: [
       { name: "Dashboard", path: "/dashboard" },
       { name: "Agenda", path: "/agenda" },
@@ -70,155 +71,160 @@ const sidebarStructure = [
   },
 ];
 
-export default function ProtectedLayout({ children }) {
+export default function ProtectedLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   const router = useRouter();
   const pathname = usePathname();
 
   const { user } = useAuth();
-  const { companyId, memberships, setActiveCompany } = useTenant();
+  const { companyId, memberships, setActiveCompany } =
+    useTenant();
 
-  const [openSection, setOpenSection] = useState("GENERAL");
+  const [openSections, setOpenSections] = useState<string[]>([]);
+
+  const toggleSection = (section: string) => {
+    setOpenSections((prev) =>
+      prev.includes(section)
+        ? prev.filter((s) => s !== section)
+        : [...prev, section]
+    );
+  };
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "radial-gradient(circle at 20% 20%, #0a1a3f, #050b18)",
+        background: "radial-gradient(circle at top, #0b1733, #060c1b)",
         color: "#e8edff",
+        fontFamily:
+          "-apple-system, BlinkMacSystemFont, Inter, Segoe UI, sans-serif",
         display: "grid",
-        gridTemplateColumns: "320px 1fr",
-        fontFamily: "Inter, system-ui, sans-serif",
+        gridTemplateColumns: "300px 1fr",
       }}
     >
       {/* SIDEBAR */}
       <aside
         style={{
+          background: "linear-gradient(180deg,#0b1630,#070f24)",
+          borderRight: "1px solid #16254b",
           padding: 24,
-          borderRight: "1px solid rgba(120,150,255,0.15)",
-          backdropFilter: "blur(12px)",
-          background: "rgba(6,12,27,0.75)",
+          display: "flex",
+          flexDirection: "column",
           overflowY: "auto",
         }}
       >
         {/* LOGO */}
-        <div style={{ marginBottom: 26 }}>
-          <img
-            src="/logo.png"
-            alt="Mobility OS"
-            style={{
-              width: 190,
-              filter: "drop-shadow(0 0 20px rgba(59,130,246,0.35))",
-            }}
-          />
+        <div style={{ marginBottom: 32 }}>
+          <img src="/logo.png" alt="Mobility OS" style={{ width: 180 }} />
           <div style={{ fontSize: 12, color: "#8fa7d6", marginTop: 10 }}>
             Mobility Marine
           </div>
         </div>
 
-        {/* ÁREAS */}
-        {sidebarStructure.map((section) => {
-          const isOpen = openSection === section.section;
+        {/* MENÚ */}
+        <nav style={{ flex: 1 }}>
+          {sidebarStructure.map((section) => {
+            const isOpen =
+              section.alwaysOpen || openSections.includes(section.section);
 
-          return (
-            <div
-              key={section.section}
-              style={{
-                marginBottom: 18,
-                borderRadius: 16,
-                padding: "12px 12px",
-                background: isOpen
-                  ? "rgba(37,99,235,0.08)"
-                  : "transparent",
-                border: "1px solid rgba(120,150,255,0.08)",
-              }}
-            >
-              {/* HEADER ÁREA */}
+            return (
               <div
-                onClick={() =>
-                  setOpenSection(isOpen ? "" : section.section)
-                }
+                key={section.section}
                 style={{
-                  fontSize: 13,
-                  fontWeight: 700,
-                  letterSpacing: 1,
-                  color: "#7fa1ff",
-                  cursor: "pointer",
-                  marginBottom: isOpen ? 10 : 0,
+                  marginBottom: 16,
+                  background: "#0f1c3f",
+                  borderRadius: 14,
+                  border: "1px solid #1f2f5a",
+                  padding: 10,
                 }}
               >
-                {section.section}
+                {/* SECTION HEADER */}
+                <div
+                  onClick={() =>
+                    !section.alwaysOpen && toggleSection(section.section)
+                  }
+                  style={{
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#7fa1ff",
+                    letterSpacing: 1,
+                    marginBottom: isOpen ? 10 : 0,
+                    cursor: section.alwaysOpen ? "default" : "pointer",
+                  }}
+                >
+                  {section.section}
+                </div>
+
+                {/* ITEMS */}
+                {isOpen &&
+                  section.items.map((item) => {
+                    const active = pathname === item.path;
+
+                    return (
+                      <div
+                        key={item.name}
+                        onClick={() => router.push(item.path)}
+                        style={{
+                          padding: "12px 14px",
+                          borderRadius: 10,
+                          marginBottom: 6,
+                          cursor: "pointer",
+                          fontWeight: 500,
+                          background: active
+                            ? "linear-gradient(135deg,#2563eb,#1d4ed8)"
+                            : "transparent",
+                          boxShadow: active
+                            ? "0 8px 20px rgba(37,99,235,.35)"
+                            : "none",
+                        }}
+                      >
+                        {item.name}
+                      </div>
+                    );
+                  })}
               </div>
+            );
+          })}
+        </nav>
 
-              {/* MÓDULOS */}
-              {isOpen &&
-                section.items.map((item) => {
-                  const active = pathname === item.path;
-
-                  return (
-                    <div
-                      key={item.name}
-                      onClick={() => router.push(item.path)}
-                      style={{
-                        padding: "12px 14px",
-                        borderRadius: 12,
-                        marginBottom: 6,
-                        cursor: "pointer",
-                        fontWeight: 500,
-                        fontSize: 14,
-                        background: active
-                          ? "linear-gradient(135deg,#2563eb,#1d4ed8)"
-                          : "rgba(255,255,255,0.02)",
-                        border: active
-                          ? "1px solid #3b82f6"
-                          : "1px solid rgba(255,255,255,0.05)",
-                        boxShadow: active
-                          ? "0 10px 28px rgba(37,99,235,0.45)"
-                          : "none",
-                        transition: "all .15s ease",
-                      }}
-                    >
-                      {item.name}
-                    </div>
-                  );
-                })}
-            </div>
-          );
-        })}
-
-        {/* USUARIO */}
+        {/* USER */}
         <div
           style={{
-            marginTop: 20,
-            paddingTop: 16,
-            borderTop: "1px solid rgba(120,150,255,0.15)",
+            borderTop: "1px solid #1f2f5a",
+            paddingTop: 14,
             fontSize: 13,
             color: "#8fa7d6",
           }}
         >
           Conectado como
-          <div style={{ color: "#fff", marginTop: 4, fontWeight: 600 }}>
+          <div style={{ color: "#fff", fontWeight: 600 }}>
             {user?.email}
           </div>
         </div>
       </aside>
 
       {/* MAIN */}
-      <main style={{ padding: 32 }}>
+      <main style={{ padding: 28 }}>
         {/* HEADER */}
         <header
           style={{
             display: "flex",
             justifyContent: "space-between",
-            marginBottom: 28,
-            padding: "18px 24px",
+            alignItems: "center",
+            marginBottom: 24,
+            background: "linear-gradient(135deg,#0f1c3f,#0b1733)",
+            border: "1px solid #1f2f5a",
             borderRadius: 18,
-            background: "rgba(15,28,63,0.8)",
-            border: "1px solid rgba(120,150,255,0.2)",
-            backdropFilter: "blur(8px)",
+            padding: "18px 24px",
           }}
         >
           <div>
-            <div style={{ fontWeight: 700 }}>Mobility OS Platform</div>
+            <div style={{ fontWeight: 700, fontSize: 18 }}>
+              Mobility OS Platform
+            </div>
             {companyId && (
               <div style={{ fontSize: 12, color: "#7fa1ff" }}>
                 Tenant activo: {companyId.slice(0, 8)}
@@ -226,7 +232,7 @@ export default function ProtectedLayout({ children }) {
             )}
           </div>
 
-          <div style={{ display: "flex", gap: 14 }}>
+          <div style={{ display: "flex", gap: 12 }}>
             <select
               value={companyId || ""}
               onChange={async (e) => {
@@ -237,9 +243,8 @@ export default function ProtectedLayout({ children }) {
                 background: "#070f24",
                 color: "#fff",
                 border: "1px solid #2a4a88",
-                padding: "10px 16px",
-                borderRadius: 14,
-                fontWeight: 600,
+                padding: "10px 14px",
+                borderRadius: 12,
               }}
             >
               {memberships.map((m) => (
@@ -257,11 +262,11 @@ export default function ProtectedLayout({ children }) {
               style={{
                 background: "linear-gradient(135deg,#1f3a8a,#2563eb)",
                 border: "none",
-                padding: "11px 18px",
-                borderRadius: 14,
+                padding: "10px 16px",
+                borderRadius: 12,
                 color: "#fff",
-                cursor: "pointer",
                 fontWeight: 600,
+                cursor: "pointer",
               }}
             >
               Salir
@@ -269,15 +274,14 @@ export default function ProtectedLayout({ children }) {
           </div>
         </header>
 
-        {/* CONTENIDO */}
+        {/* CONTENT CARD */}
         <div
           style={{
-            background: "rgba(15,28,63,0.85)",
-            border: "1px solid rgba(120,150,255,0.15)",
-            borderRadius: 24,
-            padding: 32,
+            background: "linear-gradient(180deg,#0f1c3f,#0b1733)",
+            border: "1px solid #1f2f5a",
+            borderRadius: 20,
+            padding: 28,
             minHeight: "72vh",
-            backdropFilter: "blur(6px)",
           }}
         >
           {children}
