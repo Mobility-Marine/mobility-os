@@ -12,7 +12,7 @@ import { useAuth } from "@/lib/auth/AuthProvider";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { getCompanyUsers } from "@/services/agenda/agenda.service";
 
-type CalendarView = "day" | "week" | "month";
+type CalendarView = "day" | "week" | "month" | "year";
 
 type EventRow = {
   id: string;
@@ -53,6 +53,22 @@ type CompanyUserRow = {
 const HOURS_START = 7;
 const HOURS_END = 21;
 const HOUR_HEIGHT = 72;
+
+const UI = {
+  bg: "#0b0f14",
+  bgSoft: "#0f141b",
+  bgSubtle: "#111827",
+  bgMuted: "#0c1117",
+  border: "#1f2937",
+  borderSoft: "#273244",
+  text: "#e5e7eb",
+  textSoft: "#9ca3af",
+  textMuted: "#94a3b8",
+  accent: "#d1d5db",
+  accentBg: "#111827",
+  accentStrong: "#3b82f6",
+  danger: "#b91c1c",
+};
 
 function getLocalDateISO(date = new Date()) {
   const y = date.getFullYear();
@@ -151,6 +167,15 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(n, max));
 }
 
+function getYearMonths(selectedDate: string) {
+  const base = new Date(selectedDate + "T12:00:00");
+  const year = base.getFullYear();
+
+  return Array.from({ length: 12 }).map((_, i) => {
+    return new Date(year, i, 1);
+  });
+}
+
 export default function Agenda() {
   const { user, loading } = useAuth();
   const { companyId, loadingTenant } = useTenant();
@@ -197,112 +222,128 @@ export default function Agenda() {
     });
   }, [currentDate]);
 
-  useEffect(() => {
-  initializeAgenda();
-}, [user, companyId]);
+  const yearMonths = useMemo(() => getYearMonths(selectedDate), [selectedDate]);
 
   useEffect(() => {
-  if (companyId) {
-    loadEvents();
-    loadCompanyUsers();
-  } else {
-    setEvents([]);
-    setCompanyUsers([]);
-  }
-}, [companyId, selectedDate, view]);
+    initializeAgenda();
+  }, [user, companyId]);
 
-async function initializeAgenda() {
-  try {
-    setEventsLoading(true);
-
-    if (!user) {
-      setStatus("No hay usuario autenticado");
-      return;
-    }
-
-    if (!companyId) {
-      setStatus("Usuario sin empresa activa");
+  useEffect(() => {
+    if (companyId) {
+      loadEvents();
+      loadCompanyUsers();
+    } else {
       setEvents([]);
       setCompanyUsers([]);
-      return;
+    }
+  }, [companyId, selectedDate, view]);
+
+  async function initializeAgenda() {
+    try {
+      setEventsLoading(true);
+
+      if (!user) {
+        setStatus("No hay usuario autenticado");
+        return;
+      }
+
+      if (!companyId) {
+        setStatus("Usuario sin empresa activa");
+        setEvents([]);
+        setCompanyUsers([]);
+        return;
+      }
+
+      setAuthUserId(user.id);
+      setStatus("Operativa");
+    } catch (error) {
+      console.error(error);
+      setStatus("Error inicializando agenda");
+    } finally {
+      setEventsLoading(false);
+    }
+  }
+
+  async function loadCompanyUsers() {
+    if (!companyId) return;
+
+    try {
+      const data = await getCompanyUsers(companyId);
+      setCompanyUsers((data as CompanyUserRow[]) || []);
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+  async function loadEvents() {
+    if (!companyId) return;
+
+    setEventsLoading(true);
+
+    let fromDate = new Date(selectedDate + "T00:00:00");
+    let toDate = new Date(selectedDate + "T23:59:59");
+
+    if (view === "week") {
+      fromDate = startOfWeek(currentDate);
+      toDate = endOfWeek(currentDate);
     }
 
-    setAuthUserId(user.id);
-    setStatus("Agenda lista");
-  } catch (error) {
-    console.error(error);
-    setStatus("Error inicializando agenda");
-  } finally {
-    setEventsLoading(false);
-  }
-}
+    if (view === "month") {
+      const base = new Date(selectedDate + "T12:00:00");
+      fromDate = new Date(base.getFullYear(), base.getMonth(), 1);
+      toDate = new Date(
+        base.getFullYear(),
+        base.getMonth() + 1,
+        0,
+        23,
+        59,
+        59
+      );
+    }
 
-async function loadCompanyUsers() {
-  if (!companyId) return;
+    if (view === "year") {
+      const base = new Date(selectedDate + "T12:00:00");
+      fromDate = new Date(base.getFullYear(), 0, 1, 0, 0, 0);
+      toDate = new Date(base.getFullYear(), 11, 31, 23, 59, 59);
+    }
 
-  try {
-    const data = await getCompanyUsers(companyId);
-    setCompanyUsers((data as CompanyUserRow[]) || []);
-  } catch (error) {
-    console.error(error);
-  }
-}
- async function loadEvents() {
-  if (!companyId) return;
+    try {
+      const data = await getCalendarEventsByCompany(companyId, {
+        fromIso: fromDate.toISOString(),
+        toIso: toDate.toISOString(),
+      });
 
-  setEventsLoading(true);
-
-  let fromDate = new Date(selectedDate + "T00:00:00");
-  let toDate = new Date(selectedDate + "T23:59:59");
-
-  if (view === "week") {
-    fromDate = startOfWeek(currentDate);
-    toDate = endOfWeek(currentDate);
-  }
-
-  if (view === "month") {
-    const base = new Date(selectedDate + "T12:00:00");
-    fromDate = new Date(base.getFullYear(), base.getMonth(), 1);
-    toDate = new Date(base.getFullYear(), base.getMonth() + 1, 0, 23, 59, 59);
+      setEvents(data || []);
+    } catch (error) {
+      console.error(error);
+      setStatus("Error cargando eventos");
+    } finally {
+      setEventsLoading(false);
+    }
   }
 
-  try {
-    const data = await getCalendarEventsByCompany(companyId, {
-      fromIso: fromDate.toISOString(),
-      toIso: toDate.toISOString(),
-    });
+  async function loadEventAttendees(eventId: string) {
+    try {
+      const attendees = await getCalendarEventAttendees(eventId);
 
-    setEvents(data || []);
-  } catch (error) {
-    console.error(error);
-    setStatus("Error cargando eventos");
-  } finally {
-    setEventsLoading(false);
+      setLoadedAttendees(attendees || []);
+
+      setInternalAttendees(
+        attendees
+          .filter((a) => a.attendee_type === "internal" && a.user_id)
+          .map((a) => a.user_id as string)
+      );
+
+      setExternalEmails(
+        attendees
+          .filter((a) => a.attendee_type === "external" && a.email)
+          .map((a) => a.email)
+          .join(", ")
+      );
+    } catch (error) {
+      console.error(error);
+    }
   }
-}
-
- async function loadEventAttendees(eventId: string) {
-  try {
-    const attendees = await getCalendarEventAttendees(eventId);
-
-    setLoadedAttendees(attendees || []);
-
-    setInternalAttendees(
-      attendees
-        .filter((a) => a.attendee_type === "internal" && a.user_id)
-        .map((a) => a.user_id as string)
-    );
-
-    setExternalEmails(
-      attendees
-        .filter((a) => a.attendee_type === "external" && a.email)
-        .map((a) => a.email)
-        .join(", ")
-    );
-  } catch (error) {
-    console.error(error);
-  }
-}
 
   function resetForm() {
     const now = new Date();
@@ -345,7 +386,7 @@ async function loadCompanyUsers() {
     setSelectedEvent(event);
     setFormTitle(event.title || "");
     setFormDescription(event.description || "");
-    setFormType(event.event_type || event.event_type || "Reunión");
+    setFormType(event.event_type || "Reunión");
     setFormPriority(event.priority || "Media");
     setFormStatus(event.status || "Programado");
     setFormColor(event.color || "#2563eb");
@@ -353,9 +394,7 @@ async function loadCompanyUsers() {
     setFormMeetingLink(event.meeting_link || "");
     setFormStart(formatDateTimeLocal(new Date(event.start_datetime)));
     setFormEnd(
-      formatDateTimeLocal(
-        new Date(event.end_datetime || event.start_datetime)
-      )
+      formatDateTimeLocal(new Date(event.end_datetime || event.start_datetime))
     );
     setFormAllDay(Boolean(event.all_day));
     setFormVisibility(event.visibility || "company");
@@ -363,119 +402,139 @@ async function loadCompanyUsers() {
     setShowModal(true);
   }
 
- async function saveEvent() {
-  if (!companyId || !authUserId) {
-    alert("No hay empresa o usuario autenticado");
-    return;
-  }
-
-  if (!formTitle || !formStart) {
-    alert("Completa título e inicio");
-    return;
-  }
-
-  const endDateTime = formEnd || formStart;
-
-  const payload = {
-    company_id: companyId,
-    title: formTitle,
-    description: formDescription || null,
-    event_type: formType,
-    start_datetime: new Date(formStart).toISOString(),
-    end_datetime: new Date(endDateTime).toISOString(),
-    location: formLocation || null,
-    meeting_link: formMeetingLink || null,
-    priority: formPriority,
-    status: formStatus,
-    color: formColor,
-    all_day: formAllDay,
-    visibility: formVisibility,
-    timezone: "America/Mexico_City",
-    created_by: authUserId,
-  };
-
-  let eventId = selectedEvent?.id || null;
-
-  try {
-    if (selectedEvent) {
-      await updateCalendarEvent(selectedEvent.id, payload);
-      eventId = selectedEvent.id;
-    } else {
-      const data = await createCalendarEvent(payload);
-      eventId = data.id;
+  async function saveEvent() {
+    if (!companyId || !authUserId) {
+      alert("No hay empresa o usuario autenticado");
+      return;
     }
 
-    setShowModal(false);
-    resetForm();
-    loadEvents();
-  } catch (err) {
-    console.error(err);
-    alert("Error guardando evento");
+    if (!formTitle || !formStart) {
+      alert("Completa título e inicio");
+      return;
+    }
+
+    const endDateTime = formEnd || formStart;
+
+    const payload = {
+      company_id: companyId,
+      title: formTitle,
+      description: formDescription || null,
+      event_type: formType,
+      start_datetime: new Date(formStart).toISOString(),
+      end_datetime: new Date(endDateTime).toISOString(),
+      location: formLocation || null,
+      meeting_link: formMeetingLink || null,
+      priority: formPriority,
+      status: formStatus,
+      color: formColor,
+      all_day: formAllDay,
+      visibility: formVisibility,
+      timezone: "America/Mexico_City",
+      created_by: authUserId,
+    };
+
+    let eventId = selectedEvent?.id || null;
+
+    try {
+      if (selectedEvent) {
+        await updateCalendarEvent(selectedEvent.id, payload);
+        eventId = selectedEvent.id;
+      } else {
+        const data = await createCalendarEvent(payload);
+        eventId = data.id;
+      }
+
+      setShowModal(false);
+      resetForm();
+      loadEvents();
+    } catch (err) {
+      console.error(err);
+      alert("Error guardando evento");
+    }
   }
-}
 
- async function deleteEvent() {
-  if (!selectedEvent) return;
+  async function deleteEvent() {
+    if (!selectedEvent) return;
 
-  const confirmed = confirm("¿Eliminar este evento?");
-  if (!confirmed) return;
+    const confirmed = confirm("¿Eliminar este evento?");
+    if (!confirmed) return;
 
-  try {
-    await deleteCalendarEvent(selectedEvent.id);
+    try {
+      await deleteCalendarEvent(selectedEvent.id);
 
-    setShowModal(false);
-    resetForm();
-    loadEvents();
-  } catch (error) {
-    console.error(error);
-    alert("No se pudo eliminar el evento");
+      setShowModal(false);
+      resetForm();
+      loadEvents();
+    } catch (error) {
+      console.error(error);
+      alert("No se pudo eliminar el evento");
+    }
   }
-}
-  
- async function moveEvent(eventId: string, targetDate: Date) {
-  const event = events.find((e) => e.id === eventId);
-  if (!event) return;
 
-  const start = new Date(event.start_datetime);
-  const end = new Date(event.end_datetime || event.start_datetime);
-  const durationMs = end.getTime() - start.getTime();
+  async function moveEvent(eventId: string, targetDate: Date) {
+    const event = events.find((e) => e.id === eventId);
+    if (!event) return;
 
-  const newStart = new Date(targetDate);
-  const newEnd = new Date(
-    newStart.getTime() + Math.max(durationMs, 30 * 60000)
-  );
+    const start = new Date(event.start_datetime);
+    const end = new Date(event.end_datetime || event.start_datetime);
+    const durationMs = end.getTime() - start.getTime();
 
-  try {
-    await updateCalendarEvent(eventId, {
-      start_datetime: newStart.toISOString(),
-      end_datetime: newEnd.toISOString(),
-    });
+    const newStart = new Date(targetDate);
+    const newEnd = new Date(
+      newStart.getTime() + Math.max(durationMs, 30 * 60000)
+    );
 
-    loadEvents();
-  } catch (error) {
-    console.error(error);
-    alert("No se pudo mover el evento");
+    try {
+      await updateCalendarEvent(eventId, {
+        start_datetime: newStart.toISOString(),
+        end_datetime: newEnd.toISOString(),
+      });
+
+      loadEvents();
+    } catch (error) {
+      console.error(error);
+      alert("No se pudo mover el evento");
+    }
   }
-}
 
   function renderTopActions() {
     return (
-      <div style={{ display: "flex", gap: 10, marginBottom: 18, flexWrap: "wrap" }}>
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          marginBottom: 18,
+          flexWrap: "wrap",
+          alignItems: "center",
+        }}
+      >
         <button onClick={() => openNewEventModal()} style={primaryButton}>
           Nuevo evento
         </button>
 
         <div style={{ display: "flex", gap: 8 }}>
-          {(["day", "week", "month"] as CalendarView[]).map((v) => (
+          {(["day", "week", "month", "year"] as CalendarView[]).map((v) => (
             <button
               key={v}
               onClick={() => setView(v)}
               style={{
                 ...secondaryButton,
-                background: view === v ? "#2563eb" : "#102244",
+                background:
+                  view === v ? UI.bgSubtle : "transparent",
+                color: view === v ? UI.text : UI.textSoft,
+                border:
+                  view === v
+                    ? `1px solid ${UI.borderSoft}`
+                    : `1px solid ${UI.border}`,
               }}
             >
-              {v === "day" ? "Día" : v === "week" ? "Semana" : "Mes"}
+              {v === "day"
+                ? "Día"
+                : v === "week"
+                ? "Semana"
+                : v === "month"
+                ? "Mes"
+                : "Año"}
             </button>
           ))}
         </div>
@@ -493,6 +552,7 @@ async function loadCompanyUsers() {
             if (view === "day") d.setDate(d.getDate() - 1);
             if (view === "week") d.setDate(d.getDate() - 7);
             if (view === "month") d.setMonth(d.getMonth() - 1);
+            if (view === "year") d.setFullYear(d.getFullYear() - 1);
             setSelectedDate(getLocalDateISO(d));
           }}
           style={secondaryButton}
@@ -506,6 +566,7 @@ async function loadCompanyUsers() {
             if (view === "day") d.setDate(d.getDate() + 1);
             if (view === "week") d.setDate(d.getDate() + 7);
             if (view === "month") d.setMonth(d.getMonth() + 1);
+            if (view === "year") d.setFullYear(d.getFullYear() + 1);
             setSelectedDate(getLocalDateISO(d));
           }}
           style={secondaryButton}
@@ -522,19 +583,20 @@ async function loadCompanyUsers() {
     return (
       <div
         style={{
-          border: "1px solid #284577",
+          border: `1px solid ${UI.border}`,
           borderRadius: 14,
           overflow: "hidden",
           position: "relative",
-          background: "#0f1f3d",
+          background: UI.bg,
         }}
       >
         <div
           style={{
             padding: 14,
             fontWeight: 700,
-            borderBottom: "1px solid #284577",
-            background: "#12284d",
+            borderBottom: `1px solid ${UI.border}`,
+            background: UI.bgSoft,
+            color: UI.text,
           }}
         >
           {currentDate.toLocaleDateString("es-MX", {
@@ -567,16 +629,17 @@ async function loadCompanyUsers() {
               display: "grid",
               gridTemplateColumns: "90px 1fr",
               minHeight: HOUR_HEIGHT,
-              borderBottom: "1px solid #284577",
+              borderBottom: `1px solid ${UI.border}`,
               cursor: "pointer",
             }}
           >
             <div
               style={{
                 padding: 12,
-                background: "#102244",
-                borderRight: "1px solid #284577",
+                background: UI.bgSoft,
+                borderRight: `1px solid ${UI.border}`,
                 fontWeight: 700,
+                color: UI.textSoft,
               }}
             >
               {hour}
@@ -589,8 +652,16 @@ async function loadCompanyUsers() {
           const start = new Date(ev.start_datetime);
           const end = new Date(ev.end_datetime || ev.start_datetime);
 
-          const startMin = clamp(minutesFromStart(start), 0, (HOURS_END - HOURS_START + 1) * 60);
-          const endMin = clamp(minutesFromStart(end), 30, (HOURS_END - HOURS_START + 1) * 60);
+          const startMin = clamp(
+            minutesFromStart(start),
+            0,
+            (HOURS_END - HOURS_START + 1) * 60
+          );
+          const endMin = clamp(
+            minutesFromStart(end),
+            30,
+            (HOURS_END - HOURS_START + 1) * 60
+          );
 
           const top = 49 + (startMin / 60) * HOUR_HEIGHT;
           const height = Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT, 30);
@@ -644,17 +715,18 @@ async function loadCompanyUsers() {
         style={{
           display: "grid",
           gridTemplateColumns: "80px repeat(7, 1fr)",
-          border: "1px solid #284577",
+          border: `1px solid ${UI.border}`,
           borderRadius: 14,
           overflow: "hidden",
-          background: "#0f1f3d",
+          background: UI.bg,
           position: "relative",
         }}
       >
-        <div style={{ background: "#12284d" }} />
+        <div style={{ background: UI.bgSoft }} />
 
         {weekDays.map((day, i) => {
-          const isToday = getLocalDateISO(day) === getLocalDateISO(new Date());
+          const isToday =
+            getLocalDateISO(day) === getLocalDateISO(new Date());
 
           return (
             <div
@@ -663,8 +735,9 @@ async function loadCompanyUsers() {
                 padding: 10,
                 textAlign: "center",
                 fontWeight: 700,
-                background: isToday ? "#1d4ed8" : "#12284d",
-                borderLeft: "1px solid #284577",
+                background: isToday ? UI.bgSubtle : UI.bgSoft,
+                color: UI.text,
+                borderLeft: `1px solid ${UI.border}`,
               }}
             >
               {day.toLocaleDateString("es-MX", {
@@ -680,10 +753,11 @@ async function loadCompanyUsers() {
           <React.Fragment key={hour}>
             <div
               style={{
-                borderTop: "1px solid #284577",
+                borderTop: `1px solid ${UI.border}`,
                 padding: 8,
                 fontSize: 12,
-                background: "#102244",
+                background: UI.bgSoft,
+                color: UI.textSoft,
               }}
             >
               {hour}
@@ -709,8 +783,8 @@ async function loadCompanyUsers() {
                 }}
                 style={{
                   minHeight: 58,
-                  borderTop: "1px solid #284577",
-                  borderLeft: "1px solid #284577",
+                  borderTop: `1px solid ${UI.border}`,
+                  borderLeft: `1px solid ${UI.border}`,
                   cursor: "pointer",
                 }}
               />
@@ -731,8 +805,16 @@ async function loadCompanyUsers() {
 
           if (dayIndex === -1) return null;
 
-          const startMin = clamp(minutesFromStart(start), 0, (HOURS_END - HOURS_START + 1) * 60);
-          const endMin = clamp(minutesFromStart(end), 30, (HOURS_END - HOURS_START + 1) * 60);
+          const startMin = clamp(
+            minutesFromStart(start),
+            0,
+            (HOURS_END - HOURS_START + 1) * 60
+          );
+          const endMin = clamp(
+            minutesFromStart(end),
+            30,
+            (HOURS_END - HOURS_START + 1) * 60
+          );
 
           const top = 42 + (startMin / 60) * 58;
           const height = Math.max(((endMin - startMin) / 60) * 58, 26);
@@ -775,10 +857,10 @@ async function loadCompanyUsers() {
         style={{
           display: "grid",
           gridTemplateColumns: "repeat(7, 1fr)",
-          border: "1px solid #284577",
+          border: `1px solid ${UI.border}`,
           borderRadius: 14,
           overflow: "hidden",
-          background: "#0f1f3d",
+          background: UI.bg,
         }}
       >
         {["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"].map((d) => (
@@ -788,9 +870,10 @@ async function loadCompanyUsers() {
               padding: 12,
               textAlign: "center",
               fontWeight: 700,
-              background: "#12284d",
-              borderBottom: "1px solid #284577",
-              borderRight: "1px solid #284577",
+              background: UI.bgSoft,
+              color: UI.text,
+              borderBottom: `1px solid ${UI.border}`,
+              borderRight: `1px solid ${UI.border}`,
             }}
           >
             {d}
@@ -798,7 +881,8 @@ async function loadCompanyUsers() {
         ))}
 
         {monthDays.map((day, i) => {
-          const isToday = getLocalDateISO(day.date) === getLocalDateISO(new Date());
+          const isToday =
+            getLocalDateISO(day.date) === getLocalDateISO(new Date());
           const dayEvents = getDayEvents(events, day.date);
 
           return (
@@ -820,10 +904,10 @@ async function loadCompanyUsers() {
               style={{
                 minHeight: 150,
                 padding: 8,
-                borderTop: "1px solid #284577",
-                borderRight: "1px solid #284577",
-                background: day.currentMonth ? "#08142c" : "#0b1b3a",
-                opacity: day.currentMonth ? 1 : 0.35,
+                borderTop: `1px solid ${UI.border}`,
+                borderRight: `1px solid ${UI.border}`,
+                background: day.currentMonth ? UI.bg : UI.bgMuted,
+                opacity: day.currentMonth ? 1 : 0.45,
                 cursor: "pointer",
               }}
             >
@@ -832,7 +916,8 @@ async function loadCompanyUsers() {
                   display: "inline-block",
                   padding: "3px 8px",
                   borderRadius: 8,
-                  background: isToday ? "#2563eb" : "transparent",
+                  background: isToday ? UI.bgSubtle : "transparent",
+                  color: UI.text,
                   fontWeight: 700,
                   marginBottom: 6,
                 }}
@@ -868,23 +953,28 @@ async function loadCompanyUsers() {
                         minute: "2-digit",
                       })}
                     </div>
-                    <div style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    <div
+                      style={{
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                      }}
+                    >
                       {ev.title}
                     </div>
                     <div style={{ fontSize: 10, opacity: 0.9 }}>
                       {Math.max(
-                        Math.round(
-                          (end.getTime() - start.getTime()) / 60000
-                        ),
+                        Math.round((end.getTime() - start.getTime()) / 60000),
                         30
-                      )} min
+                      )}{" "}
+                      min
                     </div>
                   </div>
                 );
               })}
 
               {dayEvents.length > 4 && (
-                <div style={{ fontSize: 11, opacity: 0.8 }}>
+                <div style={{ fontSize: 11, color: UI.textSoft }}>
                   +{dayEvents.length - 4} más
                 </div>
               )}
@@ -895,22 +985,86 @@ async function loadCompanyUsers() {
     );
   }
 
+  function renderYearView() {
+    const currentYear = currentDate.getFullYear();
+
+    return (
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+          gap: 12,
+        }}
+      >
+        {yearMonths.map((monthDate, index) => {
+          const monthEvents = events.filter((ev) => {
+            const d = new Date(ev.start_datetime);
+            return (
+              d.getFullYear() === currentYear &&
+              d.getMonth() === monthDate.getMonth()
+            );
+          });
+
+          return (
+            <button
+              key={index}
+              onClick={() => {
+                setSelectedDate(getLocalDateISO(monthDate));
+                setView("month");
+              }}
+              style={{
+                background: UI.bgSoft,
+                border: `1px solid ${UI.border}`,
+                borderRadius: 12,
+                padding: 16,
+                textAlign: "left",
+                cursor: "pointer",
+                color: UI.text,
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 700,
+                  marginBottom: 6,
+                  textTransform: "capitalize",
+                }}
+              >
+                {monthDate.toLocaleDateString("es-MX", { month: "long" })}
+              </div>
+
+              <div
+                style={{
+                  fontSize: 12,
+                  color: UI.textSoft,
+                }}
+              >
+                {monthEvents.length} evento{monthEvents.length === 1 ? "" : "s"}
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div style={{ display: "grid", gap: 18 }}>
       <div>
-        <h2 style={{ margin: 0, fontSize: 34 }}>Agenda</h2>
-        <p style={{ color: "#9fb3d9", marginTop: 8 }}>
-          Agenda Ultra Pro multiempresa
+        <h2 style={{ margin: 0, fontSize: 32, color: UI.text }}>
+          Programación
+        </h2>
+        <p style={{ color: UI.textSoft, marginTop: 8 }}>
+          Planificación operativa multiempresa
         </p>
       </div>
 
       <div
         style={{
-          background: "#12284d",
-          border: "1px solid #284577",
+          background: UI.bgSoft,
+          border: `1px solid ${UI.border}`,
           padding: "12px 14px",
           borderRadius: 12,
-          color: "#dbe7ff",
+          color: UI.textSoft,
           fontSize: 14,
         }}
       >
@@ -919,17 +1073,18 @@ async function loadCompanyUsers() {
 
       {renderTopActions()}
 
-     {loading || loadingTenant || eventsLoading ? (
-  <div style={panelStyle}>Cargando agenda...</div>
-) : !companyId ? (
-  <div style={panelStyle}>No hay empresa activa seleccionada.</div>
-) : (
-  <>
-    {view === "day" && renderDayView()}
-    {view === "week" && renderWeekView()}
-    {view === "month" && renderMonthView()}
-  </>
-)}
+      {loading || loadingTenant || eventsLoading ? (
+        <div style={panelStyle}>Cargando programación...</div>
+      ) : !companyId ? (
+        <div style={panelStyle}>No hay empresa activa seleccionada.</div>
+      ) : (
+        <>
+          {view === "day" && renderDayView()}
+          {view === "week" && renderWeekView()}
+          {view === "month" && renderMonthView()}
+          {view === "year" && renderYearView()}
+        </>
+      )}
 
       {showModal && (
         <div
@@ -937,7 +1092,7 @@ async function loadCompanyUsers() {
           style={{
             position: "fixed",
             inset: 0,
-            background: "rgba(0,0,0,0.75)",
+            background: "rgba(0,0,0,0.72)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
@@ -952,14 +1107,15 @@ async function loadCompanyUsers() {
               maxWidth: 760,
               maxHeight: "92vh",
               overflowY: "auto",
-              background: "#0f172a",
-              border: "1px solid #284577",
+              background: UI.bg,
+              border: `1px solid ${UI.border}`,
               borderRadius: 16,
               padding: 22,
               boxShadow: "0 30px 80px rgba(0,0,0,0.45)",
+              color: UI.text,
             }}
           >
-            <h3 style={{ marginTop: 0 }}>
+            <h3 style={{ marginTop: 0, color: UI.text }}>
               {selectedEvent ? "Editar evento" : "Nuevo evento"}
             </h3>
 
@@ -971,7 +1127,11 @@ async function loadCompanyUsers() {
                 style={inputStyle}
               />
 
-              <select value={formType} onChange={(e) => setFormType(e.target.value)} style={inputStyle}>
+              <select
+                value={formType}
+                onChange={(e) => setFormType(e.target.value)}
+                style={inputStyle}
+              >
                 <option>Reunión</option>
                 <option>Llamada</option>
                 <option>Visita</option>
@@ -984,7 +1144,12 @@ async function loadCompanyUsers() {
                 placeholder="Descripción"
                 value={formDescription}
                 onChange={(e) => setFormDescription(e.target.value)}
-                style={{ ...inputStyle, minHeight: 90, gridColumn: "1 / -1", resize: "vertical" }}
+                style={{
+                  ...inputStyle,
+                  minHeight: 90,
+                  gridColumn: "1 / -1",
+                  resize: "vertical",
+                }}
               />
 
               <input
@@ -1015,37 +1180,68 @@ async function loadCompanyUsers() {
                 style={inputStyle}
               />
 
-              <select value={formPriority} onChange={(e) => setFormPriority(e.target.value)} style={inputStyle}>
+              <select
+                value={formPriority}
+                onChange={(e) => setFormPriority(e.target.value)}
+                style={inputStyle}
+              >
                 <option>Baja</option>
                 <option>Media</option>
                 <option>Alta</option>
                 <option>Crítica</option>
               </select>
 
-              <select value={formStatus} onChange={(e) => setFormStatus(e.target.value)} style={inputStyle}>
+              <select
+                value={formStatus}
+                onChange={(e) => setFormStatus(e.target.value)}
+                style={inputStyle}
+              >
                 <option>Programado</option>
                 <option>Confirmado</option>
                 <option>Completado</option>
                 <option>Cancelado</option>
               </select>
 
-              <select value={formVisibility} onChange={(e) => setFormVisibility(e.target.value)} style={inputStyle}>
+              <select
+                value={formVisibility}
+                onChange={(e) => setFormVisibility(e.target.value)}
+                style={inputStyle}
+              >
                 <option value="company">Empresa</option>
                 <option value="private">Privado</option>
                 <option value="team">Equipo</option>
               </select>
 
-              <div style={{ ...inputStyle, display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  ...inputStyle,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
                 <label>Color</label>
                 <input
                   type="color"
                   value={formColor}
                   onChange={(e) => setFormColor(e.target.value)}
-                  style={{ width: 44, height: 30, border: "none", background: "transparent" }}
+                  style={{
+                    width: 44,
+                    height: 30,
+                    border: "none",
+                    background: "transparent",
+                  }}
                 />
               </div>
 
-              <div style={{ ...inputStyle, display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  ...inputStyle,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                }}
+              >
                 <input
                   id="all-day"
                   type="checkbox"
@@ -1061,7 +1257,9 @@ async function loadCompanyUsers() {
                   multiple
                   value={internalAttendees}
                   onChange={(e) => {
-                    const values = Array.from(e.target.selectedOptions).map((o) => o.value);
+                    const values = Array.from(e.target.selectedOptions).map(
+                      (o) => o.value
+                    );
                     setInternalAttendees(values);
                   }}
                   style={{ ...inputStyle, minHeight: 120 }}
@@ -1087,19 +1285,32 @@ async function loadCompanyUsers() {
 
             {selectedEvent && loadedAttendees.length > 0 && (
               <div style={{ marginTop: 18 }}>
-                <h4 style={{ marginBottom: 8 }}>Invitados cargados</h4>
+                <h4 style={{ marginBottom: 8, color: UI.text }}>
+                  Invitados cargados
+                </h4>
                 <div style={{ display: "grid", gap: 8 }}>
                   {loadedAttendees.map((a) => (
                     <div key={a.id} style={miniCardStyle}>
-                      {a.email || a.user_id || "Invitado"} — {a.attendee_type} — {a.status}
+                      {a.email || a.user_id || "Invitado"} — {a.attendee_type} —{" "}
+                      {a.status}
                     </div>
                   ))}
                 </div>
               </div>
             )}
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 22 }}>
-              <button onClick={() => setShowModal(false)} style={secondaryButton}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "flex-end",
+                gap: 10,
+                marginTop: 22,
+              }}
+            >
+              <button
+                onClick={() => setShowModal(false)}
+                style={secondaryButton}
+              >
                 Cancelar
               </button>
 
@@ -1108,7 +1319,9 @@ async function loadCompanyUsers() {
                   onClick={deleteEvent}
                   style={{
                     ...secondaryButton,
-                    background: "#b91c1c",
+                    background: UI.danger,
+                    border: `1px solid ${UI.danger}`,
+                    color: "#fff",
                   }}
                 >
                   Eliminar
@@ -1127,10 +1340,11 @@ async function loadCompanyUsers() {
 }
 
 const panelStyle: React.CSSProperties = {
-  background: "#12284d",
-  border: "1px solid #284577",
+  background: UI.bgSoft,
+  border: `1px solid ${UI.border}`,
   borderRadius: 16,
   padding: 20,
+  color: UI.text,
 };
 
 const formGrid: React.CSSProperties = {
@@ -1141,9 +1355,9 @@ const formGrid: React.CSSProperties = {
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
-  background: "#0b1220",
-  color: "#fff",
-  border: "1px solid #334155",
+  background: UI.bgMuted,
+  color: UI.text,
+  border: `1px solid ${UI.borderSoft}`,
   borderRadius: 10,
   padding: "12px 14px",
   outline: "none",
@@ -1153,13 +1367,13 @@ const inputStyle: React.CSSProperties = {
 const labelStyle: React.CSSProperties = {
   display: "block",
   marginBottom: 8,
-  color: "#cbd5e1",
+  color: UI.textSoft,
   fontSize: 13,
 };
 
 const primaryButton: React.CSSProperties = {
-  background: "#2563eb",
-  color: "#fff",
+  background: UI.text,
+  color: "#0b0f14",
   border: "none",
   borderRadius: 10,
   padding: "10px 16px",
@@ -1168,17 +1382,18 @@ const primaryButton: React.CSSProperties = {
 };
 
 const secondaryButton: React.CSSProperties = {
-  background: "#102244",
-  color: "#fff",
-  border: "1px solid #284577",
+  background: "transparent",
+  color: UI.text,
+  border: `1px solid ${UI.borderSoft}`,
   borderRadius: 10,
   padding: "10px 16px",
   cursor: "pointer",
 };
 
 const miniCardStyle: React.CSSProperties = {
-  background: "#12284d",
-  border: "1px solid #284577",
+  background: UI.bgSoft,
+  border: `1px solid ${UI.border}`,
   borderRadius: 10,
   padding: "10px 12px",
+  color: UI.text,
 };
