@@ -773,18 +773,46 @@ export default function ProtectedLayout({
   autoFocus
   value={commandText}
   onChange={(e) => setCommandText(e.target.value)}
-  onKeyDown={async (e) => {
-    if (e.key === "Enter") {
-      if (!commandText.trim()) return;
+ onKeyDown={async (e) => {
+  if (e.key === "Enter") {
+    if (!commandText.trim()) return;
 
-      setIsExecuting(true);
-      setCommandResult(null);
+    setIsExecuting(true);
+    setCommandResult(null);
+
+    try {
+      let result;
 
       try {
-        const result = await executeCommand(commandText, {
-  companyId,
-  userId: user?.id,
-});
+        // 👉 Primero intenta acción interna
+        result = await executeCommand(commandText, {
+          companyId,
+          userId: user?.id,
+        });
+      } catch {
+        // 👉 Si no hay acción, usa IA
+        const aiResponse = await fetch("/api/ai/command", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ prompt: commandText }),
+        });
+
+        const aiData = await aiResponse.json();
+        result = aiData.result;
+      }
+
+      setCommandResult(
+        typeof result === "string"
+          ? result
+          : JSON.stringify(result, null, 2)
+      );
+    } catch (err: any) {
+      setCommandResult(err.message || "Error ejecutando comando");
+    } finally {
+      setIsExecuting(false);
+    }
+  }
+}}
 
         setCommandResult(
           typeof result === "string"
