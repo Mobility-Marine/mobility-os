@@ -167,6 +167,9 @@ export default function ProtectedLayout({
   
   const [hubOpen, setHubOpen] = useState(false);
 
+  const [commandResult, setCommandResult] = useState<string | null>(null);
+  const [isExecuting, setIsExecuting] = useState(false);
+
   useEffect(() => {
     setOpenSections((prev) =>
       prev.includes(current.sectionKey)
