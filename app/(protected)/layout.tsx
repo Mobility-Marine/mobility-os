@@ -467,218 +467,85 @@ export default function ProtectedLayout({
   }}
 >
   <header
-  style={{
-    height: 86,
-    borderBottom: "1px solid #181d24",
-    background:
-      "radial-gradient(circle at top center, rgba(122,162,255,0.05), transparent 24%), #0a0d12",
-
-    display: "grid",
-    gridTemplateColumns: "1fr auto", // ⭐ clave
-    alignItems: "center",
-    padding: "0 24px",
-    gap: 18,
-  }}
->
-  {/* 🔹 LADO IZQUIERDO — TÍTULO */}
-  <div style={{ minWidth: 0 }}>
-    <div
-      style={{
-        fontSize: 11,
-        textTransform: "uppercase",
-        letterSpacing: 1.1,
-        color: "#8b98ab",
-        fontWeight: 700,
-      }}
-    >
-      {current.sectionTitle}
-    </div>
-
-    <div
-      style={{
-        marginTop: 4,
-        fontSize: 30,
-        lineHeight: 1,
-        fontWeight: 780,
-        color: "#f7f9fb",
-
-        whiteSpace: "nowrap",
-        overflow: "hidden",
-        textOverflow: "ellipsis", // ⭐ evita que empuje
-      }}
-    >
-      {current.itemName}
-    </div>
-  </div>
-
-  {/* 🔹 LADO DERECHO — ACCIONES */}
-  <div
     style={{
-      display: "flex",
+      height: 86,
+      borderBottom: "1px solid #181d24",
+      background:
+        "radial-gradient(circle at top center, rgba(122,162,255,0.05), transparent 24%), #0a0d12",
+      display: "grid",
+      gridTemplateColumns: "1fr auto",
       alignItems: "center",
-      gap: 10,
-      flexShrink: 0,
+      padding: "0 24px",
+      gap: 18,
     }}
   >
-    {/* BUSCADOR */}
-    <form
-      onSubmit={handleGlobalSearch}
-      style={{
-        width: 260,
-      }}
-    >
-      <input
-        value={globalSearch}
-        onChange={(e) => setGlobalSearch(e.target.value)}
-        placeholder="Buscar o ejecutar…"
+    {/* IZQUIERDA — TÍTULO */}
+    <div style={{ minWidth: 0 }}>
+      <div
         style={{
-          width: "100%",
-          height: 40,
-          padding: "0 14px",
-          borderRadius: 10,
-          background: "#0f141b",
-          border: "1px solid #263140",
-          color: "#f7f9fb",
-          fontWeight: 500,
-          outline: "none",
+          fontSize: 11,
+          textTransform: "uppercase",
+          letterSpacing: 1.1,
+          color: "#8b98ab",
+          fontWeight: 700,
         }}
-      />
-    </form>
-
-    <button type="button" style={iconButton} title="Notificaciones">
-      🔔
-    </button>
-
-    <button type="button" style={iconButton} title="Mensajes internos">
-      💬
-    </button>
-
-    <button
-      type="button"
-      style={{
-        ...iconButton,
-        width: "auto",
-        minWidth: 48,
-        padding: "0 12px",
-        background: "#7aa2ff",
-        color: "#0a0d12",
-        fontWeight: 800,
-        border: "1px solid #7aa2ff",
-      }}
-      title="Mobility AI"
-    >
-      IA
-    </button>
-
-    {companyId && (
-      <div style={headerPill}>
-        Tenant: {companyId.slice(0, 8)}
+      >
+        {current.sectionTitle}
       </div>
-    )}
 
-    <select
-      value={companyId || ""}
-      onChange={async (e) => {
-        await setActiveCompany(e.target.value);
-        window.location.reload();
-      }}
-      style={{
-        minWidth: 200,
-        height: 40,
-        padding: "0 12px",
-        borderRadius: 10,
-        background: "#0f141b",
-        border: "1px solid #263140",
-        color: "#f7f9fb",
-        fontWeight: 650,
-      }}
-    >
-      {memberships.map((m) => (
-        <option key={m.id} value={m.company_id}>
-          {m.company_name}
-        </option>
-      ))}
-    </select>
-
-    {/* AVATAR */}
-    <div
-      style={{
-        width: 40,
-        height: 40,
-        borderRadius: "50%",
-        background: "#7aa2ff",
-        color: "#0a0d12",
-        fontWeight: 800,
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        cursor: "pointer",
-        border: "1px solid #7aa2ff",
-        boxShadow: "0 6px 18px rgba(122,162,255,0.35)",
-      }}
-      title={user?.email || "Usuario"}
-    >
-      {userInitial}
+      <div
+        style={{
+          marginTop: 4,
+          fontSize: 30,
+          lineHeight: 1,
+          fontWeight: 780,
+          color: "#f7f9fb",
+          whiteSpace: "nowrap",
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+        }}
+      >
+        {current.itemName}
+      </div>
     </div>
 
-    <button
-      onClick={async () => {
-        await supabase.auth.signOut();
-        router.replace("/login");
-      }}
+    {/* DERECHA — ACCIONES */}
+    <div
       style={{
-        height: 40,
-        padding: "0 16px",
-        borderRadius: 10,
-        background: "#f4f6f8",
-        color: "#0a0d12",
-        border: "1px solid #f4f6f8",
-        fontWeight: 750,
-        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: 10,
+        flexShrink: 0,
       }}
     >
-      Salir
-    </button>
-  </div>
-</header>
-      {/* BUSCADOR GLOBAL */}
- <form
-  onSubmit={handleGlobalSearch}
-  style={{
-    flexGrow: 1,
-    minWidth: 120,
-    maxWidth: 360,
-  }}
->
-  <input
-    value={globalSearch}
-    onChange={(e) => setGlobalSearch(e.target.value)}
-    placeholder="Buscar o ejecutar…"
-    style={{
-      width: "100%",
-      height: 40,
-      padding: "0 14px",
-      borderRadius: 10,
-      background: "#0f141b",
-      border: "1px solid #263140",
-      color: "#f7f9fb",
-      fontWeight: 500,
-      outline: "none",
-    }}
-  />
-</form>
+      {/* BUSCADOR */}
+      <form onSubmit={handleGlobalSearch} style={{ width: 260 }}>
+        <input
+          value={globalSearch}
+          onChange={(e) => setGlobalSearch(e.target.value)}
+          placeholder="Buscar o ejecutar…"
+          style={{
+            width: "100%",
+            height: 40,
+            padding: "0 14px",
+            borderRadius: 10,
+            background: "#0f141b",
+            border: "1px solid #263140",
+            color: "#f7f9fb",
+            fontWeight: 500,
+            outline: "none",
+          }}
+        />
+      </form>
 
-      {/* NOTIFICACIONES */}
       <button type="button" style={iconButton} title="Notificaciones">
         🔔
       </button>
 
-      {/* MENSAJES */}
       <button type="button" style={iconButton} title="Mensajes internos">
         💬
       </button>
 
-      {/* IA GLOBAL */}
       <button
         type="button"
         style={{
@@ -691,48 +558,47 @@ export default function ProtectedLayout({
           fontWeight: 800,
           border: "1px solid #7aa2ff",
         }}
-        title="Mobility AI"
       >
         IA
       </button>
 
-      {/* TENANT */}
-    {companyId && (
-  <div
-    style={{
-      height: 40,
-      padding: "4px 12px",
-      borderRadius: 10,
-      background: "#0f141b",
-      border: "1px solid #1b222c",
-      display: "flex",
-      flexDirection: "column",
-      justifyContent: "center",
-      lineHeight: 1.05,
-    }}
-  >
-    <div
-      style={{
-        fontSize: 10,
-        color: "#7f8da3",
-        fontWeight: 700,
-        letterSpacing: 0.5,
-      }}
-    >
-      TENANT
-    </div>
+      {/* TENANT EN DOS NIVELES */}
+      {companyId && (
+        <div
+          style={{
+            height: 40,
+            padding: "4px 12px",
+            borderRadius: 10,
+            background: "#0f141b",
+            border: "1px solid #1b222c",
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "center",
+            lineHeight: 1.05,
+          }}
+        >
+          <div
+            style={{
+              fontSize: 10,
+              color: "#7f8da3",
+              fontWeight: 700,
+              letterSpacing: 0.5,
+            }}
+          >
+            TENANT
+          </div>
 
-    <div
-      style={{
-        fontSize: 13,
-        color: "#cfe1ff",
-        fontWeight: 700,
-      }}
-    >
-      {companyId.slice(0, 8)}
-    </div>
-  </div>
-)}
+          <div
+            style={{
+              fontSize: 13,
+              color: "#cfe1ff",
+              fontWeight: 700,
+            }}
+          >
+            {companyId.slice(0, 8)}
+          </div>
+        </div>
+      )}
 
       {/* SELECTOR EMPRESA */}
       <select
@@ -759,7 +625,7 @@ export default function ProtectedLayout({
         ))}
       </select>
 
-      {/* AVATAR USUARIO — SOLO CÍRCULO */}
+      {/* AVATAR */}
       <div
         style={{
           width: 40,
@@ -771,7 +637,6 @@ export default function ProtectedLayout({
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
-          flexShrink: 0,
           cursor: "pointer",
           border: "1px solid #7aa2ff",
           boxShadow: "0 6px 18px rgba(122,162,255,0.35)",
@@ -781,7 +646,6 @@ export default function ProtectedLayout({
         {userInitial}
       </div>
 
-      {/* SALIR */}
       <button
         onClick={async () => {
           await supabase.auth.signOut();
