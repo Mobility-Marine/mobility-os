@@ -7,7 +7,7 @@ import { useTenant } from "@/lib/tenant/TenantProvider";
 import { supabase } from "@/lib/supabaseClient";
 
 const modules = [
-  { name: "Dashboard", path: "/" },
+  { name: "Dashboard", path: "/dashboard" },
   { name: "Agenda", path: "/agenda" },
   { name: "Empresa", path: "/company" },
 ];
@@ -21,7 +21,6 @@ export default function ProtectedLayout({
   const pathname = usePathname();
 
   const { user } = useAuth();
-
   const { companyId, memberships, setActiveCompany } =
     useTenant();
 
@@ -29,8 +28,8 @@ export default function ProtectedLayout({
     <div
       style={{
         minHeight: "100vh",
-        background: "#070f24",
-        color: "#e6ecff",
+        background: "#060c1b",
+        color: "#e8edff",
         fontFamily:
           "-apple-system, BlinkMacSystemFont, Inter, Segoe UI, Roboto, sans-serif",
         display: "grid",
@@ -40,25 +39,29 @@ export default function ProtectedLayout({
       {/* SIDEBAR */}
       <aside
         style={{
-          background: "#0b1733",
-          borderRight: "1px solid #1f2f5a",
+          background: "#0b1630",
+          borderRight: "1px solid #182952",
           padding: "28px 20px",
           display: "flex",
           flexDirection: "column",
         }}
       >
         {/* LOGO */}
-        <div style={{ marginBottom: 32 }}>
+        <div style={{ marginBottom: 36 }}>
           <img
             src="/logo.png"
             alt="Mobility OS"
-            style={{ width: 160 }}
+            style={{
+              width: 170,
+              filter: "drop-shadow(0 0 12px rgba(59,130,246,0.25))",
+            }}
           />
           <div
             style={{
               fontSize: 12,
-              color: "#9fb3d9",
-              marginTop: 8,
+              color: "#8fa7d6",
+              marginTop: 10,
+              letterSpacing: 0.4,
             }}
           >
             Mobility Marine
@@ -75,14 +78,21 @@ export default function ProtectedLayout({
                 key={m.name}
                 onClick={() => router.push(m.path)}
                 style={{
-                  padding: "12px 14px",
-                  borderRadius: 12,
-                  marginBottom: 6,
+                  padding: "13px 16px",
+                  borderRadius: 14,
+                  marginBottom: 8,
                   cursor: "pointer",
-                  background: active ? "#162554" : "transparent",
+                  fontWeight: 500,
+                  transition: "all .15s ease",
+                  background: active
+                    ? "linear-gradient(135deg,#1e40af,#2563eb)"
+                    : "transparent",
                   border: active
                     ? "1px solid #3b82f6"
                     : "1px solid transparent",
+                  boxShadow: active
+                    ? "0 6px 18px rgba(37,99,235,0.35)"
+                    : "none",
                 }}
               >
                 {m.name}
@@ -95,17 +105,18 @@ export default function ProtectedLayout({
         <div
           style={{
             paddingTop: 18,
-            borderTop: "1px solid #1f2f5a",
+            borderTop: "1px solid #182952",
             fontSize: 13,
-            color: "#9fb3d9",
+            color: "#8fa7d6",
           }}
         >
           Conectado como
           <div
             style={{
-              color: "#e6ecff",
+              color: "#fff",
               marginTop: 4,
-              fontWeight: 500,
+              fontWeight: 600,
+              fontSize: 14,
             }}
           >
             {user?.email}
@@ -120,18 +131,47 @@ export default function ProtectedLayout({
           style={{
             display: "flex",
             justifyContent: "space-between",
-            marginBottom: 24,
-            background: "#0f1c3f",
+            alignItems: "center",
+            marginBottom: 26,
+            background:
+              "linear-gradient(135deg,#0f1c3f,#0b1733)",
             border: "1px solid #1f2f5a",
-            borderRadius: 14,
-            padding: "14px 20px",
+            borderRadius: 16,
+            padding: "16px 22px",
+            boxShadow: "0 10px 30px rgba(0,0,0,0.35)",
           }}
         >
-          <div style={{ fontWeight: 600 }}>
-            Mobility OS Platform
+          <div>
+            <div
+              style={{
+                fontWeight: 600,
+                fontSize: 16,
+              }}
+            >
+              Mobility OS Platform
+            </div>
+
+            {companyId && (
+              <div
+                style={{
+                  fontSize: 11,
+                  color: "#7fa1ff",
+                  marginTop: 2,
+                }}
+              >
+                Tenant activo: {companyId.slice(0, 8)}
+              </div>
+            )}
           </div>
 
-          <div style={{ display: "flex", gap: 12 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 14,
+            }}
+          >
+            {/* Selector empresa */}
             <select
               value={companyId || ""}
               onChange={async (e) => {
@@ -140,10 +180,12 @@ export default function ProtectedLayout({
               }}
               style={{
                 background: "#070f24",
-                color: "#e6ecff",
+                color: "#fff",
                 border: "1px solid #2a4a88",
-                padding: "8px 12px",
-                borderRadius: 10,
+                padding: "10px 14px",
+                borderRadius: 12,
+                fontWeight: 600,
+                minWidth: 200,
               }}
             >
               {memberships.map((m) => (
@@ -153,19 +195,23 @@ export default function ProtectedLayout({
               ))}
             </select>
 
+            {/* LOGOUT */}
             <button
               onClick={async () => {
                 await supabase.auth.signOut();
                 router.replace("/login");
               }}
               style={{
-                background: "#1f3a8a",
+                background:
+                  "linear-gradient(135deg,#1f3a8a,#2563eb)",
                 border: "none",
-                padding: "8px 14px",
-                borderRadius: 10,
+                padding: "10px 16px",
+                borderRadius: 12,
                 color: "#fff",
                 cursor: "pointer",
                 fontWeight: 600,
+                boxShadow:
+                  "0 6px 16px rgba(37,99,235,0.4)",
               }}
             >
               Salir
@@ -176,11 +222,13 @@ export default function ProtectedLayout({
         {/* CONTENIDO */}
         <div
           style={{
-            background: "#0f1c3f",
+            background:
+              "linear-gradient(180deg,#0f1c3f,#0b1733)",
             border: "1px solid #1f2f5a",
-            borderRadius: 16,
-            padding: 24,
-            minHeight: "70vh",
+            borderRadius: 18,
+            padding: 26,
+            minHeight: "72vh",
+            boxShadow: "0 20px 40px rgba(0,0,0,0.45)",
           }}
         >
           {children}
