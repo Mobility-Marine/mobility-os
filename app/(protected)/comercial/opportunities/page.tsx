@@ -26,6 +26,8 @@ const stages = [
 export default function OpportunitiesPage() {
   const [items, setItems] = useState<Opportunity[]>([]);
   const [loading, setLoading] = useState(true);
+  // 🧠 WAR ROOM — oportunidad seleccionada
+  const [selected, setSelected] = useState<Opportunity | null>(null);
 
   useEffect(() => {
     load();
@@ -105,6 +107,22 @@ function wonOpportunities() {
 
   if (loading) return <div>Cargando pipeline…</div>;
 
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div
+      style={{
+        background: "#0b1220",
+        border: "1px solid #1f2937",
+        borderRadius: 12,
+        padding: 14,
+      }}
+    >
+      <div style={{ fontSize: 12, color: "#94a3b8" }}>{label}</div>
+      <div style={{ fontSize: 20, fontWeight: 800 }}>{value}</div>
+    </div>
+  );
+}
+  
   return (
     <div style={{ padding: 24 }}>
       <h1>Pipeline de oportunidades</h1>
@@ -277,11 +295,7 @@ function wonOpportunities() {
                     marginBottom: 8,
                     cursor: "pointer",
                   }}
-                  onClick={() => {
-                    const next =
-                      stages[stages.indexOf(stage) + 1];
-                    if (next) move(i.id, next);
-                  }}
+                 onClick={() => setSelected(i)}
                 >
                   <div style={{ fontWeight: "bold" }}>
                     {i.company_name || i.name}
@@ -297,6 +311,124 @@ function wonOpportunities() {
           </div>
         ))}
       </div>
+
+{/* 🧠 WAR ROOM DE OPORTUNIDAD */}
+{selected && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(5,8,12,0.85)",
+      backdropFilter: "blur(8px)",
+      zIndex: 9999,
+      display: "flex",
+      justifyContent: "center",
+      alignItems: "center",
+      padding: 20,
+    }}
+  >
+    <div
+      style={{
+        width: "min(1100px, 95vw)",
+        maxHeight: "90vh",
+        overflowY: "auto",
+        background: "#0b1220",
+        borderRadius: 18,
+        border: "1px solid #1f2937",
+        padding: 24,
+        display: "grid",
+        gap: 18,
+      }}
+    >
+      {/* HEADER */}
+      <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontSize: 12, color: "#94a3b8" }}>
+            WAR ROOM COMERCIAL
+          </div>
+
+          <div style={{ fontSize: 26, fontWeight: 800 }}>
+            {selected.name}
+          </div>
+
+          <div style={{ color: "#cbd5e1" }}>
+            {selected.company_name}
+          </div>
+        </div>
+
+        <button
+          onClick={() => setSelected(null)}
+          style={{
+            background: "#1f2937",
+            border: "none",
+            borderRadius: 10,
+            padding: "10px 14px",
+            cursor: "pointer",
+            color: "#fff",
+          }}
+        >
+          Cerrar
+        </button>
+      </div>
+
+      {/* SNAPSHOT EJECUTIVO */}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(4, 1fr)",
+          gap: 12,
+        }}
+      >
+        <Metric label="Valor" value={`$${selected.value?.toLocaleString()}`} />
+        <Metric
+          label="Probabilidad"
+          value={`${selected.probability?.toFixed(0)}%`}
+        />
+        <Metric label="Etapa" value={selected.stage} />
+        <Metric
+          label="Forecast"
+          value={`$${(
+            selected.value * (selected.probability / 100)
+          ).toLocaleString()}`}
+        />
+      </div>
+
+      {/* IA DIRECTOR */}
+      <div
+        style={{
+          background: "#0f172a",
+          padding: 16,
+          borderRadius: 12,
+          border: "1px solid #1e293b",
+          display: "grid",
+          gap: 8,
+        }}
+      >
+        <div style={{ fontWeight: 800, color: "#60a5fa" }}>
+          REVENUE AI DIRECTOR
+        </div>
+
+        <div style={{ color: "#cbd5e1" }}>
+          {selected.probability < 40
+            ? "Alta probabilidad de pérdida si no hay actividad inmediata."
+            : "Oportunidad viable. Mantener seguimiento cercano."}
+        </div>
+
+        <div
+          style={{
+            padding: 12,
+            borderRadius: 10,
+            background: "rgba(250,204,21,0.1)",
+            border: "1px solid rgba(250,204,21,0.25)",
+          }}
+        >
+          Acción recomendada: agendar reunión decisoria.
+        </div>
+      </div>
+    </div>
+  </div>
+)}
+      
     </div>
   );
 }
