@@ -790,21 +790,53 @@ export default function ProtectedLayout({
             userId: user?.id,
           });
         } catch {
-          // 👉 Si no hay acción interna, usar COO IA
+  const text = commandText.toLowerCase();
 
-const cooResponse = await fetch("/api/ai/coo", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    prompt: commandText,
-    companyId,
-  }),
-});
+  // 🧠 Detectar si es consulta ejecutiva (COO)
+  const cooKeywords = [
+    "empresa",
+    "estado",
+    "situación",
+    "operativa",
+    "riesgo",
+    "financ",
+    "resumen",
+    "diagnóstico",
+    "status",
+    "hoy",
+  ];
 
-const cooData = await cooResponse.json();
+  const isCooQuery = cooKeywords.some((k) => text.includes(k));
 
-result = cooData.result;
-        }
+  if (isCooQuery) {
+    // 🏢 COO IA
+    const cooResponse = await fetch("/api/ai/coo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: commandText,
+        companyId,
+      }),
+    });
+
+    const cooData = await cooResponse.json();
+    result = cooData.result;
+
+  } else {
+    // 🤖 IA GENERAL
+    const aiResponse = await fetch("/api/ai/command", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        prompt: commandText,
+        companyId,
+      }),
+    });
+
+    const aiData = await aiResponse.json();
+    result = aiData.result;
+  }
+}
 
         setCommandResult(
           typeof result === "string"
