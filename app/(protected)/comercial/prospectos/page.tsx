@@ -1,10 +1,11 @@
 "use client";
 
+// ===== INICIO imports =====
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
-// ===== INICIO IMPORT RBAC =====
+import { useTenant } from "@/lib/tenant/TenantProvider";
 import { usePermissions } from "@/lib/auth/usePermissions";
-// ===== FIN IMPORT RBAC =====
+// ===== FIN imports =====
 
 type Prospect = {
   id: string;
@@ -53,9 +54,11 @@ const { canManageSales } = usePermissions();
 // ===== FIN RBAC HOOK =====
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [prospects, setProspects] = useState<Prospect[]>([]);
-  const [companyId, setCompanyId] = useState<string | null>(null);
-  const [selected, setSelected] = useState<Prospect | null>(null);
+  // ===== INICIO state principal =====
+const [prospects, setProspects] = useState<Prospect[]>([]);
+const { companyId, loadingTenant } = useTenant();
+const [selected, setSelected] = useState<Prospect | null>(null);
+// ===== FIN state principal =====
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("Todos");
   const [message, setMessage] = useState<string | null>(null);
@@ -76,98 +79,80 @@ const { canManageSales } = usePermissions();
     next_follow_up: "",
   });
 
-  // 🔥 BOOTSTRAP + REALTIME
-  useEffect(() => {
-    void bootstrap();
+// ===== INICIO bootstrap desde TenantProvider + realtime =====
+useEffect(() => {
+  if (!companyId) return;
 
-    if (!companyId) return;
+  void loadProspects(companyId);
 
-    // ===== PROSPECTS REALTIME =====
-    const prospectsChannel = supabase
-      .channel("realtime-prospects")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "prospects",
-          filter: `company_id=eq.${companyId}`,
-        },
-        () => {
-          loadProspects(companyId);
-        }
-      )
-      .subscribe();
-
-    // ===== ACTIVITIES REALTIME =====
-   const activitiesChannel = supabase
-  .channel("realtime-activities")
-  .on(
-    "postgres_changes",
-    {
-      event: "*",
-      schema: "public",
-      table: "activities",
-      filter: `company_id=eq.${companyId}`, // ⭐ FILTRO MULTIEMPRESA
-    },
-    (payload: any) => {
-      const newRow =
-        (payload?.new as { prospect_id?: string } | null) ||
-        (payload?.old as { prospect_id?: string } | null);
-
-      // Solo refrescar si pertenece al prospecto abierto
-      if (selected && newRow?.prospect_id === selected.id) {
-        loadActivities(selected.id);
+  const prospectsChannel = supabase
+    .channel("realtime-prospects")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "prospects",
+        filter: `company_id=eq.${companyId}`,
+      },
+      () => {
+        loadProspects(companyId);
       }
-    }
-  )
-  .subscribe();
+    )
+    .subscribe();
 
-    // 🔴 LIMPIEZA DE CANALES
-    return () => {
-      supabase.removeChannel(prospectsChannel);
-      supabase.removeChannel(activitiesChannel);
-    };
-  }, [companyId, selected]);
+  const activitiesChannel = supabase
+    .channel("realtime-activities")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "activities",
+        filter: `company_id=eq.${companyId}`,
+      },
+      (payload: any) => {
+        const newRow =
+          (payload?.new as { prospect_id?: string } | null) ||
+          (payload?.old as { prospect_id?: string } | null);
 
-  // ===== BOOTSTRAP =====
-  async function bootstrap() {
-    setLoading(true);
+        if (selected && newRow?.prospect_id === selected.id) {
+          loadActivities(selected.id);
+        }
+      }
+    )
+    .subscribe();
 
-    const { data } = await supabase
-      .from("company_users")
-      .select("company_id")
-      .limit(1)
-      .single();
+  return () => {
+    supabase.removeChannel(prospectsChannel);
+    supabase.removeChannel(activitiesChannel);
+  };
+}, [companyId, selected]);
+// ===== FIN bootstrap desde TenantProvider + realtime =====
 
-    if (!data?.company_id) {
-      setLoading(false);
-      setMessage("No se encontró company_id activo.");
-      return;
-    }
+ // ===== INICIO loadProspects() multiempresa centralizado =====
+async function loadProspects(activeCompanyId?: string) {
+  const cid = activeCompanyId || companyId;
+  if (!cid) return;
 
-    setCompanyId(data.company_id);
-    await loadProspects(data.company_id);
+  setLoading(true);
+
+  const { data, error } = await supabase
+    .from("prospects")
+    .select("*")
+    .eq("company_id", cid)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    setMessage(`Error cargando prospectos: ${error.message}`);
     setLoading(false);
+    return;
   }
 
-  async function loadProspects(activeCompanyId?: string) {
-    const cid = activeCompanyId || companyId;
-    if (!cid) return;
-
-    const { data, error } = await supabase
-      .from("prospects")
-      .select("*")
-      .eq("company_id", cid)
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      setMessage(`Error cargando prospectos: ${error.message}`);
-      return;
-    }
-
-    setProspects(data || []);
-  }
+  setProspects(data || []);
+  setLoading(false);
+}
+// ===== FIN loadProspects() =====
 
   async function loadActivities(prospectId: string) {
   const { data, error } = await supabase
@@ -598,9 +583,19 @@ const autopilotPriority =
     ? "Alta"
     : "Media";
   
-  if (loading) {
-    return <div style={loadingStyle}>Cargando módulo comercial…</div>;
-  }
+ // ===== INICIO guards de carga =====
+if (loadingTenant) {
+  return <div style={loadingStyle}>Cargando empresa…</div>;
+}
+
+if (!companyId) {
+  return <div style={loadingStyle}>No hay empresa activa.</div>;
+}
+
+if (loading) {
+  return <div style={loadingStyle}>Cargando módulo comercial…</div>;
+}
+// ===== FIN guards de carga =====
 
   return (
     <div style={pageWrap}>
