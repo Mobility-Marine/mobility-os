@@ -10,12 +10,15 @@ import React, {
 import { supabase } from "@/lib/supabaseClient";
 import { useAuth } from "@/lib/auth/AuthProvider";
 
+// ===== INICIO TYPE CompanyMembership =====
 type CompanyMembership = {
   id: string;
   company_id: string;
   role: string | null;
+  is_active?: boolean;
   company_name?: string | null;
 };
+// ===== FIN TYPE CompanyMembership =====
 
 type TenantContextType = {
   companyId: string | null;
@@ -51,19 +54,23 @@ export default function TenantProvider({
 
       setLoadingTenant(true);
 
-      const { data, error } = await supabase
-        .from("company_users")
-        .select(
-          `
-          id,
-          company_id,
-          role,
-          companies (
-            name
-          )
-        `
-        )
-        .eq("user_id", user.id);
+     // ===== INICIO loadTenant() query memberships activas =====
+const { data, error } = await supabase
+  .from("company_users")
+  .select(
+    `
+      id,
+      company_id,
+      role,
+      is_active,
+      companies (
+        name
+      )
+    `
+  )
+  .eq("user_id", user.id)
+  .eq("is_active", true);
+// ===== FIN loadTenant() query memberships activas =====
 
       if (error) {
         console.error("Error cargando memberships", error);
@@ -73,12 +80,15 @@ export default function TenantProvider({
         return;
       }
 
-      const rows = (data || []).map((row: any) => ({
-        id: row.id,
-        company_id: row.company_id,
-        role: row.role,
-        company_name: row.companies?.name || "Empresa",
-      })) as CompanyMembership[];
+     // ===== INICIO normalización memberships loadTenant() =====
+const rows = (data || []).map((row: any) => ({
+  id: row.id,
+  company_id: row.company_id,
+  role: row.role,
+  is_active: row.is_active,
+  company_name: row.companies?.name || "Empresa",
+})) as CompanyMembership[];
+// ===== FIN normalización memberships loadTenant() =====
 
       setMemberships(rows);
 
@@ -150,19 +160,23 @@ export default function TenantProvider({
 
     setLoadingTenant(true);
 
-    const { data, error } = await supabase
-      .from("company_users")
-      .select(
-        `
-        id,
-        company_id,
-        role,
-        companies (
-          name
-        )
-      `
+   // ===== INICIO refreshTenant() query memberships activas =====
+const { data, error } = await supabase
+  .from("company_users")
+  .select(
+    `
+      id,
+      company_id,
+      role,
+      is_active,
+      companies (
+        name
       )
-     .eq("user_id", user.id);
+    `
+  )
+  .eq("user_id", user.id)
+  .eq("is_active", true);
+// ===== FIN refreshTenant() query memberships activas =====
 
     if (error) {
       console.error("Error refrescando memberships", error);
@@ -170,12 +184,15 @@ export default function TenantProvider({
       return;
     }
 
-    const rows = (data || []).map((row: any) => ({
-      id: row.id,
-      company_id: row.company_id,
-      role: row.role,
-      company_name: row.companies?.name || "Empresa",
-    })) as CompanyMembership[];
+  // ===== INICIO normalización memberships refreshTenant() =====
+const rows = (data || []).map((row: any) => ({
+  id: row.id,
+  company_id: row.company_id,
+  role: row.role,
+  is_active: row.is_active,
+  company_name: row.companies?.name || "Empresa",
+})) as CompanyMembership[];
+// ===== FIN normalización memberships refreshTenant() =====
 
     setMemberships(rows);
     setLoadingTenant(false);
