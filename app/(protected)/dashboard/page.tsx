@@ -55,6 +55,8 @@ export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [companyState, setCompanyState] = useState<any>(null);
+  const [alerts, setAlerts] = useState<string[]>([]);
+  const [lastRisksHash, setLastRisksHash] = useState<string>("");
 
   useEffect(() => {
     void checkCompany();
@@ -123,9 +125,17 @@ async function loadCompanyState() {
 
     const json = await res.json();
 
-    setCompanyState(json);
-  } catch (e) {
-    console.error("Error loading COO state", e);
+   setCompanyState(json);
+
+// 🧠 Detectar cambios reales en riesgos
+const risks = json?.risks || [];
+const newHash = JSON.stringify(risks);
+
+if (newHash !== lastRisksHash) {
+  setLastRisksHash(newHash);
+
+  if (risks.length > 0) {
+    setAlerts(risks);
   }
 }
 
@@ -179,6 +189,35 @@ async function loadCompanyState() {
 
   return (
     <div style={container}>
+
+{alerts.length > 0 && (
+  <div
+    style={{
+      display: "grid",
+      gap: 12,
+      marginBottom: 18,
+    }}
+  >
+    {alerts.map((a, i) => (
+      <div
+        key={i}
+        style={{
+          padding: 16,
+          borderRadius: 16,
+          background: "rgba(248,113,113,0.14)",
+          border: "1px solid rgba(248,113,113,0.35)",
+          color: "#fecaca",
+          fontWeight: 700,
+          boxShadow: "0 14px 40px rgba(0,0,0,0.35)",
+          animation: "pulseAlert 1.6s infinite",
+        }}
+      >
+        🚨 {a}
+      </div>
+    ))}
+  </div>
+)}
+      
       {/* TOP STATUS STRIP */}
       <div style={statusBar}>
         <div style={statusBarLeft}>
@@ -1432,3 +1471,13 @@ const signalValue: React.CSSProperties = {
   fontWeight: 700,
   fontSize: 14,
 };
+
+  const style = document.createElement("style");
+style.innerHTML = `
+@keyframes pulseAlert {
+  0% { transform: scale(1); box-shadow: 0 0 0 rgba(248,113,113,0.4); }
+  50% { transform: scale(1.02); box-shadow: 0 0 28px rgba(248,113,113,0.6); }
+  100% { transform: scale(1); box-shadow: 0 0 0 rgba(248,113,113,0.4); }
+}
+`;
+document.head.appendChild(style);
