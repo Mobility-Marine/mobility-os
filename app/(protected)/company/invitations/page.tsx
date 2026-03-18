@@ -43,35 +43,37 @@ const { data, error } = await supabase
     setInvitations(data || []);
   }
 
-  async function invite() {
-    if (!companyId || !email) return;
+  // ===== INICIO createInvitation() — invitación enterprise =====
+async function createInvitation() {
+  if (!companyId) return;
 
-    setLoading(true);
+  const email = prompt("Email del usuario a invitar");
+  if (!email) return;
 
-    const token = crypto.randomUUID();
+  const role = prompt("Rol (admin, manager, user)") || "user";
 
-    const { error } = await supabase
-      .from("company_invitations")
-      .insert({
-        company_id: companyId,
-        email,
-        token,
-        status: "pending",
-      });
+  // 🔐 Token único
+  const token = crypto.randomUUID();
 
-    if (error) {
-      console.error(error);
-      alert("Error creando invitación");
-      setLoading(false);
-      return;
-    }
+  const expiresAt = new Date();
+  expiresAt.setDate(expiresAt.getDate() + 7); // 7 días
 
-    alert("Invitación creada");
-    setEmail("");
-    setLoading(false);
+  await supabase.from("company_invitations").insert({
+    company_id: companyId,
+    email,
+    role,
+    token,
+    status: "pending",
+    expires_at: expiresAt.toISOString(),
+  });
 
-    loadInvitations();
-  }
+  alert(
+    `Invitación creada.\n\nLink de acceso:\n${window.location.origin}/accept-invitation?token=${token}`
+  );
+
+  loadInvitations();
+}
+// ===== FIN createInvitation() =====
 
  // ===== INICIO cancelInvitation() soft cancel =====
 async function cancelInvitation(id: string) {
