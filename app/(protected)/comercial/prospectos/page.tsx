@@ -654,6 +654,11 @@ export default function ProspectosPage() {
     </div>
   </section>
 )}
+
+      </div>
+);
+}
+
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
     <div style={kpiCard}>
