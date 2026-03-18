@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useTenant } from "@/lib/tenant/TenantProvider";
 
 type Opportunity = {
   id: string;
@@ -11,6 +12,7 @@ type Opportunity = {
   value: number;
   probability: number;
   created_at: string;
+  next_action?: string; // 👈 AQUÍ
 };
 
 const stages = [
@@ -29,23 +31,37 @@ export default function OpportunitiesPage() {
 
   // 🧠 WAR ROOM — oportunidad seleccionada
   const [selected, setSelected] = useState<Opportunity | null>(null);
+  const [editValue, setEditValue] = useState<number>(0);
+  const [editProbability, setEditProbability] = useState<number>(0);
+  const [nextAction, setNextAction] = useState("");
+  const { companyId } = useTenant();
 
-  useEffect(() => {
-    load();
-  }, []);
+ useEffect(() => {
+   if (companyId) load();
+ }, [companyId]);
 
-  async function load() {
-    setLoading(true);
+useEffect(() => {
+  if (!companyId) return;
 
-    const { data } = await supabase
-      .from("opportunities")
-      .select("*")
-      .order("created_at", { ascending: false });
+  const channel = supabase
+    .channel("opportunities-live")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "opportunities",
+        filter: `company_id=eq.${companyId}`,
+      },
+      () => load()
+    )
+    .subscribe();
 
-    setItems(data || []);
-    setLoading(false);
-  }
-
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [companyId]);
+  
   async function createOpportunity() {
     const name = prompt("Nombre de la oportunidad");
     if (!name) return;
@@ -53,17 +69,23 @@ export default function OpportunitiesPage() {
     const company = prompt("Empresa");
     const value = Number(prompt("Valor estimado (USD)") || 0);
 
-    await supabase.from("opportunities").insert({
-      name,
-      company_name: company,
-      value,
-      stage: "Qualification",
-      probability: 0.1,
-    });
+ if (!companyId) {
+  alert("No hay empresa activa");
+  return;
+}
+
+await supabase.from("opportunities").insert({
+  name,
+  company_name: company,
+  value,
+  stage: "Qualification",
+  probability: 10,
+  company_id: companyId,
+});
 
     load();
   }
-
+  
   async function move(id: string, newStage: string) {
     await supabase
       .from("opportunities")
@@ -106,7 +128,8 @@ export default function OpportunitiesPage() {
     return items.filter((i) => i.stage === "Closed Won");
   }
 
-  if (loading) return <div>Cargando pipeline…</div>;
+ if (!companyId) return <div>Cargando empresa…</div>;
+if (loading) return <div>Cargando pipeline…</div>;
 
   function Metric({ label, value }: { label: string; value: string }) {
     return (
@@ -124,32 +147,68 @@ export default function OpportunitiesPage() {
     );
   }
 
+async function load() {
+  if (!companyId) return;
+
+  setLoading(true);
+
+  const { data } = await supabase
+    .from("opportunities")
+    .select("*")
+    .eq("company_id", companyId)
+    .order("created_at", { ascending: false });
+
+  setItems(data || []);
+  setLoading(false);
+}
+  
   function ActivityPanel({ opportunity }: { opportunity: Opportunity }) {
-    const [activities, setActivities] = useState<any[]>([]);
-    const [text, setText] = useState("");
+    const { companyId } = useTenant();
+  const [activities, setActivities] = useState<any[]>([]);
+const [text, setText] = useState("");
 
-    useEffect(() => {
-      void loadActivities();
-    }, [opportunity.id]);
+async function loadActivities() {
+ const { data } = await supabase
+  .from("opportunity_activities")
+  .select("*")
+  .eq("opportunity_id", opportunity.id)
+  .eq("company_id", companyId)   // 👈 AQUÍ
+  .order("created_at", { ascending: false });
 
-    async function loadActivities() {
-      const { data } = await supabase
-        .from("opportunity_activities")
-        .select("*")
-        .eq("opportunity_id", opportunity.id)
-        .order("created_at", { ascending: false });
+  setActivities(data || []);
+}
 
-      setActivities(data || []);
-    }
+useEffect(() => {
+  void loadActivities();
 
+  const channel = supabase
+    .channel(`activities-${opportunity.id}`)
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "opportunity_activities",
+        filter: `opportunity_id=eq.${opportunity.id},company_id=eq.${companyId}`,
+      },
+      () => loadActivities()
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [opportunity.id]);
+    
     async function addActivity() {
       if (!text.trim()) return;
 
       await supabase.from("opportunity_activities").insert({
-        opportunity_id: opportunity.id,
-        description: text,
-        type: "task",
-      });
+  opportunity_id: opportunity.id,
+  description: text,
+  type: "task",
+  company_id: companyId,   // 👈 AQUÍ
+});
 
       setText("");
       loadActivities();
@@ -289,6 +348,33 @@ export default function OpportunitiesPage() {
     );
   }
 
+async function saveOpportunity() {
+  if (!selected) return;
+
+  await supabase
+    .from("opportunities")
+    .update({
+      value: editValue,
+      probability: editProbability,
+      next_action: nextAction,
+    })
+    .eq("id", selected.id);
+
+  load();
+}
+
+  function closingScore(o: Opportunity) {
+  const valueScore = Math.min(o.value / 100000, 1) * 40;
+  const probScore = (o.probability || 0) * 0.6;
+  return Math.round(valueScore + probScore);
+}
+
+function riskLevel(o: Opportunity) {
+  if (o.probability < 30) return "ALTO";
+  if (o.probability < 60) return "MEDIO";
+  return "BAJO";
+}
+  
   return (
     <div style={{ padding: 24 }}>
       <h1>Pipeline de oportunidades</h1>
@@ -463,7 +549,12 @@ export default function OpportunitiesPage() {
                     marginBottom: 8,
                     cursor: "pointer",
                   }}
-                  onClick={() => setSelected(i)}
+                 onClick={() => {
+  setSelected(i);
+  setEditValue(i.value || 0);
+  setEditProbability(i.probability || 0);
+  setNextAction(i.next_action || "");
+}}
                 >
                   <div style={{ fontWeight: "bold" }}>
                     {i.company_name || i.name}
@@ -600,6 +691,122 @@ export default function OpportunitiesPage() {
 
             {/* 🤖 AUTOPILOT */}
             <Autopilot opportunity={selected} />
+                  {/* ✏️ EDICIÓN DE OPORTUNIDAD */}
+      <div
+        style={{
+          background: "#020617",
+          border: "1px solid #1e293b",
+          borderRadius: 12,
+          padding: 16,
+          display: "grid",
+          gap: 12,
+        }}
+      >
+        <div style={{ fontWeight: 800 }}>Configuración del deal</div>
+
+        <div style={{ display: "grid", gap: 8 }}>
+          <label>Valor estimado</label>
+          <input
+            type="number"
+            value={editValue}
+            onChange={(e) => setEditValue(Number(e.target.value))}
+            style={{
+              background: "#020617",
+              border: "1px solid #1e293b",
+              borderRadius: 8,
+              padding: 10,
+              color: "#fff",
+            }}
+          />
+        </div>
+
+        <div style={{ display: "grid", gap: 8 }}>
+          <label>Probabilidad (%)</label>
+          <input
+            type="number"
+            value={editProbability}
+            onChange={(e) => setEditProbability(Number(e.target.value))}
+            style={{
+              background: "#020617",
+              border: "1px solid #1e293b",
+              borderRadius: 8,
+              padding: 10,
+              color: "#fff",
+            }}
+          />
+        </div>
+
+        <div style={{ display: "grid", gap: 8 }}>
+          <label>Próxima acción obligatoria</label>
+          <input
+            value={nextAction}
+            onChange={(e) => setNextAction(e.target.value)}
+            placeholder="Ej: Reunión con director financiero"
+            style={{
+              background: "#020617",
+              border: "1px solid #1e293b",
+              borderRadius: 8,
+              padding: 10,
+              color: "#fff",
+            }}
+          />
+        </div>
+
+        <button
+          onClick={saveOpportunity}
+          style={{
+            background: "#7aa2ff",
+            border: "none",
+            borderRadius: 10,
+            padding: "12px 16px",
+            fontWeight: 800,
+            cursor: "pointer",
+            color: "#0a0d12",
+          }}
+        >
+          Guardar cambios
+        </button>
+      </div>
+                  {/* 🧠 INTELIGENCIA DE CIERRE */}
+      <div
+        style={{
+          background: "#0f172a",
+          borderRadius: 12,
+          padding: 16,
+          border: "1px solid #1e293b",
+          display: "grid",
+          gap: 8,
+        }}
+      >
+        <div style={{ fontWeight: 800, color: "#22c55e" }}>
+          CLOSING INTELLIGENCE
+        </div>
+
+        <div>
+          Score de cierre:{" "}
+          <strong>{closingScore(selected)}</strong> / 100
+        </div>
+
+        <div>
+          Nivel de riesgo:{" "}
+          <strong style={{ color: "#f87171" }}>
+            {riskLevel(selected)}
+          </strong>
+        </div>
+
+        {nextAction && (
+          <div
+            style={{
+              padding: 12,
+              borderRadius: 10,
+              background: "rgba(96,165,250,0.1)",
+              border: "1px solid rgba(96,165,250,0.25)",
+            }}
+          >
+            Próxima acción: {nextAction}
+          </div>
+        )}
+      </div>
           </div>
         </div>
       )}
