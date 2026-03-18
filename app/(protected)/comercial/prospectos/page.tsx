@@ -430,7 +430,7 @@ const pipelineRisk =
       <div style={aiBox}>
         <div style={aiTitle}>🧊 Prospectos dormidos</div>
         <div style={aiText}>
-          {dormantProspects.length} prospecto(s) sin movimiento > 30 días.
+          {dormantProspects.length} prospecto(s) sin movimiento {'>'} 30 días.
         </div>
       </div>
     )}
