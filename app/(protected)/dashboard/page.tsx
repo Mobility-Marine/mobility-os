@@ -62,10 +62,6 @@ export default function DashboardPage() {
     void checkCompany();
   }, []);
 
-  useEffect(() => {
-  void checkCompany();
-}, []);
-
 // 🔥 AGREGA ESTO EXACTAMENTE AQUÍ
 
 useEffect(() => {
@@ -149,20 +145,23 @@ async function loadCompanyState() {
 
     const json = await res.json();
 
-   setCompanyState(json);
+    setCompanyState(json);
 
-// 🧠 Detectar cambios reales en riesgos
-const risks = json?.risks || [];
-const newHash = JSON.stringify(risks);
+    const risks = json?.risks || [];
+    const newHash = JSON.stringify(risks);
 
-if (newHash !== lastRisksHash) {
-  setLastRisksHash(newHash);
+    if (newHash !== lastRisksHash) {
+      setLastRisksHash(newHash);
 
-  if (risks.length > 0) {
-    setAlerts(risks);
+      if (risks.length > 0) {
+        setAlerts(risks);
+      }
+    }
+
+  } catch (err) {
+    console.error("Error loading company state:", err);
   }
 }
-
   async function checkCompany() {
     const { data: userData } = await supabase.auth.getUser();
 
