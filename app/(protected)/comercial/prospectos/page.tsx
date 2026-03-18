@@ -53,6 +53,8 @@ export default function ProspectosPage() {
   const [statusFilter, setStatusFilter] = useState("Todos");
   const [message, setMessage] = useState<string | null>(null);
   const [activities, setActivities] = useState<any[]>([]);
+  const [editing, setEditing] = useState(false);
+  const [editForm, setEditForm] = useState<ProspectForm | null>(null);
 
   const [form, setForm] = useState<ProspectForm>({
     name: "",
@@ -231,6 +233,36 @@ export default function ProspectosPage() {
     await loadProspects();
   }
 
+async function saveProspectChanges() {
+  if (!selected || !editForm) return;
+
+  const { error } = await supabase
+    .from("prospects")
+    .update({
+      name: editForm.name,
+      company_name: editForm.company_name || null,
+      email: editForm.email || null,
+      phone: editForm.phone || null,
+      lead_source: editForm.lead_source || null,
+      interested_service: editForm.interested_service || null,
+      status: editForm.status,
+      notes: editForm.notes || null,
+      estimated_value: editForm.estimated_value || 0,
+      next_follow_up: editForm.next_follow_up || null,
+      is_active: !["Ganado", "Perdido"].includes(editForm.status),
+    })
+    .eq("id", selected.id);
+
+  if (error) {
+    setMessage(`Error actualizando prospecto: ${error.message}`);
+    return;
+  }
+
+  setMessage("Prospecto actualizado.");
+  setEditing(false);
+  await loadProspects();
+}
+  
   function getProspectScore(p: Prospect) {
     let score = 0;
 
@@ -737,8 +769,22 @@ const pipelineRisk =
                   key={p.id}
                   style={row}
                   onClick={() => {
-  setSelected(p);
-  loadActivities(p.id);
+ setSelected(p);
+loadActivities(p.id);
+
+setEditForm({
+  name: p.name || "",
+  company_name: p.company_name || "",
+  email: p.email || "",
+  phone: p.phone || "",
+  lead_source: p.lead_source || "",
+  interested_service: p.interested_service || "",
+  status: p.status || "Nuevo",
+  notes: p.notes || "",
+  estimated_value: p.estimated_value || 0,
+  next_follow_up: p.next_follow_up || "",
+});
+setEditing(false);
 }}
                 >
                   <td style={td}>{p.name || "-"}</td>
