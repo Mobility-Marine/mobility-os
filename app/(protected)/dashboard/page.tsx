@@ -63,6 +63,30 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+  void checkCompany();
+}, []);
+
+// 🔥 AGREGA ESTO EXACTAMENTE AQUÍ
+
+useEffect(() => {
+  const style = document.createElement("style");
+
+  style.innerHTML = `
+  @keyframes pulseAlert {
+    0% { transform: scale(1); box-shadow: 0 0 0 rgba(248,113,113,0.4); }
+    50% { transform: scale(1.02); box-shadow: 0 0 28px rgba(248,113,113,0.6); }
+    100% { transform: scale(1); box-shadow: 0 0 0 rgba(248,113,113,0.4); }
+  }
+  `;
+
+  document.head.appendChild(style);
+
+  return () => {
+    document.head.removeChild(style);
+  };
+}, []);
+
+  useEffect(() => {
   subscribeRealtime();
 }, []);
 
@@ -1471,13 +1495,3 @@ const signalValue: React.CSSProperties = {
   fontWeight: 700,
   fontSize: 14,
 };
-
-  const style = document.createElement("style");
-style.innerHTML = `
-@keyframes pulseAlert {
-  0% { transform: scale(1); box-shadow: 0 0 0 rgba(248,113,113,0.4); }
-  50% { transform: scale(1.02); box-shadow: 0 0 28px rgba(248,113,113,0.6); }
-  100% { transform: scale(1); box-shadow: 0 0 0 rgba(248,113,113,0.4); }
-}
-`;
-document.head.appendChild(style);
