@@ -61,6 +61,49 @@ export default function DashboardPage() {
   }, []);
 
   useEffect(() => {
+  subscribeRealtime();
+}, []);
+
+async function subscribeRealtime() {
+  const { data } = await supabase
+    .from("company_users")
+    .select("company_id")
+    .limit(1)
+    .single();
+
+  if (!data?.company_id) return;
+
+  const companyId = data.company_id;
+
+  const tables = [
+    "prospects",
+    "quotations",
+    "shipments",
+    "invoices",
+  ];
+
+  const channel = supabase.channel("company-realtime");
+
+  tables.forEach((table) => {
+    channel.on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table,
+        filter: `company_id=eq.${companyId}`,
+      },
+      () => {
+        // 🔄 Recarga estado de empresa automáticamente
+        loadCompanyState();
+      }
+    );
+  });
+
+  channel.subscribe();
+}
+
+  useEffect(() => {
   loadCompanyState();
 }, []);
 
