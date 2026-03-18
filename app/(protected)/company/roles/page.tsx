@@ -60,19 +60,22 @@ export default function RolesPage() {
     loadRoles();
   }
 
-  async function deleteRole(id: string) {
-    const confirmDelete = confirm(
-      "¿Eliminar este rol?"
-    );
-    if (!confirmDelete) return;
+ // ===== INICIO deleteRole() seguro por empresa =====
+async function deleteRole(id: string) {
+  if (!companyId) return;
 
-    await supabase
-      .from("company_roles")
-      .delete()
-      .eq("id", id);
+  const confirmDelete = confirm("¿Eliminar este rol?");
+  if (!confirmDelete) return;
 
-    loadRoles();
-  }
+  await supabase
+    .from("company_roles")
+    .delete()
+    .eq("id", id)
+    .eq("company_id", companyId);
+
+  loadRoles();
+}
+// ===== FIN deleteRole() =====
 
   if (!companyId) {
     return (
