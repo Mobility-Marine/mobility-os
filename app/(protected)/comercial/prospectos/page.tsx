@@ -93,24 +93,28 @@ export default function ProspectosPage() {
       .subscribe();
 
     // ===== ACTIVITIES REALTIME =====
-    const activitiesChannel = supabase
-      .channel("realtime-activities")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "activities",
-        },
-        (payload: any) => {
-          const newRow = payload?.new as { prospect_id?: string } | null;
+   const activitiesChannel = supabase
+  .channel("realtime-activities")
+  .on(
+    "postgres_changes",
+    {
+      event: "*",
+      schema: "public",
+      table: "activities",
+      filter: `company_id=eq.${companyId}`, // ⭐ FILTRO MULTIEMPRESA
+    },
+    (payload: any) => {
+      const newRow =
+        (payload?.new as { prospect_id?: string } | null) ||
+        (payload?.old as { prospect_id?: string } | null);
 
-          if (selected && newRow?.prospect_id === selected.id) {
-            loadActivities(selected.id);
-          }
-        }
-      )
-      .subscribe();
+      // Solo refrescar si pertenece al prospecto abierto
+      if (selected && newRow?.prospect_id === selected.id) {
+        loadActivities(selected.id);
+      }
+    }
+  )
+  .subscribe();
 
     // 🔴 LIMPIEZA DE CANALES
     return () => {
