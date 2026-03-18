@@ -627,6 +627,103 @@ function revenueAIDirector() {
   };
 }
 // ===== FIN REVENUE AI DIRECTOR GLOBAL =====
+
+// ===== INICIO CFO FORECAST HELPERS =====
+
+const revenueTarget = 100000; 
+// 👆 objetivo temporal fijo. Luego lo conectamos a BD por empresa.
+
+function commitForecast() {
+  return items
+    .filter(
+      (i) =>
+        i.stage === "Commit" ||
+        i.stage === "Closed Won"
+    )
+    .reduce((sum, i) => sum + (i.value || 0), 0);
+}
+
+function bestCaseForecast() {
+  return items
+    .filter(
+      (i) =>
+        i.stage === "Proposal" ||
+        i.stage === "Negotiation" ||
+        i.stage === "Commit" ||
+        i.stage === "Closed Won"
+    )
+    .reduce((sum, i) => sum + (i.value || 0), 0);
+}
+
+function grossPipeline() {
+  return items
+    .filter(
+      (i) => i.stage !== "Closed Lost"
+    )
+    .reduce((sum, i) => sum + (i.value || 0), 0);
+}
+
+function gapToTarget() {
+  return Math.max(revenueTarget - commitForecast(), 0);
+}
+
+function pipelineCoverage() {
+  if (!revenueTarget) return 0;
+  return Number((grossPipeline() / revenueTarget).toFixed(2));
+}
+
+function cfoForecastHealth() {
+  const commit = commitForecast();
+  const best = bestCaseForecast();
+  const weighted = weightedForecast();
+  const gap = gapToTarget();
+  const coverage = pipelineCoverage();
+
+  if (commit >= revenueTarget) {
+    return {
+      title: "Objetivo cubierto en Commit",
+      message:
+        "El forecast Commit ya cubre la meta. Prioridad: asegurar ejecución y evitar caídas.",
+      level: "Fuerte",
+    };
+  }
+
+  if (best >= revenueTarget && commit < revenueTarget) {
+    return {
+      title: "Objetivo recuperable",
+      message:
+        "La meta no está cubierta en Commit, pero Best Case sí la alcanza. Prioridad: empujar deals avanzados.",
+      level: "Medio",
+    };
+  }
+
+  if (weighted < revenueTarget * 0.5) {
+    return {
+      title: "Forecast débil",
+      message:
+        "El forecast ponderado está muy por debajo de la meta. Se requiere generación de pipeline y avance de deals.",
+      level: "Crítico",
+    };
+  }
+
+  if (coverage < 3) {
+    return {
+      title: "Cobertura insuficiente",
+      message:
+        "La cobertura del pipeline es baja frente al objetivo. El riesgo de incumplimiento es elevado.",
+      level: "Alto riesgo",
+    };
+  }
+
+  return {
+    title: "Forecast en construcción",
+    message:
+      `Existe una brecha de $${gap.toLocaleString()} contra el objetivo. Prioridad: mejorar conversión en etapas medias.`,
+    level: "Vigilancia",
+  };
+}
+
+// ===== FIN CFO FORECAST HELPERS =====
   
   return (
     <div style={{ padding: 24 }}>
@@ -969,6 +1066,115 @@ onClick={() => {
   </div>
 </div>
 {/* ===== FIN REVENUE AI DIRECTOR GLOBAL UI ===== */}
+
+      {/* ===== INICIO CFO FORECAST MODE UI ===== */}
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(5, minmax(0, 1fr))",
+    gap: 12,
+    marginBottom: 20,
+  }}
+>
+  <div
+    style={{
+      background: "#020617",
+      border: "1px solid #1e293b",
+      borderRadius: 14,
+      padding: 16,
+    }}
+  >
+    <div style={{ fontSize: 12, color: "#94a3b8" }}>Objetivo</div>
+    <div style={{ fontSize: 24, fontWeight: 800 }}>
+      ${revenueTarget.toLocaleString()}
+    </div>
+  </div>
+
+  <div
+    style={{
+      background: "#020617",
+      border: "1px solid #1e293b",
+      borderRadius: 14,
+      padding: 16,
+    }}
+  >
+    <div style={{ fontSize: 12, color: "#94a3b8" }}>Commit</div>
+    <div style={{ fontSize: 24, fontWeight: 800 }}>
+      ${commitForecast().toLocaleString()}
+    </div>
+  </div>
+
+  <div
+    style={{
+      background: "#020617",
+      border: "1px solid #1e293b",
+      borderRadius: 14,
+      padding: 16,
+    }}
+  >
+    <div style={{ fontSize: 12, color: "#94a3b8" }}>Best case</div>
+    <div style={{ fontSize: 24, fontWeight: 800 }}>
+      ${bestCaseForecast().toLocaleString()}
+    </div>
+  </div>
+
+  <div
+    style={{
+      background: "#020617",
+      border: "1px solid #1e293b",
+      borderRadius: 14,
+      padding: 16,
+    }}
+  >
+    <div style={{ fontSize: 12, color: "#94a3b8" }}>Gap vs objetivo</div>
+    <div style={{ fontSize: 24, fontWeight: 800, color: "#f87171" }}>
+      ${gapToTarget().toLocaleString()}
+    </div>
+  </div>
+
+  <div
+    style={{
+      background: "#020617",
+      border: "1px solid #1e293b",
+      borderRadius: 14,
+      padding: 16,
+    }}
+  >
+    <div style={{ fontSize: 12, color: "#94a3b8" }}>Cobertura pipeline</div>
+    <div style={{ fontSize: 24, fontWeight: 800 }}>
+      {pipelineCoverage()}x
+    </div>
+  </div>
+</div>
+
+<div
+  style={{
+    background: "#020617",
+    border: "1px solid #1e293b",
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 24,
+    display: "grid",
+    gap: 10,
+  }}
+>
+  <div style={{ fontWeight: 800, color: "#22c55e" }}>
+    CFO FORECAST MODE
+  </div>
+
+  <div style={{ fontSize: 20, fontWeight: 800 }}>
+    {cfoForecastHealth().title}
+  </div>
+
+  <div style={{ color: "#cbd5e1", lineHeight: 1.6 }}>
+    {cfoForecastHealth().message}
+  </div>
+
+  <div style={{ fontWeight: 700, color: "#f59e0b" }}>
+    Nivel: {cfoForecastHealth().level}
+  </div>
+</div>
+{/* ===== FIN CFO FORECAST MODE UI ===== */}
       
       {/* 🧠 WAR ROOM DE OPORTUNIDAD */}
       {selected && (
