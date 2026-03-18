@@ -76,6 +76,33 @@ export default function OpportunitiesPage() {
       .reduce((sum, i) => sum + (i.value || 0), 0);
   }
 
+  function pipelineTotal() {
+  return items.reduce((sum, i) => sum + (i.value || 0), 0);
+}
+
+function weightedForecast() {
+  return items.reduce(
+    (sum, i) => sum + (i.value || 0) * ((i.probability || 0) / 100),
+    0
+  );
+}
+
+function openOpportunities() {
+  return items.filter(
+    (i) => i.stage !== "Closed Won" && i.stage !== "Closed Lost"
+  );
+}
+
+function riskOpportunities() {
+  return openOpportunities().filter(
+    (i) => (i.probability || 0) < 40 && (i.value || 0) > 0
+  );
+}
+
+function wonOpportunities() {
+  return items.filter((i) => i.stage === "Closed Won");
+}
+
   if (loading) return <div>Cargando pipeline…</div>;
 
   return (
@@ -86,6 +113,133 @@ export default function OpportunitiesPage() {
         + Nueva oportunidad
       </button>
 
+<div
+  style={{
+    display: "grid",
+    gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+    gap: 12,
+    marginTop: 24,
+    marginBottom: 20,
+  }}
+>
+  <div
+    style={{
+      background: "#0b1220",
+      border: "1px solid #1f2937",
+      borderRadius: 14,
+      padding: 16,
+    }}
+  >
+    <div style={{ fontSize: 12, color: "#94a3b8" }}>Pipeline total</div>
+    <div style={{ fontSize: 28, fontWeight: 800 }}>
+      ${pipelineTotal().toLocaleString()}
+    </div>
+  </div>
+
+  <div
+    style={{
+      background: "#0b1220",
+      border: "1px solid #1f2937",
+      borderRadius: 14,
+      padding: 16,
+    }}
+  >
+    <div style={{ fontSize: 12, color: "#94a3b8" }}>Forecast ponderado</div>
+    <div style={{ fontSize: 28, fontWeight: 800 }}>
+      ${weightedForecast().toLocaleString()}
+    </div>
+  </div>
+
+  <div
+    style={{
+      background: "#0b1220",
+      border: "1px solid #1f2937",
+      borderRadius: 14,
+      padding: 16,
+    }}
+  >
+    <div style={{ fontSize: 12, color: "#94a3b8" }}>Oportunidades abiertas</div>
+    <div style={{ fontSize: 28, fontWeight: 800 }}>
+      {openOpportunities().length}
+    </div>
+  </div>
+
+  <div
+    style={{
+      background: "#0b1220",
+      border: "1px solid #1f2937",
+      borderRadius: 14,
+      padding: 16,
+    }}
+  >
+    <div style={{ fontSize: 12, color: "#94a3b8" }}>En riesgo</div>
+    <div style={{ fontSize: 28, fontWeight: 800, color: "#f87171" }}>
+      {riskOpportunities().length}
+    </div>
+  </div>
+</div>
+
+<div
+  style={{
+    background: "#0b1220",
+    border: "1px solid #1f2937",
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 20,
+    display: "grid",
+    gap: 12,
+  }}
+>
+  <div style={{ fontSize: 12, color: "#60a5fa", fontWeight: 800 }}>
+    REVENUE AI DIRECTOR
+  </div>
+
+  <div style={{ fontSize: 20, fontWeight: 800 }}>
+    Resumen comercial inteligente
+  </div>
+
+  <div style={{ color: "#cbd5e1", lineHeight: 1.6 }}>
+    {riskOpportunities().length > 0
+      ? `Hay ${riskOpportunities().length} oportunidad(es) en riesgo dentro del pipeline. Conviene atacar primero las de mayor valor con menor probabilidad.`
+      : "El pipeline no presenta oportunidades críticas en riesgo inmediato."}
+  </div>
+
+  <div style={{ display: "grid", gap: 8 }}>
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 10,
+        background: "rgba(96,165,250,0.10)",
+        border: "1px solid rgba(96,165,250,0.25)",
+      }}
+    >
+      Acción sugerida: revisar oportunidades en Proposal y Negotiation.
+    </div>
+
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 10,
+        background: "rgba(74,222,128,0.10)",
+        border: "1px solid rgba(74,222,128,0.25)",
+      }}
+    >
+      Cierre esperado ponderado: ${weightedForecast().toLocaleString()}
+    </div>
+
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 10,
+        background: "rgba(250,204,21,0.10)",
+        border: "1px solid rgba(250,204,21,0.25)",
+      }}
+    >
+      Negocios ganados: {wonOpportunities().length}
+    </div>
+  </div>
+</div>
+      
       <div
         style={{
           display: "grid",
@@ -136,7 +290,7 @@ export default function OpportunitiesPage() {
                   <div>${i.value?.toLocaleString()}</div>
 
                   <div style={{ fontSize: 12 }}>
-                    Prob: {(i.probability * 100).toFixed(0)}%
+                    Prob: {(i.probability || 0).toFixed(0)}%
                   </div>
                 </div>
               ))}
