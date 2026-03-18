@@ -820,9 +820,32 @@ function topOpportunities(limit = 3) {
   
   return (
     <div style={{ padding: 24 }}>
-      <h1>Pipeline de oportunidades</h1>
+     <h1>Pipeline de oportunidades</h1>
 
-      <button onClick={createOpportunity}>+ Nueva oportunidad</button>
+{/* ===== INICIO BOTÓN NUEVA OPORTUNIDAD — estilo enterprise ===== */}
+<button
+  onClick={createOpportunity}
+  style={{
+    background: "#2563eb",
+    border: "1px solid #1d4ed8",
+    borderRadius: 10,
+    padding: "10px 16px",
+    fontWeight: 700,
+    cursor: "pointer",            // 👈 activa la manita
+    color: "#fff",
+    fontSize: 14,
+    transition: "all 0.15s ease",
+  }}
+  onMouseEnter={(e) => {
+    e.currentTarget.style.background = "#1d4ed8";
+  }}
+  onMouseLeave={(e) => {
+    e.currentTarget.style.background = "#2563eb";
+  }}
+>
+  + Nueva oportunidad
+</button>
+{/* ===== FIN BOTÓN NUEVA OPORTUNIDAD ===== */}
 
       {/* ===== INICIO AUTOPILOT GLOBAL DEL PIPELINE ===== */}
 <div
