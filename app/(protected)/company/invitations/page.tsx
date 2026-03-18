@@ -14,107 +14,36 @@ type Invitation = {
 };
 
 export default function InvitationsPage() {
-// ===== INICIO tenant context =====
-const { companyId, loadingTenant } = useTenant();
-// ===== FIN tenant context =====
+
+  // ===== INICIO HOOKS (SIEMPRE PRIMERO) =====
+
+  const { companyId, loadingTenant } = useTenant();
   const { canManageCompany, loading: permLoading } = usePermissions();
-
-if (permLoading) return <div>Cargando permisos...</div>;
-
-  // ===== INICIO tenant guard =====
-if (loadingTenant) {
-  return (
-    <div style={{ padding: 40 }}>
-      Cargando empresa…
-    </div>
-  );
-}
-// ===== FIN tenant guard =====
-
-if (!canManageCompany) {
-  return (
-    <div style={{ padding: 40 }}>
-      No tienes permisos para acceder a esta sección
-    </div>
-  );
-}
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
 
-// ===== INICIO carga segura invitaciones =====
-useEffect(() => {
-  if (!companyId) return;
-  void loadInvitations();
-}, [companyId]);
-// ===== FIN carga segura invitaciones =====
+  // ===== FIN HOOKS =====
 
-  async function loadInvitations() {
-    if (!companyId) return;
 
-  // ===== INICIO loadInvitations() activas =====
-const { data, error } = await supabase
-  .from("company_invitations")
-  .select("*")
-  .eq("company_id", companyId)
-  .neq("status", "cancelled")
-  .order("created_at", { ascending: false });
-// ===== FIN loadInvitations() activas =====
+  // ===== INICIO GUARDS =====
 
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    setInvitations(data || []);
+  if (loadingTenant) {
+    return <div style={{ padding: 40 }}>Cargando empresa…</div>;
   }
 
-  // ===== INICIO createInvitation() — invitación enterprise =====
-async function createInvitation() {
-  if (!companyId) return;
+  if (permLoading) {
+    return <div style={{ padding: 40 }}>Cargando permisos…</div>;
+  }
 
-  const email = prompt("Email del usuario a invitar");
-  if (!email) return;
-
-  const role = prompt("Rol (admin, manager, user)") || "user";
-
-  // 🔐 Token único
-  const token = crypto.randomUUID();
-
-  const expiresAt = new Date();
-  expiresAt.setDate(expiresAt.getDate() + 7); // 7 días
-
-  await supabase.from("company_invitations").insert({
-    company_id: companyId,
-    email,
-    role,
-    token,
-    status: "pending",
-    expires_at: expiresAt.toISOString(),
-  });
-
-  alert(
-    `Invitación creada.\n\nLink de acceso:\n${window.location.origin}/accept-invitation?token=${token}`
-  );
-
-  loadInvitations();
-}
-// ===== FIN createInvitation() =====
-
- // ===== INICIO cancelInvitation() soft cancel =====
-async function cancelInvitation(id: string) {
-  if (!companyId) return;
-
-  await supabase
-    .from("company_invitations")
-    .update({ status: "cancelled" })
-    .eq("id", id)
-    .eq("company_id", companyId);
-
-  loadInvitations();
-}
-// ===== FIN cancelInvitation() =====
+  if (!canManageCompany) {
+    return (
+      <div style={{ padding: 40 }}>
+        No tienes permisos para acceder a esta sección
+      </div>
+    );
+  }
 
   if (!companyId) {
     return (
@@ -124,11 +53,89 @@ async function cancelInvitation(id: string) {
     );
   }
 
+  // ===== FIN GUARDS =====
+
+
+  // ===== INICIO CARGA =====
+
+  useEffect(() => {
+    void loadInvitations();
+  }, [companyId]);
+
+  async function loadInvitations() {
+    const { data, error } = await supabase
+      .from("company_invitations")
+      .select("*")
+      .eq("company_id", companyId)
+      .neq("status", "cancelled")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setInvitations(data || []);
+  }
+
+  // ===== FIN CARGA =====
+
+
+  // ===== INICIO CREAR INVITACIÓN =====
+
+  async function createInvitation() {
+    if (!companyId) return;
+
+    const email = prompt("Email del usuario a invitar");
+    if (!email) return;
+
+    const role = prompt("Rol (admin, manager, user)") || "user";
+
+    const token = crypto.randomUUID();
+
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + 7);
+
+    await supabase.from("company_invitations").insert({
+      company_id: companyId,
+      email,
+      role,
+      token,
+      status: "pending",
+      expires_at: expiresAt.toISOString(),
+    });
+
+    alert(
+      `Invitación creada.\n\nLink de acceso:\n${window.location.origin}/accept-invitation?token=${token}`
+    );
+
+    loadInvitations();
+  }
+
+  // ===== FIN CREAR =====
+
+
+  // ===== INICIO CANCELAR =====
+
+  async function cancelInvitation(id: string) {
+    await supabase
+      .from("company_invitations")
+      .update({ status: "cancelled" })
+      .eq("id", id)
+      .eq("company_id", companyId);
+
+    loadInvitations();
+  }
+
+  // ===== FIN CANCELAR =====
+
+
+  // ===== UI =====
+
   return (
     <div style={{ padding: 40 }}>
       <h1>Invitaciones</h1>
 
-      {/* 🔹 Crear invitación */}
       <div style={{ marginTop: 20 }}>
         <input
           placeholder="Email del usuario"
@@ -149,23 +156,20 @@ async function cancelInvitation(id: string) {
             padding: "10px 16px",
             borderRadius: 6,
             border: "none",
-            background: "#2563eb",
-            color: "#fff",
+            background: "#7aa2ff",
+            color: "#0a0d12",
             cursor: "pointer",
-            fontWeight: 600,
+            fontWeight: 800,
           }}
         >
           {loading ? "Enviando..." : "Invitar"}
         </button>
       </div>
 
-      {/* 🔹 Lista de invitaciones */}
       <div style={{ marginTop: 40 }}>
         <h2>Invitaciones pendientes</h2>
 
-        {invitations.length === 0 && (
-          <p>No hay invitaciones.</p>
-        )}
+        {invitations.length === 0 && <p>No hay invitaciones.</p>}
 
         {invitations.map((inv) => (
           <div
@@ -188,8 +192,7 @@ async function cancelInvitation(id: string) {
               </div>
 
               <div style={{ fontSize: 11 }}>
-                Creada:{" "}
-                {new Date(inv.created_at).toLocaleString()}
+                Creada: {new Date(inv.created_at).toLocaleString()}
               </div>
             </div>
 
