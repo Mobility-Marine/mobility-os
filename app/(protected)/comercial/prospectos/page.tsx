@@ -1082,40 +1082,7 @@ setEditing(false);
   + Agregar actividad inteligente
 </button>
 
-      {activities.length === 0 ? (
-        <p>No hay actividades registradas.</p>
-      ) : (
-        <div style={{ display: "grid", gap: 10 }}>
-       <div style={{ fontWeight: 700 }}>
-  {a.activity_type || a.type} — {a.title}
-</div>
-
-{a.outcome && (
-  <div style={{ marginTop: 4, color: "#93c5fd" }}>
-    Resultado: {a.outcome}
-  </div>
-)}
-
-{a.next_action_date && (
-  <div style={{ marginTop: 4, color: "#facc15" }}>
-    Próxima acción:{" "}
-    {new Date(a.next_action_date).toLocaleDateString("es-MX")}
-  </div>
-)}
-
-<div
-  style={{
-    fontSize: 12,
-    opacity: 0.7,
-    marginTop: 4,
-  }}
->
-  {new Date(a.created_at).toLocaleString("es-MX")}
-</div>
-            </div>
-          ))}
-        </div>
-      )}
+     
     </div>
   </section>
 )}
