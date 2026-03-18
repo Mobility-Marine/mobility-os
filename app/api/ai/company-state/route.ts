@@ -244,6 +244,23 @@ export async function GET(req: Request) {
         ? `La empresa presenta ${risks.length} señal(es) de atención prioritaria.`
         : "La operación general luce estable y sin alertas críticas inmediatas.";
 
+// =========================
+// 🧠 COO IA — REGISTRO DE EVENTOS OPERATIVOS
+// =========================
+
+if (risks.length > 0) {
+  await supabase.from("ai_operational_events").insert(
+    risks.map((r) => ({
+      company_id: companyId,
+      type: "risk",
+      severity: "high",
+      title: r,
+      description: "Detectado automáticamente por COO IA",
+      auto_executable: false,
+    }))
+  );
+}
+    
     // =========================
     // RESPUESTA FINAL
     // =========================
