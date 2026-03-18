@@ -824,6 +824,36 @@ function topOpportunities(limit = 3) {
 
       <button onClick={createOpportunity}>+ Nueva oportunidad</button>
 
+      {/* ===== INICIO AUTOPILOT GLOBAL DEL PIPELINE ===== */}
+<div
+  style={{
+    background: "#020617",
+    border: "1px solid #1e293b",
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 20,
+    display: "grid",
+    gap: 10,
+  }}
+>
+  <div style={{ fontWeight: 800, color: "#38bdf8" }}>
+    AUTOPILOT GLOBAL DEL PIPELINE
+  </div>
+
+  <div style={{ fontSize: 20, fontWeight: 800 }}>
+    {pipelineAutopilot().title}
+  </div>
+
+  <div style={{ color: "#cbd5e1", lineHeight: 1.6 }}>
+    {pipelineAutopilot().message}
+  </div>
+
+  <div style={{ color: "#f59e0b", fontWeight: 700 }}>
+    Urgencia: {pipelineAutopilot().urgency}
+  </div>
+</div>
+{/* ===== FIN AUTOPILOT GLOBAL DEL PIPELINE ===== */}
+
       <div
         style={{
           display: "grid",
@@ -1071,36 +1101,6 @@ onClick={() => {
   </div>
 )}
 {/* ===== FIN DEAL CRÍTICO ===== */}
-
-      {/* ===== INICIO AUTOPILOT GLOBAL DEL PIPELINE ===== */}
-<div
-  style={{
-    background: "#020617",
-    border: "1px solid #1e293b",
-    borderRadius: 14,
-    padding: 18,
-    marginBottom: 20,
-    display: "grid",
-    gap: 10,
-  }}
->
-  <div style={{ fontWeight: 800, color: "#38bdf8" }}>
-    AUTOPILOT GLOBAL DEL PIPELINE
-  </div>
-
-  <div style={{ fontSize: 20, fontWeight: 800 }}>
-    {pipelineAutopilot().title}
-  </div>
-
-  <div style={{ color: "#cbd5e1", lineHeight: 1.6 }}>
-    {pipelineAutopilot().message}
-  </div>
-
-  <div style={{ color: "#f59e0b", fontWeight: 700 }}>
-    Urgencia: {pipelineAutopilot().urgency}
-  </div>
-</div>
-{/* ===== FIN AUTOPILOT GLOBAL DEL PIPELINE ===== */}
 
       {/* ===== INICIO SALUD DEL PIPELINE ===== */}
 <div
