@@ -388,25 +388,6 @@ if (forecastValue < 50000) {
   );
 }
 
-// ===== PROSPECT AI DIRECTOR =====
-
-const probabilityMap: Record<string, number> = {
-  Nuevo: 0.1,
-  Contactado: 0.2,
-  Calificado: 0.35,
-  Seguimiento: 0.45,
-  Convertible: 0.6,
-  Ganado: 1,
-  Perdido: 0,
-};
-
-const forecastValue = useMemo(() => {
-  return filtered.reduce((sum, p) => {
-    const prob = probabilityMap[p.status || "Nuevo"] || 0;
-    return sum + (p.estimated_value || 0) * prob;
-  }, 0);
-}, [filtered]);
-
 const highValueDeals = useMemo(() => {
   return filtered.filter(
     (p) =>
