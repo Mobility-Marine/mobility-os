@@ -42,16 +42,21 @@ export default function PermissionsPage() {
     setModules(modulesData || []);
   }
 
-  async function loadPermissions(roleId: string) {
-    setSelectedRole(roleId);
+// ===== INICIO loadPermissions() por empresa =====
+async function loadPermissions(roleId: string) {
+  if (!companyId) return;
 
-    const { data } = await supabase
-      .from("company_role_permissions")
-      .select("*")
-      .eq("role_id", roleId);
+  setSelectedRole(roleId);
 
-    setPermissions(data || []);
-  }
+  const { data } = await supabase
+    .from("company_role_permissions")
+    .select("*")
+    .eq("role_id", roleId)
+    .eq("company_id", companyId);
+
+  setPermissions(data || []);
+}
+// ===== FIN loadPermissions() =====
 
   function getPermission(moduleKey: string) {
     return permissions.find(
