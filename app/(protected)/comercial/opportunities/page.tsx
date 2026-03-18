@@ -550,6 +550,83 @@ function averageAging() {
   return Math.round(total / open.length);
 }
 // ===== FIN averageAging() =====
+
+  // ===== INICIO REVENUE AI DIRECTOR GLOBAL =====
+// Director comercial autónomo del pipeline
+
+function revenueAIDirector() {
+  const open = items.filter(
+    (i) => i.stage !== "Closed Won" && i.stage !== "Closed Lost"
+  );
+
+  if (open.length === 0) {
+    return {
+      title: "Sin pipeline activo",
+      message: "No hay oportunidades abiertas. Prioridad: generar nuevos deals.",
+      urgency: "Alta",
+      focus: "Prospección",
+    };
+  }
+
+  // 🏆 Deal más estratégico
+  const topDeal = open.sort(
+    (a, b) => dealPriority(b) - dealPriority(a)
+  )[0];
+
+  // ⚠️ Deals en riesgo alto
+  const highRisk = open.filter((i) => i.probability < 40);
+
+  // 💤 Deals estancados
+  const stalled = open.filter((i) => agingDays(i) > 30);
+
+  // 💰 Valor total abierto
+  const pipelineValue = open.reduce((sum, i) => sum + (i.value || 0), 0);
+
+  // 📊 Forecast ponderado
+  const forecast = weightedForecast();
+
+  // 🧠 Lógica estratégica
+
+  if (highRisk.length > open.length * 0.5) {
+    return {
+      title: "Pipeline en zona de riesgo",
+      message:
+        "Más de la mitad del pipeline tiene baja probabilidad. Prioridad: fortalecer deals o generar nuevos.",
+      urgency: "Alta",
+      focus: "Mitigación de riesgo",
+    };
+  }
+
+  if (stalled.length > 0) {
+    return {
+      title: "Deals estancados detectados",
+      message: `Hay ${stalled.length} oportunidades sin movimiento relevante. Reactivar o descartar.`,
+      urgency: "Alta",
+      focus: "Reactivación",
+    };
+  }
+
+  if (forecast < pipelineValue * 0.3) {
+    return {
+      title: "Forecast débil",
+      message:
+        "El forecast es bajo respecto al pipeline. Se requieren avances de etapa o nuevos leads.",
+      urgency: "Media",
+      focus: "Aceleración de pipeline",
+    };
+  }
+
+  // 🎯 Caso ideal: empujar deal clave
+  return {
+    title: "Empujar deal prioritario",
+    message: `La oportunidad ${
+      topDeal.company_name || topDeal.name
+    } es la de mayor impacto estratégico. Concéntrate en su cierre.`,
+    urgency: "Media",
+    focus: "Cierre",
+  };
+}
+// ===== FIN REVENUE AI DIRECTOR GLOBAL =====
   
   return (
     <div style={{ padding: 24 }}>
@@ -858,6 +935,40 @@ onClick={() => {
   </div>
 </div>
 {/* ===== FIN SALUD DEL PIPELINE ===== */}
+
+      {/* ===== INICIO REVENUE AI DIRECTOR GLOBAL UI ===== */}
+<div
+  style={{
+    background: "#020617",
+    border: "1px solid #1e293b",
+    borderRadius: 14,
+    padding: 20,
+    marginBottom: 24,
+    display: "grid",
+    gap: 12,
+  }}
+>
+  <div style={{ fontWeight: 800, color: "#a78bfa" }}>
+    🧠 REVENUE AI DIRECTOR
+  </div>
+
+  <div style={{ fontSize: 22, fontWeight: 800 }}>
+    {revenueAIDirector().title}
+  </div>
+
+  <div style={{ color: "#cbd5e1", lineHeight: 1.6 }}>
+    {revenueAIDirector().message}
+  </div>
+
+  <div style={{ color: "#f59e0b", fontWeight: 700 }}>
+    Urgencia: {revenueAIDirector().urgency}
+  </div>
+
+  <div style={{ color: "#38bdf8", fontWeight: 700 }}>
+    Enfoque recomendado: {revenueAIDirector().focus}
+  </div>
+</div>
+{/* ===== FIN REVENUE AI DIRECTOR GLOBAL UI ===== */}
       
       {/* 🧠 WAR ROOM DE OPORTUNIDAD */}
       {selected && (
