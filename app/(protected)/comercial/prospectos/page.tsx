@@ -90,22 +90,24 @@ export default function ProspectosPage() {
     )
     .subscribe();
 
-  const activitiesChannel = supabase
-    .channel("realtime-activities")
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "activities",
-      },
-      (payload) => {
-        if (selected && payload.new?.prospect_id === selected.id) {
-          loadActivities(selected.id);
-        }
+ const activitiesChannel = supabase
+  .channel("realtime-activities")
+  .on(
+    "postgres_changes",
+    {
+      event: "*",
+      schema: "public",
+      table: "activities",
+    },
+    (payload: any) => {
+      const newRow = payload?.new as { prospect_id?: string } | null;
+
+      if (selected && newRow?.prospect_id === selected.id) {
+        loadActivities(selected.id);
       }
-    )
-    .subscribe();
+    }
+  )
+  .subscribe();
 
   return () => {
     supabase.removeChannel(prospectsChannel);
