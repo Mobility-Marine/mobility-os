@@ -432,6 +432,83 @@ function criticalDeal() {
   )[0];
 }
 // ===== FIN criticalDeal() =====
+
+// ===== INICIO suggestedProbability() — probabilidad sugerida por etapa =====
+function suggestedProbability(stage: string) {
+  const map: Record<string, number> = {
+    Qualification: 10,
+    Discovery: 20,
+    Proposal: 45,
+    Negotiation: 70,
+    Commit: 90,
+    "Closed Won": 100,
+    "Closed Lost": 0,
+  };
+
+  return map[stage] ?? 10;
+}
+// ===== FIN suggestedProbability() =====
+
+  // ===== INICIO stalledDeals() — oportunidades estancadas =====
+function stalledDeals() {
+  return items.filter((i) => {
+    if (i.stage === "Closed Won" || i.stage === "Closed Lost") return false;
+    return agingDays(i) > 30;
+  });
+}
+// ===== FIN stalledDeals() =====
+
+  // ===== INICIO pipelineAutopilot() — recomendación global del día =====
+function pipelineAutopilot() {
+  const deal = criticalDeal();
+
+  if (!deal) {
+    return {
+      title: "Sin deal prioritario",
+      message: "No hay oportunidades abiertas para priorizar en este momento.",
+      urgency: "Baja",
+    };
+  }
+
+  const stale = agingDays(deal) > 30;
+  const suggestedProb = suggestedProbability(deal.stage);
+
+  if (deal.probability < suggestedProb) {
+    return {
+      title: "Actualizar estrategia de cierre",
+      message: `La oportunidad ${deal.company_name || deal.name} está por debajo de la probabilidad sugerida para su etapa. Revisa si debe avanzar o descalificarse.`,
+      urgency: "Alta",
+    };
+  }
+
+  if (stale) {
+    return {
+      title: "Reactivar deal estancado",
+      message: `La oportunidad ${deal.company_name || deal.name} lleva ${agingDays(deal)} días abierta. Necesita acción inmediata.`,
+      urgency: "Alta",
+    };
+  }
+
+  return {
+    title: "Empujar deal prioritario",
+    message: `Hoy enfócate en ${deal.company_name || deal.name}. Es la oportunidad con mayor impacto estratégico del pipeline.`,
+    urgency: "Media",
+  };
+}
+// ===== FIN pipelineAutopilot() =====
+
+  // ===== INICIO averageAging() — promedio de antigüedad del pipeline =====
+function averageAging() {
+  const open = items.filter(
+    (i) => i.stage !== "Closed Won" && i.stage !== "Closed Lost"
+  );
+
+  if (open.length === 0) return 0;
+
+  const total = open.reduce((sum, i) => sum + agingDays(i), 0);
+  return Math.round(total / open.length);
+}
+// ===== FIN averageAging() =====
   
   return (
     <div style={{ padding: 24 }}>
@@ -668,6 +745,74 @@ function criticalDeal() {
   </div>
 )}
 {/* ===== FIN DEAL CRÍTICO ===== */}
+
+      {/* ===== INICIO AUTOPILOT GLOBAL DEL PIPELINE ===== */}
+<div
+  style={{
+    background: "#020617",
+    border: "1px solid #1e293b",
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 20,
+    display: "grid",
+    gap: 10,
+  }}
+>
+  <div style={{ fontWeight: 800, color: "#38bdf8" }}>
+    AUTOPILOT GLOBAL DEL PIPELINE
+  </div>
+
+  <div style={{ fontSize: 20, fontWeight: 800 }}>
+    {pipelineAutopilot().title}
+  </div>
+
+  <div style={{ color: "#cbd5e1", lineHeight: 1.6 }}>
+    {pipelineAutopilot().message}
+  </div>
+
+  <div style={{ color: "#f59e0b", fontWeight: 700 }}>
+    Urgencia: {pipelineAutopilot().urgency}
+  </div>
+</div>
+{/* ===== FIN AUTOPILOT GLOBAL DEL PIPELINE ===== */}
+
+      {/* ===== INICIO SALUD DEL PIPELINE ===== */}
+<div
+  style={{
+    background: "#020617",
+    border: "1px solid #1e293b",
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 20,
+    display: "grid",
+    gap: 10,
+  }}
+>
+  <div style={{ fontWeight: 800, color: "#22c55e" }}>
+    SALUD DEL PIPELINE
+  </div>
+
+  <div style={{ color: "#cbd5e1" }}>
+    Oportunidades estancadas: {stalledDeals().length}
+  </div>
+
+  <div style={{ color: "#cbd5e1" }}>
+    Antigüedad promedio abierta: {averageAging()} días
+  </div>
+
+  <div style={{ color: "#cbd5e1" }}>
+    Probabilidad sugerida promedio:
+    {" "}
+    {items.length > 0
+      ? Math.round(
+          items.reduce((sum, i) => sum + suggestedProbability(i.stage), 0) /
+            items.length
+        )
+      : 0}
+    %
+  </div>
+</div>
+{/* ===== FIN SALUD DEL PIPELINE ===== */}
       
       {/* 🧠 WAR ROOM DE OPORTUNIDAD */}
       {selected && (
@@ -892,6 +1037,21 @@ function criticalDeal() {
           </strong>
         </div>
 
+        <div>
+  Antigüedad del deal:{" "}
+  <strong>{agingDays(selected)}</strong> días
+</div>
+
+<div>
+  Probabilidad sugerida por etapa:{" "}
+  <strong>{suggestedProbability(selected.stage)}%</strong>
+</div>
+
+<div>
+  Prioridad estratégica:{" "}
+  <strong>{dealPriority(selected)}</strong> / 100
+</div>
+        
         {nextAction && (
           <div
             style={{
