@@ -2,6 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+// ===== INICIO IMPORT RBAC =====
+import { usePermissions } from "@/lib/auth/usePermissions";
+// ===== FIN IMPORT RBAC =====
 
 type Prospect = {
   id: string;
@@ -44,6 +47,10 @@ const statusOptions = [
 ];
 
 export default function ProspectosPage() {
+
+  // ===== INICIO RBAC HOOK =====
+const { canManageSales } = usePermissions();
+// ===== FIN RBAC HOOK =====
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [prospects, setProspects] = useState<Prospect[]>([]);
@@ -891,9 +898,17 @@ const autopilotPriority =
             />
           </div>
 
-          <button style={primaryButton} onClick={createProspect} disabled={saving}>
-            {saving ? "Guardando…" : "Guardar prospecto"}
-          </button>
+         {/* ===== INICIO BOTÓN CREAR PROSPECTO — RBAC ===== */}
+{canManageSales && (
+  <button
+    style={primaryButton}
+    onClick={createProspect}
+    disabled={saving}
+  >
+    {saving ? "Guardando…" : "Guardar prospecto"}
+  </button>
+)}
+{/* ===== FIN BOTÓN CREAR PROSPECTO — RBAC ===== */}
         </section>
 
         <section style={panel}>
@@ -1032,15 +1047,19 @@ setEditing(false);
                       : "-"}
                   </td>
                   <td style={td}>
-                    <button
-                      style={secondaryButton}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        void convertToOpportunity(p);
-                      }}
-                    >
-                      Convertir
-                    </button>
+                   {/* ===== INICIO BOTÓN CONVERTIR — RBAC ===== */}
+{canManageSales && (
+  <button
+    style={secondaryButton}
+    onClick={(e) => {
+      e.stopPropagation();
+      void convertToOpportunity(p);
+    }}
+  >
+    Convertir
+  </button>
+)}
+{/* ===== FIN BOTÓN CONVERTIR — RBAC ===== */}
                   </td>
                 </tr>
               ))}
@@ -1086,20 +1105,24 @@ setEditing(false);
             Editar
           </button>
 
-          <button
-            onClick={() => convertToOpportunity(selected)}
-            style={{
-              background: "#16a34a",
-              border: "none",
-              color: "#fff",
-              padding: "10px 14px",
-              borderRadius: 8,
-              cursor: "pointer",
-              fontWeight: 700,
-            }}
-          >
-            Convertir a oportunidad
-          </button>
+         {/* ===== INICIO BOTÓN CONVERTIR DETALLE — RBAC ===== */}
+{canManageSales && (
+  <button
+    onClick={() => convertToOpportunity(selected)}
+    style={{
+      background: "#16a34a",
+      border: "none",
+      color: "#fff",
+      padding: "10px 14px",
+      borderRadius: 8,
+      cursor: "pointer",
+      fontWeight: 700,
+    }}
+  >
+    Convertir a oportunidad
+  </button>
+)}
+{/* ===== FIN BOTÓN CONVERTIR DETALLE — RBAC ===== */}
 
           <button
             onClick={() => setSelected(null)}
