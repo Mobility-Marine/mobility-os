@@ -69,52 +69,57 @@ export default function ProspectosPage() {
     next_follow_up: "",
   });
 
+  // 🔥 BOOTSTRAP + REALTIME
   useEffect(() => {
-  void bootstrap();
+    void bootstrap();
 
-  if (!companyId) return;
+    if (!companyId) return;
 
-  const prospectsChannel = supabase
-    .channel("realtime-prospects")
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "prospects",
-        filter: `company_id=eq.${companyId}`,
-      },
-      () => {
-        loadProspects(companyId);
-      }
-    )
-    .subscribe();
+    // ===== PROSPECTS REALTIME =====
+    const prospectsChannel = supabase
+      .channel("realtime-prospects")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "prospects",
+          filter: `company_id=eq.${companyId}`,
+        },
+        () => {
+          loadProspects(companyId);
+        }
+      )
+      .subscribe();
 
- const activitiesChannel = supabase
-  .channel("realtime-activities")
-  .on(
-    "postgres_changes",
-    {
-      event: "*",
-      schema: "public",
-      table: "activities",
-    },
-    (payload: any) => {
-      const newRow = payload?.new as { prospect_id?: string } | null;
+    // ===== ACTIVITIES REALTIME =====
+    const activitiesChannel = supabase
+      .channel("realtime-activities")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "activities",
+        },
+        (payload: any) => {
+          const newRow = payload?.new as { prospect_id?: string } | null;
 
-      if (selected && newRow?.prospect_id === selected.id) {
-        loadActivities(selected.id);
-      }
-    }
-  )
-  .subscribe();
+          if (selected && newRow?.prospect_id === selected.id) {
+            loadActivities(selected.id);
+          }
+        }
+      )
+      .subscribe();
 
-  return () => {
-    supabase.removeChannel(prospectsChannel);
-    supabase.removeChannel(activitiesChannel);
-  };
-}, [companyId, selected]);
+    // 🔴 LIMPIEZA DE CANALES
+    return () => {
+      supabase.removeChannel(prospectsChannel);
+      supabase.removeChannel(activitiesChannel);
+    };
+  }, [companyId, selected]);
 
+  // ===== BOOTSTRAP =====
   async function bootstrap() {
     setLoading(true);
 
@@ -306,86 +311,82 @@ async function saveProspectChanges() {
 }
   
   function getProspectScore(p: Prospect) {
-    let score = 0;
+  let score = 0;
 
-    score += Math.min((p.estimated_value || 0) / 1000, 40);
+  score += Math.min((p.estimated_value || 0) / 1000, 40);
 
-    const stageWeights: Record<string, number> = {
-      Nuevo: 5,
-      Contactado: 12,
-      Calificado: 20,
-      Seguimiento: 28,
-      Convertible: 35,
-      Ganado: 50,
-      Perdido: 0,
-    };
+  const stageWeights: Record<string, number> = {
+    Nuevo: 5,
+    Contactado: 12,
+    Calificado: 20,
+    Seguimiento: 28,
+    Convertible: 35,
+    Ganado: 50,
+    Perdido: 0,
+  };
 
-    score += stageWeights[p.status || "Nuevo"] || 0;
+  score += stageWeights[p.status || "Nuevo"] || 0;
 
-    if (p.email) score += 5;
-    if (p.phone) score += 5;
-    if (p.next_follow_up) score += 5;
+  if (p.email) score += 5;
+  if (p.phone) score += 5;
+  if (p.next_follow_up) score += 5;
 
-    return Math.round(score);
-  }
+  return Math.round(score);
+}
 
-  const filtered = useMemo(() => {
-    return prospects.filter((p) => {
-      const q = search.trim().toLowerCase();
+const filtered = useMemo(() => {
+  return prospects.filter((p) => {
+    const q = search.trim().toLowerCase();
 
-      const matchesSearch =
-        !q ||
-        p.name?.toLowerCase().includes(q) ||
-        p.company_name?.toLowerCase().includes(q) ||
-        p.email?.toLowerCase().includes(q) ||
-        p.interested_service?.toLowerCase().includes(q);
+    const matchesSearch =
+      !q ||
+      p.name?.toLowerCase().includes(q) ||
+      p.company_name?.toLowerCase().includes(q) ||
+      p.email?.toLowerCase().includes(q) ||
+      p.interested_service?.toLowerCase().includes(q);
 
-      const matchesStatus =
-        statusFilter === "Todos" || (p.status || "Nuevo") === statusFilter;
+    const matchesStatus =
+      statusFilter === "Todos" || (p.status || "Nuevo") === statusFilter;
 
-      return matchesSearch && matchesStatus;
-    });
-  }, [prospects, search, statusFilter]);
+    return matchesSearch && matchesStatus;
+  });
+}, [prospects, search, statusFilter]);
 
-  const pipelineTotal = useMemo(
-    () => filtered.reduce((sum, p) => sum + (p.estimated_value || 0), 0),
-    [filtered]
+const pipelineTotal = useMemo(
+  () => filtered.reduce((sum, p) => sum + (p.estimated_value || 0), 0),
+  [filtered]
+);
+
+const activeCount = useMemo(
+  () =>
+    filtered.filter(
+      (p) => !["Ganado", "Perdido"].includes(p.status || "")
+    ).length,
+  [filtered]
+);
+
+const convertibleCount = useMemo(
+  () =>
+    filtered.filter((p) =>
+      ["Calificado", "Seguimiento", "Convertible"].includes(
+        p.status || ""
+      )
+    ).length,
+  [filtered]
+);
+
+const averageScore = useMemo(() => {
+  if (!filtered.length) return 0;
+  return Math.round(
+    filtered.reduce((sum, p) => sum + getProspectScore(p), 0) /
+      filtered.length
   );
+}, [filtered]);
 
-  const activeCount = useMemo(
-    () => filtered.filter((p) => !["Ganado", "Perdido"].includes(p.status || "")).length,
-    [filtered]
-  );
+// ===== FORECAST =====
 
-  const convertibleCount = useMemo(
-    () => filtered.filter((p) => ["Calificado", "Seguimiento", "Convertible"].includes(p.status || "")).length,
-    [filtered]
-  );
-
-  const averageScore = useMemo(() => {
-    if (!filtered.length) return 0;
-    return Math.round(
-      filtered.reduce((sum, p) => sum + getProspectScore(p), 0) / filtered.length
-    );
-  }, [filtered]);
-
-   const forecastValue = useMemo(() => {
-   const pipelineRisk = useMemo(() => {
-  // Sin prospectos activos = riesgo crítico
-  if (activeCount === 0) return "Crítico";
-
-  // Pocos prospectos convertibles
-  if (convertibleCount === 0) return "Alto";
-
-  // Forecast bajo
-  if (forecastValue < 50000) return "Alto";
-
-  // Pipeline con pocos prospectos avanzados
-  if (convertibleCount < 3) return "Medio";
-
-  return "Bajo";
-}, [activeCount, convertibleCount, forecastValue]);
-   const probabilities: Record<string, number> = {
+const forecastValue = useMemo(() => {
+  const probabilities: Record<string, number> = {
     Nuevo: 0.1,
     Contactado: 0.25,
     Calificado: 0.5,
@@ -402,7 +403,18 @@ async function saveProspectChanges() {
   }, 0);
 }, [filtered]);
 
-  // ===== SALES COMMAND CENTER =====
+// ===== PIPELINE RISK =====
+
+const pipelineRisk = useMemo(() => {
+  if (activeCount === 0) return "Crítico";
+  if (convertibleCount === 0) return "Alto";
+  if (forecastValue < 50000) return "Alto";
+  if (convertibleCount < 3) return "Medio";
+  return "Bajo";
+}, [activeCount, convertibleCount, forecastValue]);
+
+// ===== SALES COMMAND CENTER =====
+
 const today = new Date();
 
 const urgentFollowUps = filtered.filter(
@@ -418,29 +430,43 @@ const topPriorityProspects = [...filtered]
   .slice(0, 3);
 
 const closingOpportunities = filtered.filter(
-  (p) => p.status === "Seguimiento" || p.status === "Convertible"
+  (p) =>
+    p.status === "Seguimiento" || p.status === "Convertible"
 );
 
 const dormantProspects = filtered.filter((p) => {
   const created = new Date(p.created_at);
   const days =
-    (today.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
-  return days > 30 && !["Ganado", "Perdido"].includes(p.status || "");
+    (today.getTime() - created.getTime()) /
+    (1000 * 60 * 60 * 24);
+  return (
+    days > 30 &&
+    !["Ganado", "Perdido"].includes(p.status || "")
+  );
 });
 
-const topClosingProspect = [...filtered]
-  .filter((p) =>
-    ["Seguimiento", "Convertible", "Calificado"].includes(p.status || "")
-  )
-  .sort((a, b) => {
-    const scoreDiff = getProspectScore(b) - getProspectScore(a);
-    if (scoreDiff !== 0) return scoreDiff;
-    return (b.estimated_value || 0) - (a.estimated_value || 0);
-  })[0] || null;
+const topClosingProspect =
+  [...filtered]
+    .filter((p) =>
+      ["Seguimiento", "Convertible", "Calificado"].includes(
+        p.status || ""
+      )
+    )
+    .sort((a, b) => {
+      const scoreDiff =
+        getProspectScore(b) - getProspectScore(a);
+      if (scoreDiff !== 0) return scoreDiff;
+      return (
+        (b.estimated_value || 0) -
+        (a.estimated_value || 0)
+      );
+    })[0] || null;
 
 const weakPipeline =
   filtered.filter((p) =>
-    ["Calificado", "Seguimiento", "Convertible"].includes(p.status || "")
+    ["Calificado", "Seguimiento", "Convertible"].includes(
+      p.status || ""
+    )
   ).length === 0;
 
 const dailyFocusMessage = weakPipeline
@@ -477,38 +503,32 @@ if (forecastValue < 50000) {
   );
 }
 
-const highValueDeals = useMemo(() => {
-  return filtered.filter(
-    (p) =>
-      (p.estimated_value || 0) >= 50000 &&
-      ["Calificado", "Seguimiento", "Convertible"].includes(p.status || "")
-  );
-}, [filtered]);
+// ===== AUTOPILOT COMERCIAL =====
 
-const staleDeals = useMemo(() => {
-  const now = new Date().getTime();
+const autopilotLead =
+  [...filtered]
+    .filter(
+      (p) => !["Ganado", "Perdido"].includes(p.status || "")
+    )
+    .sort((a, b) => {
+      const scoreDiff =
+        getProspectScore(b) - getProspectScore(a);
+      if (scoreDiff !== 0) return scoreDiff;
 
-  return filtered.filter((p) => {
-    if (!p.next_follow_up) return false;
-    const diffDays =
-      (now - new Date(p.next_follow_up).getTime()) / (1000 * 60 * 60 * 24);
-    return diffDays > 7;
-  });
-}, [filtered]);
+      const valueDiff =
+        (b.estimated_value || 0) -
+        (a.estimated_value || 0);
+      if (valueDiff !== 0) return valueDiff;
 
-const autopilotLead = [...filtered]
-  .filter((p) => !["Ganado", "Perdido"].includes(p.status || ""))
-  .sort((a, b) => {
-    const scoreDiff = getProspectScore(b) - getProspectScore(a);
-    if (scoreDiff !== 0) return scoreDiff;
+      const aDate = pDate(a.next_follow_up);
+      const bDate = pDate(b.next_follow_up);
 
-    const valueDiff = (b.estimated_value || 0) - (a.estimated_value || 0);
-    if (valueDiff !== 0) return valueDiff;
+      return aDate - bDate;
+    })[0] || null;
 
-    const aDate = a.next_follow_up ? new Date(a.next_follow_up).getTime() : Infinity;
-    const bDate = b.next_follow_up ? new Date(b.next_follow_up).getTime() : Infinity;
-    return aDate - bDate;
-  })[0] || null;
+function pDate(d?: string | null) {
+  return d ? new Date(d).getTime() : Infinity;
+}
 
 const autopilotAction = autopilotLead
   ? autopilotLead.status === "Convertible"
@@ -521,9 +541,13 @@ const autopilotAction = autopilotLead
   : "No hay prospectos accionables en este momento.";
 
 const autopilotReason = autopilotLead
-  ? `Score ${getProspectScore(autopilotLead)} • Valor $${(autopilotLead.estimated_value || 0).toLocaleString(
-      "es-MX"
-    )} • Estatus ${autopilotLead.status || "Nuevo"}`
+  ? `Score ${getProspectScore(
+      autopilotLead
+    )} • Valor $${(
+      autopilotLead.estimated_value || 0
+    ).toLocaleString("es-MX")} • Estatus ${
+      autopilotLead.status || "Nuevo"
+    }`
   : "Pipeline sin prospectos accionables.";
 
 const autopilotPriority =
