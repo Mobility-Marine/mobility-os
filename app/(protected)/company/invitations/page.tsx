@@ -16,7 +16,7 @@ type Invitation = {
 // ===== INICIO InvitationsPage =====
 export default function InvitationsPage() {
   // ===== INICIO HOOKS =====
-  const { companyId, loading: tenantLoading } = useTenant();
+  const { companyId } = useTenant();
   const { canManageCompany, loading: permLoading } = usePermissions();
 
   const [email, setEmail] = useState("");
@@ -118,9 +118,6 @@ export default function InvitationsPage() {
   // ===== FIN cancelInvitation =====
 
   // ===== INICIO GUARDS =====
-  if (tenantLoading) {
-    return <div style={{ padding: 40 }}>Cargando empresa...</div>;
-  }
 
   if (permLoading) {
     return <div style={{ padding: 40 }}>Cargando permisos...</div>;
