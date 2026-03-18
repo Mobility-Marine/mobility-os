@@ -70,8 +70,48 @@ export default function ProspectosPage() {
   });
 
   useEffect(() => {
-    void bootstrap();
-  }, []);
+  void bootstrap();
+
+  if (!companyId) return;
+
+  const prospectsChannel = supabase
+    .channel("realtime-prospects")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "prospects",
+        filter: `company_id=eq.${companyId}`,
+      },
+      () => {
+        loadProspects(companyId);
+      }
+    )
+    .subscribe();
+
+  const activitiesChannel = supabase
+    .channel("realtime-activities")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "activities",
+      },
+      (payload) => {
+        if (selected && payload.new?.prospect_id === selected.id) {
+          loadActivities(selected.id);
+        }
+      }
+    )
+    .subscribe();
+
+  return () => {
+    supabase.removeChannel(prospectsChannel);
+    supabase.removeChannel(activitiesChannel);
+  };
+}, [companyId, selected]);
 
   async function bootstrap() {
     setLoading(true);
