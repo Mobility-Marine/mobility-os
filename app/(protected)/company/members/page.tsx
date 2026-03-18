@@ -58,15 +58,19 @@ export default function MembersPage() {
     setLoading(false);
   }
 
-  async function toggleActive(member: Member) {
-    await supabase
-      .from("company_users")
-      .update({ is_active: !member.is_active })
-      .eq("id", member.id);
+ // ===== INICIO toggleActive() seguro por empresa =====
+async function toggleActive(member: Member) {
+  if (!companyId) return;
 
-    loadMembers();
-  }
+  await supabase
+    .from("company_users")
+    .update({ is_active: !member.is_active })
+    .eq("id", member.id)
+    .eq("company_id", companyId);
 
+  loadMembers();
+}
+// ===== FIN toggleActive() =====
   if (!companyId) {
     return (
       <div style={{ padding: 40 }}>
