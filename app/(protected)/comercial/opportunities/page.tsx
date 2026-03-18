@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 
+// ===== INICIO TYPE Opportunity — modelo enterprise =====
 type Opportunity = {
   id: string;
   name: string;
@@ -12,8 +13,13 @@ type Opportunity = {
   value: number;
   probability: number;
   created_at: string;
-  next_action?: string; // 👈 AQUÍ
+  next_action?: string;
+
+  // 🏢 Enterprise fields
+  owner?: string;       // responsable del deal
+  archived?: boolean;   // soft delete
 };
+// ===== FIN TYPE Opportunity =====
 
 const stages = [
   "Qualification",
@@ -34,6 +40,14 @@ export default function OpportunitiesPage() {
   const [editValue, setEditValue] = useState<number>(0);
   const [editProbability, setEditProbability] = useState<number>(0);
   const [nextAction, setNextAction] = useState("");
+  // ===== INICIO STATE edición etapa =====
+  const [editStage, setEditStage] = useState<string>("");
+  const [editOwner, setEditOwner] = useState<string>("");
+  // ===== FIN STATE edición etapa =====
+  // ===== INICIO STATE guardado visual =====
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  // ===== FIN STATE guardado visual =====
   const { companyId } = useTenant();
 
  useEffect(() => {
@@ -160,8 +174,9 @@ async function load() {
   const { data } = await supabase
     .from("opportunities")
     .select("*")
-    .eq("company_id", companyId)
-    .order("created_at", { ascending: false });
+  .select("*")
+.eq("company_id", companyId)
+.eq("archived", false) // 👈 evita mostrar archivadas
 
   setItems(data || []);
   setLoading(false);
@@ -361,26 +376,58 @@ async function toggle(id: string, completed: boolean) {
     );
   }
 
-// ===== INICIO saveOpportunity() — guardado seguro + sync UI =====
+// ===== INICIO saveOpportunity() — guardado enterprise =====
 async function saveOpportunity() {
-  if (!selected || !companyId) return;
+  if (!selected) return;
+
+  setSaving(true);
+  setSaved(false);
+
+  const updates = {
+    value: editValue,
+    probability: editProbability,
+    next_action: nextAction,
+    stage: editStage,
+    owner: editOwner,
+  };
 
   const { error } = await supabase
     .from("opportunities")
-    .update({
-      value: editValue,
-      probability: editProbability,
-      next_action: nextAction,
-    })
-    .eq("id", selected.id)
-    .eq("company_id", companyId); // 🔐 filtro SaaS
+    .update(updates)
+    .eq("id", selected.id);
 
-  if (error) {
-    alert(error.message);
-    return;
+  if (!error) {
+    // 🧠 Actualización optimista (no cerrar War Room)
+    setSelected({ ...selected, ...updates });
+
+    setSaved(true);
+    setTimeout(() => setSaved(false), 2000);
+
+    load(); // sincroniza pipeline
   }
 
-  await load();
+  setSaving(false);
+}
+// ===== FIN saveOpportunity() =====
+
+  // ===== INICIO archiveOpportunity() — soft delete =====
+async function archiveOpportunity() {
+  if (!selected) return;
+
+  const confirmArchive = confirm(
+    "¿Archivar esta oportunidad? Se podrá recuperar posteriormente."
+  );
+  if (!confirmArchive) return;
+
+  await supabase
+    .from("opportunities")
+    .update({ archived: true })
+    .eq("id", selected.id);
+
+  setSelected(null);
+  load();
+}
+// ===== FIN archiveOpportunity() =====
 
   // 🔄 sincroniza War Room con datos actualizados
   setSelected(null);
@@ -684,12 +731,16 @@ function averageAging() {
                     marginBottom: 8,
                     cursor: "pointer",
                   }}
-                 onClick={() => {
+                 // ===== INICIO apertura War Room — carga valores editables =====
+onClick={() => {
   setSelected(i);
   setEditValue(i.value || 0);
   setEditProbability(i.probability || 0);
   setNextAction(i.next_action || "");
+  setEditStage(i.stage);
+  setEditOwner(i.owner || "");
 }}
+// ===== FIN apertura War Room =====
                 >
                   <div style={{ fontWeight: "bold" }}>
                     {i.company_name || i.name}
@@ -995,6 +1046,47 @@ function averageAging() {
           />
         </div>
 
+{/* ===== INICIO CAMPOS AVANZADOS ENTERPRISE ===== */}
+
+<div style={{ display: "grid", gap: 8 }}>
+  <label>Etapa</label>
+  <select
+    value={editStage}
+    onChange={(e) => setEditStage(e.target.value)}
+    style={{
+      background: "#020617",
+      border: "1px solid #1e293b",
+      borderRadius: 8,
+      padding: 10,
+      color: "#fff",
+    }}
+  >
+    {stages.map((s) => (
+      <option key={s} value={s}>
+        {s}
+      </option>
+    ))}
+  </select>
+</div>
+
+<div style={{ display: "grid", gap: 8 }}>
+  <label>Responsable del deal</label>
+  <input
+    value={editOwner}
+    onChange={(e) => setEditOwner(e.target.value)}
+    placeholder="Ej: Juan Pérez"
+    style={{
+      background: "#020617",
+      border: "1px solid #1e293b",
+      borderRadius: 8,
+      padding: 10,
+      color: "#fff",
+    }}
+  />
+</div>
+
+{/* ===== FIN CAMPOS AVANZADOS ENTERPRISE ===== */}
+        
         <button
           onClick={saveOpportunity}
           style={{
@@ -1009,6 +1101,36 @@ function averageAging() {
         >
           Guardar cambios
         </button>
+
+        {/* ===== INICIO FEEDBACK DE GUARDADO ===== */}
+{saving && (
+  <div style={{ color: "#60a5fa" }}>Guardando cambios…</div>
+)}
+
+{saved && (
+  <div style={{ color: "#22c55e", fontWeight: 700 }}>
+    ✓ Cambios guardados
+  </div>
+)}
+{/* ===== FIN FEEDBACK DE GUARDADO ===== */}
+
+        {/* ===== INICIO BOTÓN ARCHIVAR ===== */}
+<button
+  onClick={archiveOpportunity}
+  style={{
+    background: "#7f1d1d",
+    border: "none",
+    borderRadius: 10,
+    padding: "12px 16px",
+    fontWeight: 800,
+    cursor: "pointer",
+    color: "#fff",
+  }}
+>
+  Archivar oportunidad
+</button>
+{/* ===== FIN BOTÓN ARCHIVAR ===== */}
+        
       </div>
                   {/* 🧠 INTELIGENCIA DE CIERRE */}
       <div
