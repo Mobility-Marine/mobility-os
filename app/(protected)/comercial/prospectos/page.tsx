@@ -831,66 +831,206 @@ setEditing(false);
         </div>
       </section>
 
-      {selected && (
+   {selected && (
   <section style={panel}>
-    <div style={panelTitle}>Detalle del prospecto</div>
-
-    {/* ===== DATOS PRINCIPALES ===== */}
-    <div style={detailGrid}>
-      <Detail label="Nombre" value={selected.name} />
-      <Detail label="Empresa" value={selected.company_name || "-"} />
-      <Detail label="Correo" value={selected.email || "-"} />
-      <Detail label="Teléfono" value={selected.phone || "-"} />
-      <Detail label="Origen" value={selected.lead_source || "-"} />
-      <Detail
-        label="Servicio de interés"
-        value={selected.interested_service || "-"}
-      />
-      <Detail
-        label="Valor estimado"
-        value={`$${(selected.estimated_value || 0).toLocaleString("es-MX")}`}
-      />
-      <Detail
-        label="Score IA"
-        value={String(getProspectScore(selected))}
-      />
-      <Detail label="Notas" value={selected.notes || "-"} />
+    <div style={panelTitle}>
+      {editing ? "Editar prospecto" : "Detalle del prospecto"}
     </div>
 
-    {/* ===== ACCIONES RÁPIDAS ===== */}
-    <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
-      <button
-        onClick={() => convertToOpportunity(selected)}
-        style={{
-          background: "#16a34a",
-          border: "none",
-          color: "#fff",
-          padding: "10px 14px",
-          borderRadius: 8,
-          cursor: "pointer",
-          fontWeight: 700,
-        }}
-      >
-        Convertir a oportunidad
-      </button>
+    {!editing ? (
+      <>
+        <div style={detailGrid}>
+          <Detail label="Nombre" value={selected.name} />
+          <Detail label="Empresa" value={selected.company_name || "-"} />
+          <Detail label="Correo" value={selected.email || "-"} />
+          <Detail label="Teléfono" value={selected.phone || "-"} />
+          <Detail label="Origen" value={selected.lead_source || "-"} />
+          <Detail
+            label="Servicio de interés"
+            value={selected.interested_service || "-"}
+          />
+          <Detail
+            label="Valor estimado"
+            value={`$${(selected.estimated_value || 0).toLocaleString("es-MX")}`}
+          />
+          <Detail
+            label="Score IA"
+            value={String(getProspectScore(selected))}
+          />
+          <Detail label="Notas" value={selected.notes || "-"} />
+        </div>
 
-      <button
-        onClick={() => setSelected(null)}
-        style={{
-          background: "#374151",
-          border: "none",
-          color: "#fff",
-          padding: "10px 14px",
-          borderRadius: 8,
-          cursor: "pointer",
-          fontWeight: 700,
-        }}
-      >
-        Cerrar
-      </button>
-    </div>
+        <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
+          <button
+            onClick={() => setEditing(true)}
+            style={secondaryButton}
+          >
+            Editar
+          </button>
 
-    {/* ===== TIMELINE DE ACTIVIDAD ===== */}
+          <button
+            onClick={() => convertToOpportunity(selected)}
+            style={{
+              background: "#16a34a",
+              border: "none",
+              color: "#fff",
+              padding: "10px 14px",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontWeight: 700,
+            }}
+          >
+            Convertir a oportunidad
+          </button>
+
+          <button
+            onClick={() => setSelected(null)}
+            style={{
+              background: "#374151",
+              border: "none",
+              color: "#fff",
+              padding: "10px 14px",
+              borderRadius: 8,
+              cursor: "pointer",
+              fontWeight: 700,
+            }}
+          >
+            Cerrar
+          </button>
+        </div>
+      </>
+    ) : (
+      <>
+        <div style={formGrid}>
+          <input
+            style={input}
+            placeholder="Nombre"
+            value={editForm?.name || ""}
+            onChange={(e) =>
+              setEditForm((prev) =>
+                prev ? { ...prev, name: e.target.value } : prev
+              )
+            }
+          />
+          <input
+            style={input}
+            placeholder="Empresa"
+            value={editForm?.company_name || ""}
+            onChange={(e) =>
+              setEditForm((prev) =>
+                prev ? { ...prev, company_name: e.target.value } : prev
+              )
+            }
+          />
+          <input
+            style={input}
+            placeholder="Correo"
+            value={editForm?.email || ""}
+            onChange={(e) =>
+              setEditForm((prev) =>
+                prev ? { ...prev, email: e.target.value } : prev
+              )
+            }
+          />
+          <input
+            style={input}
+            placeholder="Teléfono"
+            value={editForm?.phone || ""}
+            onChange={(e) =>
+              setEditForm((prev) =>
+                prev ? { ...prev, phone: e.target.value } : prev
+              )
+            }
+          />
+          <input
+            style={input}
+            placeholder="Origen del lead"
+            value={editForm?.lead_source || ""}
+            onChange={(e) =>
+              setEditForm((prev) =>
+                prev ? { ...prev, lead_source: e.target.value } : prev
+              )
+            }
+          />
+          <input
+            style={input}
+            placeholder="Servicio de interés"
+            value={editForm?.interested_service || ""}
+            onChange={(e) =>
+              setEditForm((prev) =>
+                prev ? { ...prev, interested_service: e.target.value } : prev
+              )
+            }
+          />
+          <input
+            style={input}
+            type="number"
+            placeholder="Valor estimado"
+            value={editForm?.estimated_value || ""}
+            onChange={(e) =>
+              setEditForm((prev) =>
+                prev
+                  ? { ...prev, estimated_value: Number(e.target.value) }
+                  : prev
+              )
+            }
+          />
+          <select
+            style={input}
+            value={editForm?.status || "Nuevo"}
+            onChange={(e) =>
+              setEditForm((prev) =>
+                prev ? { ...prev, status: e.target.value } : prev
+              )
+            }
+          >
+            {statusOptions.map((s) => (
+              <option key={s} value={s}>
+                {s}
+              </option>
+            ))}
+          </select>
+          <input
+            style={input}
+            type="date"
+            value={editForm?.next_follow_up || ""}
+            onChange={(e) =>
+              setEditForm((prev) =>
+                prev ? { ...prev, next_follow_up: e.target.value } : prev
+              )
+            }
+          />
+          <input
+            style={input}
+            placeholder="Notas"
+            value={editForm?.notes || ""}
+            onChange={(e) =>
+              setEditForm((prev) =>
+                prev ? { ...prev, notes: e.target.value } : prev
+              )
+            }
+          />
+        </div>
+
+        <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
+          <button
+            onClick={() => void saveProspectChanges()}
+            style={primaryButton}
+          >
+            Guardar cambios
+          </button>
+
+          <button
+            onClick={() => setEditing(false)}
+            style={secondaryButton}
+          >
+            Cancelar
+          </button>
+        </div>
+      </>
+    )}
+
+    {/* ===== ACTIVIDADES (se mantiene igual) ===== */}
     <div style={{ marginTop: 26 }}>
       <div style={{ fontWeight: 800, marginBottom: 12 }}>
         Actividad del prospecto
@@ -942,13 +1082,7 @@ setEditing(false);
                 {a.type} — {a.title}
               </div>
 
-              <div
-                style={{
-                  fontSize: 12,
-                  opacity: 0.7,
-                  marginTop: 4,
-                }}
-              >
+              <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
                 {new Date(a.created_at).toLocaleString("es-MX")}
               </div>
             </div>
@@ -958,7 +1092,6 @@ setEditing(false);
     </div>
   </section>
 )}
-
       </div>
 );
 }
