@@ -370,7 +370,22 @@ async function saveProspectChanges() {
   }, [filtered]);
 
    const forecastValue = useMemo(() => {
-  const probabilities: Record<string, number> = {
+   const pipelineRisk = useMemo(() => {
+  // Sin prospectos activos = riesgo crítico
+  if (activeCount === 0) return "Crítico";
+
+  // Pocos prospectos convertibles
+  if (convertibleCount === 0) return "Alto";
+
+  // Forecast bajo
+  if (forecastValue < 50000) return "Alto";
+
+  // Pipeline con pocos prospectos avanzados
+  if (convertibleCount < 3) return "Medio";
+
+  return "Bajo";
+}, [activeCount, convertibleCount, forecastValue]);
+   const probabilities: Record<string, number> = {
     Nuevo: 0.1,
     Contactado: 0.25,
     Calificado: 0.5,
