@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
+import { usePermissions } from "@/lib/auth/usePermissions";
 
 type Invitation = {
   id: string;
@@ -14,6 +15,18 @@ type Invitation = {
 
 export default function InvitationsPage() {
   const { companyId } = useTenant();
+
+  const { canManageCompany, loading: permLoading } = usePermissions();
+
+if (permLoading) return <div>Cargando permisos...</div>;
+
+if (!canManageCompany) {
+  return (
+    <div style={{ padding: 40 }}>
+      No tienes permisos para acceder a esta sección
+    </div>
+  );
+}
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
