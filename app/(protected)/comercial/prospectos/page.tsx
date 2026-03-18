@@ -295,6 +295,24 @@ export default function ProspectosPage() {
     );
   }, [filtered]);
 
+   const forecastValue = useMemo(() => {
+  const probabilities: Record<string, number> = {
+    Nuevo: 0.1,
+    Contactado: 0.25,
+    Calificado: 0.5,
+    Seguimiento: 0.7,
+    Convertible: 0.85,
+    Ganado: 1,
+    Perdido: 0,
+  };
+
+  return filtered.reduce((sum, p) => {
+    const value = p.estimated_value || 0;
+    const prob = probabilities[p.status || "Nuevo"] || 0;
+    return sum + value * prob;
+  }, 0);
+}, [filtered]);
+
   // ===== SALES COMMAND CENTER =====
 const today = new Date();
 
