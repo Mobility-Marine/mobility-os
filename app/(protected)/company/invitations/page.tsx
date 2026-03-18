@@ -13,28 +13,117 @@ type Invitation = {
   created_at: string;
 };
 
+// ===== INICIO InvitationsPage =====
 export default function InvitationsPage() {
-
-  // ===== INICIO HOOKS (SIEMPRE PRIMERO) =====
-
-  const { companyId, loadingTenant } = useTenant();
+  // ===== INICIO HOOKS =====
+  const { companyId, loading: tenantLoading } = useTenant();
   const { canManageCompany, loading: permLoading } = usePermissions();
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-
   // ===== FIN HOOKS =====
 
+  // ===== INICIO EFFECT carga invitaciones =====
+  useEffect(() => {
+    if (!companyId) return;
+    void loadInvitations();
+  }, [companyId]);
+  // ===== FIN EFFECT carga invitaciones =====
+
+  // ===== INICIO loadInvitations =====
+  async function loadInvitations() {
+    if (!companyId) return;
+
+    const { data, error } = await supabase
+      .from("company_invitations")
+      .select("*")
+      .eq("company_id", companyId)
+      .neq("status", "cancelled")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error cargando invitaciones:", error);
+      return;
+    }
+
+    setInvitations(data || []);
+  }
+  // ===== FIN loadInvitations =====
+
+  // ===== INICIO createInvitation =====
+  async function createInvitation() {
+    if (!companyId) return;
+
+    const finalEmail = email.trim();
+    if (!finalEmail) {
+      alert("Ingresa un email");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const role = prompt("Rol (admin, manager, user)") || "user";
+      const token = crypto.randomUUID();
+
+      const expiresAt = new Date();
+      expiresAt.setDate(expiresAt.getDate() + 7);
+
+      const { error } = await supabase.from("company_invitations").insert({
+        company_id: companyId,
+        email: finalEmail,
+        role,
+        token,
+        status: "pending",
+        expires_at: expiresAt.toISOString(),
+      });
+
+      if (error) {
+        console.error("Error creando invitación:", error);
+        alert("No se pudo crear la invitación");
+        return;
+      }
+
+      alert(
+        `Invitación creada.\n\nLink de acceso:\n${window.location.origin}/accept-invitation?token=${token}`
+      );
+
+      setEmail("");
+      await loadInvitations();
+    } finally {
+      setLoading(false);
+    }
+  }
+  // ===== FIN createInvitation =====
+
+  // ===== INICIO cancelInvitation =====
+  async function cancelInvitation(id: string) {
+    if (!companyId) return;
+
+    const { error } = await supabase
+      .from("company_invitations")
+      .update({ status: "cancelled" })
+      .eq("id", id)
+      .eq("company_id", companyId);
+
+    if (error) {
+      console.error("Error cancelando invitación:", error);
+      alert("No se pudo cancelar la invitación");
+      return;
+    }
+
+    await loadInvitations();
+  }
+  // ===== FIN cancelInvitation =====
 
   // ===== INICIO GUARDS =====
-
-  if (loadingTenant) {
-    return <div style={{ padding: 40 }}>Cargando empresa…</div>;
+  if (tenantLoading) {
+    return <div style={{ padding: 40 }}>Cargando empresa...</div>;
   }
 
   if (permLoading) {
-    return <div style={{ padding: 40 }}>Cargando permisos…</div>;
+    return <div style={{ padding: 40 }}>Cargando permisos...</div>;
   }
 
   if (!canManageCompany) {
@@ -46,96 +135,16 @@ export default function InvitationsPage() {
   }
 
   if (!companyId) {
-    return (
-      <div style={{ padding: 40 }}>
-        Sin empresa activa
-      </div>
-    );
+    return <div style={{ padding: 40 }}>Sin empresa activa</div>;
   }
-
   // ===== FIN GUARDS =====
 
-
-  // ===== INICIO CARGA =====
-
-  useEffect(() => {
-    void loadInvitations();
-  }, [companyId]);
-
-  async function loadInvitations() {
-    const { data, error } = await supabase
-      .from("company_invitations")
-      .select("*")
-      .eq("company_id", companyId)
-      .neq("status", "cancelled")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error(error);
-      return;
-    }
-
-    setInvitations(data || []);
-  }
-
-  // ===== FIN CARGA =====
-
-
-  // ===== INICIO CREAR INVITACIÓN =====
-
-  async function createInvitation() {
-    if (!companyId) return;
-
-    const email = prompt("Email del usuario a invitar");
-    if (!email) return;
-
-    const role = prompt("Rol (admin, manager, user)") || "user";
-
-    const token = crypto.randomUUID();
-
-    const expiresAt = new Date();
-    expiresAt.setDate(expiresAt.getDate() + 7);
-
-    await supabase.from("company_invitations").insert({
-      company_id: companyId,
-      email,
-      role,
-      token,
-      status: "pending",
-      expires_at: expiresAt.toISOString(),
-    });
-
-    alert(
-      `Invitación creada.\n\nLink de acceso:\n${window.location.origin}/accept-invitation?token=${token}`
-    );
-
-    loadInvitations();
-  }
-
-  // ===== FIN CREAR =====
-
-
-  // ===== INICIO CANCELAR =====
-
-  async function cancelInvitation(id: string) {
-    await supabase
-      .from("company_invitations")
-      .update({ status: "cancelled" })
-      .eq("id", id)
-      .eq("company_id", companyId);
-
-    loadInvitations();
-  }
-
-  // ===== FIN CANCELAR =====
-
-
-  // ===== UI =====
-
+  // ===== INICIO UI =====
   return (
     <div style={{ padding: 40 }}>
       <h1>Invitaciones</h1>
 
+      {/* ===== INICIO BLOQUE crear invitación ===== */}
       <div style={{ marginTop: 20 }}>
         <input
           placeholder="Email del usuario"
@@ -156,16 +165,18 @@ export default function InvitationsPage() {
             padding: "10px 16px",
             borderRadius: 6,
             border: "none",
-            background: "#7aa2ff",
-            color: "#0a0d12",
+            background: "#2563eb",
+            color: "#fff",
             cursor: "pointer",
-            fontWeight: 800,
+            fontWeight: 600,
           }}
         >
           {loading ? "Enviando..." : "Invitar"}
         </button>
       </div>
+      {/* ===== FIN BLOQUE crear invitación ===== */}
 
+      {/* ===== INICIO BLOQUE listado invitaciones ===== */}
       <div style={{ marginTop: 40 }}>
         <h2>Invitaciones pendientes</h2>
 
@@ -213,6 +224,9 @@ export default function InvitationsPage() {
           </div>
         ))}
       </div>
+      {/* ===== FIN BLOQUE listado invitaciones ===== */}
     </div>
   );
+  // ===== FIN UI =====
 }
+// ===== FIN InvitationsPage =====
