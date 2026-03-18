@@ -295,6 +295,32 @@ export default function ProspectosPage() {
     );
   }, [filtered]);
 
+  // ===== SALES COMMAND CENTER =====
+const today = new Date();
+
+const urgentFollowUps = filtered.filter(
+  (p) =>
+    p.next_follow_up &&
+    new Date(p.next_follow_up) <= today &&
+    !["Ganado", "Perdido"].includes(p.status || "")
+);
+
+const topPriorityProspects = [...filtered]
+  .filter((p) => !["Ganado", "Perdido"].includes(p.status || ""))
+  .sort((a, b) => getProspectScore(b) - getProspectScore(a))
+  .slice(0, 3);
+
+const closingOpportunities = filtered.filter(
+  (p) => p.status === "Seguimiento" || p.status === "Convertible"
+);
+
+const dormantProspects = filtered.filter((p) => {
+  const created = new Date(p.created_at);
+  const days =
+    (today.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+  return days > 30 && !["Ganado", "Perdido"].includes(p.status || "");
+});
+
 // ===== PROSPECT AI DIRECTOR =====
 
 const probabilityMap: Record<string, number> = {
@@ -363,7 +389,66 @@ const pipelineRisk =
         </div>
       </div>
 
-      {message && <div style={messageStyle}>{message}</div>}
+      {/* ===== SALES COMMAND CENTER ===== */}
+<section style={panel}>
+  <div style={panelTitle}>Sales Command Center</div>
+
+  <div style={{ display: "grid", gap: 14 }}>
+
+    {urgentFollowUps.length > 0 && (
+      <div style={aiBox}>
+        <div style={aiTitle}>🔥 Acción inmediata</div>
+        <div style={aiText}>
+          {urgentFollowUps.length} prospecto(s) requieren seguimiento HOY o están vencidos.
+        </div>
+      </div>
+    )}
+
+    {topPriorityProspects.length > 0 && (
+      <div style={aiBox}>
+        <div style={aiTitle}>🎯 Objetivos principales</div>
+
+        {topPriorityProspects.map((p) => (
+          <div key={p.id} style={{ marginBottom: 6 }}>
+            • {p.name} — Score {getProspectScore(p)} — $
+            {(p.estimated_value || 0).toLocaleString("es-MX")}
+          </div>
+        ))}
+      </div>
+    )}
+
+    {closingOpportunities.length > 0 && (
+      <div style={aiBox}>
+        <div style={aiTitle}>💰 Cierres potenciales</div>
+        <div style={aiText}>
+          {closingOpportunities.length} prospecto(s) cerca de conversión.
+        </div>
+      </div>
+    )}
+
+    {dormantProspects.length > 0 && (
+      <div style={aiBox}>
+        <div style={aiTitle}>🧊 Prospectos dormidos</div>
+        <div style={aiText}>
+          {dormantProspects.length} prospecto(s) sin movimiento > 30 días.
+        </div>
+      </div>
+    )}
+
+    {urgentFollowUps.length === 0 &&
+      closingOpportunities.length === 0 &&
+      dormantProspects.length === 0 && (
+        <div style={aiBox}>
+          <div style={aiTitle}>✔ Pipeline bajo control</div>
+          <div style={aiText}>
+            No hay riesgos críticos detectados.
+          </div>
+        </div>
+      )}
+  </div>
+</section>
+
+{message && <div style={messageStyle}>{message}</div>}
 
       <div style={topGrid}>
         <section style={panel}>
