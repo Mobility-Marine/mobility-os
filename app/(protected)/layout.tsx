@@ -274,14 +274,19 @@ export default function ProtectedLayout({
             boxShadow: "0 16px 40px rgba(0,0,0,0.28)",
           }}
         >
-          <img
-            src="/logo.png"
-            alt="Mobility OS"
-            style={{
-              width: 180,
-              display: "block",
-            }}
-          />
+         <img
+  src="/logo.png"
+  alt="Mobility OS"
+  style={{
+    width: "100%",
+    maxWidth: 240,      // 🔥 tamaño grande premium
+    height: "auto",
+    display: "block",
+    margin: "0 auto",
+    objectFit: "contain",
+    opacity: 0.95,
+  }}
+/>
 
           <div
             style={{
