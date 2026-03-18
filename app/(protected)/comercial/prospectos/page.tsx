@@ -295,6 +295,47 @@ export default function ProspectosPage() {
     );
   }, [filtered]);
 
+// ===== PROSPECT AI DIRECTOR =====
+
+const probabilityMap: Record<string, number> = {
+  Nuevo: 0.1,
+  Contactado: 0.2,
+  Calificado: 0.35,
+  Seguimiento: 0.45,
+  Convertible: 0.6,
+  Ganado: 1,
+  Perdido: 0,
+};
+
+const forecastValue = useMemo(() => {
+  return filtered.reduce((sum, p) => {
+    const prob = probabilityMap[p.status || "Nuevo"] || 0;
+    return sum + (p.estimated_value || 0) * prob;
+  }, 0);
+}, [filtered]);
+
+const highValueDeals = useMemo(() => {
+  return filtered.filter(
+    (p) =>
+      (p.estimated_value || 0) >= 50000 &&
+      ["Calificado", "Seguimiento", "Convertible"].includes(p.status || "")
+  );
+}, [filtered]);
+
+const staleDeals = useMemo(() => {
+  const now = new Date().getTime();
+
+  return filtered.filter((p) => {
+    if (!p.next_follow_up) return false;
+    const diffDays =
+      (now - new Date(p.next_follow_up).getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays > 7;
+  });
+}, [filtered]);
+
+const pipelineRisk =
+  forecastValue < 50000 && convertibleCount === 0 ? "Alto" : "Normal";
+  
   if (loading) {
     return <div style={loadingStyle}>Cargando módulo comercial…</div>;
   }
@@ -421,14 +462,34 @@ export default function ProspectosPage() {
             />
           </div>
 
-          <div style={aiBox}>
-            <div style={aiTitle}>Prospect AI Director</div>
-            <div style={aiText}>
-              {convertibleCount > 0
-                ? `Hay ${convertibleCount} prospecto(s) listos para empujarse a opportunity. Prioriza los de mayor score y valor estimado.`
-                : "No hay prospectos suficientemente maduros todavía. Conviene nutrir y dar seguimiento."}
-            </div>
-          </div>
+         <div style={aiBox}>
+  <div style={aiTitle}>Prospect AI Director Autónomo</div>
+
+  <div style={aiText}>
+    Forecast estimado: $
+    {forecastValue.toLocaleString("es-MX")}
+  </div>
+
+  <div style={aiText}>
+    Deals de alto valor: {highValueDeals.length}
+  </div>
+
+  <div style={aiText}>
+    Seguimientos vencidos: {staleDeals.length}
+  </div>
+
+  <div style={aiText}>
+    Riesgo de pipeline: {pipelineRisk}
+  </div>
+
+  <div style={{ marginTop: 10, fontWeight: 700 }}>
+    {pipelineRisk === "Alto"
+      ? "⚠️ Se requiere generación urgente de nuevos prospectos."
+      : highValueDeals.length > 0
+      ? "🎯 Priorizar cierres de alto valor."
+      : "✔️ Pipeline estable."}
+  </div>
+</div>
         </section>
       </div>
 
