@@ -54,10 +54,37 @@ type SparkBarProps = {
 export default function DashboardPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
+  const [companyState, setCompanyState] = useState<any>(null);
 
   useEffect(() => {
     void checkCompany();
   }, []);
+
+  useEffect(() => {
+  loadCompanyState();
+}, []);
+
+async function loadCompanyState() {
+  try {
+    const { data } = await supabase
+      .from("company_users")
+      .select("company_id")
+      .limit(1)
+      .single();
+
+    if (!data?.company_id) return;
+
+    const res = await fetch(
+      `/api/ai/company-state?companyId=${data.company_id}`
+    );
+
+    const json = await res.json();
+
+    setCompanyState(json);
+  } catch (e) {
+    console.error("Error loading COO state", e);
+  }
+}
 
   async function checkCompany() {
     const { data: userData } = await supabase.auth.getUser();
@@ -248,6 +275,169 @@ export default function DashboardPage() {
         </div>
       </div>
 
+{/* COO IA — RESUMEN EJECUTIVO */}
+{companyState && (
+  <div
+    style={{
+      background:
+        "linear-gradient(180deg,#0c1117 0%, #0a0e13 100%)",
+      border: "1px solid #1f2937",
+      borderRadius: 20,
+      padding: 22,
+      display: "grid",
+      gap: 14,
+      boxShadow: "0 20px 60px rgba(0,0,0,0.35)",
+    }}
+  >
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        flexWrap: "wrap",
+        gap: 12,
+      }}
+    >
+      <div>
+        <div
+          style={{
+            fontSize: 12,
+            letterSpacing: "0.12em",
+            color: "#6b7280",
+            fontWeight: 800,
+            textTransform: "uppercase",
+          }}
+        >
+          COO IA
+        </div>
+
+        <div
+          style={{
+            fontSize: 26,
+            fontWeight: 900,
+          }}
+        >
+          Resumen ejecutivo
+        </div>
+      </div>
+
+      <div
+        style={{
+          fontSize: 12,
+          color: "#94a3b8",
+        }}
+      >
+        Generado {new Date(companyState.generated_at).toLocaleTimeString("es-MX")}
+      </div>
+    </div>
+
+    <div
+      style={{
+        fontSize: 16,
+        lineHeight: 1.6,
+        color: "#e5e7eb",
+      }}
+    >
+      {companyState.executive_summary}
+    </div>
+
+    {/* MÉTRICAS CLAVE */}
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(4, minmax(0,1fr))",
+        gap: 12,
+      }}
+    >
+      <MetricCard
+        title="Prospects activos"
+        value={String(companyState.metrics.active_prospects)}
+      />
+
+      <MetricCard
+        title="Pipeline"
+        value={`$${companyState.metrics.pipeline_value.toLocaleString("es-MX")}`}
+      />
+
+      <MetricCard
+        title="Embarques activos"
+        value={String(companyState.metrics.active_shipments)}
+      />
+
+      <MetricCard
+        title="Facturas pendientes"
+        value={String(companyState.metrics.pending_invoices)}
+      />
+    </div>
+
+    {/* RIESGOS */}
+    {companyState.risks?.length > 0 && (
+      <div style={{ display: "grid", gap: 8 }}>
+        <div
+          style={{
+            fontSize: 12,
+            letterSpacing: "0.12em",
+            color: "#ef4444",
+            fontWeight: 800,
+            textTransform: "uppercase",
+          }}
+        >
+          Riesgos prioritarios
+        </div>
+
+        {companyState.risks.map((r: string, i: number) => (
+          <div
+            key={i}
+            style={{
+              padding: 12,
+              borderRadius: 12,
+              background: "rgba(248,113,113,0.12)",
+              border: "1px solid rgba(248,113,113,0.35)",
+              color: "#fecaca",
+              fontSize: 14,
+            }}
+          >
+            {r}
+          </div>
+        ))}
+      </div>
+    )}
+
+    {/* INSIGHTS */}
+    {companyState.insights?.length > 0 && (
+      <div style={{ display: "grid", gap: 8 }}>
+        <div
+          style={{
+            fontSize: 12,
+            letterSpacing: "0.12em",
+            color: "#60a5fa",
+            fontWeight: 800,
+            textTransform: "uppercase",
+          }}
+        >
+          Insights operativos
+        </div>
+
+        {companyState.insights.map((r: string, i: number) => (
+          <div
+            key={i}
+            style={{
+              padding: 12,
+              borderRadius: 12,
+              background: "rgba(96,165,250,0.12)",
+              border: "1px solid rgba(96,165,250,0.35)",
+              color: "#dbeafe",
+              fontSize: 14,
+            }}
+          >
+            {r}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
+      
       {/* MID GRID */}
       <div style={midGrid}>
         <Panel title="Actividad en tiempo real">
