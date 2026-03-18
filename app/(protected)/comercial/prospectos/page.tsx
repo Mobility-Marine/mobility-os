@@ -1036,55 +1036,82 @@ setEditing(false);
         Actividad del prospecto
       </div>
 
-      <button
-        onClick={async () => {
-          const title = prompt("Describe la actividad");
-          if (!title) return;
+     <button
+  onClick={async () => {
+    if (!selected) return;
 
-          await supabase.from("activities").insert({
-            prospect_id: selected.id,
-            company_id: selected.company_id,
-            type: "note",
-            title,
-          });
+    const type = prompt(
+      "Tipo de actividad:\ncall / email / meeting / task / note"
+    );
+    if (!type) return;
 
-          loadActivities(selected.id);
-        }}
-        style={{
-          marginBottom: 14,
-          background: "#2f5aa6",
-          border: "none",
-          color: "#fff",
-          padding: "8px 12px",
-          borderRadius: 8,
-          cursor: "pointer",
-          fontWeight: 700,
-        }}
-      >
-        + Agregar actividad
-      </button>
+    const title = prompt("Descripción de la actividad");
+    if (!title) return;
+
+    const outcome = prompt(
+      "Resultado (opcional):\ninterested / no_answer / follow_up / closed / etc"
+    );
+
+    const nextDate = prompt(
+      "Fecha de siguiente acción (YYYY-MM-DD) opcional"
+    );
+
+    await supabase.from("activities").insert({
+      prospect_id: selected.id,
+      company_id: selected.company_id,
+      type,
+      activity_type: type,
+      title,
+      outcome: outcome || null,
+      next_action_date: nextDate || null,
+    });
+
+    loadActivities(selected.id);
+  }}
+  style={{
+    marginBottom: 14,
+    background: "#2f5aa6",
+    border: "none",
+    color: "#fff",
+    padding: "8px 12px",
+    borderRadius: 8,
+    cursor: "pointer",
+    fontWeight: 700,
+  }}
+>
+  + Agregar actividad inteligente
+</button>
 
       {activities.length === 0 ? (
         <p>No hay actividades registradas.</p>
       ) : (
         <div style={{ display: "grid", gap: 10 }}>
-          {activities.map((a) => (
-            <div
-              key={a.id}
-              style={{
-                background: "#162a52",
-                padding: 12,
-                borderRadius: 10,
-                border: "1px solid #284577",
-              }}
-            >
-              <div style={{ fontWeight: 700 }}>
-                {a.type} — {a.title}
-              </div>
+       <div style={{ fontWeight: 700 }}>
+  {a.activity_type || a.type} — {a.title}
+</div>
 
-              <div style={{ fontSize: 12, opacity: 0.7, marginTop: 4 }}>
-                {new Date(a.created_at).toLocaleString("es-MX")}
-              </div>
+{a.outcome && (
+  <div style={{ marginTop: 4, color: "#93c5fd" }}>
+    Resultado: {a.outcome}
+  </div>
+)}
+
+{a.next_action_date && (
+  <div style={{ marginTop: 4, color: "#facc15" }}>
+    Próxima acción:{" "}
+    {new Date(a.next_action_date).toLocaleDateString("es-MX")}
+  </div>
+)}
+
+<div
+  style={{
+    fontSize: 12,
+    opacity: 0.7,
+    marginTop: 4,
+  }}
+>
+  {new Date(a.created_at).toLocaleString("es-MX")}
+</div>
             </div>
           ))}
         </div>
