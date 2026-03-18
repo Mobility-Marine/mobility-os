@@ -66,7 +66,14 @@ export default function LoginPage() {
       <div style={glow} />
 
       <div style={card}>
-        <div style={brand}>Mobility OS</div>
+        {/* 🥇 LOGO ULTRA PREMIUM */}
+        <div style={logoWrap}>
+          <img
+            src="/logo.png"
+            alt="Mobility OS"
+            style={logo}
+          />
+        </div>
 
         <div style={tagline}>
           Plataforma operativa inteligente para empresas globales
@@ -130,6 +137,8 @@ function Dot({ color }: { color: string }) {
   );
 }
 
+/* ===================== STYLES ===================== */
+
 const page: React.CSSProperties = {
   minHeight: "100vh",
   background:
@@ -167,15 +176,26 @@ const card: React.CSSProperties = {
   zIndex: 2,
 };
 
-const brand: React.CSSProperties = {
-  fontSize: 34,
-  fontWeight: 700,
-  letterSpacing: -0.5,
+/* 🥇 LOGO STYLES */
+
+const logoWrap: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "center",
+  marginBottom: 8,
 };
+
+const logo: React.CSSProperties = {
+  height: 90,        // 🔥 tamaño premium
+  width: "auto",
+  opacity: 0.98,
+};
+
+/* TEXT */
 
 const tagline: React.CSSProperties = {
   fontSize: 14,
   color: "#9ca3af",
+  textAlign: "center",
   marginBottom: 6,
 };
 
@@ -183,7 +203,10 @@ const statusBar: React.CSSProperties = {
   fontSize: 12,
   color: "#9ca3af",
   marginBottom: 10,
+  textAlign: "center",
 };
+
+/* INPUTS */
 
 const input: React.CSSProperties = {
   width: "100%",
@@ -196,6 +219,8 @@ const input: React.CSSProperties = {
   fontSize: 15,
   outline: "none",
 };
+
+/* BUTTONS */
 
 const primaryBtn: React.CSSProperties = {
   width: "100%",
