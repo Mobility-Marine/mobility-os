@@ -413,6 +413,34 @@ const pipelineRisk = useMemo(() => {
   return "Bajo";
 }, [activeCount, convertibleCount, forecastValue]);
 
+// ===== DEALS DE ALTO VALOR =====
+
+const highValueDeals = useMemo(() => {
+  return filtered.filter(
+    (p) =>
+      (p.estimated_value || 0) >= 50000 &&
+      ["Calificado", "Seguimiento", "Convertible"].includes(
+        p.status || ""
+      )
+  );
+}, [filtered]);
+
+// ===== SEGUIMIENTOS VENCIDOS =====
+
+const staleDeals = useMemo(() => {
+  const now = new Date().getTime();
+
+  return filtered.filter((p) => {
+    if (!p.next_follow_up) return false;
+
+    const diffDays =
+      (now - new Date(p.next_follow_up).getTime()) /
+      (1000 * 60 * 60 * 24);
+
+    return diffDays > 7;
+  });
+}, [filtered]);
+
 // ===== SALES COMMAND CENTER =====
 
 const today = new Date();
