@@ -174,7 +174,6 @@ async function load() {
   const { data } = await supabase
     .from("opportunities")
     .select("*")
-  .select("*")
 .eq("company_id", companyId)
 .eq("archived", false) // 👈 evita mostrar archivadas
 
@@ -428,11 +427,6 @@ async function archiveOpportunity() {
   load();
 }
 // ===== FIN archiveOpportunity() =====
-
-  // 🔄 sincroniza War Room con datos actualizados
-  setSelected(null);
-}
-// ===== FIN saveOpportunity() =====
 
   function closingScore(o: Opportunity) {
   const valueScore = Math.min(o.value / 100000, 1) * 40;
