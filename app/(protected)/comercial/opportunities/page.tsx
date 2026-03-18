@@ -820,31 +820,38 @@ function topOpportunities(limit = 3) {
   
   return (
     <div style={{ padding: 24 }}>
-     <h1>Pipeline de oportunidades</h1>
+    <h1>Pipeline de oportunidades</h1>
 
-{/* ===== INICIO BOTÓN NUEVA OPORTUNIDAD — estilo enterprise ===== */}
-<button
-  onClick={createOpportunity}
-  style={{
-    background: "#2563eb",
-    border: "1px solid #1d4ed8",
-    borderRadius: 10,
-    padding: "10px 16px",
-    fontWeight: 700,
-    cursor: "pointer",            // 👈 activa la manita
-    color: "#fff",
-    fontSize: 14,
-    transition: "all 0.15s ease",
-  }}
-  onMouseEnter={(e) => {
-    e.currentTarget.style.background = "#1d4ed8";
-  }}
-  onMouseLeave={(e) => {
-    e.currentTarget.style.background = "#2563eb";
-  }}
->
-  + Nueva oportunidad
-</button>
+{/* ===== INICIO BOTÓN NUEVA OPORTUNIDAD — estilo Mobility OS ===== */}
+<div style={{ marginTop: 14, marginBottom: 18 }}>
+  <button
+    onClick={createOpportunity}
+    style={{
+      background: "#0f172a",          // dark glass tone
+      border: "1px solid #1e293b",
+      borderRadius: 12,
+      padding: "10px 18px",
+      fontWeight: 700,
+      cursor: "pointer",
+      color: "#e2e8f0",
+      fontSize: 14,
+      transition: "all 0.15s ease",
+      boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+    }}
+    onMouseEnter={(e) => {
+      e.currentTarget.style.background = "#111827";
+      e.currentTarget.style.borderColor = "#334155";
+      e.currentTarget.style.transform = "translateY(-1px)";
+    }}
+    onMouseLeave={(e) => {
+      e.currentTarget.style.background = "#0f172a";
+      e.currentTarget.style.borderColor = "#1e293b";
+      e.currentTarget.style.transform = "translateY(0)";
+    }}
+  >
+    + Nueva oportunidad
+  </button>
+</div>
 {/* ===== FIN BOTÓN NUEVA OPORTUNIDAD ===== */}
 
       {/* ===== INICIO AUTOPILOT GLOBAL DEL PIPELINE ===== */}
