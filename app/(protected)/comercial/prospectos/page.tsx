@@ -52,6 +52,7 @@ export default function ProspectosPage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("Todos");
   const [message, setMessage] = useState<string | null>(null);
+  const [activities, setActivities] = useState<any[]>([]);
 
   const [form, setForm] = useState<ProspectForm>({
     name: "",
@@ -108,6 +109,18 @@ export default function ProspectosPage() {
     setProspects(data || []);
   }
 
+  async function loadActivities(prospectId: string) {
+  const { data, error } = await supabase
+    .from("activities")
+    .select("*")
+    .eq("prospect_id", prospectId)
+    .order("created_at", { ascending: false });
+
+  if (!error) {
+    setActivities(data || []);
+  }
+}
+  
   async function createProspect() {
     if (!companyId) return;
     if (!form.name.trim()) {
@@ -465,7 +478,10 @@ export default function ProspectosPage() {
                 <tr
                   key={p.id}
                   style={row}
-                  onClick={() => setSelected(p)}
+                  onClick={() => {
+  setSelected(p);
+  loadActivities(p.id);
+}}
                 >
                   <td style={td}>{p.name || "-"}</td>
                   <td style={td}>{p.company_name || "-"}</td>
@@ -512,32 +528,132 @@ export default function ProspectosPage() {
       </section>
 
       {selected && (
-        <section style={panel}>
-          <div style={panelTitle}>Detalle del prospecto</div>
+  <section style={panel}>
+    <div style={panelTitle}>Detalle del prospecto</div>
 
-          <div style={detailGrid}>
-            <Detail label="Nombre" value={selected.name} />
-            <Detail label="Empresa" value={selected.company_name || "-"} />
-            <Detail label="Correo" value={selected.email || "-"} />
-            <Detail label="Teléfono" value={selected.phone || "-"} />
-            <Detail label="Origen" value={selected.lead_source || "-"} />
-            <Detail
-              label="Servicio de interés"
-              value={selected.interested_service || "-"}
-            />
-            <Detail
-              label="Valor estimado"
-              value={`$${(selected.estimated_value || 0).toLocaleString("es-MX")}`}
-            />
-            <Detail label="Score IA" value={String(getProspectScore(selected))} />
-            <Detail label="Notas" value={selected.notes || "-"} />
-          </div>
-        </section>
+    {/* ===== DATOS PRINCIPALES ===== */}
+    <div style={detailGrid}>
+      <Detail label="Nombre" value={selected.name} />
+      <Detail label="Empresa" value={selected.company_name || "-"} />
+      <Detail label="Correo" value={selected.email || "-"} />
+      <Detail label="Teléfono" value={selected.phone || "-"} />
+      <Detail label="Origen" value={selected.lead_source || "-"} />
+      <Detail
+        label="Servicio de interés"
+        value={selected.interested_service || "-"}
+      />
+      <Detail
+        label="Valor estimado"
+        value={`$${(selected.estimated_value || 0).toLocaleString("es-MX")}`}
+      />
+      <Detail
+        label="Score IA"
+        value={String(getProspectScore(selected))}
+      />
+      <Detail label="Notas" value={selected.notes || "-"} />
+    </div>
+
+    {/* ===== ACCIONES RÁPIDAS ===== */}
+    <div style={{ marginTop: 20, display: "flex", gap: 10, flexWrap: "wrap" }}>
+      <button
+        onClick={() => convertToOpportunity(selected)}
+        style={{
+          background: "#16a34a",
+          border: "none",
+          color: "#fff",
+          padding: "10px 14px",
+          borderRadius: 8,
+          cursor: "pointer",
+          fontWeight: 700,
+        }}
+      >
+        Convertir a oportunidad
+      </button>
+
+      <button
+        onClick={() => setSelected(null)}
+        style={{
+          background: "#374151",
+          border: "none",
+          color: "#fff",
+          padding: "10px 14px",
+          borderRadius: 8,
+          cursor: "pointer",
+          fontWeight: 700,
+        }}
+      >
+        Cerrar
+      </button>
+    </div>
+
+    {/* ===== TIMELINE DE ACTIVIDAD ===== */}
+    <div style={{ marginTop: 26 }}>
+      <div style={{ fontWeight: 800, marginBottom: 12 }}>
+        Actividad del prospecto
+      </div>
+
+      <button
+        onClick={async () => {
+          const title = prompt("Describe la actividad");
+          if (!title) return;
+
+          await supabase.from("activities").insert({
+            prospect_id: selected.id,
+            company_id: selected.company_id,
+            type: "note",
+            title,
+          });
+
+          loadActivities(selected.id);
+        }}
+        style={{
+          marginBottom: 14,
+          background: "#2f5aa6",
+          border: "none",
+          color: "#fff",
+          padding: "8px 12px",
+          borderRadius: 8,
+          cursor: "pointer",
+          fontWeight: 700,
+        }}
+      >
+        + Agregar actividad
+      </button>
+
+      {activities.length === 0 ? (
+        <p>No hay actividades registradas.</p>
+      ) : (
+        <div style={{ display: "grid", gap: 10 }}>
+          {activities.map((a) => (
+            <div
+              key={a.id}
+              style={{
+                background: "#162a52",
+                padding: 12,
+                borderRadius: 10,
+                border: "1px solid #284577",
+              }}
+            >
+              <div style={{ fontWeight: 700 }}>
+                {a.type} — {a.title}
+              </div>
+
+              <div
+                style={{
+                  fontSize: 12,
+                  opacity: 0.7,
+                  marginTop: 4,
+                }}
+              >
+                {new Date(a.created_at).toLocaleString("es-MX")}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
-  );
-}
-
+  </section>
+)}
 function KpiCard({ label, value }: { label: string; value: string }) {
   return (
     <div style={kpiCard}>
