@@ -775,6 +775,48 @@ function governanceAlert(o: Opportunity) {
 }
 
 // ===== FIN STAGE GOVERNANCE RULES =====
+
+  // ===== INICIO REVENUE PREDICTIVE ENGINE =====
+
+function predictiveScore(o: Opportunity) {
+  const valueFactor = Math.min(o.value / 100000, 1) * 40;
+  const probabilityFactor = (o.probability || 0) * 0.5;
+  const ageFactor = Math.min(agingDays(o) / 30, 1) * 20;
+
+  return Math.round(valueFactor + probabilityFactor - ageFactor);
+}
+
+function lossRisk(o: Opportunity) {
+  if (o.stage === "Closed Won" || o.stage === "Closed Lost") return "—";
+
+  const age = agingDays(o);
+
+  if (o.probability < 30 && age > 20) return "ALTO";
+  if (o.probability < 50 && age > 15) return "MEDIO";
+  return "BAJO";
+}
+
+function expectedRevenue(o: Opportunity) {
+  return (o.value || 0) * ((o.probability || 0) / 100);
+}
+
+function priorityIndex(o: Opportunity) {
+  const score = predictiveScore(o);
+  const revenue = expectedRevenue(o) / 1000;
+
+  return Math.round(score + revenue);
+}
+
+function topOpportunities(limit = 3) {
+  return items
+    .filter(
+      (i) => i.stage !== "Closed Won" && i.stage !== "Closed Lost"
+    )
+    .sort((a, b) => priorityIndex(b) - priorityIndex(a))
+    .slice(0, limit);
+}
+
+// ===== FIN REVENUE PREDICTIVE ENGINE =====
   
   return (
     <div style={{ padding: 24 }}>
@@ -1097,6 +1139,61 @@ onClick={() => {
   </div>
 </div>
 {/* ===== FIN SALUD DEL PIPELINE ===== */}
+
+      {/* ===== INICIO PRIORIDAD DE INGRESOS ===== */}
+<div
+  style={{
+    background: "#020617",
+    border: "1px solid #1e293b",
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 20,
+    display: "grid",
+    gap: 10,
+  }}
+>
+  <div style={{ fontWeight: 800, color: "#f59e0b" }}>
+    DÓNDE VENDER HOY
+  </div>
+
+  {topOpportunities().length === 0 ? (
+    <div style={{ color: "#94a3b8" }}>
+      No hay oportunidades abiertas prioritarias.
+    </div>
+  ) : (
+    topOpportunities().map((o) => (
+      <div
+        key={o.id}
+        style={{
+          background: "#020617",
+          border: "1px solid #1e293b",
+          borderRadius: 10,
+          padding: 12,
+          display: "grid",
+          gap: 4,
+        }}
+      >
+        <div style={{ fontWeight: 700 }}>
+          {o.company_name || o.name}
+        </div>
+
+        <div style={{ fontSize: 13, color: "#cbd5e1" }}>
+          Ingreso esperado: $
+          {expectedRevenue(o).toLocaleString()}
+        </div>
+
+        <div style={{ fontSize: 13, color: "#cbd5e1" }}>
+          Prioridad estratégica: {priorityIndex(o)} / 100
+        </div>
+
+        <div style={{ fontSize: 12, color: "#94a3b8" }}>
+          Riesgo de pérdida: {lossRisk(o)}
+        </div>
+      </div>
+    ))
+  )}
+</div>
+{/* ===== FIN PRIORIDAD DE INGRESOS ===== */}
 
       {/* ===== INICIO REVENUE AI DIRECTOR GLOBAL UI ===== */}
 <div
@@ -1550,6 +1647,47 @@ onClick={() => {
   <strong>{dealPriority(selected)}</strong> / 100
 </div>
 
+{/* ===== INICIO REVENUE PREDICTIVE INFO ===== */}
+<div
+  style={{
+    background: "#020617",
+    borderRadius: 12,
+    padding: 16,
+    border: "1px solid #1e293b",
+    display: "grid",
+    gap: 6,
+  }}
+>
+  <div style={{ fontWeight: 800, color: "#f59e0b" }}>
+    REVENUE PREDICTIVE ENGINE
+  </div>
+
+  <div>
+    Score predictivo:{" "}
+    <strong>{predictiveScore(selected)}</strong> / 100
+  </div>
+
+  <div>
+    Ingreso esperado:{" "}
+    <strong>
+      ${expectedRevenue(selected).toLocaleString()}
+    </strong>
+  </div>
+
+  <div>
+    Prioridad estratégica:{" "}
+    <strong>{priorityIndex(selected)}</strong>
+  </div>
+
+  <div>
+    Riesgo de pérdida:{" "}
+    <strong style={{ color: "#f87171" }}>
+      {lossRisk(selected)}
+    </strong>
+  </div>
+</div>
+{/* ===== FIN REVENUE PREDICTIVE INFO ===== */}
+        
 {/* ===== INICIO STAGE GOVERNANCE INFO ===== */}
 {governanceAlert(selected) && (
   <div
