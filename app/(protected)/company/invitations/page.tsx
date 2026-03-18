@@ -14,11 +14,22 @@ type Invitation = {
 };
 
 export default function InvitationsPage() {
-  const { companyId } = useTenant();
-
+// ===== INICIO tenant context =====
+const { companyId, loadingTenant } = useTenant();
+// ===== FIN tenant context =====
   const { canManageCompany, loading: permLoading } = usePermissions();
 
 if (permLoading) return <div>Cargando permisos...</div>;
+
+  // ===== INICIO tenant guard =====
+if (loadingTenant) {
+  return (
+    <div style={{ padding: 40 }}>
+      Cargando empresa…
+    </div>
+  );
+}
+// ===== FIN tenant guard =====
 
 if (!canManageCompany) {
   return (
@@ -32,9 +43,12 @@ if (!canManageCompany) {
   const [loading, setLoading] = useState(false);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
 
-  useEffect(() => {
-    loadInvitations();
-  }, [companyId]);
+// ===== INICIO carga segura invitaciones =====
+useEffect(() => {
+  if (!companyId) return;
+  void loadInvitations();
+}, [companyId]);
+// ===== FIN carga segura invitaciones =====
 
   async function loadInvitations() {
     if (!companyId) return;
