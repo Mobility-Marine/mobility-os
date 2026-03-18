@@ -321,6 +321,55 @@ const dormantProspects = filtered.filter((p) => {
   return days > 30 && !["Ganado", "Perdido"].includes(p.status || "");
 });
 
+const topClosingProspect = [...filtered]
+  .filter((p) =>
+    ["Seguimiento", "Convertible", "Calificado"].includes(p.status || "")
+  )
+  .sort((a, b) => {
+    const scoreDiff = getProspectScore(b) - getProspectScore(a);
+    if (scoreDiff !== 0) return scoreDiff;
+    return (b.estimated_value || 0) - (a.estimated_value || 0);
+  })[0] || null;
+
+const weakPipeline =
+  filtered.filter((p) =>
+    ["Calificado", "Seguimiento", "Convertible"].includes(p.status || "")
+  ).length === 0;
+
+const dailyFocusMessage = weakPipeline
+  ? "El pipeline está débil en etapas avanzadas. Prioriza generación y calificación de leads."
+  : topClosingProspect
+  ? `Hoy el mejor prospecto para empujar es ${topClosingProspect.name} con score ${getProspectScore(
+      topClosingProspect
+    )}.`
+  : "No hay señales fuertes de cierre hoy. Mantén seguimiento disciplinado.";
+
+const croAlerts: string[] = [];
+
+if (urgentFollowUps.length > 0) {
+  croAlerts.push(
+    `Hay ${urgentFollowUps.length} seguimiento(s) urgentes que requieren atención inmediata.`
+  );
+}
+
+if (dormantProspects.length > 0) {
+  croAlerts.push(
+    `Hay ${dormantProspects.length} prospecto(s) dormidos que podrían reactivarse o descartarse.`
+  );
+}
+
+if (weakPipeline) {
+  croAlerts.push(
+    "No hay suficientes prospectos en etapas avanzadas para sostener cierres cercanos."
+  );
+}
+
+if (forecastValue < 50000) {
+  croAlerts.push(
+    "El forecast proyectado está por debajo del nivel objetivo actual."
+  );
+}
+
 // ===== PROSPECT AI DIRECTOR =====
 
 const probabilityMap: Record<string, number> = {
@@ -445,6 +494,70 @@ const pipelineRisk =
           </div>
         </div>
       )}
+  </div>
+</section>
+
+      <section style={panel}>
+  <div style={panelTitle}>CRO IA Autónomo</div>
+
+  <div style={{ display: "grid", gap: 14 }}>
+    <div style={aiBox}>
+      <div style={aiTitle}>🧠 Enfoque del día</div>
+      <div style={aiText}>{dailyFocusMessage}</div>
+    </div>
+
+    {topClosingProspect && (
+      <div style={aiBox}>
+        <div style={aiTitle}>🚀 Mejor oportunidad comercial actual</div>
+        <div style={aiText}>
+          {topClosingProspect.name} — {topClosingProspect.company_name || "Sin empresa"} — $
+          {(topClosingProspect.estimated_value || 0).toLocaleString("es-MX")}
+        </div>
+        <div style={aiText}>
+          Estatus: {topClosingProspect.status || "Nuevo"} | Score: {getProspectScore(topClosingProspect)}
+        </div>
+      </div>
+    )}
+
+    <div style={aiBox}>
+      <div style={aiTitle}>📈 Lectura ejecutiva</div>
+      <div style={aiText}>
+        Forecast: ${forecastValue.toLocaleString("es-MX")}
+      </div>
+      <div style={aiText}>
+        Prospectos activos: {activeCount}
+      </div>
+      <div style={aiText}>
+        Convertibles: {convertibleCount}
+      </div>
+      <div style={aiText}>
+        Riesgo de pipeline: {pipelineRisk}
+      </div>
+    </div>
+
+    {croAlerts.length > 0 && (
+      <div style={aiBox}>
+        <div style={aiTitle}>⚠ Alertas CRO</div>
+        <div style={{ display: "grid", gap: 8 }}>
+          {croAlerts.map((alert, index) => (
+            <div key={index} style={aiText}>
+              • {alert}
+            </div>
+          ))}
+        </div>
+      </div>
+    )}
+
+    <div style={aiBox}>
+      <div style={aiTitle}>🎯 Acción recomendada</div>
+      <div style={aiText}>
+        {topClosingProspect
+          ? `Empuja hoy a ${topClosingProspect.name}, registra actividad y valida siguiente paso comercial.`
+          : weakPipeline
+          ? "Dedica hoy esfuerzo a generar y calificar nuevos prospectos."
+          : "Mantén ritmo de seguimiento y limpieza del pipeline."}
+      </div>
+    </div>
   </div>
 </section>
 
