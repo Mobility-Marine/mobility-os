@@ -86,22 +86,31 @@ export async function GET(req: Request) {
     const invoices = safeArray(invoicesRes.data);
 
     const activeProspects = prospects.filter((p) => p.is_active);
+
     const pipelineValue = activeProspects.reduce(
       (sum, p) => sum + toNumber(p.estimated_value),
       0
     );
 
     const openQuotations = quotations.filter(
-      (q) => !["closed", "cancelled"].includes(String(q.status || "").toLowerCase())
+      (q) =>
+        !["closed", "cancelled"].includes(
+          String(q.status || "").toLowerCase()
+        )
     );
 
     const activeShipments = shipments.filter(
       (s) =>
-        !["delivered", "cancelled"].includes(String(s.status || "").toLowerCase())
+        !["delivered", "cancelled"].includes(
+          String(s.status || "").toLowerCase()
+        )
     );
 
     const pendingInvoices = invoices.filter(
-      (i) => !["paid", "cancelled"].includes(String(i.status || "").toLowerCase())
+      (i) =>
+        !["paid", "cancelled"].includes(
+          String(i.status || "").toLowerCase()
+        )
     );
 
     const today = new Date();
@@ -119,6 +128,10 @@ export async function GET(req: Request) {
       const date = new Date(p.next_follow_up);
       return date < today;
     });
+
+    // =========================
+    // RIESGOS
+    // =========================
 
     const risks: string[] = [];
 
@@ -143,6 +156,10 @@ export async function GET(req: Request) {
         `La operación tiene ${activeShipments.length} embarques activos; revisar capacidad operativa.`
       );
     }
+
+    // =========================
+    // INSIGHTS
+    // =========================
 
     const insights: string[] = [];
 
@@ -172,16 +189,72 @@ export async function GET(req: Request) {
       );
     }
 
+    // =========================
+    // PRIORIDAD COO IA
+    // =========================
+
+    let priorityScore = 0;
+
+    if (pipelineValue <= 0) priorityScore += 35;
+    if (overdueFollowUps.length > 0) priorityScore += 20;
+    if (pendingInvoices.length > 0) priorityScore += 20;
+    if (activeShipments.length > 10) priorityScore += 15;
+    if (activeProspects.length === 0) priorityScore += 10;
+
+    if (priorityScore > 100) priorityScore = 100;
+
+    const recommendedActions: string[] = [];
+
+    if (pipelineValue <= 0) {
+      recommendedActions.push(
+        "Activar generación de prospectos y revisar cotizaciones activas esta semana."
+      );
+    }
+
+    if (overdueFollowUps.length > 0) {
+      recommendedActions.push(
+        `Atender ${overdueFollowUps.length} seguimiento(s) vencidos del área comercial.`
+      );
+    }
+
+    if (pendingInvoices.length > 0) {
+      recommendedActions.push(
+        `Revisar cobranza: hay ${pendingInvoices.length} factura(s) pendientes.`
+      );
+    }
+
+    if (activeShipments.length > 10) {
+      recommendedActions.push(
+        "Validar capacidad operativa y carga logística para evitar cuellos de botella."
+      );
+    }
+
+    if (recommendedActions.length === 0) {
+      recommendedActions.push(
+        "La empresa no presenta alertas críticas. Mantener seguimiento operativo normal."
+      );
+    }
+
+    // =========================
+    // RESUMEN EJECUTIVO
+    // =========================
+
     const executiveSummary =
       risks.length > 0
         ? `La empresa presenta ${risks.length} señal(es) de atención prioritaria.`
         : "La operación general luce estable y sin alertas críticas inmediatas.";
+
+    // =========================
+    // RESPUESTA FINAL
+    // =========================
 
     return NextResponse.json({
       company_id: companyId,
       generated_at: new Date().toISOString(),
 
       executive_summary: executiveSummary,
+      priority_score: priorityScore,
+      recommended_actions: recommendedActions,
 
       metrics: {
         total_prospects: prospects.length,
