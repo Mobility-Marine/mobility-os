@@ -26,11 +26,14 @@ export default function InvitationsPage() {
   async function loadInvitations() {
     if (!companyId) return;
 
-    const { data, error } = await supabase
-      .from("company_invitations")
-      .select("*")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
+  // ===== INICIO loadInvitations() activas =====
+const { data, error } = await supabase
+  .from("company_invitations")
+  .select("*")
+  .eq("company_id", companyId)
+  .neq("status", "cancelled")
+  .order("created_at", { ascending: false });
+// ===== FIN loadInvitations() activas =====
 
     if (error) {
       console.error(error);
@@ -70,14 +73,19 @@ export default function InvitationsPage() {
     loadInvitations();
   }
 
-  async function cancelInvitation(id: string) {
-    await supabase
-      .from("company_invitations")
-      .delete()
-      .eq("id", id);
+ // ===== INICIO cancelInvitation() soft cancel =====
+async function cancelInvitation(id: string) {
+  if (!companyId) return;
 
-    loadInvitations();
-  }
+  await supabase
+    .from("company_invitations")
+    .update({ status: "cancelled" })
+    .eq("id", id)
+    .eq("company_id", companyId);
+
+  loadInvitations();
+}
+// ===== FIN cancelInvitation() =====
 
   if (!companyId) {
     return (
