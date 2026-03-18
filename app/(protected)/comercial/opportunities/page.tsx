@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
+import { usePermissions } from "@/lib/auth/usePermissions";
 
 // ===== INICIO TYPE Opportunity — modelo enterprise =====
 type Opportunity = {
@@ -49,6 +50,7 @@ export default function OpportunitiesPage() {
   const [saved, setSaved] = useState(false);
   // ===== FIN STATE guardado visual =====
   const { companyId } = useTenant();
+  const { canManageSales } = usePermissions();
 
  useEffect(() => {
    if (companyId) load();
@@ -822,37 +824,39 @@ function topOpportunities(limit = 3) {
     <div style={{ padding: 24 }}>
     <h1>Pipeline de oportunidades</h1>
 
-{/* ===== INICIO BOTÓN NUEVA OPORTUNIDAD — estilo Mobility OS ===== */}
-<div style={{ marginTop: 14, marginBottom: 18 }}>
-  <button
-    onClick={createOpportunity}
-    style={{
-      background: "#0f172a",          // dark glass tone
-      border: "1px solid #1e293b",
-      borderRadius: 12,
-      padding: "10px 18px",
-      fontWeight: 700,
-      cursor: "pointer",
-      color: "#e2e8f0",
-      fontSize: 14,
-      transition: "all 0.15s ease",
-      boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
-    }}
-    onMouseEnter={(e) => {
-      e.currentTarget.style.background = "#111827";
-      e.currentTarget.style.borderColor = "#334155";
-      e.currentTarget.style.transform = "translateY(-1px)";
-    }}
-    onMouseLeave={(e) => {
-      e.currentTarget.style.background = "#0f172a";
-      e.currentTarget.style.borderColor = "#1e293b";
-      e.currentTarget.style.transform = "translateY(0)";
-    }}
-  >
-    + Nueva oportunidad
-  </button>
-</div>
-{/* ===== FIN BOTÓN NUEVA OPORTUNIDAD ===== */}
+{/* ===== INICIO BOTÓN NUEVA OPORTUNIDAD — RBAC + estilo Mobility OS ===== */}
+{canManageSales && (
+  <div style={{ marginTop: 14, marginBottom: 18 }}>
+    <button
+      onClick={createOpportunity}
+      style={{
+        background: "#0f172a",          // dark glass tone
+        border: "1px solid #1e293b",
+        borderRadius: 12,
+        padding: "10px 18px",
+        fontWeight: 700,
+        cursor: "pointer",
+        color: "#e2e8f0",
+        fontSize: 14,
+        transition: "all 0.15s ease",
+        boxShadow: "0 4px 14px rgba(0,0,0,0.35)",
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.background = "#111827";
+        e.currentTarget.style.borderColor = "#334155";
+        e.currentTarget.style.transform = "translateY(-1px)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.background = "#0f172a";
+        e.currentTarget.style.borderColor = "#1e293b";
+        e.currentTarget.style.transform = "translateY(0)";
+      }}
+    >
+      + Nueva oportunidad
+    </button>
+  </div>
+)}
+{/* ===== FIN BOTÓN NUEVA OPORTUNIDAD — RBAC + estilo Mobility OS ===== */}
 
       {/* ===== INICIO AUTOPILOT GLOBAL DEL PIPELINE ===== */}
 <div
