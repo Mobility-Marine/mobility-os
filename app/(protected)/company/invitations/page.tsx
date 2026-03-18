@@ -116,7 +116,7 @@ async function cancelInvitation(id: string) {
         />
 
         <button
-          onClick={invite}
+          onClick={createInvitation}
           disabled={loading}
           style={{
             padding: "10px 16px",
