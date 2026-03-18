@@ -481,8 +481,44 @@ const staleDeals = useMemo(() => {
   });
 }, [filtered]);
 
-const pipelineRisk =
-  forecastValue < 50000 && convertibleCount === 0 ? "Alto" : "Normal";
+const autopilotLead = [...filtered]
+  .filter((p) => !["Ganado", "Perdido"].includes(p.status || ""))
+  .sort((a, b) => {
+    const scoreDiff = getProspectScore(b) - getProspectScore(a);
+    if (scoreDiff !== 0) return scoreDiff;
+
+    const valueDiff = (b.estimated_value || 0) - (a.estimated_value || 0);
+    if (valueDiff !== 0) return valueDiff;
+
+    const aDate = a.next_follow_up ? new Date(a.next_follow_up).getTime() : Infinity;
+    const bDate = b.next_follow_up ? new Date(b.next_follow_up).getTime() : Infinity;
+    return aDate - bDate;
+  })[0] || null;
+
+const autopilotAction = autopilotLead
+  ? autopilotLead.status === "Convertible"
+    ? `Cerrar propuesta con ${autopilotLead.name} y preparar conversión inmediata a oportunidad.`
+    : autopilotLead.status === "Seguimiento"
+    ? `Dar seguimiento hoy a ${autopilotLead.name} para empujarlo a etapa convertible.`
+    : autopilotLead.status === "Calificado"
+    ? `Agendar contacto de avance con ${autopilotLead.name} y confirmar siguiente paso comercial.`
+    : `Contactar a ${autopilotLead.name} y avanzar su calificación comercial.`
+  : "No hay prospectos accionables en este momento.";
+
+const autopilotReason = autopilotLead
+  ? `Score ${getProspectScore(autopilotLead)} • Valor $${(autopilotLead.estimated_value || 0).toLocaleString(
+      "es-MX"
+    )} • Estatus ${autopilotLead.status || "Nuevo"}`
+  : "Pipeline sin prospectos accionables.";
+
+const autopilotPriority =
+  !autopilotLead
+    ? "Baja"
+    : getProspectScore(autopilotLead) >= 60
+    ? "Máxima"
+    : getProspectScore(autopilotLead) >= 40
+    ? "Alta"
+    : "Media";
   
   if (loading) {
     return <div style={loadingStyle}>Cargando módulo comercial…</div>;
@@ -631,6 +667,75 @@ const pipelineRisk =
           : "Mantén ritmo de seguimiento y limpieza del pipeline."}
       </div>
     </div>
+  </div>
+</section>
+
+      <section style={panel}>
+  <div style={panelTitle}>Autopilot Comercial</div>
+
+  <div style={{ display: "grid", gap: 14 }}>
+  <div style={aiBox}>
+  <div style={aiTitle}>🤖 Prioridad automática</div>
+  <div style={aiText}>Nivel: {autopilotPriority}</div>
+  <div style={aiText}>{autopilotAction}</div>
+
+  {autopilotLead && (
+    <button
+      onClick={() => {
+        setSelected(autopilotLead);
+        loadActivities(autopilotLead.id);
+        setEditForm({
+          name: autopilotLead.name || "",
+          company_name: autopilotLead.company_name || "",
+          email: autopilotLead.email || "",
+          phone: autopilotLead.phone || "",
+          lead_source: autopilotLead.lead_source || "",
+          interested_service: autopilotLead.interested_service || "",
+          status: autopilotLead.status || "Nuevo",
+          notes: autopilotLead.notes || "",
+          estimated_value: autopilotLead.estimated_value || 0,
+          next_follow_up: autopilotLead.next_follow_up || "",
+        });
+        setEditing(false);
+      }}
+      style={{
+        marginTop: 10,
+        background: "#7aa2ff",
+        border: "none",
+        color: "#0a0d12",
+        padding: "10px 14px",
+        borderRadius: 8,
+        cursor: "pointer",
+        fontWeight: 800,
+      }}
+    >
+      Abrir prospecto recomendado
+    </button>
+  )}
+</div>
+
+    <div style={aiBox}>
+      <div style={aiTitle}>🧠 Motivo de selección</div>
+      <div style={aiText}>{autopilotReason}</div>
+    </div>
+
+    {autopilotLead && (
+      <div style={aiBox}>
+        <div style={aiTitle}>🎯 Prospecto elegido por el sistema</div>
+        <div style={aiText}>
+          {autopilotLead.name} — {autopilotLead.company_name || "Sin empresa"}
+        </div>
+        <div style={aiText}>
+          Servicio: {autopilotLead.interested_service || "-"}
+        </div>
+        <div style={aiText}>
+          Próximo seguimiento:{" "}
+          {autopilotLead.next_follow_up
+            ? new Date(autopilotLead.next_follow_up).toLocaleDateString("es-MX")
+            : "No definido"}
+        </div>
+      </div>
+    )}
   </div>
 </section>
 
