@@ -398,6 +398,40 @@ function riskLevel(o: Opportunity) {
   if (o.probability < 60) return "MEDIO";
   return "BAJO";
 }
+
+// ===== INICIO agingDays() — días desde creación =====
+function agingDays(o: Opportunity) {
+  const created = new Date(o.created_at).getTime();
+  const now = Date.now();
+  return Math.floor((now - created) / (1000 * 60 * 60 * 24));
+}
+// ===== FIN agingDays() =====
+
+  // ===== INICIO dealPriority() — score estratégico =====
+function dealPriority(o: Opportunity) {
+  const valueScore = Math.min(o.value / 50000, 1) * 40;
+  const probScore = (o.probability || 0) * 0.4;
+  const agePenalty = Math.min(agingDays(o) / 30, 1) * 20;
+
+  return Math.round(valueScore + probScore + agePenalty);
+}
+// ===== FIN dealPriority() =====
+
+  // ===== INICIO criticalDeal() — oportunidad más estratégica =====
+function criticalDeal() {
+  if (items.length === 0) return null;
+
+  const open = items.filter(
+    (i) => i.stage !== "Closed Won" && i.stage !== "Closed Lost"
+  );
+
+  if (open.length === 0) return null;
+
+  return open.sort(
+    (a, b) => dealPriority(b) - dealPriority(a)
+  )[0];
+}
+// ===== FIN criticalDeal() =====
   
   return (
     <div style={{ padding: 24 }}>
@@ -595,6 +629,46 @@ function riskLevel(o: Opportunity) {
         ))}
       </div>
 
+{/* ===== INICIO DEAL CRÍTICO ===== */}
+{criticalDeal() && (
+  <div
+    style={{
+      background: "#020617",
+      border: "1px solid #1e293b",
+      borderRadius: 14,
+      padding: 18,
+      marginBottom: 20,
+      display: "grid",
+      gap: 10,
+    }}
+  >
+    <div style={{ fontWeight: 800, color: "#f59e0b" }}>
+      DEAL CRÍTICO DEL PIPELINE
+    </div>
+
+    <div style={{ fontSize: 20, fontWeight: 800 }}>
+      {criticalDeal()?.company_name || criticalDeal()?.name}
+    </div>
+
+    <div style={{ color: "#cbd5e1" }}>
+      Valor: ${criticalDeal()?.value?.toLocaleString()}
+    </div>
+
+    <div style={{ color: "#cbd5e1" }}>
+      Probabilidad: {criticalDeal()?.probability?.toFixed(0)}%
+    </div>
+
+    <div style={{ color: "#94a3b8", fontSize: 13 }}>
+      Antigüedad: {agingDays(criticalDeal()!)} días
+    </div>
+
+    <div style={{ color: "#22c55e" }}>
+      Prioridad estratégica: {dealPriority(criticalDeal()!)} / 100
+    </div>
+  </div>
+)}
+{/* ===== FIN DEAL CRÍTICO ===== */}
+      
       {/* 🧠 WAR ROOM DE OPORTUNIDAD */}
       {selected && (
         <div
