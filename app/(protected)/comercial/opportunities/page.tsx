@@ -86,14 +86,19 @@ await supabase.from("opportunities").insert({
     load();
   }
   
-  async function move(id: string, newStage: string) {
-    await supabase
-      .from("opportunities")
-      .update({ stage: newStage })
-      .eq("id", id);
+ // ===== INICIO move() — actualización segura por empresa =====
+async function move(id: string, newStage: string) {
+  if (!companyId) return;
 
-    load();
-  }
+  await supabase
+    .from("opportunities")
+    .update({ stage: newStage })
+    .eq("id", id)
+    .eq("company_id", companyId); // 🔐 filtro SaaS
+
+  load();
+}
+// ===== FIN move() =====
 
   function stageTotal(stage: string) {
     return items
@@ -198,30 +203,38 @@ useEffect(() => {
   return () => {
     supabase.removeChannel(channel);
   };
-}, [opportunity.id]);
+}, [opportunity.id, companyId]);
     
-    async function addActivity() {
-      if (!text.trim()) return;
+   // ===== INICIO addActivity() — inserción segura =====
+async function addActivity() {
+  if (!text.trim()) return;
+  if (!companyId) return;
 
-      await supabase.from("opportunity_activities").insert({
-  opportunity_id: opportunity.id,
-  description: text,
-  type: "task",
-  company_id: companyId,   // 👈 AQUÍ
-});
+  await supabase.from("opportunity_activities").insert({
+    opportunity_id: opportunity.id,
+    description: text,
+    type: "task",
+    company_id: companyId,
+  });
 
-      setText("");
-      loadActivities();
-    }
+  setText("");
+  loadActivities();
+}
+// ===== FIN addActivity() =====
 
-    async function toggle(id: string, completed: boolean) {
-      await supabase
-        .from("opportunity_activities")
-        .update({ completed: !completed })
-        .eq("id", id);
+  // ===== INICIO toggle() — actividad segura por empresa =====
+async function toggle(id: string, completed: boolean) {
+  if (!companyId) return;
 
-      loadActivities();
-    }
+  await supabase
+    .from("opportunity_activities")
+    .update({ completed: !completed })
+    .eq("id", id)
+    .eq("company_id", companyId); // 🔐 filtro SaaS
+
+  loadActivities();
+}
+// ===== FIN toggle() =====
 
     return (
       <div
@@ -348,20 +361,31 @@ useEffect(() => {
     );
   }
 
+// ===== INICIO saveOpportunity() — guardado seguro + sync UI =====
 async function saveOpportunity() {
-  if (!selected) return;
+  if (!selected || !companyId) return;
 
-  await supabase
+  const { error } = await supabase
     .from("opportunities")
     .update({
       value: editValue,
       probability: editProbability,
       next_action: nextAction,
     })
-    .eq("id", selected.id);
+    .eq("id", selected.id)
+    .eq("company_id", companyId); // 🔐 filtro SaaS
 
-  load();
+  if (error) {
+    alert(error.message);
+    return;
+  }
+
+  await load();
+
+  // 🔄 sincroniza War Room con datos actualizados
+  setSelected(null);
 }
+// ===== FIN saveOpportunity() =====
 
   function closingScore(o: Opportunity) {
   const valueScore = Math.min(o.value / 100000, 1) * 40;
