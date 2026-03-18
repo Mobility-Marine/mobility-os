@@ -100,15 +100,20 @@ await supabase.from("opportunities").insert({
     load();
   }
   
- // ===== INICIO move() — actualización segura por empresa =====
+ // ===== INICIO move() — con gobernanza de etapa =====
 async function move(id: string, newStage: string) {
   if (!companyId) return;
 
+  const rule = stageRules[newStage];
+
   await supabase
     .from("opportunities")
-    .update({ stage: newStage })
+    .update({
+      stage: newStage,
+      probability: rule?.probability ?? 10,
+    })
     .eq("id", id)
-    .eq("company_id", companyId); // 🔐 filtro SaaS
+    .eq("company_id", companyId);
 
   load();
 }
@@ -382,13 +387,17 @@ async function saveOpportunity() {
   setSaving(true);
   setSaved(false);
 
-  const updates = {
-    value: editValue,
-    probability: editProbability,
-    next_action: nextAction,
-    stage: editStage,
-    owner: editOwner,
-  };
+ // ===== INICIO updates con gobernanza =====
+const rule = stageRules[editStage];
+
+const updates = {
+  value: editValue,
+  probability: rule?.probability ?? editProbability,
+  next_action: nextAction,
+  stage: editStage,
+  owner: editOwner,
+};
+// ===== FIN updates =====
 
   const { error } = await supabase
     .from("opportunities")
@@ -724,6 +733,48 @@ function cfoForecastHealth() {
 }
 
 // ===== FIN CFO FORECAST HELPERS =====
+
+  // ===== INICIO STAGE GOVERNANCE RULES =====
+
+const stageRules: Record<
+  string,
+  {
+    probability: number;
+    maxDays: number;
+    requiredAction?: boolean;
+  }
+> = {
+  Qualification: { probability: 10, maxDays: 7 },
+  Discovery: { probability: 20, maxDays: 14 },
+  Proposal: { probability: 45, maxDays: 21, requiredAction: true },
+  Negotiation: { probability: 70, maxDays: 21, requiredAction: true },
+  Commit: { probability: 90, maxDays: 14, requiredAction: true },
+  "Closed Won": { probability: 100, maxDays: 0 },
+  "Closed Lost": { probability: 0, maxDays: 0 },
+};
+
+function governanceAlert(o: Opportunity) {
+  const rule = stageRules[o.stage];
+  if (!rule) return null;
+
+  const age = agingDays(o);
+
+  if (rule.maxDays > 0 && age > rule.maxDays) {
+    return `Estancado (${age} días en etapa)`;
+  }
+
+  if (rule.requiredAction && !o.next_action) {
+    return "Falta próxima acción obligatoria";
+  }
+
+  if (o.probability !== rule.probability) {
+    return "Probabilidad no alineada con etapa";
+  }
+
+  return null;
+}
+
+// ===== FIN STAGE GOVERNANCE RULES =====
   
   return (
     <div style={{ padding: 24 }}>
@@ -919,6 +970,20 @@ onClick={() => {
                   <div style={{ fontSize: 12 }}>
                     Prob: {(i.probability || 0).toFixed(0)}%
                   </div>
+                  {/* ===== INICIO ALERTA DE GOBERNANZA ===== */}
+{governanceAlert(i) && (
+  <div
+    style={{
+      fontSize: 11,
+      marginTop: 4,
+      color: "#f87171",
+      fontWeight: 700,
+    }}
+  >
+    ⚠ {governanceAlert(i)}
+  </div>
+)}
+{/* ===== FIN ALERTA DE GOBERNANZA ===== */}
                 </div>
               ))}
           </div>
@@ -1484,6 +1549,23 @@ onClick={() => {
   Prioridad estratégica:{" "}
   <strong>{dealPriority(selected)}</strong> / 100
 </div>
+
+{/* ===== INICIO STAGE GOVERNANCE INFO ===== */}
+{governanceAlert(selected) && (
+  <div
+    style={{
+      background: "rgba(248,113,113,0.1)",
+      border: "1px solid rgba(248,113,113,0.25)",
+      borderRadius: 10,
+      padding: 12,
+      color: "#f87171",
+      fontWeight: 700,
+    }}
+  >
+    ⚠ {governanceAlert(selected)}
+  </div>
+)}
+{/* ===== FIN STAGE GOVERNANCE INFO ===== */}
         
         {nextAction && (
           <div
