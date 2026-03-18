@@ -63,8 +63,7 @@ export default function TenantProvider({
           )
         `
         )
-        .eq("user_id", user.id)
-        .eq("is_active", true);
+        .eq("user_id", user.id);
 
       if (error) {
         console.error("Error cargando memberships", error);
@@ -163,8 +162,7 @@ export default function TenantProvider({
         )
       `
       )
-      .eq("user_id", user.id)
-      .eq("is_active", true);
+     .eq("user_id", user.id);
 
     if (error) {
       console.error("Error refrescando memberships", error);
