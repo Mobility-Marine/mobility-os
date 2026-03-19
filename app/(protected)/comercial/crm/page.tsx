@@ -164,6 +164,16 @@ type AccountAction = {
 };
 // ===== FIN TYPE ACCOUNT ACTION =====
 
+// ===== INICIO TYPE COMMAND CENTER =====
+type CommandCenterData = {
+  criticalAccounts: CrmAccount[];
+  urgentActions: CrmAccount[];
+  noFollowUp: CrmAccount[];
+  highValue: CrmAccount[];
+  coldAccounts: CrmAccount[];
+};
+// ===== FIN TYPE COMMAND CENTER =====
+
 export default function CRMPage() {
 
   // ===== INICIO TENANT =====
@@ -215,6 +225,10 @@ const [priorityMap, setPriorityMap] =
 const [actionMap, setActionMap] =
   useState<Record<string, AccountAction>>({});
 // ===== FIN STATE ACTION MAP =====
+// ===== INICIO STATE COMMAND CENTER =====
+const [commandCenter, setCommandCenter] =
+  useState<CommandCenterData | null>(null);
+// ===== FIN STATE COMMAND CENTER =====
 
   // ===== INICIO LOAD ACCOUNTS =====
   useEffect(() => {
@@ -333,6 +347,13 @@ useEffect(() => {
   accounts.forEach((acc) => buildAccountAction(acc));
 }, [accounts, radarMap, revenueMap, priorityMap]);
 // ===== FIN RECALCULAR ACTION ENGINE =====
+
+  // ===== INICIO RECALCULAR COMMAND CENTER =====
+useEffect(() => {
+  if (accounts.length === 0) return;
+  buildCommandCenter();
+}, [accounts, radarMap, revenueMap, priorityMap, actionMap]);
+// ===== FIN RECALCULAR COMMAND CENTER =====
 
   useEffect(() => {
   if (!selected) return;
@@ -1011,6 +1032,52 @@ function buildAccountAction(account: CrmAccount) {
   }));
 }
 // ===== FIN BUILD ACCOUNT ACTION =====
+
+  // ===== INICIO BUILD COMMAND CENTER =====
+function buildCommandCenter() {
+  const criticalAccounts: CrmAccount[] = [];
+  const urgentActions: CrmAccount[] = [];
+  const noFollowUp: CrmAccount[] = [];
+  const highValue: CrmAccount[] = [];
+  const coldAccounts: CrmAccount[] = [];
+
+  accounts.forEach((acc) => {
+    const id = acc.id;
+    const radar = radarMap[id];
+    const rev = revenueMap[id];
+    const act = actionMap[id];
+    const pr = priorityMap[id];
+
+    if (pr?.label === "CRITICA") {
+      criticalAccounts.push(acc);
+    }
+
+    if (act?.urgency === "CRITICA" || act?.urgency === "ALTA") {
+      urgentActions.push(acc);
+    }
+
+    if (radar && radar.hasContacts && !radar.hasOpportunity && !radar.hasOrder) {
+      noFollowUp.push(acc);
+    }
+
+    if (rev?.tier === "STRATEGIC" || rev?.tier === "HIGH") {
+      highValue.push(acc);
+    }
+
+    if (radar?.temperature === "FRIA") {
+      coldAccounts.push(acc);
+    }
+  });
+
+  setCommandCenter({
+    criticalAccounts,
+    urgentActions,
+    noFollowUp,
+    highValue,
+    coldAccounts,
+  });
+}
+// ===== FIN BUILD COMMAND CENTER =====
   
   // ===== INICIO RENDER =====
 
@@ -1020,6 +1087,64 @@ function buildAccountAction(account: CrmAccount) {
     <div style={{ padding: 24, display: "grid", gap: 20 }}>
 
       <h1>CRM — Empresas / Cuentas</h1>
+
+      {/* ===== COMMERCIAL COMMAND CENTER ===== */}
+{commandCenter && (
+  <div
+    style={{
+      padding: 16,
+      borderRadius: 12,
+      background: "#020617",
+      border: "1px solid #1f2937",
+      display: "grid",
+      gap: 12,
+    }}
+  >
+    <div style={{ fontWeight: 900, color: "#38bdf8" }}>
+      COMMERCIAL COMMAND CENTER
+    </div>
+
+    {/* 🔴 Cuentas críticas */}
+    <CommandList
+      title="Cuentas críticas"
+      color="#ef4444"
+      accounts={commandCenter.criticalAccounts}
+      onSelect={setSelected}
+    />
+
+    {/* ⚡ Acciones urgentes */}
+    <CommandList
+      title="Acciones urgentes"
+      color="#f97316"
+      accounts={commandCenter.urgentActions}
+      onSelect={setSelected}
+    />
+
+    {/* ⏰ Sin seguimiento */}
+    <CommandList
+      title="Sin seguimiento comercial"
+      color="#eab308"
+      accounts={commandCenter.noFollowUp}
+      onSelect={setSelected}
+    />
+
+    {/* 💰 Alto valor */}
+    <CommandList
+      title="Mayor potencial económico"
+      color="#22c55e"
+      accounts={commandCenter.highValue}
+      onSelect={setSelected}
+    />
+
+    {/* 🧊 Cuentas frías */}
+    <CommandList
+      title="Cuentas frías"
+      color="#64748b"
+      accounts={commandCenter.coldAccounts}
+      onSelect={setSelected}
+    />
+  </div>
+)}
 
     {/* ===== RADAR DE CUENTAS ===== */}
 <div style={{ display: "grid", gap: 10 }}>
@@ -1424,6 +1549,45 @@ function buildAccountAction(account: CrmAccount) {
   // ===== FIN RENDER =====
 }
 
+// ===== INICIO COMPONENT COMMAND LIST =====
+function CommandList({
+  title,
+  color,
+  accounts,
+  onSelect,
+}: {
+  title: string;
+  color: string;
+  accounts: CrmAccount[];
+  onSelect: (a: CrmAccount) => void;
+}) {
+  if (accounts.length === 0) return null;
+
+  return (
+    <div style={{ display: "grid", gap: 6 }}>
+      <div style={{ fontWeight: 700, color }}>
+        {title} ({accounts.length})
+      </div>
+
+      {accounts.slice(0, 5).map((a) => (
+        <div
+          key={a.id}
+          onClick={() => onSelect(a)}
+          style={{
+            padding: 10,
+            borderRadius: 8,
+            background: "#0b1220",
+            border: `1px solid ${color}`,
+            cursor: "pointer",
+          }}
+        >
+          {a.name}
+        </div>
+      ))}
+    </div>
+  );
+}
+// ===== FIN COMPONENT COMMAND LIST =====
 
 // ===== INICIO COMPONENT DOCUMENT ROW =====
 function DocumentRow({ doc }: { doc: CrmDocument }) {
