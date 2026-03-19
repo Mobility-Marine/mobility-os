@@ -136,6 +136,17 @@ type AccountRadar = {
 };
 // ===== FIN TYPE ACCOUNT RADAR =====
 
+// ===== INICIO TYPE ACCOUNT REVENUE =====
+type AccountRevenue = {
+  accountId: string;
+  pipelineValue: number;
+  quotedValue: number;
+  wonValue: number;
+  totalPotential: number;
+  tier: "LOW" | "MEDIUM" | "HIGH" | "STRATEGIC";
+};
+// ===== FIN TYPE ACCOUNT REVENUE =====
+
 export default function CRMPage() {
 
   // ===== INICIO TENANT =====
@@ -175,6 +186,10 @@ const [contacts, setContacts] = useState<CrmContact[]>([]);
 // ===== INICIO STATE RADAR =====
 const [radarMap, setRadarMap] = useState<Record<string, AccountRadar>>({});
 // ===== FIN STATE RADAR =====
+// ===== INICIO STATE REVENUE =====
+const [revenueMap, setRevenueMap] =
+  useState<Record<string, AccountRevenue>>({});
+// ===== FIN STATE REVENUE =====
 
   // ===== INICIO LOAD ACCOUNTS =====
   useEffect(() => {
@@ -250,6 +265,7 @@ async function loadActivities(accountId: string) {
     setAccounts(data || []);
     setLoading(false);
     (data || []).forEach((acc) => buildAccountRadar(acc));
+    (data || []).forEach((acc) => buildAccountRevenue(acc));
   }
 
   // ===== INICIO LOAD DOCUMENTS =====
@@ -803,6 +819,56 @@ async function buildAccountRadar(account: CrmAccount) {
   }));
 }
 // ===== FIN BUILD ACCOUNT RADAR =====
+
+// ===== INICIO BUILD ACCOUNT REVENUE =====
+async function buildAccountRevenue(account: CrmAccount) {
+  const id = account.id;
+
+  const { data: opps } = await supabase
+    .from("sales_opportunities")
+    .select("estimated_value")
+    .eq("account_id", id);
+
+  const { data: qts } = await supabase
+    .from("quotes")
+    .select("total_amount")
+    .eq("account_id", id);
+
+  const { data: ords } = await supabase
+    .from("orders")
+    .select("total_amount")
+    .eq("account_id", id);
+
+  const pipelineValue =
+    opps?.reduce((s, o) => s + (o.estimated_value || 0), 0) || 0;
+
+  const quotedValue =
+    qts?.reduce((s, q) => s + (q.total_amount || 0), 0) || 0;
+
+  const wonValue =
+    ords?.reduce((s, o) => s + (o.total_amount || 0), 0) || 0;
+
+  const totalPotential = pipelineValue + quotedValue + wonValue;
+
+  let tier: AccountRevenue["tier"] = "LOW";
+
+  if (totalPotential > 5_000_000) tier = "STRATEGIC";
+  else if (totalPotential > 1_000_000) tier = "HIGH";
+  else if (totalPotential > 100_000) tier = "MEDIUM";
+
+  setRevenueMap((prev) => ({
+    ...prev,
+    [id]: {
+      accountId: id,
+      pipelineValue,
+      quotedValue,
+      wonValue,
+      totalPotential,
+      tier,
+    },
+  }));
+}
+// ===== FIN BUILD ACCOUNT REVENUE =====
   
   // ===== INICIO RENDER =====
 
@@ -817,6 +883,7 @@ async function buildAccountRadar(account: CrmAccount) {
 <div style={{ display: "grid", gap: 10 }}>
   {accounts.map((a) => {
     const r = radarMap[a.id];
+    const rev = revenueMap[a.id];
 
     const tempColor =
       r?.temperature === "CALIENTE"
@@ -850,6 +917,13 @@ async function buildAccountRadar(account: CrmAccount) {
       >
         <strong>{a.name}</strong>
 
+        {rev && (
+  <div style={{ fontSize: 12, fontWeight: 700, color: "#22c55e" }}>
+    $
+    {rev.totalPotential.toLocaleString("es-MX")}
+  </div>
+)}
+
         <div style={{ fontSize: 12, color: "#94a3b8" }}>
           {a.industry || "Sin industria"} — {a.country || "-"}
         </div>
@@ -877,6 +951,27 @@ async function buildAccountRadar(account: CrmAccount) {
                 fontWeight: 600,
               }}
             >
+{rev && (
+  <span
+    style={{
+      background:
+        rev.tier === "STRATEGIC"
+          ? "#7c3aed"
+          : rev.tier === "HIGH"
+          ? "#2563eb"
+          : rev.tier === "MEDIUM"
+          ? "#059669"
+          : "#475569",
+      padding: "2px 6px",
+      borderRadius: 6,
+      fontSize: 11,
+      fontWeight: 700,
+    }}
+  >
+    {rev.tier}
+  </span>
+)}
+              
               {r.urgency}
             </span>
 
