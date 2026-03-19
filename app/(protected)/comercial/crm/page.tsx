@@ -755,6 +755,8 @@ async function createActivity() {
 
   </div>
 )}
+    </div>
+  );
   
   // ===== FIN RENDER =====
 }
