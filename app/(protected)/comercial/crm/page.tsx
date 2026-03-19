@@ -1095,8 +1095,7 @@ return (
     }}
   >
 
-    {/* ===== PANEL IZQUIERDO — RADAR ===== */}
-
+    {/* PANEL IZQUIERDO */}
     <div
       style={{
         background: "#020617",
@@ -1123,11 +1122,6 @@ return (
           marginBottom: 10,
         }}
       />
-
-      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-        <button>Importar</button>
-        <button>Exportar</button>
-      </div>
 
       <div style={{ overflowY: "auto", flex: 1 }}>
         <div style={{ display: "grid", gap: 10 }}>
@@ -1158,20 +1152,10 @@ return (
                 >
                   <strong>{a.name}</strong>
 
-                  {p && (
-                    <span style={{ fontSize: 11 }}>
-                      Prioridad: {p.label}
-                    </span>
-                  )}
-
-                  {rev && (
-                    <span style={{ fontSize: 11 }}>
-                      Tier: {rev.tier}
-                    </span>
-                  )}
-
+                  {p && <span>Prioridad: {p.label}</span>}
+                  {rev && <span>Tier: {rev.tier}</span>}
                   {r && (
-                    <span style={{ fontSize: 11 }}>
+                    <span>
                       Temp: {r.temperature} · Urg: {r.urgency}
                     </span>
                   )}
@@ -1182,17 +1166,13 @@ return (
       </div>
     </div>
 
-    {/* ===== PANEL CENTRAL ===== */}
-
+    {/* PANEL CENTRAL */}
     <div
       style={{
         background: "#020617",
         border: "1px solid #1f2937",
         borderRadius: 12,
         padding: 16,
-        overflow: "hidden",
-        display: "flex",
-        flexDirection: "column",
       }}
     >
       {!selected && (
@@ -1202,67 +1182,42 @@ return (
       )}
 
       {selected && (
-        <div style={{ overflowY: "auto", display: "grid", gap: 16 }}>
+        <>
           <h2>{selected.name}</h2>
-
           <div>Industria: {selected.industry || "-"}</div>
           <div>
             Ubicación: {selected.city || "-"}, {selected.country || "-"}
           </div>
           <div>Estado: {selected.status}</div>
-
-          {selected.notes && <div>Notas: {selected.notes}</div>}
-        </div>
+        </>
       )}
     </div>
 
-    {/* ===== PANEL DERECHO — AI ===== */}
-
+    {/* PANEL DERECHO */}
     <div
       style={{
         background: "#020617",
         border: "1px solid #1f2937",
         borderRadius: 12,
         padding: 14,
-        display: "flex",
-        flexDirection: "column",
-        gap: 12,
-        overflowY: "auto",
       }}
     >
       <div style={{ fontWeight: 800, color: "#38bdf8" }}>
-        COPILOT COMERCIAL IA
+        COPILOT IA
       </div>
 
       {!selected && (
         <div style={{ color: "#94a3b8" }}>
-          Selecciona una cuenta para ver recomendaciones.
+          Selecciona una cuenta.
         </div>
       )}
 
       {director && (
-        <div>
-          <div>
-            Urgencia: <strong>{director.urgency}</strong>
-          </div>
-
-          <div>
-            Temperatura:{" "}
-            <strong>{director.accountTemperature}</strong>
-          </div>
-
+        <>
+          <div>Urgencia: {director.urgency}</div>
+          <div>Temperatura: {director.accountTemperature}</div>
           <div>{director.recommendedAction}</div>
-        </div>
-      )}
-
-      {alerts.length > 0 && (
-        <div>
-          <strong>Alertas</strong>
-
-          {alerts.map((a, i) => (
-            <div key={i}>• {a.title}</div>
-          ))}
-        </div>
+        </>
       )}
     </div>
 
@@ -1270,6 +1225,7 @@ return (
 );
 
 // ===== FIN RENDER =====
+}
 
       {/* ===== COMMERCIAL COMMAND CENTER ===== */}
 {commandCenter && (
