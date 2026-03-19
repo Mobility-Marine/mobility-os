@@ -44,6 +44,29 @@ type CrmActivity = {
   created_at: string;
 };
 // ===== FIN TYPE CRM ACTIVITY =====
+
+// ===== INICIO TYPES RELACIONADOS CRM 360 =====
+type CrmOpportunity = {
+  id: string;
+  name: string;
+  stage: string;
+  estimated_value: number | null;
+};
+
+type CrmQuote = {
+  id: string;
+  quote_number: string;
+  total_amount: number | null;
+  status: string;
+};
+
+type CrmOrder = {
+  id: string;
+  order_number: string;
+  status: string;
+  total_amount: number | null;
+};
+// ===== FIN TYPES RELACIONADOS CRM 360 =====
 // ===== FIN TYPES =====
 
 
@@ -65,6 +88,12 @@ const [newActivityType, setNewActivityType] = useState("call");
 const [newActivityDate, setNewActivityDate] = useState("");
 // ===== FIN STATE ACTIVITIES =====
   // ===== FIN STATE =====
+
+  // ===== INICIO STATE RELACIONES CRM =====
+const [opportunities, setOpportunities] = useState<CrmOpportunity[]>([]);
+const [quotes, setQuotes] = useState<CrmQuote[]>([]);
+const [orders, setOrders] = useState<CrmOrder[]>([]);
+// ===== FIN STATE RELACIONES CRM =====
 
   // ===== INICIO LOAD ACCOUNTS =====
   useEffect(() => {
@@ -142,10 +171,14 @@ async function loadActivities(accountId: string) {
   }
 
   // ===== INICIO LOAD DOCUMENTS =====
-  useEffect(() => {
-    if (!selected) return;
-    loadDocuments(selected.id);
-  }, [selected]);
+// ===== INICIO LOAD DETALLE COMPLETO CRM =====
+useEffect(() => {
+  if (!selected) return;
+
+  loadDocuments(selected.id);
+  loadRelations(selected.id);
+}, [selected]);
+// ===== FIN LOAD DETALLE COMPLETO CRM =====
 
   async function loadDocuments(accountId: string) {
     const { data } = await supabase
@@ -158,6 +191,33 @@ async function loadActivities(accountId: string) {
   }
   // ===== FIN LOAD DOCUMENTS =====
 
+  // ===== INICIO LOAD RELACIONES CRM =====
+async function loadRelations(accountId: string) {
+  // 🔹 Oportunidades
+  const { data: opps } = await supabase
+    .from("sales_opportunities")
+    .select("id, name, stage, estimated_value")
+    .eq("account_id", accountId);
+
+  setOpportunities(opps || []);
+
+  // 🔹 Cotizaciones
+  const { data: qts } = await supabase
+    .from("quotes")
+    .select("id, quote_number, total_amount, status")
+    .eq("account_id", accountId);
+
+  setQuotes(qts || []);
+
+  // 🔹 Pedidos
+  const { data: ords } = await supabase
+    .from("orders")
+    .select("id, order_number, status, total_amount")
+    .eq("account_id", accountId);
+
+  setOrders(ords || []);
+}
+// ===== FIN LOAD RELACIONES CRM =====
 
   // ===== INICIO UPLOAD DOCUMENT =====
   async function uploadDocument(file: File) {
@@ -269,6 +329,41 @@ async function createActivity() {
         <div style={{ marginTop: 20 }}>
           <h2>{selected.name}</h2>
 
+          {/* ===== INICIO CRM 360 PANEL ===== */}
+<div
+  style={{
+    marginTop: 12,
+    padding: 14,
+    borderRadius: 12,
+    background: "#0f172a",
+    border: "1px solid #1f2937",
+    display: "grid",
+    gap: 8,
+  }}
+>
+  <div style={{ fontWeight: 700 }}>Resumen del cliente</div>
+
+  <div style={{ fontSize: 13 }}>
+    Industria: {selected.industry || "-"}
+  </div>
+
+  <div style={{ fontSize: 13 }}>
+    Ubicación: {selected.city || "-"}, {selected.country || "-"}
+  </div>
+
+  <div style={{ fontSize: 13 }}>
+    Estado: {selected.status}
+  </div>
+
+  {selected.notes && (
+    <div style={{ fontSize: 13 }}>
+      Notas: {selected.notes}
+    </div>
+  )}
+</div>
+{/* ===== FIN CRM 360 PANEL ===== */}
+          {/* ===== FIN DETALLE ===== */}
+
           {/* ===== UPLOAD ===== */}
           <input
             type="file"
@@ -338,6 +433,53 @@ async function createActivity() {
     </div>
   );
 
+{/* ===== INICIO OPORTUNIDADES RELACIONADAS ===== */}
+<div style={{ marginTop: 20 }}>
+  <h3>Oportunidades</h3>
+
+  {opportunities.length === 0 && (
+    <p>No hay oportunidades vinculadas.</p>
+  )}
+
+  {opportunities.map((o) => (
+    <div key={o.id} style={{ padding: 8 }}>
+      <strong>{o.name}</strong> — {o.stage} — $
+      {(o.estimated_value || 0).toLocaleString("es-MX")}
+    </div>
+  ))}
+</div>
+{/* ===== FIN OPORTUNIDADES RELACIONADAS ===== */}
+
+  {/* ===== INICIO COTIZACIONES RELACIONADAS ===== */}
+<div style={{ marginTop: 20 }}>
+  <h3>Cotizaciones</h3>
+
+  {quotes.length === 0 && <p>No hay cotizaciones.</p>}
+
+  {quotes.map((q) => (
+    <div key={q.id} style={{ padding: 8 }}>
+      {q.quote_number} — {q.status} — $
+      {(q.total_amount || 0).toLocaleString("es-MX")}
+    </div>
+  ))}
+</div>
+{/* ===== FIN COTIZACIONES RELACIONADAS ===== */}
+
+  {/* ===== INICIO PEDIDOS RELACIONADOS ===== */}
+<div style={{ marginTop: 20 }}>
+  <h3>Pedidos</h3>
+
+  {orders.length === 0 && <p>No hay pedidos.</p>}
+
+  {orders.map((o) => (
+    <div key={o.id} style={{ padding: 8 }}>
+      {o.order_number} — {o.status} — $
+      {(o.total_amount || 0).toLocaleString("es-MX")}
+    </div>
+  ))}
+</div>
+{/* ===== FIN PEDIDOS RELACIONADOS ===== */}
+  
   // ===== FIN RENDER =====
 }
 
