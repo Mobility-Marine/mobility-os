@@ -200,6 +200,23 @@ const [newAccount, setNewAccount] = useState({
   status: "active",
   notes: "",
 });
+
+// ===== INICIO STATE IMPORTADOR =====
+const [showImportModal, setShowImportModal] = useState(false);
+const [importing, setImporting] = useState(false);
+const [importRows, setImportRows] = useState<
+  Array<{
+    name: string;
+    legal_name: string;
+    industry: string;
+    country: string;
+    city: string;
+    status: string;
+    notes: string;
+  }>
+>([]);
+// ===== FIN STATE IMPORTADOR =====
+  
   // ===== FIN STATE =====
 
   // ===== INICIO FILTERED ACCOUNTS =====
@@ -1044,6 +1061,125 @@ const executiveTopAccounts = useMemo(() => {
     });
   }
 
+  // ===== INICIO FUNCIONES IMPORTADOR =====
+function parseCsvLine(line: string) {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    const next = line[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && next === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === "," && !inQuotes) {
+      result.push(current.trim());
+      current = "";
+    } else {
+      current += char;
+    }
+  }
+
+  result.push(current.trim());
+  return result;
+}
+
+async function handleImportFile(file: File) {
+  if (!companyId) return;
+
+  const text = await file.text();
+  const lines = text
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+
+  if (lines.length < 2) {
+    alert("El archivo no contiene datos.");
+    return;
+  }
+
+  const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase());
+
+  const idx = {
+    name: headers.indexOf("name"),
+    legal_name: headers.indexOf("legal_name"),
+    industry: headers.indexOf("industry"),
+    country: headers.indexOf("country"),
+    city: headers.indexOf("city"),
+    status: headers.indexOf("status"),
+    notes: headers.indexOf("notes"),
+  };
+
+  if (idx.name === -1) {
+    alert('El CSV debe incluir la columna obligatoria: "name"');
+    return;
+  }
+
+  const rows = lines.slice(1).map((line) => {
+    const cols = parseCsvLine(line);
+
+    return {
+      name: cols[idx.name] || "",
+      legal_name: idx.legal_name >= 0 ? cols[idx.legal_name] || "" : "",
+      industry: idx.industry >= 0 ? cols[idx.industry] || "" : "",
+      country: idx.country >= 0 ? cols[idx.country] || "" : "",
+      city: idx.city >= 0 ? cols[idx.city] || "" : "",
+      status: idx.status >= 0 ? cols[idx.status] || "active" : "active",
+      notes: idx.notes >= 0 ? cols[idx.notes] || "" : "",
+    };
+  });
+
+  const validRows = rows.filter((r) => r.name.trim());
+
+  if (validRows.length === 0) {
+    alert("No se encontraron filas válidas para importar.");
+    return;
+  }
+
+  setImportRows(validRows);
+  setShowImportModal(true);
+}
+
+async function confirmImportRows() {
+  if (!companyId || importRows.length === 0) return;
+
+  try {
+    setImporting(true);
+
+    const payload = importRows.map((row) => ({
+      company_id: companyId,
+      name: row.name,
+      legal_name: row.legal_name || null,
+      industry: row.industry || null,
+      country: row.country || null,
+      city: row.city || null,
+      status: row.status || "active",
+      notes: row.notes || null,
+    }));
+
+    const { error } = await supabase.from("crm_accounts").insert(payload);
+
+    if (error) {
+      alert("Error importando cuentas.");
+      return;
+    }
+
+    setShowImportModal(false);
+    setImportRows([]);
+    await loadAccounts();
+    alert(`Se importaron ${payload.length} cuentas.`);
+  } finally {
+    setImporting(false);
+  }
+}
+// ===== FIN FUNCIONES IMPORTADOR =====
+
   // ===== INICIO RENDER =====
   if (loading) return <div style={{ padding: 40 }}>Cargando CRM...</div>;
 
@@ -1089,10 +1225,24 @@ const executiveTopAccounts = useMemo(() => {
         />
 
         <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
-          <button style={miniButton}>Importar</button>
-          <button style={miniButton}>Exportar</button>
-        </div>
+  <button
+    style={miniButton}
+    onClick={() => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".csv";
+      input.onchange = (e: any) => {
+        const file = e.target.files?.[0];
+        if (file) handleImportFile(file);
+      };
+      input.click();
+    }}
+  >
+    Importar
+  </button>
 
+  <button style={miniButton}>Exportar</button>
+</div>
 {/* ===== PRIORIDAD EJECUTIVA GLOBAL ===== */}
 {executiveTopAccounts.length > 0 && (
   <div
@@ -2102,6 +2252,110 @@ const executiveTopAccounts = useMemo(() => {
     </div>
   </div>
 )}
+
+{/* ===== MODAL IMPORTACIÓN MASIVA ===== */}
+{showImportModal && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.7)",
+      display: "grid",
+      placeItems: "center",
+      zIndex: 1000,
+    }}
+  >
+    <div
+      style={{
+        width: 900,
+        maxWidth: "95vw",
+        maxHeight: "85vh",
+        overflow: "auto",
+        background: "#020617",
+        border: "1px solid #1f2937",
+        borderRadius: 14,
+        padding: 20,
+        display: "grid",
+        gap: 14,
+      }}
+    >
+      <div style={{ fontSize: 20, fontWeight: 800 }}>
+        Importación masiva de cuentas
+      </div>
+
+      <div style={{ color: "#94a3b8", fontSize: 13 }}>
+        Se detectaron {importRows.length} filas válidas.
+      </div>
+
+      <div
+        style={{
+          border: "1px solid #1f2937",
+          borderRadius: 10,
+          overflow: "hidden",
+        }}
+      >
+        <table
+          style={{
+            width: "100%",
+            borderCollapse: "collapse",
+            fontSize: 13,
+          }}
+        >
+          <thead>
+            <tr style={{ background: "#0b1220" }}>
+              <th style={tableHead}>Nombre</th>
+              <th style={tableHead}>Razón social</th>
+              <th style={tableHead}>Industria</th>
+              <th style={tableHead}>Ciudad</th>
+              <th style={tableHead}>País</th>
+              <th style={tableHead}>Estado</th>
+            </tr>
+          </thead>
+
+          <tbody>
+            {importRows.slice(0, 50).map((row, i) => (
+              <tr key={i}>
+                <td style={tableCell}>{row.name}</td>
+                <td style={tableCell}>{row.legal_name || "-"}</td>
+                <td style={tableCell}>{row.industry || "-"}</td>
+                <td style={tableCell}>{row.city || "-"}</td>
+                <td style={tableCell}>{row.country || "-"}</td>
+                <td style={tableCell}>{row.status || "active"}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+
+      {importRows.length > 50 && (
+        <div style={{ color: "#94a3b8", fontSize: 12 }}>
+          Mostrando solo las primeras 50 filas.
+        </div>
+      )}
+
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+        <button
+          style={miniButton}
+          onClick={() => {
+            setShowImportModal(false);
+            setImportRows([]);
+          }}
+          disabled={importing}
+        >
+          Cancelar
+        </button>
+
+        <button
+          style={primaryButton}
+          onClick={confirmImportRows}
+          disabled={importing}
+        >
+          {importing ? "Importando..." : "Confirmar importación"}
+        </button>
+      </div>
+    </div>
+  </div>
+)}
   
   // ===== FIN RENDER =====
 }
@@ -2153,6 +2407,19 @@ const miniButton: React.CSSProperties = {
   background: "#0b1220",
   color: "#fff",
   cursor: "pointer",
+};
+
+const tableHead: React.CSSProperties = {
+  textAlign: "left",
+  padding: "10px 12px",
+  borderBottom: "1px solid #1f2937",
+  color: "#cbd5e1",
+};
+
+const tableCell: React.CSSProperties = {
+  padding: "10px 12px",
+  borderBottom: "1px solid #1f2937",
+  color: "#e5e7eb",
 };
 
 // ===== INICIO COMPONENT COMMAND LIST =====
