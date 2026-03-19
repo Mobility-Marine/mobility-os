@@ -218,6 +218,41 @@ export default function CRMPage() {
   }, [accounts, priorityMap, search]);
   // ===== FIN FILTERED ACCOUNTS =====
 
+// ===== INICIO EXECUTIVE TOP ACCOUNTS =====
+const executiveTopAccounts = useMemo(() => {
+  return [...accounts]
+    .map((account) => {
+      const priority = priorityMap[account.id];
+      const revenue = revenueMap[account.id];
+      const radar = radarMap[account.id];
+      const action = actionMap[account.id];
+
+      let executiveScore = 0;
+
+      executiveScore += priority?.score || 0;
+
+      if (revenue?.tier === "STRATEGIC") executiveScore += 30;
+      else if (revenue?.tier === "HIGH") executiveScore += 20;
+      else if (revenue?.tier === "MEDIUM") executiveScore += 10;
+
+      if (radar?.urgency === "CRITICA") executiveScore += 25;
+      else if (radar?.urgency === "ALTA") executiveScore += 15;
+      else if (radar?.urgency === "MEDIA") executiveScore += 8;
+
+      if (action?.urgency === "CRITICA") executiveScore += 20;
+      else if (action?.urgency === "ALTA") executiveScore += 12;
+      else if (action?.urgency === "MEDIA") executiveScore += 6;
+
+      return {
+        account,
+        executiveScore,
+      };
+    })
+    .sort((a, b) => b.executiveScore - a.executiveScore)
+    .slice(0, 3);
+}, [accounts, priorityMap, revenueMap, radarMap, actionMap]);
+// ===== FIN EXECUTIVE TOP ACCOUNTS =====
+  
   // ===== INICIO LOAD ACCOUNTS =====
   useEffect(() => {
     if (!companyId) return;
@@ -1046,6 +1081,59 @@ export default function CRMPage() {
           <button style={miniButton}>Exportar</button>
         </div>
 
+{/* ===== PRIORIDAD EJECUTIVA GLOBAL ===== */}
+{executiveTopAccounts.length > 0 && (
+  <div
+    style={{
+      marginBottom: 12,
+      padding: 12,
+      borderRadius: 12,
+      background: "#0b1220",
+      border: "1px solid #1f2937",
+      display: "grid",
+      gap: 8,
+    }}
+  >
+    <div style={{ fontWeight: 800, color: "#f97316", fontSize: 13 }}>
+      PRIORIDAD EJECUTIVA GLOBAL
+    </div>
+
+    {executiveTopAccounts.map(({ account, executiveScore }, index) => (
+      <div
+        key={account.id}
+        onClick={() => setSelected(account)}
+        style={{
+          padding: 10,
+          borderRadius: 8,
+          background: "#020617",
+          border: "1px solid #1f2937",
+          cursor: "pointer",
+          display: "grid",
+          gap: 4,
+        }}
+      >
+        <div style={{ fontSize: 12, color: "#94a3b8" }}>
+          #{index + 1}
+        </div>
+
+        <div style={{ fontWeight: 700 }}>
+          {account.name}
+        </div>
+
+        <div style={{ fontSize: 12, color: "#f97316" }}>
+          Score ejecutivo: {executiveScore}
+        </div>
+
+        {actionMap[account.id] && (
+          <div style={{ fontSize: 12, color: "#cbd5e1" }}>
+            {actionMap[account.id].action}
+          </div>
+        )}
+      </div>
+    ))}
+  </div>
+)}
+        
         {commandCenter && (
           <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
             <CommandList
