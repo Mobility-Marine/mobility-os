@@ -1643,19 +1643,16 @@ function exportAccountsToCsv(onlyFiltered = false) {
         gap: 10,
       }}
     >
-      {/* Nombre */}
       <div style={{ fontSize: 22, fontWeight: 800 }}>
         {selected.name}
       </div>
 
-      {/* Datos básicos */}
       <div style={{ fontSize: 13, color: "#94a3b8" }}>
         {selected.industry || "Industria no definida"} •{" "}
         {selected.city || "-"}, {selected.country || "-"} •{" "}
         {selected.status}
       </div>
 
-      {/* Indicadores clave */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
         {priorityMap[selected.id] && (
           <span
@@ -1745,392 +1742,96 @@ function exportAccountsToCsv(onlyFiltered = false) {
       <button style={miniButton}>📄 Cotización</button>
     </div>
 
-    {/* 🔥 TODO LO DEMÁS SE QUEDA EXACTAMENTE IGUAL 🔥 */}
-  </>
-)}
-    
-{/* ===== BLOQUE A — CONTEXTO ESTRATÉGICO ===== */}
-<div
-  style={{
-    marginTop: 22,
-    fontWeight: 800,
-    fontSize: 14,
-    color: "#60a5fa",
-  }}
->
-  CONTEXTO ESTRATÉGICO
-</div>
-    
-            {/* ===== CRM 360 PANEL ===== */}
-            <div style={panelCard}>
-              <div style={panelCardTitle}>Resumen del cliente</div>
-
-              <div>Industria: {selected.industry || "-"}</div>
-              <div>
-                Ubicación: {selected.city || "-"}, {selected.country || "-"}
-              </div>
-              <div>Estado: {selected.status}</div>
-              {selected.notes && <div>Notas: {selected.notes}</div>}
-            </div>
-
-            {/* ===== CRM AI INSIGHTS ===== */}
-            {insights && (
-              <div style={panelCard}>
-                <div style={{ ...panelCardTitle, color: "#60a5fa" }}>
-                  CRM AI DIRECTOR
-                </div>
-                <div>
-                  Health score: <strong>{insights.healthScore}/100</strong>
-                </div>
-                <div>
-                  Prioridad: <strong>{insights.priority}</strong>
-                </div>
-                <div>
-                  Riesgo: <strong>{insights.churnRisk}</strong>
-                </div>
-                <div>Next best action: {insights.nextBestAction}</div>
-                <div style={{ color: "#cbd5e1" }}>
-                  {insights.executiveSummary}
-                </div>
-              </div>
-            )}
-
-{/* ===== PANEL COMERCIAL INTELIGENTE ===== */}
-{revenueMap[selected.id] && (
-  <div style={panelCard}>
-    <div style={{ ...panelCardTitle, color: "#22c55e" }}>
-      ESTADO COMERCIAL
-    </div>
-
+        {/* ===== CONTEXTO ESTRATÉGICO ===== */}
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(2, 1fr)",
-        gap: 12,
+        marginTop: 22,
+        fontWeight: 800,
+        fontSize: 14,
+        color: "#60a5fa",
       }}
     >
-      <RevenueCard
-        label="Pipeline"
-        value={revenueMap[selected.id].pipelineValue}
-        color="#60a5fa"
-      />
-
-      <RevenueCard
-        label="Cotizado"
-        value={revenueMap[selected.id].quotedValue}
-        color="#fbbf24"
-      />
-
-      <RevenueCard
-        label="Ganado"
-        value={revenueMap[selected.id].wonValue}
-        color="#34d399"
-      />
-
-      <RevenueCard
-        label="Potencial Total"
-        value={revenueMap[selected.id].totalPotential}
-        color="#22c55e"
-      />
+      CONTEXTO ESTRATÉGICO
     </div>
 
-    <div style={{ marginTop: 10 }}>
-      Tier estratégico:{" "}
-      <strong>{revenueMap[selected.id].tier}</strong>
-    </div>
-  </div>
-)}
+    <div style={panelCard}>
+      <div style={panelCardTitle}>Resumen del cliente</div>
 
-{/* ===== SALUD COMERCIAL ===== */}
-{selected && (
-  <CommercialHealthPanel
-    opportunities={opportunities}
-    quotes={quotes}
-    orders={orders}
-    activities={activities}
-    timeline={timeline}
-    contacts={contacts}
-  />
-)}
-
-{/* ===== RADAR DE RIESGO Y OPORTUNIDAD ===== */}
-{selected && (
-  <RiskOpportunityPanel
-    opportunities={opportunities}
-    quotes={quotes}
-    orders={orders}
-    activities={activities}
-    timeline={timeline}
-    contacts={contacts}
-    revenue={revenueMap[selected.id]}
-  />
-)}
-    
-            {/* ===== ACTION ENGINE ===== */}
-            {actionMap[selected.id] && (
-              <div style={panelCard}>
-                <div style={{ ...panelCardTitle, color: "#22c55e" }}>
-                  ACTION ENGINE IA
-                </div>
-
-                <div>
-                  Acción sugerida:{" "}
-                  <strong>{actionMap[selected.id].action}</strong>
-                </div>
-
-                <div>
-                  Urgencia:{" "}
-                  <strong>{actionMap[selected.id].urgency}</strong>
-                </div>
-
-                <div style={{ color: "#cbd5e1" }}>
-                  {actionMap[selected.id].reason}
-                </div>
-              </div>
-            )}
-
-            {/* ===== CUSTOMER SUCCESS ALERTS ===== */}
-            {alerts.length > 0 && (
-              <div style={{ ...panelCard, gap: 10 }}>
-                <div style={{ ...panelCardTitle, color: "#f59e0b" }}>
-                  CUSTOMER SUCCESS ALERTS
-                </div>
-
-                {alerts.map((a, i) => {
-                  const colorMap = {
-                    CRITICAL: "#ef4444",
-                    WARNING: "#f59e0b",
-                    INFO: "#60a5fa",
-                    SUCCESS: "#34d399",
-                  };
-
-                  return (
-                    <div
-                      key={i}
-                      style={{
-                        padding: 10,
-                        borderRadius: 8,
-                        border: `1px solid ${colorMap[a.level]}`,
-                        background: "#020617",
-                      }}
-                    >
-                      <div
-                        style={{
-                          fontWeight: 700,
-                          color: colorMap[a.level],
-                        }}
-                      >
-                        {a.title}
-                      </div>
-
-                      <div style={{ fontSize: 12, color: "#cbd5e1" }}>
-                        {a.message}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-
-{/* ===== BLOQUE B — RELACIÓN Y ACTIVIDAD ===== */}
-<div
-  style={{
-    marginTop: 28,
-    fontWeight: 800,
-    fontSize: 14,
-    color: "#38bdf8",
-  }}
->
-  RELACIÓN Y ACTIVIDAD
-</div>
-    
-            {/* ===== CONTACTOS ===== */}
-            <div style={{ marginTop: 24 }}>
-              <h3>Contactos</h3>
-
-              <button onClick={createContact} style={primaryButton}>
-                + Nuevo contacto
-              </button>
-
-              {contacts.length === 0 && (
-                <div style={{ color: "#94a3b8", marginTop: 10 }}>
-                  No hay contactos registrados.
-                </div>
-              )}
-
-              {contacts.map((c) => (
-                <div key={c.id} style={rowCard}>
-                  <strong>{c.name}</strong>
-                  {c.position && <div>{c.position}</div>}
-                  {c.email && <div>{c.email}</div>}
-                  {c.phone && <div>{c.phone}</div>}
-                </div>
-              ))}
-            </div>
-
-            {/* ===== ACTIVIDADES ===== */}
-            <div style={{ marginTop: 24 }}>
-              <h3>Actividades</h3>
-
-              <div style={{ display: "grid", gap: 8, marginBottom: 12 }}>
-                <input
-                  value={newActivityTitle}
-                  onChange={(e) => setNewActivityTitle(e.target.value)}
-                  placeholder="Descripción de actividad"
-                  style={inputStyle}
-                />
-
-                <select
-                  value={newActivityType}
-                  onChange={(e) => setNewActivityType(e.target.value)}
-                  style={inputStyle}
-                >
-                  <option value="call">Llamada</option>
-                  <option value="meeting">Reunión</option>
-                  <option value="email">Email</option>
-                  <option value="task">Tarea</option>
-                </select>
-
-                <input
-                  type="datetime-local"
-                  value={newActivityDate}
-                  onChange={(e) => setNewActivityDate(e.target.value)}
-                  style={inputStyle}
-                />
-
-                <button onClick={createActivity} style={primaryButton}>
-                  Agregar
-                </button>
-              </div>
-
-              {activities.length === 0 && (
-                <div style={{ color: "#94a3b8" }}>No hay actividades.</div>
-              )}
-
-              {activities.map((a) => (
-                <ActivityRow key={a.id} activity={a} />
-              ))}
-            </div>
-
-                        {/* ===== DOCUMENTOS ===== */}
-            <div style={{ marginTop: 16 }}>
-              <h3>Documentos</h3>
-
-             <input
-  id="docUpload"
-  type="file"
-  style={{ display: "none" }}
-  onChange={(e) => {
-    const f = e.target.files?.[0];
-    if (f) uploadDocument(f);
-  }}
-/>
-
-              {documents.length === 0 && (
-                <div style={{ color: "#94a3b8" }}>No hay documentos.</div>
-              )}
-
-              {documents.map((d) => (
-                <DocumentRow key={d.id} doc={d} />
-              ))}
-            </div>
-
-{/* ===== BLOQUE C — GESTIÓN COMERCIAL ===== */}
-<div
-  style={{
-    marginTop: 28,
-    fontWeight: 800,
-    fontSize: 14,
-    color: "#34d399",
-  }}
->
-  GESTIÓN COMERCIAL
-</div>
-    
-            {/* ===== OPORTUNIDADES ===== */}
-            <div style={{ marginTop: 20 }}>
-              <h3>Oportunidades</h3>
-              {opportunities.length === 0 && (
-                <div style={{ color: "#94a3b8" }}>
-                  No hay oportunidades vinculadas.
-                </div>
-              )}
-              {opportunities.map((o) => (
-                <div key={o.id} style={rowCard}>
-                  {o.name} — {o.stage}
-                  {o.estimated_value != null && (
-                    <div style={{ color: "#22c55e" }}>
-                      ${o.estimated_value.toLocaleString("es-MX")}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* ===== COTIZACIONES ===== */}
-            <div style={{ marginTop: 20 }}>
-              <h3>Cotizaciones</h3>
-              {quotes.length === 0 && (
-                <div style={{ color: "#94a3b8" }}>No hay cotizaciones.</div>
-              )}
-              {quotes.map((q) => (
-                <div key={q.id} style={rowCard}>
-                  {q.quote_number} — {q.status}
-                  {q.total_amount != null && (
-                    <div style={{ color: "#22c55e" }}>
-                      ${q.total_amount.toLocaleString("es-MX")}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-            {/* ===== PEDIDOS ===== */}
-            <div style={{ marginTop: 20 }}>
-              <h3>Pedidos</h3>
-              {orders.length === 0 && (
-                <div style={{ color: "#94a3b8" }}>No hay pedidos.</div>
-              )}
-              {orders.map((o) => (
-                <div key={o.id} style={rowCard}>
-                  {o.order_number} — {o.status}
-                  {o.total_amount != null && (
-                    <div style={{ color: "#22c55e" }}>
-                      ${o.total_amount.toLocaleString("es-MX")}
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-
-{/* ===== BLOQUE D — HISTORIAL DEL CLIENTE ===== */}
-<div
-  style={{
-    marginTop: 28,
-    fontWeight: 800,
-    fontSize: 14,
-    color: "#fbbf24",
-  }}
->
-  HISTORIAL DEL CLIENTE
-</div>
-    
-            {/* ===== TIMELINE ===== */}
-            <div style={{ marginTop: 28 }}>
-              <h3>Historial del cliente</h3>
-
-              {timeline.length === 0 && (
-                <div style={{ color: "#94a3b8" }}>
-                  No hay historial disponible.
-                </div>
-              )}
-
-              {timeline.map((t) => (
-                <TimelineRow key={`${t.type}-${t.id}`} item={t} />
-              ))}
-            </div>
-        )}
+      <div>Industria: {selected.industry || "-"}</div>
+      <div>
+        Ubicación: {selected.city || "-"}, {selected.country || "-"}
       </div>
+      <div>Estado: {selected.status}</div>
+      {selected.notes && <div>Notas: {selected.notes}</div>}
+    </div>
+
+    {insights && (
+      <div style={panelCard}>
+        <div style={{ ...panelCardTitle, color: "#60a5fa" }}>
+          CRM AI DIRECTOR
+        </div>
+        <div>
+          Health score: <strong>{insights.healthScore}/100</strong>
+        </div>
+        <div>
+          Prioridad: <strong>{insights.priority}</strong>
+        </div>
+        <div>
+          Riesgo: <strong>{insights.churnRisk}</strong>
+        </div>
+        <div>Next best action: {insights.nextBestAction}</div>
+        <div style={{ color: "#cbd5e1" }}>
+          {insights.executiveSummary}
+        </div>
+      </div>
+    )}
+
+    <CommercialHealthPanel
+      opportunities={opportunities}
+      quotes={quotes}
+      orders={orders}
+      activities={activities}
+      timeline={timeline}
+      contacts={contacts}
+    />
+
+    <RiskOpportunityPanel
+      opportunities={opportunities}
+      quotes={quotes}
+      orders={orders}
+      activities={activities}
+      timeline={timeline}
+      contacts={contacts}
+      revenue={revenueMap[selected.id]}
+    />
+
+        {/* ===== HISTORIAL DEL CLIENTE ===== */}
+    <div
+      style={{
+        marginTop: 28,
+        fontWeight: 800,
+        fontSize: 14,
+        color: "#fbbf24",
+      }}
+    >
+      HISTORIAL DEL CLIENTE
+    </div>
+
+    <div style={{ marginTop: 28 }}>
+      <h3>Historial del cliente</h3>
+
+      {timeline.length === 0 && (
+        <div style={{ color: "#94a3b8" }}>
+          No hay historial disponible.
+        </div>
+      )}
+
+      {timeline.map((t) => (
+        <TimelineRow key={`${t.type}-${t.id}`} item={t} />
+      ))}
+    </div>
+  </>
+)}
 
       {/* ========================================================= */}
       {/* ===== PANEL DERECHO — COPILOT IA ===== */}
@@ -2544,19 +2245,6 @@ const miniButton: React.CSSProperties = {
   color: "#fff",
   cursor: "pointer",
 };
-
-// ===== ESTILOS EXISTENTES =====
-
-const miniButton: React.CSSProperties = {
-  padding: "8px 10px",
-  borderRadius: 8,
-  border: "1px solid #1f2937",
-  background: "#0b1220",
-  color: "#fff",
-  cursor: "pointer",
-};
-
-
 
 // =========================================================
 // ===== 🔥 CRM UNICORNIO — CHIPS TÁCTICOS DE CUENTAS =====
