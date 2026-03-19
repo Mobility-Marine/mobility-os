@@ -1706,37 +1706,6 @@ function exportAccountsToCsv(onlyFiltered = false) {
 
         {selected && (
 
-{/* ===== QUICK ACTION BAR ===== */}
-<div
-  style={{
-    display: "flex",
-    gap: 10,
-    flexWrap: "wrap",
-    marginBottom: 16,
-  }}
->
-  <button
-    style={primaryButton}
-    onClick={() => createActivity()}
-  >
-    + Actividad
-  </button>
-
-  <button style={miniButton}>
-    + Oportunidad
-  </button>
-
-  <button
-    style={miniButton}
-    onClick={() =>
-      document.querySelector<HTMLInputElement>("#docUpload")?.click()
-    }
-  >
-    📄 Subir documento
-  </button>
-
-</div>
-    
     {/* ===== HEADER EJECUTIVO DE CUENTA ===== */}
     <div
       style={{
