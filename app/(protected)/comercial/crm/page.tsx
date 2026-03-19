@@ -1542,22 +1542,70 @@ function exportAccountsToCsv(onlyFiltered = false) {
 
               return (
                 <div
-                  key={a.id}
-                  onClick={() => setSelected(a)}
-                  style={{
-                    padding: 14,
-                    borderRadius: 12,
-                    background:
-                      selected?.id === a.id ? "#111827" : "#0b1220",
-                    border:
-                      selected?.id === a.id
-                        ? "1px solid #3b82f6"
-                        : "1px solid #1f2937",
-                    cursor: "pointer",
-                    display: "grid",
-                    gap: 6,
-                  }}
-                >
+  key={a.id}
+  onClick={() => setSelected(a)}
+  style={{
+    padding: 14,
+    borderRadius: 12,
+    background: selected?.id === a.id ? "#111827" : "#0b1220",
+    border:
+      selected?.id === a.id
+        ? "1px solid #3b82f6"
+        : "1px solid #1f2937",
+    cursor: "pointer",
+    display: "grid",
+    gap: 8,
+    transition: "0.15s",
+  }}
+>
+  {/* ===== NOMBRE ===== */}
+  <div style={{ fontWeight: 800 }}>{a.name}</div>
+
+  {/* ===== ACCIÓN PRINCIPAL ===== */}
+  {act && (
+    <div style={{ fontSize: 12, color: "#cbd5e1" }}>
+      👉 {act.action}
+    </div>
+  )}
+
+  {/* ===== CHIPS TÁCTICOS ===== */}
+  <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+    
+    {r?.temperature === "CALIENTE" && (
+      <span style={chipHot}>🔥 CALIENTE</span>
+    )}
+
+    {r?.urgency === "CRITICA" && (
+      <span style={chipCritical}>⚠️ CRÍTICA</span>
+    )}
+
+    {rev?.tier === "HIGH" && (
+      <span style={chipMoney}>💰 HIGH</span>
+    )}
+
+    {rev?.tier === "STRATEGIC" && (
+      <span style={chipMoney}>💎 STRATEGIC</span>
+    )}
+
+    {r?.hasQuote && !r?.hasOrder && (
+      <span style={chipQuote}>📄 COTIZACIÓN</span>
+    )}
+
+    {!r?.hasContacts && (
+      <span style={chipRisk}>👤 SIN CONTACTO</span>
+    )}
+  </div>
+
+  {/* ===== ICONOS RÁPIDOS ===== */}
+  {r && (
+    <div style={{ fontSize: 13 }}>
+      {r.hasOpportunity && "🎯 "}
+      {r.hasQuote && "📄 "}
+      {r.hasOrder && "📦 "}
+      {!r.hasContacts && "⚠️ "}
+    </div>
+  )}
+</div>
                   <strong>{a.name}</strong>
 
                   {act && (
@@ -2611,6 +2659,69 @@ const miniButton: React.CSSProperties = {
   background: "#0b1220",
   color: "#fff",
   cursor: "pointer",
+};
+
+// ===== ESTILOS EXISTENTES =====
+
+const miniButton: React.CSSProperties = {
+  padding: "8px 10px",
+  borderRadius: 8,
+  border: "1px solid #1f2937",
+  background: "#0b1220",
+  color: "#fff",
+  cursor: "pointer",
+};
+
+
+
+// =========================================================
+// ===== 🔥 CRM UNICORNIO — CHIPS TÁCTICOS DE CUENTAS =====
+// ===== (Panel izquierdo — radar comercial) =====
+// =========================================================
+
+const chipHot: React.CSSProperties = {
+  background: "#ef4444",
+  padding: "2px 6px",
+  borderRadius: 6,
+  fontSize: 10,
+  fontWeight: 800,
+  color: "#fff",
+};
+
+const chipCritical: React.CSSProperties = {
+  background: "#dc2626",
+  padding: "2px 6px",
+  borderRadius: 6,
+  fontSize: 10,
+  fontWeight: 800,
+  color: "#fff",
+};
+
+const chipMoney: React.CSSProperties = {
+  background: "#16a34a",
+  padding: "2px 6px",
+  borderRadius: 6,
+  fontSize: 10,
+  fontWeight: 800,
+  color: "#fff",
+};
+
+const chipQuote: React.CSSProperties = {
+  background: "#f59e0b",
+  padding: "2px 6px",
+  borderRadius: 6,
+  fontSize: 10,
+  fontWeight: 800,
+  color: "#111",
+};
+
+const chipRisk: React.CSSProperties = {
+  background: "#64748b",
+  padding: "2px 6px",
+  borderRadius: 6,
+  fontSize: 10,
+  fontWeight: 800,
+  color: "#fff",
 };
 
 const tableHead: React.CSSProperties = {
