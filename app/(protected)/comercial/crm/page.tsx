@@ -1356,6 +1356,52 @@ const executiveTopAccounts = useMemo(() => {
       )}
     </div>
 
+{/* ===== QUICK ACTIONS BAR ===== */}
+<div
+  style={{
+    marginTop: 14,
+    padding: 12,
+    borderRadius: 12,
+    background: "#0b1220",
+    border: "1px solid #1f2937",
+    display: "flex",
+    gap: 8,
+    flexWrap: "wrap",
+  }}
+>
+  <button style={primaryButton} onClick={createActivity}>
+    ➕ Actividad
+  </button>
+
+  <button style={primaryButton} onClick={createContact}>
+    👤 Contacto
+  </button>
+
+  <button
+    style={primaryButton}
+    onClick={() => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.onchange = (e: any) => {
+        const file = e.target.files?.[0];
+        if (file) uploadDocument(file);
+      };
+      input.click();
+    }}
+  >
+    📎 Documento
+  </button>
+
+  {/* Futuro */}
+  <button style={miniButton}>
+    🎯 Oportunidad
+  </button>
+
+  <button style={miniButton}>
+    📄 Cotización
+  </button>
+</div>
+    
 {/* ===== BLOQUE A — CONTEXTO ESTRATÉGICO ===== */}
 <div
   style={{
