@@ -1270,10 +1270,52 @@ const executiveTopAccounts = useMemo(() => {
         }}
       >
         {!selected && (
-          <div style={{ color: "#94a3b8" }}>
-            Selecciona una cuenta para ver detalles.
-          </div>
-        )}
+  <div
+    style={{
+      height: "100%",
+      display: "grid",
+      placeItems: "center",
+      textAlign: "center",
+      gap: 14,
+      color: "#94a3b8",
+    }}
+  >
+    <div style={{ fontSize: 22, fontWeight: 700 }}>
+      CRM listo para operar 🚀
+    </div>
+
+    <div style={{ maxWidth: 420 }}>
+      No hay cuentas seleccionadas.
+      <br />
+      Crea o importa clientes para comenzar.
+    </div>
+
+    <div style={{ display: "flex", gap: 10 }}>
+      <button
+        style={primaryButton}
+        onClick={async () => {
+          const name = prompt("Nombre de la empresa");
+          if (!name || !companyId) return;
+
+          await supabase.from("crm_accounts").insert({
+            company_id: companyId,
+            name,
+            status: "active",
+          });
+
+          alert("Cuenta creada");
+          location.reload();
+        }}
+      >
+        ➕ Nueva cuenta
+      </button>
+
+      <button style={miniButton}>
+        📥 Importar desde Excel
+      </button>
+    </div>
+  </div>
+)}
 
         {selected && (
   <>
