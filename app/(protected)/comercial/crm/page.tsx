@@ -1641,46 +1641,20 @@ function exportAccountsToCsv(onlyFiltered = false) {
       display: "grid",
       placeItems: "center",
       textAlign: "center",
-      gap: 14,
       color: "#94a3b8",
     }}
   >
-    <div style={{ fontSize: 22, fontWeight: 700 }}>
-      CRM listo para operar 🚀
-    </div>
+    <div>
+      <div style={{ fontSize: 22, fontWeight: 700 }}>
+        CRM listo para operar 🚀
+      </div>
 
-    <div style={{ maxWidth: 420 }}>
-      No hay cuentas seleccionadas.
-      <br />
-      Crea o importa clientes para comenzar.
-    </div>
-
-    <div style={{ display: "flex", gap: 10 }}>
-      <button
-        style={primaryButton}
-        onClick={async () => {
-          const name = prompt("Nombre de la empresa");
-          if (!name || !companyId) return;
-
-          await supabase.from("crm_accounts").insert({
-            company_id: companyId,
-            name,
-            status: "active",
-          });
-
-          alert("Cuenta creada");
-          location.reload();
-        }}
-      >
-        ➕ Nueva cuenta
-      </button>
-
-      <button style={miniButton}>
-        📥 Importar desde Excel
-      </button>
+      <div style={{ marginTop: 10 }}>
+        Selecciona o crea una cuenta desde el panel izquierdo.
+      </div>
     </div>
   </div>
-)}
+)
 
         {selected && (
   <>
