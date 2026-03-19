@@ -1371,6 +1371,19 @@ export default function CRMPage() {
     contacts={contacts}
   />
 )}
+
+{/* ===== RADAR DE RIESGO Y OPORTUNIDAD ===== */}
+{selected && (
+  <RiskOpportunityPanel
+    opportunities={opportunities}
+    quotes={quotes}
+    orders={orders}
+    activities={activities}
+    timeline={timeline}
+    contacts={contacts}
+    revenue={revenueMap[selected.id]}
+  />
+)}
     
             {/* ===== ACTION ENGINE ===== */}
             {actionMap[selected.id] && (
@@ -2017,3 +2030,97 @@ function CommercialHealthPanel({
   );
 }
 // ===== FIN COMPONENT COMMERCIAL HEALTH =====
+
+// ===== INICIO COMPONENT RISK OPPORTUNITY =====
+function RiskOpportunityPanel({
+  opportunities,
+  quotes,
+  orders,
+  activities,
+  timeline,
+  contacts,
+  revenue,
+}: {
+  opportunities: CrmOpportunity[];
+  quotes: CrmQuote[];
+  orders: CrmOrder[];
+  activities: CrmActivity[];
+  timeline: TimelineItem[];
+  contacts: CrmContact[];
+  revenue?: AccountRevenue;
+}) {
+  const hasSales = orders.length > 0;
+  const hasPipeline = opportunities.length > 0 || quotes.length > 0;
+  const inactive = activities.length === 0;
+  const noContacts = contacts.length === 0;
+  const lowHistory = timeline.length < 2;
+
+  const highValue =
+    revenue?.tier === "STRATEGIC" || revenue?.tier === "HIGH";
+
+  let risk: string | null = null;
+  let opportunity: string | null = null;
+  let sleeper: string | null = null;
+
+  // 🔴 Riesgo de churn
+  if (!hasSales && inactive && noContacts) {
+    risk = "Cuenta en alto riesgo de pérdida";
+  } else if (inactive && lowHistory) {
+    risk = "Cuenta sin actividad reciente";
+  }
+
+  // 🟢 Oportunidad
+  if (hasSales && hasPipeline) {
+    opportunity = "Potencial de expansión o upsell";
+  } else if (!hasSales && hasPipeline) {
+    opportunity = "Cercana a conversión";
+  }
+
+  // 🟡 Dormida valiosa
+  if (highValue && !hasPipeline && inactive) {
+    sleeper = "Cuenta valiosa sin seguimiento";
+  }
+
+  return (
+    <div
+      style={{
+        marginTop: 16,
+        padding: 14,
+        borderRadius: 12,
+        background: "#020617",
+        border: "1px solid #1f2937",
+        display: "grid",
+        gap: 10,
+      }}
+    >
+      <div style={{ fontWeight: 800, color: "#a78bfa" }}>
+        RADAR ESTRATÉGICO IA
+      </div>
+
+      {risk && (
+        <div style={{ color: "#ef4444" }}>
+          🔴 {risk}
+        </div>
+      )}
+
+      {opportunity && (
+        <div style={{ color: "#22c55e" }}>
+          🟢 {opportunity}
+        </div>
+      )}
+
+      {sleeper && (
+        <div style={{ color: "#f59e0b" }}>
+          🟡 {sleeper}
+        </div>
+      )}
+
+      {!risk && !opportunity && !sleeper && (
+        <div style={{ color: "#94a3b8" }}>
+          Sin alertas estratégicas.
+        </div>
+      )}
+    </div>
+  );
+}
+// ===== FIN COMPONENT RISK OPPORTUNITY =====
