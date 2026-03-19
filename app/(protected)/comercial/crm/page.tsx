@@ -1314,6 +1314,52 @@ export default function CRMPage() {
               </div>
             )}
 
+{/* ===== PANEL COMERCIAL INTELIGENTE ===== */}
+{revenueMap[selected.id] && (
+  <div style={panelCard}>
+    <div style={{ ...panelCardTitle, color: "#22c55e" }}>
+      ESTADO COMERCIAL
+    </div>
+
+    <div
+      style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(2, 1fr)",
+        gap: 12,
+      }}
+    >
+      <RevenueCard
+        label="Pipeline"
+        value={revenueMap[selected.id].pipelineValue}
+        color="#60a5fa"
+      />
+
+      <RevenueCard
+        label="Cotizado"
+        value={revenueMap[selected.id].quotedValue}
+        color="#fbbf24"
+      />
+
+      <RevenueCard
+        label="Ganado"
+        value={revenueMap[selected.id].wonValue}
+        color="#34d399"
+      />
+
+      <RevenueCard
+        label="Potencial Total"
+        value={revenueMap[selected.id].totalPotential}
+        color="#22c55e"
+      />
+    </div>
+
+    <div style={{ marginTop: 10 }}>
+      Tier estratégico:{" "}
+      <strong>{revenueMap[selected.id].tier}</strong>
+    </div>
+  </div>
+)}
+    
             {/* ===== ACTION ENGINE ===== */}
             {actionMap[selected.id] && (
               <div style={panelCard}>
@@ -1828,3 +1874,42 @@ function TimelineRow({ item }: { item: TimelineItem }) {
   );
 }
 // ===== FIN COMPONENT TIMELINE ROW =====
+
+// ===== INICIO COMPONENT REVENUE CARD =====
+function RevenueCard({
+  label,
+  value,
+  color,
+}: {
+  label: string;
+  value: number;
+  color: string;
+}) {
+  return (
+    <div
+      style={{
+        padding: 12,
+        borderRadius: 10,
+        background: "#020617",
+        border: `1px solid ${color}`,
+        display: "grid",
+        gap: 4,
+      }}
+    >
+      <div style={{ fontSize: 12, color: "#94a3b8" }}>
+        {label}
+      </div>
+
+      <div
+        style={{
+          fontWeight: 800,
+          fontSize: 18,
+          color,
+        }}
+      >
+        ${value.toLocaleString("es-MX")}
+      </div>
+    </div>
+  );
+}
+// ===== FIN COMPONENT REVENUE CARD =====
