@@ -2331,7 +2331,6 @@ function exportAccountsToCsv(onlyFiltered = false) {
         )}
       </div>
     </div>
-  );
 
 {/* ========================================================= */}
 {/* ===== MODAL CREAR CUENTA — UNICORN WIZARD ===== */}
