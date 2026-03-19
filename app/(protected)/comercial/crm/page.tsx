@@ -892,28 +892,32 @@ function buildAccountPriority(account: CrmAccount) {
 
   let score = 0;
 
-  // 🔥 Temperatura comercial
-  if (radar?.temperature === "HOT") score += 30;
-  else if (radar?.temperature === "WARM") score += 15;
+ // 🔥 Temperatura comercial
+if (radar?.temperature === "CALIENTE") score += 30;
+else if (radar?.temperature === "TIBIA") score += 15;
+// "FRIA" no suma
 
-  // ⚠️ Urgencia
-  if (radar?.urgency === "HIGH") score += 25;
-  else if (radar?.urgency === "MEDIUM") score += 10;
+// ⚠️ Urgencia
+if (radar?.urgency === "CRITICA") score += 30;
+else if (radar?.urgency === "ALTA") score += 25;
+else if (radar?.urgency === "MEDIA") score += 10;
+// "BAJA" no suma
 
-  // 💰 Valor económico
-  if (rev?.tier === "STRATEGIC") score += 35;
-  else if (rev?.tier === "HIGH") score += 25;
-  else if (rev?.tier === "MEDIUM") score += 10;
+// 💰 Valor económico
+if (rev?.tier === "STRATEGIC") score += 35;
+else if (rev?.tier === "HIGH") score += 25;
+else if (rev?.tier === "MEDIUM") score += 10;
+// "LOW" no suma
 
-  // 🧠 Actividad
-  if (activities.length === 0) score += 10;
+// 🧠 Actividad (cuenta dormida = más prioridad)
+if (activities.length === 0) score += 10;
 
-  // 📊 Clasificación
-  let label: AccountPriority["label"] = "BAJA";
+// 📊 Clasificación final
+let label: AccountPriority["label"] = "BAJA";
 
-  if (score >= 70) label = "CRITICA";
-  else if (score >= 50) label = "ALTA";
-  else if (score >= 30) label = "MEDIA";
+if (score >= 70) label = "CRITICA";
+else if (score >= 50) label = "ALTA";
+else if (score >= 30) label = "MEDIA";
 
   setPriorityMap((prev) => ({
     ...prev,
@@ -934,66 +938,106 @@ function buildAccountPriority(account: CrmAccount) {
     {/* ===== RADAR DE CUENTAS ===== */}
 <div style={{ display: "grid", gap: 10 }}>
   {[...accounts]
-  .sort((a, b) => {
-    const pa = priorityMap[a.id]?.score || 0;
-    const pb = priorityMap[b.id]?.score || 0;
-    return pb - pa;
-  })
-  .map((a) => (
-    const r = radarMap[a.id];
-    const rev = revenueMap[a.id];
-    const p = priorityMap[a.id];
+    .sort((a, b) => {
+      const pa = priorityMap[a.id]?.score || 0;
+      const pb = priorityMap[b.id]?.score || 0;
+      return pb - pa;
+    })
+    .map((a) => {
+      const r = radarMap[a.id];
+      const rev = revenueMap[a.id];
+      const p = priorityMap[a.id];
 
-    const tempColor =
-      r?.temperature === "CALIENTE"
-        ? "#ef4444"
-        : r?.temperature === "TIBIA"
-        ? "#f59e0b"
-        : "#64748b";
+      const tempColor =
+        r?.temperature === "CALIENTE"
+          ? "#ef4444"
+          : r?.temperature === "TIBIA"
+          ? "#f59e0b"
+          : "#64748b";
 
-    const urgencyColor =
-      r?.urgency === "CRITICA"
-        ? "#dc2626"
-        : r?.urgency === "ALTA"
-        ? "#f97316"
-        : r?.urgency === "MEDIA"
-        ? "#eab308"
-        : "#475569";
+      const urgencyColor =
+        r?.urgency === "CRITICA"
+          ? "#dc2626"
+          : r?.urgency === "ALTA"
+          ? "#f97316"
+          : r?.urgency === "MEDIA"
+          ? "#eab308"
+          : "#475569";
 
-    return (
-      <div
-        key={a.id}
-        onClick={() => setSelected(a)}
-        style={{
-          padding: 14,
-          borderRadius: 12,
-          background: "#0b1220",
-          border: "1px solid #1f2937",
-          cursor: "pointer",
-          display: "grid",
-          gap: 6,
-        }}
-      >
-        <strong>{a.name}</strong>
+      return (
+        <div
+          key={a.id}
+          onClick={() => setSelected(a)}
+          style={{
+            padding: 14,
+            borderRadius: 12,
+            background: "#0b1220",
+            border: "1px solid #1f2937",
+            cursor: "pointer",
+            display: "grid",
+            gap: 6,
+          }}
+        >
+          <strong>{a.name}</strong>
 
-    {rev.tier}
-  </span>
-)}
-              
-              {r.urgency}
+          {/* PRIORIDAD */}
+          {p && (
+            <span
+              style={{
+                background:
+                  p.label === "CRITICA"
+                    ? "#dc2626"
+                    : p.label === "ALTA"
+                    ? "#f97316"
+                    : p.label === "MEDIA"
+                    ? "#eab308"
+                    : "#64748b",
+                padding: "2px 6px",
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 800,
+                color: "#fff",
+                width: "fit-content",
+              }}
+            >
+              {p.label}
             </span>
+          )}
 
-            {r.hasOpportunity && <span>💰</span>}
-            {r.hasQuote && <span>📄</span>}
-            {r.hasOrder && <span>📦</span>}
-            {!r.hasContacts && <span>⚠️</span>}
-          </div>
-        )}
-      </div>
-    );
-  })}
+          {/* TEMPERATURA */}
+          {r && (
+            <span style={{ color: tempColor }}>
+              🌡 {r.temperature}
+            </span>
+          )}
+
+          {/* URGENCIA */}
+          {r && (
+            <span style={{ color: urgencyColor }}>
+              ⚠️ {r.urgency}
+            </span>
+          )}
+
+          {/* VALOR */}
+          {rev && (
+            <span style={{ color: "#22c55e" }}>
+              💰 {rev.tier}
+            </span>
+          )}
+
+          {/* ICONOS */}
+          {r && (
+            <div>
+              {r.hasOpportunity && <span>💰 </span>}
+              {r.hasQuote && <span>📄 </span>}
+              {r.hasOrder && <span>📦 </span>}
+              {!r.hasContacts && <span>⚠️ </span>}
+            </div>
+          )}
+        </div>
+      );
+    })}
 </div>
-
 {/* ===== DETALLE COMPLETO CON SCROLL ===== */}
 {selected && (
   <div
