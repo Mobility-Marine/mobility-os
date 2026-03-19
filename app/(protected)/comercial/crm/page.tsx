@@ -588,305 +588,169 @@ async function createActivity() {
       <h1>CRM — Empresas / Cuentas</h1>
 
       {/* ===== LISTA DE CUENTAS ===== */}
-      <div style={{ display: "grid", gap: 10 }}>
-        {accounts.map((a) => (
-          <div
-            key={a.id}
-            onClick={() => setSelected(a)}
-            style={{
-              padding: 14,
-              borderRadius: 12,
-              background: "#0b1220",
-              border: "1px solid #1f2937",
-              cursor: "pointer",
-            }}
-          >
-            <strong>{a.name}</strong>
-            <div style={{ fontSize: 12, color: "#94a3b8" }}>
-              {a.industry || "Sin industria"} — {a.country || "-"}
-            </div>
-          </div>
-        ))}
+<div style={{ display: "grid", gap: 10 }}>
+  {accounts.map((a) => (
+    <div
+      key={a.id}
+      onClick={() => setSelected(a)}
+      style={{
+        padding: 14,
+        borderRadius: 12,
+        background: "#0b1220",
+        border: "1px solid #1f2937",
+        cursor: "pointer",
+      }}
+    >
+      <strong>{a.name}</strong>
+      <div style={{ fontSize: 12, color: "#94a3b8" }}>
+        {a.industry || "Sin industria"} — {a.country || "-"}
       </div>
+    </div>
+  ))}
+</div>
 
-     {/* ===== INICIO CONTENEDOR DETALLE CON SCROLL ===== */}
+{/* ===== DETALLE COMPLETO CON SCROLL ===== */}
 {selected && (
   <div
     style={{
       marginTop: 20,
-      maxHeight: "70vh",   // 🔹 Altura máxima visible
-      overflowY: "auto",   // 🔹 Scroll interno independiente
-      paddingRight: 8,     // 🔹 Evita que scrollbar tape contenido
+      maxHeight: "70vh",
+      overflowY: "auto",
+      paddingRight: 8,
     }}
   >
     <h2>{selected.name}</h2>
-          
-          {/* ===== INICIO CRM 360 PANEL ===== */}
-<div
-  style={{
-    marginTop: 12,
-    padding: 14,
-    borderRadius: 12,
-    background: "#0f172a",
-    border: "1px solid #1f2937",
-    display: "grid",
-    gap: 8,
-  }}
->
-  <div style={{ fontWeight: 700 }}>Resumen del cliente</div>
 
-  <div style={{ fontSize: 13 }}>
-    Industria: {selected.industry || "-"}
-  </div>
-
-  <div style={{ fontSize: 13 }}>
-    Ubicación: {selected.city || "-"}, {selected.country || "-"}
-  </div>
-
-  <div style={{ fontSize: 13 }}>
-    Estado: {selected.status}
-  </div>
-
-  {selected.notes && (
-    <div style={{ fontSize: 13 }}>
-      Notas: {selected.notes}
-    </div>
-  )}
-</div>
-{/* ===== FIN CRM 360 PANEL ===== */}
-
-{/* ===== INICIO CRM AI INSIGHTS PANEL ===== */}
-{insights && (
-  <div
-    style={{
-      marginTop: 16,
-      padding: 14,
-      borderRadius: 12,
-      background: "#111827",
-      border: "1px solid #1f2937",
-      display: "grid",
-      gap: 10,
-    }}
-  >
-    <div style={{ fontWeight: 800, color: "#60a5fa" }}>
-      CRM AI DIRECTOR
-    </div>
-
-    <div style={{ fontSize: 13 }}>
-      Health score: <strong>{insights.healthScore}/100</strong>
-    </div>
-
-    <div style={{ fontSize: 13 }}>
-      Prioridad: <strong>{insights.priority}</strong>
-    </div>
-
-    <div style={{ fontSize: 13 }}>
-      Riesgo: <strong>{insights.churnRisk}</strong>
-    </div>
-
-    <div style={{ fontSize: 13 }}>
-      Siguiente mejor acción: {insights.nextBestAction}
-    </div>
-
-    <div style={{ fontSize: 13, color: "#cbd5e1" }}>
-      {insights.executiveSummary}
-    </div>
-  </div>
-)}
-{/* ===== FIN CRM AI INSIGHTS PANEL ===== */}
-          
-{/* ===== INICIO CONTACTOS ===== */}
-<div style={{ marginTop: 24 }}>
-  <h3>Contactos</h3>
-
-  <button
-    onClick={createContact}
-    style={{
-      padding: "6px 12px",
-      borderRadius: 6,
-      border: "none",
-      background: "#2563eb",
-      color: "#fff",
-      cursor: "pointer",
-      fontWeight: 600,
-      marginBottom: 10,
-    }}
-  >
-    + Nuevo contacto
-  </button>
-
-  {contacts.length === 0 && (
-    <p>No hay contactos registrados.</p>
-  )}
-
-  {contacts.map((c) => (
+    {/* ===== CRM 360 PANEL ===== */}
     <div
-      key={c.id}
       style={{
-        padding: 10,
-        borderRadius: 8,
+        marginTop: 12,
+        padding: 14,
+        borderRadius: 12,
+        background: "#0f172a",
         border: "1px solid #1f2937",
-        marginBottom: 8,
-        background: "#0b1220",
+        display: "grid",
+        gap: 8,
       }}
     >
-      <strong>{c.name}</strong>
+      <div style={{ fontWeight: 700 }}>Resumen del cliente</div>
 
-      {c.position && (
-        <div style={{ fontSize: 12 }}>{c.position}</div>
-      )}
+      <div style={{ fontSize: 13 }}>
+        Industria: {selected.industry || "-"}
+      </div>
 
-      {c.email && (
-        <div style={{ fontSize: 12 }}>{c.email}</div>
-      )}
+      <div style={{ fontSize: 13 }}>
+        Ubicación: {selected.city || "-"}, {selected.country || "-"}
+      </div>
 
-      {c.phone && (
-        <div style={{ fontSize: 12 }}>{c.phone}</div>
-      )}
+      <div style={{ fontSize: 13 }}>
+        Estado: {selected.status}
+      </div>
 
-      {c.role && (
-        <div style={{ fontSize: 11, color: "#94a3b8" }}>
-          Rol: {c.role}
+      {selected.notes && (
+        <div style={{ fontSize: 13 }}>
+          Notas: {selected.notes}
         </div>
       )}
     </div>
-  ))}
-</div>
-{/* ===== FIN CONTACTOS ===== */}
-    
-          {/* ===== FIN DETALLE ===== */}
 
-          {/* ===== UPLOAD ===== */}
-          <input
-            type="file"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) uploadDocument(f);
-            }}
-          />
+    {/* ===== CRM AI INSIGHTS ===== */}
+    {insights && (
+      <div
+        style={{
+          marginTop: 16,
+          padding: 14,
+          borderRadius: 12,
+          background: "#111827",
+          border: "1px solid #1f2937",
+          display: "grid",
+          gap: 10,
+        }}
+      >
+        <div style={{ fontWeight: 800, color: "#60a5fa" }}>
+          CRM AI DIRECTOR
+        </div>
 
-{/* ===== ACTIVIDADES CRM ===== */}
-<div style={{ marginTop: 24 }}>
+        <div>Health score: <strong>{insights.healthScore}/100</strong></div>
+        <div>Prioridad: <strong>{insights.priority}</strong></div>
+        <div>Riesgo: <strong>{insights.churnRisk}</strong></div>
+        <div>{insights.nextBestAction}</div>
+        <div style={{ color: "#cbd5e1" }}>
+          {insights.executiveSummary}
+        </div>
+      </div>
+    )}
 
-  <h3>Actividades</h3>
+    {/* ===== CONTACTOS ===== */}
+    <div style={{ marginTop: 24 }}>
+      <h3>Contactos</h3>
 
-  <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+      <button onClick={createContact}>
+        + Nuevo contacto
+      </button>
 
+      {contacts.length === 0 && <p>No hay contactos.</p>}
+
+      {contacts.map((c) => (
+        <div key={c.id} style={{ padding: 10 }}>
+          <strong>{c.name}</strong>
+          {c.email && <div>{c.email}</div>}
+          {c.phone && <div>{c.phone}</div>}
+        </div>
+      ))}
+    </div>
+
+    {/* ===== UPLOAD DOCUMENTO ===== */}
     <input
-      placeholder="Descripción de la actividad"
-      value={newActivityTitle}
-      onChange={(e) => setNewActivityTitle(e.target.value)}
-      style={{ padding: 8 }}
+      type="file"
+      onChange={(e) => {
+        const f = e.target.files?.[0];
+        if (f) uploadDocument(f);
+      }}
     />
 
-    <select
-      value={newActivityType}
-      onChange={(e) => setNewActivityType(e.target.value)}
-    >
-      <option value="call">Llamada</option>
-      <option value="meeting">Reunión</option>
-      <option value="email">Email</option>
-      <option value="task">Tarea</option>
-    </select>
+    {/* ===== ACTIVIDADES ===== */}
+    <div style={{ marginTop: 24 }}>
+      <h3>Actividades</h3>
 
-    <input
-      type="datetime-local"
-      value={newActivityDate}
-      onChange={(e) => setNewActivityDate(e.target.value)}
-    />
+      <button onClick={createActivity}>Agregar</button>
 
-    <button onClick={createActivity}>
-      Agregar
-    </button>
+      {activities.map((a) => (
+        <ActivityRow key={a.id} activity={a} />
+      ))}
+    </div>
+
+    {/* ===== DOCUMENTOS ===== */}
+    <div style={{ marginTop: 16 }}>
+      <h3>Documentos</h3>
+
+      {documents.map((d) => (
+        <DocumentRow key={d.id} doc={d} />
+      ))}
+    </div>
+
+    {/* ===== OPORTUNIDADES ===== */}
+    <div style={{ marginTop: 20 }}>
+      <h3>Oportunidades</h3>
+
+      {opportunities.map((o) => (
+        <div key={o.id}>
+          {o.name} — {o.stage}
+        </div>
+      ))}
+    </div>
+
+    {/* ===== TIMELINE ===== */}
+    <div style={{ marginTop: 28 }}>
+      <h3>Historial</h3>
+
+      {timeline.map((t) => (
+        <TimelineRow key={`${t.type}-${t.id}`} item={t} />
+      ))}
+    </div>
 
   </div>
-
-  {activities.length === 0 && <p>No hay actividades.</p>}
-
-  {activities.map((a) => (
-    <ActivityRow key={a.id} activity={a} />
-  ))}
-
-</div>
-          
-          {/* ===== DOCUMENTOS ===== */}
-          <div style={{ marginTop: 16 }}>
-            <h3>Documentos</h3>
-
-            {documents.length === 0 && <p>No hay documentos.</p>}
-
-            {documents.map((d) => (
-              <DocumentRow key={d.id} doc={d} />
-            ))}
-          </div>
-
-{/* ===== INICIO OPORTUNIDADES RELACIONADAS ===== */}
-<div style={{ marginTop: 20 }}>
-  <h3>Oportunidades</h3>
-
-  {opportunities.length === 0 && (
-    <p>No hay oportunidades vinculadas.</p>
-  )}
-
-  {opportunities.map((o) => (
-    <div key={o.id} style={{ padding: 8 }}>
-      <strong>{o.name}</strong> — {o.stage} — $
-      {(o.estimated_value || 0).toLocaleString("es-MX")}
-    </div>
-  ))}
-</div>
-{/* ===== FIN OPORTUNIDADES RELACIONADAS ===== */}
-
-  {/* ===== INICIO COTIZACIONES RELACIONADAS ===== */}
-<div style={{ marginTop: 20 }}>
-  <h3>Cotizaciones</h3>
-
-  {quotes.length === 0 && <p>No hay cotizaciones.</p>}
-
-  {quotes.map((q) => (
-    <div key={q.id} style={{ padding: 8 }}>
-      {q.quote_number} — {q.status} — $
-      {(q.total_amount || 0).toLocaleString("es-MX")}
-    </div>
-  ))}
-</div>
-{/* ===== FIN COTIZACIONES RELACIONADAS ===== */}
-
-  {/* ===== INICIO PEDIDOS RELACIONADOS ===== */}
-<div style={{ marginTop: 20 }}>
-  <h3>Pedidos</h3>
-
-  {orders.length === 0 && <p>No hay pedidos.</p>}
-
-  {orders.map((o) => (
-    <div key={o.id} style={{ padding: 8 }}>
-      {o.order_number} — {o.status} — $
-      {(o.total_amount || 0).toLocaleString("es-MX")}
-    </div>
-  ))}
-</div>
-{/* ===== FIN PEDIDOS RELACIONADOS ===== */}
-
-          {/* ===== INICIO TIMELINE 360 ===== */}
-<div style={{ marginTop: 28 }}>
-  <h3>Historial del cliente</h3>
-
-  {timeline.length === 0 && (
-    <p>No hay historial disponible.</p>
-  )}
-
-  {timeline.map((t) => (
-    <TimelineRow key={`${t.type}-${t.id}`} item={t} />
-  ))}
-</div>
-{/* ===== FIN TIMELINE 360 ===== */}
-          </div>
 )}
-        </div>
-      )}
-
-    </div>
-  );
   
   // ===== FIN RENDER =====
 }
