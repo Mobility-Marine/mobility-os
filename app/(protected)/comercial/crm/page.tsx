@@ -1361,12 +1361,6 @@ const executiveTopAccounts = useMemo(() => {
     📄 Subir documento
   </button>
 
-  <button
-    style={miniButton}
-    onClick={() => location.reload()}
-  >
-    🔄 Refrescar
-  </button>
 </div>
     
     {/* ===== HEADER EJECUTIVO DE CUENTA ===== */}
