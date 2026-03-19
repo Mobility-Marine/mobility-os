@@ -69,6 +69,22 @@ type CrmOrder = {
 // ===== FIN TYPES RELACIONADOS CRM 360 =====
 // ===== FIN TYPES =====
 
+// ===== INICIO TYPES CONTACTOS =====
+type CrmContact = {
+  id: string;
+  account_id: string;
+  name: string;
+  position: string | null;
+  department: string | null;
+  email: string | null;
+  phone: string | null;
+  mobile: string | null;
+  role: string | null;
+  influence_level: number | null;
+  relationship_score: number | null;
+  notes: string | null;
+};
+// ===== FIN TYPES CONTACTOS =====
 
 export default function CRMPage() {
 
@@ -94,6 +110,10 @@ const [opportunities, setOpportunities] = useState<CrmOpportunity[]>([]);
 const [quotes, setQuotes] = useState<CrmQuote[]>([]);
 const [orders, setOrders] = useState<CrmOrder[]>([]);
 // ===== FIN STATE RELACIONES CRM =====
+
+  // ===== INICIO STATE CONTACTOS =====
+const [contacts, setContacts] = useState<CrmContact[]>([]);
+// ===== FIN STATE CONTACTOS =====
 
   // ===== INICIO LOAD ACCOUNTS =====
   useEffect(() => {
@@ -177,6 +197,7 @@ useEffect(() => {
 
   loadDocuments(selected.id);
   loadRelations(selected.id);
+  loadContacts(selected.id);
 }, [selected]);
 // ===== FIN LOAD DETALLE COMPLETO CRM =====
 
@@ -219,6 +240,18 @@ async function loadRelations(accountId: string) {
 }
 // ===== FIN LOAD RELACIONES CRM =====
 
+  // ===== INICIO LOAD CONTACTOS =====
+async function loadContacts(accountId: string) {
+  const { data } = await supabase
+    .from("crm_contacts")
+    .select("*")
+    .eq("account_id", accountId)
+    .order("created_at", { ascending: false });
+
+  setContacts(data || []);
+}
+// ===== FIN LOAD CONTACTOS =====
+
   // ===== INICIO UPLOAD DOCUMENT =====
   async function uploadDocument(file: File) {
     if (!selected || !companyId) return;
@@ -248,6 +281,33 @@ async function loadRelations(accountId: string) {
   }
   // ===== FIN UPLOAD DOCUMENT =====
 
+// ===== INICIO CREATE CONTACT =====
+async function createContact() {
+  if (!selected || !companyId) return;
+
+  const name = prompt("Nombre del contacto");
+  if (!name) return;
+
+  const position = prompt("Puesto") || null;
+  const email = prompt("Email") || null;
+  const phone = prompt("Teléfono") || null;
+
+  await supabase.from("crm_contacts").insert({
+    company_id: companyId,
+    account_id: selected.id,
+    name,
+    position,
+    email,
+    phone,
+    role: "user",
+    influence_level: 3,
+    relationship_score: 50,
+  });
+
+  loadContacts(selected.id);
+}
+// ===== FIN CREATE CONTACT =====
+  
 // ===== INICIO CREATE ACTIVITY =====
 async function createActivity() {
   if (!selected || !companyId) return;
@@ -362,6 +422,66 @@ async function createActivity() {
   )}
 </div>
 {/* ===== FIN CRM 360 PANEL ===== */}
+
+{/* ===== INICIO CONTACTOS ===== */}
+<div style={{ marginTop: 24 }}>
+  <h3>Contactos</h3>
+
+  <button
+    onClick={createContact}
+    style={{
+      padding: "6px 12px",
+      borderRadius: 6,
+      border: "none",
+      background: "#2563eb",
+      color: "#fff",
+      cursor: "pointer",
+      fontWeight: 600,
+      marginBottom: 10,
+    }}
+  >
+    + Nuevo contacto
+  </button>
+
+  {contacts.length === 0 && (
+    <p>No hay contactos registrados.</p>
+  )}
+
+  {contacts.map((c) => (
+    <div
+      key={c.id}
+      style={{
+        padding: 10,
+        borderRadius: 8,
+        border: "1px solid #1f2937",
+        marginBottom: 8,
+        background: "#0b1220",
+      }}
+    >
+      <strong>{c.name}</strong>
+
+      {c.position && (
+        <div style={{ fontSize: 12 }}>{c.position}</div>
+      )}
+
+      {c.email && (
+        <div style={{ fontSize: 12 }}>{c.email}</div>
+      )}
+
+      {c.phone && (
+        <div style={{ fontSize: 12 }}>{c.phone}</div>
+      )}
+
+      {c.role && (
+        <div style={{ fontSize: 11, color: "#94a3b8" }}>
+          Rol: {c.role}
+        </div>
+      )}
+    </div>
+  ))}
+</div>
+{/* ===== FIN CONTACTOS ===== */}
+          
           {/* ===== FIN DETALLE ===== */}
 
           {/* ===== UPLOAD ===== */}
