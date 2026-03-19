@@ -2214,6 +2214,7 @@ function exportAccountsToCsv(onlyFiltered = false) {
         <div style={{ fontWeight: 800, color: "#38bdf8" }}>COPILOT IA</div>
 
         {/* ===== ESTADO VACÍO DEL CRM ===== */}
+
 {!selected && (
   <div
     style={{
@@ -2234,13 +2235,11 @@ function exportAccountsToCsv(onlyFiltered = false) {
       Crea o importa clientes desde el panel izquierdo.
     </div>
 
-    {/* CTA secundaria (no principal) */}
     <div style={{ fontSize: 13, opacity: 0.8 }}>
       Tip: Puedes importar cientos de cuentas desde Excel.
     </div>
   </div>
 )}
-
         {director && (
           <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
             <div>
