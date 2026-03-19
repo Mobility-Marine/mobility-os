@@ -1654,7 +1654,7 @@ function exportAccountsToCsv(onlyFiltered = false) {
       </div>
     </div>
   </div>
-)
+)}
 
         {selected && (
   <>
