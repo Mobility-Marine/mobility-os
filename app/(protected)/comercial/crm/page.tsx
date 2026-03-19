@@ -213,8 +213,12 @@ const [importRows, setImportRows] = useState<
     city: string;
     status: string;
     notes: string;
+    _rowNumber: number;
+    _warnings: string[];
   }>
 >([]);
+
+const [importMode, setImportMode] = useState<"insert" | "upsert">("insert");
 // ===== FIN STATE IMPORTADOR =====
   
   // ===== FIN STATE =====
@@ -1090,6 +1094,20 @@ function parseCsvLine(line: string) {
   return result;
 }
 
+  function normalizeHeader(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, "_")
+    .replace(/[^\w]/g, "");
+}
+
+function findHeaderIndex(headers: string[], aliases: string[]) {
+  const normalized = headers.map(normalizeHeader);
+  const aliasSet = aliases.map(normalizeHeader);
+  return normalized.findIndex((h) => aliasSet.includes(h));
+}
+
 async function handleImportFile(file: File) {
   if (!companyId) return;
 
@@ -1104,27 +1122,36 @@ async function handleImportFile(file: File) {
     return;
   }
 
-  const headers = parseCsvLine(lines[0]).map((h) => h.toLowerCase());
+  const headers = parseCsvLine(lines[0]);
 
   const idx = {
-    name: headers.indexOf("name"),
-    legal_name: headers.indexOf("legal_name"),
-    industry: headers.indexOf("industry"),
-    country: headers.indexOf("country"),
-    city: headers.indexOf("city"),
-    status: headers.indexOf("status"),
-    notes: headers.indexOf("notes"),
+    name: findHeaderIndex(headers, ["name", "nombre", "empresa", "account"]),
+    legal_name: findHeaderIndex(headers, [
+      "legal_name",
+      "razon_social",
+      "razón_social",
+      "legalname",
+    ]),
+    industry: findHeaderIndex(headers, ["industry", "industria", "sector"]),
+    country: findHeaderIndex(headers, ["country", "pais", "país"]),
+    city: findHeaderIndex(headers, ["city", "ciudad"]),
+    status: findHeaderIndex(headers, ["status", "estado"]),
+    notes: findHeaderIndex(headers, ["notes", "notas", "comentarios"]),
   };
 
   if (idx.name === -1) {
-    alert('El CSV debe incluir la columna obligatoria: "name"');
+    alert(
+      'No encontré la columna de nombre. Usa una de estas: "name", "nombre", "empresa", "account".'
+    );
     return;
   }
 
-  const rows = lines.slice(1).map((line) => {
+  const seenKeys = new Set<string>();
+
+  const rows = lines.slice(1).map((line, i) => {
     const cols = parseCsvLine(line);
 
-    return {
+    const row = {
       name: cols[idx.name] || "",
       legal_name: idx.legal_name >= 0 ? cols[idx.legal_name] || "" : "",
       industry: idx.industry >= 0 ? cols[idx.industry] || "" : "",
@@ -1132,7 +1159,30 @@ async function handleImportFile(file: File) {
       city: idx.city >= 0 ? cols[idx.city] || "" : "",
       status: idx.status >= 0 ? cols[idx.status] || "active" : "active",
       notes: idx.notes >= 0 ? cols[idx.notes] || "" : "",
+      _rowNumber: i + 2,
+      _warnings: [] as string[],
     };
+
+    const uniqueKey = `${row.name}`.trim().toLowerCase() ||
+      `${row.legal_name}`.trim().toLowerCase();
+
+    if (!row.name.trim()) {
+      row._warnings.push("Fila sin nombre");
+    }
+
+    if (uniqueKey) {
+      if (seenKeys.has(uniqueKey)) {
+        row._warnings.push("Duplicada dentro del archivo");
+      } else {
+        seenKeys.add(uniqueKey);
+      }
+    }
+
+    if (!row.status.trim()) {
+      row.status = "active";
+    }
+
+    return row;
   });
 
   const validRows = rows.filter((r) => r.name.trim());
@@ -1152,28 +1202,100 @@ async function confirmImportRows() {
   try {
     setImporting(true);
 
-    const payload = importRows.map((row) => ({
-      company_id: companyId,
-      name: row.name,
-      legal_name: row.legal_name || null,
-      industry: row.industry || null,
-      country: row.country || null,
-      city: row.city || null,
-      status: row.status || "active",
-      notes: row.notes || null,
-    }));
+    if (importMode === "insert") {
+      const payload = importRows.map((row) => ({
+        company_id: companyId,
+        name: row.name,
+        legal_name: row.legal_name || null,
+        industry: row.industry || null,
+        country: row.country || null,
+        city: row.city || null,
+        status: row.status || "active",
+        notes: row.notes || null,
+      }));
 
-    const { error } = await supabase.from("crm_accounts").insert(payload);
+      const { error } = await supabase.from("crm_accounts").insert(payload);
 
-    if (error) {
-      alert("Error importando cuentas.");
+      if (error) {
+        alert("Error importando cuentas.");
+        return;
+      }
+
+      setShowImportModal(false);
+      setImportRows([]);
+      await loadAccounts();
+      alert(`Se importaron ${payload.length} cuentas.`);
       return;
+    }
+
+    for (const row of importRows) {
+      const legalName = row.legal_name?.trim();
+      const name = row.name.trim();
+
+      let existingId: string | null = null;
+
+      if (legalName) {
+        const { data } = await supabase
+          .from("crm_accounts")
+          .select("id")
+          .eq("company_id", companyId)
+          .eq("legal_name", legalName)
+          .maybeSingle();
+
+        if (data?.id) existingId = data.id;
+      }
+
+      if (!existingId) {
+        const { data } = await supabase
+          .from("crm_accounts")
+          .select("id")
+          .eq("company_id", companyId)
+          .eq("name", name)
+          .maybeSingle();
+
+        if (data?.id) existingId = data.id;
+      }
+
+      if (existingId) {
+        const { error } = await supabase
+          .from("crm_accounts")
+          .update({
+            legal_name: row.legal_name || null,
+            industry: row.industry || null,
+            country: row.country || null,
+            city: row.city || null,
+            status: row.status || "active",
+            notes: row.notes || null,
+          })
+          .eq("id", existingId);
+
+        if (error) {
+          alert(`Error actualizando cuenta: ${row.name}`);
+          return;
+        }
+      } else {
+        const { error } = await supabase.from("crm_accounts").insert({
+          company_id: companyId,
+          name: row.name,
+          legal_name: row.legal_name || null,
+          industry: row.industry || null,
+          country: row.country || null,
+          city: row.city || null,
+          status: row.status || "active",
+          notes: row.notes || null,
+        });
+
+        if (error) {
+          alert(`Error insertando cuenta: ${row.name}`);
+          return;
+        }
+      }
     }
 
     setShowImportModal(false);
     setImportRows([]);
     await loadAccounts();
-    alert(`Se importaron ${payload.length} cuentas.`);
+    alert(`Importación completada en modo upsert (${importRows.length} filas).`);
   } finally {
     setImporting(false);
   }
@@ -2364,9 +2486,33 @@ function exportAccountsToCsv(onlyFiltered = false) {
         Importación masiva de cuentas
       </div>
 
-      <div style={{ color: "#94a3b8", fontSize: 13 }}>
-        Se detectaron {importRows.length} filas válidas.
-      </div>
+      <div style={{ display: "grid", gap: 8 }}>
+  <div style={{ color: "#94a3b8", fontSize: 13 }}>
+    Se detectaron {importRows.length} filas válidas.
+  </div>
+
+  <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+    <span style={{ fontSize: 13, color: "#cbd5e1" }}>
+      Modo:
+    </span>
+
+    <button
+      type="button"
+      style={importMode === "insert" ? primaryButton : miniButton}
+      onClick={() => setImportMode("insert")}
+    >
+      Insertar nuevas
+    </button>
+
+    <button
+      type="button"
+      style={importMode === "upsert" ? primaryButton : miniButton}
+      onClick={() => setImportMode("upsert")}
+    >
+      Insertar / actualizar
+    </button>
+  </div>
+</div>
 
       <div
         style={{
@@ -2390,6 +2536,7 @@ function exportAccountsToCsv(onlyFiltered = false) {
               <th style={tableHead}>Ciudad</th>
               <th style={tableHead}>País</th>
               <th style={tableHead}>Estado</th>
+              <th style={tableHead}>Advertencias</th>
             </tr>
           </thead>
 
@@ -2402,6 +2549,9 @@ function exportAccountsToCsv(onlyFiltered = false) {
                 <td style={tableCell}>{row.city || "-"}</td>
                 <td style={tableCell}>{row.country || "-"}</td>
                 <td style={tableCell}>{row.status || "active"}</td>
+                <td style={tableCell}>
+  {row._warnings.length > 0 ? row._warnings.join(" · ") : "-"}
+</td>
               </tr>
             ))}
           </tbody>
