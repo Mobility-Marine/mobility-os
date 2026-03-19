@@ -94,6 +94,17 @@ type CustomerAlert = {
   message: string;
 };
 
+// ===== INICIO TYPE AI DIRECTOR =====
+type AiDirectorAdvice = {
+  urgency: "BAJA" | "MEDIA" | "ALTA" | "CRITICA";
+  accountTemperature: "FRIA" | "TIBIA" | "CALIENTE";
+  recommendedAction: string;
+  alerts: string[];
+  opportunitiesDetected: string[];
+  risksDetected: string[];
+};
+// ===== FIN TYPE AI DIRECTOR =====
+
 // ===== FIN TYPES =====
 
 // ===== INICIO TYPES CONTACTOS =====
@@ -136,6 +147,7 @@ const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   // ===== INICIO STATE INSIGHTS IA =====
 const [insights, setInsights] = useState<CrmAccountInsights | null>(null);
 // ===== FIN STATE INSIGHTS IA =====
+const [director, setDirector] = useState<AiDirectorAdvice | null>(null);
 const [alerts, setAlerts] = useState<CustomerAlert[]>([]);
   // ===== FIN STATE =====
 
@@ -249,6 +261,13 @@ useEffect(() => {
   buildAccountInsights(selected);
 }, [selected, contacts, activities, documents, opportunities, quotes, orders, timeline]);
 // ===== FIN RECALCULAR INSIGHTS =====
+
+  // ===== INICIO RECALCULAR DIRECTOR IA =====
+useEffect(() => {
+  if (!selected) return;
+  buildDirectorAdvice(selected);
+}, [selected, contacts, activities, opportunities, quotes, orders, timeline]);
+// ===== FIN RECALCULAR DIRECTOR IA =====
 
   useEffect(() => {
   if (!selected) return;
@@ -644,6 +663,77 @@ async function createActivity() {
   setNewActivityDate("");
 }
 // ===== FIN CREATE ACTIVITY =====
+
+// ===== INICIO BUILD DIRECTOR IA =====
+function buildDirectorAdvice(account: CrmAccount) {
+  const alerts: string[] = [];
+  const opportunitiesDetected: string[] = [];
+  const risksDetected: string[] = [];
+
+  let urgency: AiDirectorAdvice["urgency"] = "BAJA";
+  let accountTemperature: AiDirectorAdvice["accountTemperature"] = "FRIA";
+  let recommendedAction = "Monitorear actividad.";
+
+  const recentActivity = activities.length > 0;
+
+  if (recentActivity) accountTemperature = "TIBIA";
+
+  // 🔹 Oportunidades activas
+  if (opportunities.length > 0) {
+    accountTemperature = "CALIENTE";
+    opportunitiesDetected.push("Oportunidad comercial activa");
+  }
+
+  // 🔹 Cotización sin pedido
+  if (quotes.length > 0 && orders.length === 0) {
+    opportunitiesDetected.push("Cotización enviada sin cierre");
+    recommendedAction = "Dar seguimiento a cotización";
+    urgency = "ALTA";
+  }
+
+  // 🔹 Pedidos activos
+  if (orders.length > 0) {
+    opportunitiesDetected.push("Cliente activo con pedidos");
+    recommendedAction = "Mantener relación y detectar upsell";
+  }
+
+  // 🔹 Sin contactos
+  if (contacts.length === 0) {
+    risksDetected.push("No hay contactos registrados");
+    alerts.push("Cuenta sin relación identificada");
+    urgency = "ALTA";
+    recommendedAction = "Identificar contacto clave";
+  }
+
+  // 🔹 Sin actividad
+  if (!recentActivity) {
+    risksDetected.push("Sin actividad registrada");
+    alerts.push("Cuenta inactiva");
+    urgency = "MEDIA";
+    recommendedAction = "Programar contacto";
+  }
+
+  // 🔹 Poco historial
+  if (timeline.length < 2) {
+    risksDetected.push("Poco historial del cliente");
+  }
+
+  // 🔹 Cuenta estratégica
+  if (account.status === "strategic") {
+    urgency = "CRITICA";
+    alerts.push("Cuenta estratégica");
+  }
+
+  setDirector({
+    urgency,
+    accountTemperature,
+    recommendedAction,
+    alerts,
+    opportunitiesDetected,
+    risksDetected,
+  });
+}
+// ===== FIN BUILD DIRECTOR IA =====
   
   // ===== INICIO RENDER =====
 
@@ -722,6 +812,64 @@ async function createActivity() {
       )}
     </div>
 
+{/* ===== CRM AI DIRECTOR ===== */}
+{director && (
+  <div
+    style={{
+      marginTop: 16,
+      padding: 14,
+      borderRadius: 12,
+      background: "#020617",
+      border: "1px solid #1f2937",
+      display: "grid",
+      gap: 8,
+    }}
+  >
+    <div style={{ fontWeight: 800, color: "#38bdf8" }}>
+      DIRECTOR COMERCIAL IA
+    </div>
+
+    <div>
+      Urgencia: <strong>{director.urgency}</strong>
+    </div>
+
+    <div>
+      Temperatura: <strong>{director.accountTemperature}</strong>
+    </div>
+
+    <div>
+      Acción recomendada: {director.recommendedAction}
+    </div>
+
+    {director.alerts.length > 0 && (
+      <div>
+        ⚠️ Alertas:
+        {director.alerts.map((a, i) => (
+          <div key={i}>• {a}</div>
+        ))}
+      </div>
+    )}
+
+    {director.opportunitiesDetected.length > 0 && (
+      <div>
+        🚀 Oportunidades:
+        {director.opportunitiesDetected.map((o, i) => (
+          <div key={i}>• {o}</div>
+        ))}
+      </div>
+    )}
+
+    {director.risksDetected.length > 0 && (
+      <div>
+        🔥 Riesgos:
+        {director.risksDetected.map((r, i) => (
+          <div key={i}>• {r}</div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
+    
 {/* ===== CUSTOMER SUCCESS ALERTS ===== */}
     
     {alerts.length > 0 && (
