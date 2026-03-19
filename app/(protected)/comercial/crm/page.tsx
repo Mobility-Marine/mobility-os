@@ -1095,7 +1095,10 @@ return (
     }}
   >
 
-    {/* PANEL IZQUIERDO */}
+    {/* ========================================================= */}
+    {/* ===== PANEL IZQUIERDO — RADAR DE CUENTAS ===== */}
+    {/* ========================================================= */}
+
     <div
       style={{
         background: "#020617",
@@ -1135,6 +1138,23 @@ return (
               const r = radarMap[a.id];
               const rev = revenueMap[a.id];
               const p = priorityMap[a.id];
+              const act = actionMap[a.id];
+
+              const tempColor =
+                r?.temperature === "CALIENTE"
+                  ? "#ef4444"
+                  : r?.temperature === "TIBIA"
+                  ? "#f59e0b"
+                  : "#64748b";
+
+              const urgencyColor =
+                r?.urgency === "CRITICA"
+                  ? "#dc2626"
+                  : r?.urgency === "ALTA"
+                  ? "#f97316"
+                  : r?.urgency === "MEDIA"
+                  ? "#eab308"
+                  : "#475569";
 
               return (
                 <div
@@ -1152,12 +1172,66 @@ return (
                 >
                   <strong>{a.name}</strong>
 
-                  {p && <span>Prioridad: {p.label}</span>}
-                  {rev && <span>Tier: {rev.tier}</span>}
-                  {r && (
-                    <span>
-                      Temp: {r.temperature} · Urg: {r.urgency}
+                  {/* Acción rápida IA */}
+                  {act && (
+                    <div style={{ fontSize: 12, color: "#cbd5e1" }}>
+                      {act.action}
+                    </div>
+                  )}
+
+                  {/* Prioridad */}
+                  {p && (
+                    <span
+                      style={{
+                        background:
+                          p.label === "CRITICA"
+                            ? "#dc2626"
+                            : p.label === "ALTA"
+                            ? "#f97316"
+                            : p.label === "MEDIA"
+                            ? "#eab308"
+                            : "#64748b",
+                        padding: "2px 6px",
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 800,
+                        color: "#fff",
+                        width: "fit-content",
+                      }}
+                    >
+                      {p.label}
                     </span>
+                  )}
+
+                  {/* Temperatura */}
+                  {r && (
+                    <span style={{ color: tempColor }}>
+                      🌡 {r.temperature}
+                    </span>
+                  )}
+
+                  {/* Urgencia */}
+                  {r && (
+                    <span style={{ color: urgencyColor }}>
+                      ⚠️ {r.urgency}
+                    </span>
+                  )}
+
+                  {/* Valor */}
+                  {rev && (
+                    <span style={{ color: "#22c55e" }}>
+                      💰 {rev.tier}
+                    </span>
+                  )}
+
+                  {/* Iconos */}
+                  {r && (
+                    <div>
+                      {r.hasOpportunity && <span>💰 </span>}
+                      {r.hasQuote && <span>📄 </span>}
+                      {r.hasOrder && <span>📦 </span>}
+                      {!r.hasContacts && <span>⚠️ </span>}
+                    </div>
                   )}
                 </div>
               );
@@ -1166,13 +1240,17 @@ return (
       </div>
     </div>
 
-    {/* PANEL CENTRAL */}
+    {/* ========================================================= */}
+    {/* ===== PANEL CENTRAL — WORKSPACE DEL CLIENTE ===== */}
+    {/* ========================================================= */}
+
     <div
       style={{
         background: "#020617",
         border: "1px solid #1f2937",
         borderRadius: 12,
         padding: 16,
+        overflowY: "auto",
       }}
     >
       {!selected && (
@@ -1184,16 +1262,146 @@ return (
       {selected && (
         <>
           <h2>{selected.name}</h2>
-          <div>Industria: {selected.industry || "-"}</div>
-          <div>
-            Ubicación: {selected.city || "-"}, {selected.country || "-"}
+
+          {/* ===== CRM 360 PANEL ===== */}
+          <div
+            style={{
+              marginTop: 12,
+              padding: 14,
+              borderRadius: 12,
+              background: "#0f172a",
+              border: "1px solid #1f2937",
+              display: "grid",
+              gap: 8,
+            }}
+          >
+            <div style={{ fontWeight: 700 }}>
+              Resumen del cliente
+            </div>
+
+            <div>Industria: {selected.industry || "-"}</div>
+
+            <div>
+              Ubicación: {selected.city || "-"},{" "}
+              {selected.country || "-"}
+            </div>
+
+            <div>Estado: {selected.status}</div>
+
+            {selected.notes && (
+              <div>Notas: {selected.notes}</div>
+            )}
           </div>
-          <div>Estado: {selected.status}</div>
+
+          {/* ===== ACTION ENGINE ===== */}
+          {actionMap[selected.id] && (
+            <div
+              style={{
+                marginTop: 16,
+                padding: 14,
+                borderRadius: 12,
+                background: "#111827",
+                border: "1px solid #1f2937",
+              }}
+            >
+              <div
+                style={{
+                  fontWeight: 800,
+                  color: "#22c55e",
+                }}
+              >
+                ACTION ENGINE IA
+              </div>
+
+              <div>
+                Acción:{" "}
+                <strong>
+                  {actionMap[selected.id].action}
+                </strong>
+              </div>
+
+              <div>
+                Urgencia:{" "}
+                <strong>
+                  {actionMap[selected.id].urgency}
+                </strong>
+              </div>
+
+              <div style={{ color: "#cbd5e1" }}>
+                {actionMap[selected.id].reason}
+              </div>
+            </div>
+          )}
+
+          {/* ===== CUSTOMER ALERTS ===== */}
+          {alerts.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <h3>Customer Success Alerts</h3>
+
+              {alerts.map((a, i) => (
+                <div key={i}>• {a.title}</div>
+              ))}
+            </div>
+          )}
+
+          {/* ===== CONTACTOS ===== */}
+          <div style={{ marginTop: 24 }}>
+            <h3>Contactos</h3>
+
+            <button onClick={createContact}>
+              + Nuevo contacto
+            </button>
+
+            {contacts.map((c) => (
+              <div key={c.id} style={{ padding: 10 }}>
+                <strong>{c.name}</strong>
+                {c.position && <div>{c.position}</div>}
+                {c.email && <div>{c.email}</div>}
+              </div>
+            ))}
+          </div>
+
+          {/* ===== ACTIVIDADES ===== */}
+          <div style={{ marginTop: 24 }}>
+            <h3>Actividades</h3>
+
+            <button onClick={createActivity}>
+              Agregar
+            </button>
+
+            {activities.map((a) => (
+              <ActivityRow key={a.id} activity={a} />
+            ))}
+          </div>
+
+          {/* ===== DOCUMENTOS ===== */}
+          <div style={{ marginTop: 16 }}>
+            <h3>Documentos</h3>
+
+            {documents.map((d) => (
+              <DocumentRow key={d.id} doc={d} />
+            ))}
+          </div>
+
+          {/* ===== TIMELINE ===== */}
+          <div style={{ marginTop: 28 }}>
+            <h3>Historial del cliente</h3>
+
+            {timeline.map((t) => (
+              <TimelineRow
+                key={`${t.type}-${t.id}`}
+                item={t}
+              />
+            ))}
+          </div>
         </>
       )}
     </div>
 
-    {/* PANEL DERECHO */}
+    {/* ========================================================= */}
+    {/* ===== PANEL DERECHO — COPILOT IA ===== */}
+    {/* ========================================================= */}
+
     <div
       style={{
         background: "#020617",
@@ -1214,9 +1422,18 @@ return (
 
       {director && (
         <>
-          <div>Urgencia: {director.urgency}</div>
-          <div>Temperatura: {director.accountTemperature}</div>
-          <div>{director.recommendedAction}</div>
+          <div>
+            Urgencia: <strong>{director.urgency}</strong>
+          </div>
+
+          <div>
+            Temperatura:{" "}
+            <strong>{director.accountTemperature}</strong>
+          </div>
+
+          <div style={{ marginTop: 8 }}>
+            {director.recommendedAction}
+          </div>
         </>
       )}
     </div>
