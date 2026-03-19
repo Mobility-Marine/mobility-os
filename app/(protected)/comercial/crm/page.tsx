@@ -67,6 +67,17 @@ type CrmOrder = {
   total_amount: number | null;
 };
 // ===== FIN TYPES RELACIONADOS CRM 360 =====
+
+// ===== INICIO TYPE TIMELINE ITEM =====
+type TimelineItem = {
+  id: string;
+  type: string;
+  title: string;
+  description?: string | null;
+  date: string;
+};
+// ===== FIN TYPE TIMELINE ITEM =====
+
 // ===== FIN TYPES =====
 
 // ===== INICIO TYPES CONTACTOS =====
@@ -103,6 +114,9 @@ const [newActivityTitle, setNewActivityTitle] = useState("");
 const [newActivityType, setNewActivityType] = useState("call");
 const [newActivityDate, setNewActivityDate] = useState("");
 // ===== FIN STATE ACTIVITIES =====
+  // ===== INICIO STATE TIMELINE =====
+const [timeline, setTimeline] = useState<TimelineItem[]>([]);
+// ===== FIN STATE TIMELINE =====
   // ===== FIN STATE =====
 
   // ===== INICIO STATE RELACIONES CRM =====
@@ -198,6 +212,7 @@ useEffect(() => {
   loadDocuments(selected.id);
   loadRelations(selected.id);
   loadContacts(selected.id);
+  buildTimeline(selected.id);   // 🔥 AGREGAR ESTA LÍNEA
 }, [selected]);
 // ===== FIN LOAD DETALLE COMPLETO CRM =====
 
@@ -240,6 +255,99 @@ async function loadRelations(accountId: string) {
 }
 // ===== FIN LOAD RELACIONES CRM =====
 
+// ===== INICIO BUILD TIMELINE 360 =====
+async function buildTimeline(accountId: string) {
+  const items: TimelineItem[] = [];
+
+  // 🔹 Actividades
+  const { data: acts } = await supabase
+    .from("crm_activities")
+    .select("*")
+    .eq("account_id", accountId);
+
+  acts?.forEach((a) => {
+    items.push({
+      id: a.id,
+      type: "activity",
+      title: a.title,
+      description: a.type,
+      date: a.created_at,
+    });
+  });
+
+  // 🔹 Documentos
+  const { data: docs } = await supabase
+    .from("crm_documents")
+    .select("*")
+    .eq("account_id", accountId);
+
+  docs?.forEach((d) => {
+    items.push({
+      id: d.id,
+      type: "document",
+      title: d.name,
+      date: d.created_at,
+    });
+  });
+
+  // 🔹 Oportunidades
+  const { data: opps } = await supabase
+    .from("sales_opportunities")
+    .select("*")
+    .eq("account_id", accountId);
+
+  opps?.forEach((o) => {
+    items.push({
+      id: o.id,
+      type: "opportunity",
+      title: o.name,
+      description: o.stage,
+      date: o.created_at,
+    });
+  });
+
+  // 🔹 Cotizaciones
+  const { data: qts } = await supabase
+    .from("quotes")
+    .select("*")
+    .eq("account_id", accountId);
+
+  qts?.forEach((q) => {
+    items.push({
+      id: q.id,
+      type: "quote",
+      title: q.quote_number,
+      description: q.status,
+      date: q.created_at,
+    });
+  });
+
+  // 🔹 Pedidos
+  const { data: ords } = await supabase
+    .from("orders")
+    .select("*")
+    .eq("account_id", accountId);
+
+  ords?.forEach((o) => {
+    items.push({
+      id: o.id,
+      type: "order",
+      title: o.order_number,
+      description: o.status,
+      date: o.created_at,
+    });
+  });
+
+  // 🔹 Ordenar cronológicamente
+  items.sort(
+    (a, b) =>
+      new Date(b.date).getTime() - new Date(a.date).getTime()
+  );
+
+  setTimeline(items);
+}
+// ===== FIN BUILD TIMELINE 360 =====
+  
   // ===== INICIO LOAD CONTACTOS =====
 async function loadContacts(accountId: string) {
   const { data } = await supabase
@@ -536,6 +644,20 @@ async function createActivity() {
   ))}
 
 </div>
+
+{/* ===== INICIO TIMELINE 360 ===== */}
+<div style={{ marginTop: 28 }}>
+  <h3>Historial del cliente</h3>
+
+  {timeline.length === 0 && (
+    <p>No hay historial disponible.</p>
+  )}
+
+  {timeline.map((t) => (
+    <TimelineRow key={`${t.type}-${t.id}`} item={t} />
+  ))}
+</div>
+{/* ===== FIN TIMELINE 360 ===== */}
           
           {/* ===== DOCUMENTOS ===== */}
           <div style={{ marginTop: 16 }}>
@@ -660,3 +782,43 @@ function ActivityRow({ activity }: { activity: CrmActivity }) {
   );
 }
 // ===== FIN COMPONENT ACTIVITY ROW =====
+
+// ===== INICIO COMPONENT TIMELINE ROW =====
+function TimelineRow({ item }: { item: TimelineItem }) {
+
+  const colorMap: Record<string, string> = {
+    activity: "#38bdf8",
+    document: "#a78bfa",
+    opportunity: "#34d399",
+    quote: "#fbbf24",
+    order: "#f87171",
+  };
+
+  const color = colorMap[item.type] || "#94a3b8";
+
+  return (
+    <div
+      style={{
+        padding: 12,
+        borderBottom: "1px solid #1f2937",
+        display: "grid",
+        gap: 4,
+      }}
+    >
+      <div style={{ fontWeight: 600, color }}>
+        {item.title}
+      </div>
+
+      {item.description && (
+        <div style={{ fontSize: 12 }}>
+          {item.description}
+        </div>
+      )}
+
+      <div style={{ fontSize: 11, color: "#94a3b8" }}>
+        {new Date(item.date).toLocaleString("es-MX")}
+      </div>
+    </div>
+  );
+}
+// ===== FIN COMPONENT TIMELINE ROW =====
