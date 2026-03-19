@@ -1359,6 +1359,18 @@ export default function CRMPage() {
     </div>
   </div>
 )}
+
+{/* ===== SALUD COMERCIAL ===== */}
+{selected && (
+  <CommercialHealthPanel
+    opportunities={opportunities}
+    quotes={quotes}
+    orders={orders}
+    activities={activities}
+    timeline={timeline}
+    contacts={contacts}
+  />
+)}
     
             {/* ===== ACTION ENGINE ===== */}
             {actionMap[selected.id] && (
@@ -1913,3 +1925,95 @@ function RevenueCard({
   );
 }
 // ===== FIN COMPONENT REVENUE CARD =====
+
+// ===== INICIO COMPONENT COMMERCIAL HEALTH =====
+function CommercialHealthPanel({
+  opportunities,
+  quotes,
+  orders,
+  activities,
+  timeline,
+  contacts,
+}: {
+  opportunities: CrmOpportunity[];
+  quotes: CrmQuote[];
+  orders: CrmOrder[];
+  activities: CrmActivity[];
+  timeline: TimelineItem[];
+  contacts: CrmContact[];
+}) {
+  let score = 0;
+
+  if (contacts.length > 0) score += 10;
+  if (activities.length > 0) score += 10;
+  if (timeline.length > 3) score += 10;
+
+  if (opportunities.length > 0) score += 20;
+  if (quotes.length > 0) score += 25;
+  if (orders.length > 0) score += 25;
+
+  // Momentum
+  let momentum = "ESTABLE";
+
+  if (orders.length > 0) momentum = "EN CRECIMIENTO";
+  else if (quotes.length > 0) momentum = "CERCANA AL CIERRE";
+  else if (opportunities.length > 0) momentum = "EN PROSPECCIÓN";
+  else if (activities.length === 0) momentum = "ABANDONADA";
+
+  // Nivel salud
+  let level = "BAJA";
+  let color = "#ef4444";
+
+  if (score >= 70) {
+    level = "ALTA";
+    color = "#22c55e";
+  } else if (score >= 40) {
+    level = "MEDIA";
+    color = "#f59e0b";
+  }
+
+  // Recomendación
+  let recommendation = "Reactivar relación comercial.";
+
+  if (orders.length > 0)
+    recommendation = "Mantener cliente activo y detectar upsell.";
+  else if (quotes.length > 0)
+    recommendation = "Dar seguimiento a cotización.";
+  else if (opportunities.length > 0)
+    recommendation = "Convertir oportunidad en propuesta.";
+  else if (contacts.length === 0)
+    recommendation = "Identificar contacto clave.";
+  else if (activities.length === 0)
+    recommendation = "Programar interacción.";
+
+  return (
+    <div
+      style={{
+        marginTop: 16,
+        padding: 14,
+        borderRadius: 12,
+        background: "#020617",
+        border: `1px solid ${color}`,
+        display: "grid",
+        gap: 8,
+      }}
+    >
+      <div style={{ fontWeight: 800, color }}>
+        SALUD COMERCIAL
+      </div>
+
+      <div>
+        Nivel: <strong>{level}</strong>
+      </div>
+
+      <div>
+        Momentum: <strong>{momentum}</strong>
+      </div>
+
+      <div style={{ color: "#cbd5e1" }}>
+        {recommendation}
+      </div>
+    </div>
+  );
+}
+// ===== FIN COMPONENT COMMERCIAL HEALTH =====
