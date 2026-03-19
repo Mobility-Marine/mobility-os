@@ -147,6 +147,14 @@ type AccountRevenue = {
 };
 // ===== FIN TYPE ACCOUNT REVENUE =====
 
+// ===== INICIO TYPE ACCOUNT PRIORITY =====
+type AccountPriority = {
+  accountId: string;
+  score: number;
+  label: "CRITICA" | "ALTA" | "MEDIA" | "BAJA";
+};
+// ===== FIN TYPE ACCOUNT PRIORITY =====
+
 export default function CRMPage() {
 
   // ===== INICIO TENANT =====
@@ -190,6 +198,10 @@ const [radarMap, setRadarMap] = useState<Record<string, AccountRadar>>({});
 const [revenueMap, setRevenueMap] =
   useState<Record<string, AccountRevenue>>({});
 // ===== FIN STATE REVENUE =====
+// ===== INICIO STATE PRIORITY =====
+const [priorityMap, setPriorityMap] =
+  useState<Record<string, AccountPriority>>({});
+// ===== FIN STATE PRIORITY =====
 
   // ===== INICIO LOAD ACCOUNTS =====
   useEffect(() => {
@@ -266,6 +278,7 @@ async function loadActivities(accountId: string) {
     setLoading(false);
     (data || []).forEach((acc) => buildAccountRadar(acc));
     (data || []).forEach((acc) => buildAccountRevenue(acc));
+    (data || []).forEach((acc) => buildAccountPriority(acc));
   }
 
   // ===== INICIO LOAD DOCUMENTS =====
@@ -869,6 +882,45 @@ async function buildAccountRevenue(account: CrmAccount) {
   }));
 }
 // ===== FIN BUILD ACCOUNT REVENUE =====
+
+  // ===== INICIO BUILD ACCOUNT PRIORITY =====
+function buildAccountPriority(account: CrmAccount) {
+  const id = account.id;
+
+  const radar = radarMap[id];
+  const rev = revenueMap[id];
+
+  let score = 0;
+
+  // 🔥 Temperatura comercial
+  if (radar?.temperature === "HOT") score += 30;
+  else if (radar?.temperature === "WARM") score += 15;
+
+  // ⚠️ Urgencia
+  if (radar?.urgency === "HIGH") score += 25;
+  else if (radar?.urgency === "MEDIUM") score += 10;
+
+  // 💰 Valor económico
+  if (rev?.tier === "STRATEGIC") score += 35;
+  else if (rev?.tier === "HIGH") score += 25;
+  else if (rev?.tier === "MEDIUM") score += 10;
+
+  // 🧠 Actividad
+  if (activities.length === 0) score += 10;
+
+  // 📊 Clasificación
+  let label: AccountPriority["label"] = "BAJA";
+
+  if (score >= 70) label = "CRITICA";
+  else if (score >= 50) label = "ALTA";
+  else if (score >= 30) label = "MEDIA";
+
+  setPriorityMap((prev) => ({
+    ...prev,
+    [id]: { accountId: id, score, label },
+  }));
+}
+// ===== FIN BUILD ACCOUNT PRIORITY =====
   
   // ===== INICIO RENDER =====
 
@@ -881,9 +933,16 @@ async function buildAccountRevenue(account: CrmAccount) {
 
     {/* ===== RADAR DE CUENTAS ===== */}
 <div style={{ display: "grid", gap: 10 }}>
-  {accounts.map((a) => {
+  {[...accounts]
+  .sort((a, b) => {
+    const pa = priorityMap[a.id]?.score || 0;
+    const pb = priorityMap[b.id]?.score || 0;
+    return pb - pa;
+  })
+  .map((a) => (
     const r = radarMap[a.id];
     const rev = revenueMap[a.id];
+    const p = priorityMap[a.id];
 
     const tempColor =
       r?.temperature === "CALIENTE"
@@ -917,57 +976,6 @@ async function buildAccountRevenue(account: CrmAccount) {
       >
         <strong>{a.name}</strong>
 
-        {rev && (
-  <div style={{ fontSize: 12, fontWeight: 700, color: "#22c55e" }}>
-    $
-    {rev.totalPotential.toLocaleString("es-MX")}
-  </div>
-)}
-
-        <div style={{ fontSize: 12, color: "#94a3b8" }}>
-          {a.industry || "Sin industria"} — {a.country || "-"}
-        </div>
-
-        {r && (
-          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-            <span
-              style={{
-                background: tempColor,
-                padding: "2px 6px",
-                borderRadius: 6,
-                fontSize: 11,
-                fontWeight: 600,
-              }}
-            >
-              {r.temperature}
-            </span>
-
-            <span
-              style={{
-                background: urgencyColor,
-                padding: "2px 6px",
-                borderRadius: 6,
-                fontSize: 11,
-                fontWeight: 600,
-              }}
-            >
-{rev && (
-  <span
-    style={{
-      background:
-        rev.tier === "STRATEGIC"
-          ? "#7c3aed"
-          : rev.tier === "HIGH"
-          ? "#2563eb"
-          : rev.tier === "MEDIUM"
-          ? "#059669"
-          : "#475569",
-      padding: "2px 6px",
-      borderRadius: 6,
-      fontSize: 11,
-      fontWeight: 700,
-    }}
-  >
     {rev.tier}
   </span>
 )}
