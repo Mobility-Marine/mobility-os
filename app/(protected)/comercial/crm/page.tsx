@@ -1188,8 +1188,85 @@ export default function CRMPage() {
         )}
 
         {selected && (
-          <>
-            <h2 style={{ margin: 0 }}>{selected.name}</h2>
+  <>
+    {/* ===== HEADER EJECUTIVO DE CUENTA ===== */}
+    <div
+      style={{
+        padding: 18,
+        borderRadius: 14,
+        background: "#0b1220",
+        border: "1px solid #1f2937",
+        display: "grid",
+        gap: 10,
+      }}
+    >
+      {/* Nombre */}
+      <div style={{ fontSize: 22, fontWeight: 800 }}>
+        {selected.name}
+      </div>
+
+      {/* Datos básicos */}
+      <div style={{ fontSize: 13, color: "#94a3b8" }}>
+        {selected.industry || "Industria no definida"} •{" "}
+        {selected.city || "-"}, {selected.country || "-"} •{" "}
+        {selected.status}
+      </div>
+
+      {/* Indicadores clave */}
+      <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        
+        {/* PRIORIDAD */}
+        {priorityMap[selected.id] && (
+          <span
+            style={{
+              background:
+                priorityMap[selected.id].label === "CRITICA"
+                  ? "#dc2626"
+                  : priorityMap[selected.id].label === "ALTA"
+                  ? "#f97316"
+                  : priorityMap[selected.id].label === "MEDIA"
+                  ? "#eab308"
+                  : "#64748b",
+              padding: "4px 10px",
+              borderRadius: 999,
+              fontSize: 12,
+              fontWeight: 800,
+              color: "#fff",
+            }}
+          >
+            PRIORIDAD {priorityMap[selected.id].label}
+          </span>
+        )}
+
+        {/* TEMPERATURA */}
+        {radarMap[selected.id] && (
+          <span style={{ color: "#f59e0b", fontSize: 12 }}>
+            🌡 {radarMap[selected.id].temperature}
+          </span>
+        )}
+
+        {/* URGENCIA */}
+        {radarMap[selected.id] && (
+          <span style={{ color: "#ef4444", fontSize: 12 }}>
+            ⚠️ {radarMap[selected.id].urgency}
+          </span>
+        )}
+
+        {/* VALOR */}
+        {revenueMap[selected.id] && (
+          <span style={{ color: "#22c55e", fontSize: 12 }}>
+            💰 {revenueMap[selected.id].tier}
+          </span>
+        )}
+      </div>
+
+      {/* Acción IA */}
+      {actionMap[selected.id] && (
+        <div style={{ fontSize: 14 }}>
+          👉 <strong>{actionMap[selected.id].action}</strong>
+        </div>
+      )}
+    </div>
 
             {/* ===== CRM 360 PANEL ===== */}
             <div style={panelCard}>
