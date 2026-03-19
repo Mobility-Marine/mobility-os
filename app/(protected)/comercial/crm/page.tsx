@@ -124,6 +124,18 @@ type CrmContact = {
 };
 // ===== FIN TYPES CONTACTOS =====
 
+// ===== INICIO TYPE ACCOUNT RADAR =====
+type AccountRadar = {
+  accountId: string;
+  temperature: "FRIA" | "TIBIA" | "CALIENTE";
+  urgency: "BAJA" | "MEDIA" | "ALTA" | "CRITICA";
+  hasOpportunity: boolean;
+  hasQuote: boolean;
+  hasOrder: boolean;
+  hasContacts: boolean;
+};
+// ===== FIN TYPE ACCOUNT RADAR =====
+
 export default function CRMPage() {
 
   // ===== INICIO TENANT =====
@@ -160,6 +172,9 @@ const [orders, setOrders] = useState<CrmOrder[]>([]);
   // ===== INICIO STATE CONTACTOS =====
 const [contacts, setContacts] = useState<CrmContact[]>([]);
 // ===== FIN STATE CONTACTOS =====
+// ===== INICIO STATE RADAR =====
+const [radarMap, setRadarMap] = useState<Record<string, AccountRadar>>({});
+// ===== FIN STATE RADAR =====
 
   // ===== INICIO LOAD ACCOUNTS =====
   useEffect(() => {
@@ -234,6 +249,7 @@ async function loadActivities(accountId: string) {
 
     setAccounts(data || []);
     setLoading(false);
+    (data || []).forEach((acc) => buildAccountRadar(acc));
   }
 
   // ===== INICIO LOAD DOCUMENTS =====
@@ -734,6 +750,59 @@ function buildDirectorAdvice(account: CrmAccount) {
   });
 }
 // ===== FIN BUILD DIRECTOR IA =====
+
+  // ===== INICIO BUILD ACCOUNT RADAR =====
+async function buildAccountRadar(account: CrmAccount) {
+  const id = account.id;
+
+  const { data: opps } = await supabase
+    .from("sales_opportunities")
+    .select("id")
+    .eq("account_id", id);
+
+  const { data: qts } = await supabase
+    .from("quotes")
+    .select("id")
+    .eq("account_id", id);
+
+  const { data: ords } = await supabase
+    .from("orders")
+    .select("id")
+    .eq("account_id", id);
+
+  const { data: cts } = await supabase
+    .from("crm_contacts")
+    .select("id")
+    .eq("account_id", id);
+
+  let temperature: AccountRadar["temperature"] = "FRIA";
+  let urgency: AccountRadar["urgency"] = "BAJA";
+
+  if ((opps?.length || 0) > 0) temperature = "CALIENTE";
+  else if ((cts?.length || 0) > 0) temperature = "TIBIA";
+
+  if ((qts?.length || 0) > 0 && (ords?.length || 0) === 0) {
+    urgency = "ALTA";
+  }
+
+  if ((cts?.length || 0) === 0) {
+    urgency = "CRITICA";
+  }
+
+  setRadarMap((prev) => ({
+    ...prev,
+    [id]: {
+      accountId: id,
+      temperature,
+      urgency,
+      hasOpportunity: (opps?.length || 0) > 0,
+      hasQuote: (qts?.length || 0) > 0,
+      hasOrder: (ords?.length || 0) > 0,
+      hasContacts: (cts?.length || 0) > 0,
+    },
+  }));
+}
+// ===== FIN BUILD ACCOUNT RADAR =====
   
   // ===== INICIO RENDER =====
 
@@ -744,28 +813,83 @@ function buildDirectorAdvice(account: CrmAccount) {
 
       <h1>CRM — Empresas / Cuentas</h1>
 
-     {/* ===== LISTA DE CUENTAS ===== */}
+    {/* ===== RADAR DE CUENTAS ===== */}
 <div style={{ display: "grid", gap: 10 }}>
-  {accounts.map((a) => (
-    <div
-      key={a.id}
-      onClick={() => setSelected(a)}
-      style={{
-        padding: 14,
-        borderRadius: 12,
-        background: "#0b1220",
-        border: "1px solid #1f2937",
-        cursor: "pointer",
-      }}
-    >
-      <strong>{a.name}</strong>
-      <div style={{ fontSize: 12, color: "#94a3b8" }}>
-        {a.industry || "Sin industria"} — {a.country || "-"}
-      </div>
-    </div>
-  ))}
-</div>
+  {accounts.map((a) => {
+    const r = radarMap[a.id];
 
+    const tempColor =
+      r?.temperature === "CALIENTE"
+        ? "#ef4444"
+        : r?.temperature === "TIBIA"
+        ? "#f59e0b"
+        : "#64748b";
+
+    const urgencyColor =
+      r?.urgency === "CRITICA"
+        ? "#dc2626"
+        : r?.urgency === "ALTA"
+        ? "#f97316"
+        : r?.urgency === "MEDIA"
+        ? "#eab308"
+        : "#475569";
+
+    return (
+      <div
+        key={a.id}
+        onClick={() => setSelected(a)}
+        style={{
+          padding: 14,
+          borderRadius: 12,
+          background: "#0b1220",
+          border: "1px solid #1f2937",
+          cursor: "pointer",
+          display: "grid",
+          gap: 6,
+        }}
+      >
+        <strong>{a.name}</strong>
+
+        <div style={{ fontSize: 12, color: "#94a3b8" }}>
+          {a.industry || "Sin industria"} — {a.country || "-"}
+        </div>
+
+        {r && (
+          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+            <span
+              style={{
+                background: tempColor,
+                padding: "2px 6px",
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+            >
+              {r.temperature}
+            </span>
+
+            <span
+              style={{
+                background: urgencyColor,
+                padding: "2px 6px",
+                borderRadius: 6,
+                fontSize: 11,
+                fontWeight: 600,
+              }}
+            >
+              {r.urgency}
+            </span>
+
+            {r.hasOpportunity && <span>💰</span>}
+            {r.hasQuote && <span>📄</span>}
+            {r.hasOrder && <span>📦</span>}
+            {!r.hasContacts && <span>⚠️</span>}
+          </div>
+        )}
+      </div>
+    );
+  })}
+</div>
 
 {/* ===== DETALLE COMPLETO CON SCROLL ===== */}
 {selected && (
