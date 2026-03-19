@@ -1180,6 +1180,73 @@ async function confirmImportRows() {
 }
 // ===== FIN FUNCIONES IMPORTADOR =====
 
+  // ===== INICIO FUNCION EXPORTADOR =====
+function exportAccountsToCsv(onlyFiltered = false) {
+  const list = onlyFiltered ? filteredAccounts : accounts;
+
+  if (!list || list.length === 0) {
+    alert("No hay cuentas para exportar.");
+    return;
+  }
+
+  const headers = [
+    "name",
+    "legal_name",
+    "industry",
+    "country",
+    "city",
+    "status",
+    "notes",
+  ];
+
+  const escape = (value: any) => {
+    if (value == null) return "";
+    const str = String(value);
+    if (str.includes('"')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    if (str.includes(",") || str.includes("\n")) {
+      return `"${str}"`;
+    }
+    return str;
+  };
+
+  const rows = list.map((a) =>
+    [
+      escape(a.name),
+      escape(a.legal_name),
+      escape(a.industry),
+      escape(a.country),
+      escape(a.city),
+      escape(a.status),
+      escape(a.notes),
+    ].join(",")
+  );
+
+  const csv = [headers.join(","), ...rows].join("\n");
+
+  const blob = new Blob([csv], {
+    type: "text/csv;charset=utf-8;",
+  });
+
+  const url = URL.createObjectURL(blob);
+
+  const link = document.createElement("a");
+  link.href = url;
+
+  const date = new Date().toISOString().slice(0, 10);
+
+  link.download = onlyFiltered
+    ? `crm-cuentas-filtradas-${date}.csv`
+    : `crm-cuentas-${date}.csv`;
+
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  URL.revokeObjectURL(url);
+}
+// ===== FIN FUNCION EXPORTADOR =====
+
   // ===== INICIO RENDER =====
   if (loading) return <div style={{ padding: 40 }}>Cargando CRM...</div>;
 
@@ -1241,7 +1308,21 @@ async function confirmImportRows() {
     Importar
   </button>
 
-  <button style={miniButton}>Exportar</button>
+  <button
+    style={miniButton}
+    onClick={() => {
+      if (search.trim()) {
+        const ok = confirm(
+          "¿Exportar solo cuentas filtradas por la búsqueda actual?"
+        );
+        exportAccountsToCsv(ok);
+      } else {
+        exportAccountsToCsv(false);
+      }
+    }}
+  >
+    Exportar
+  </button>
 </div>
 {/* ===== PRIORIDAD EJECUTIVA GLOBAL ===== */}
 {executiveTopAccounts.length > 0 && (
