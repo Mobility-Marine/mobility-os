@@ -1268,6 +1268,18 @@ export default function CRMPage() {
       )}
     </div>
 
+{/* ===== BLOQUE A — CONTEXTO ESTRATÉGICO ===== */}
+<div
+  style={{
+    marginTop: 22,
+    fontWeight: 800,
+    fontSize: 14,
+    color: "#60a5fa",
+  }}
+>
+  CONTEXTO ESTRATÉGICO
+</div>
+    
             {/* ===== CRM 360 PANEL ===== */}
             <div style={panelCard}>
               <div style={panelCardTitle}>Resumen del cliente</div>
@@ -1368,6 +1380,18 @@ export default function CRMPage() {
               </div>
             )}
 
+{/* ===== BLOQUE B — RELACIÓN Y ACTIVIDAD ===== */}
+<div
+  style={{
+    marginTop: 28,
+    fontWeight: 800,
+    fontSize: 14,
+    color: "#38bdf8",
+  }}
+>
+  RELACIÓN Y ACTIVIDAD
+</div>
+    
             {/* ===== CONTACTOS ===== */}
             <div style={{ marginTop: 24 }}>
               <h3>Contactos</h3>
@@ -1458,6 +1482,18 @@ export default function CRMPage() {
               ))}
             </div>
 
+{/* ===== BLOQUE C — GESTIÓN COMERCIAL ===== */}
+<div
+  style={{
+    marginTop: 28,
+    fontWeight: 800,
+    fontSize: 14,
+    color: "#34d399",
+  }}
+>
+  GESTIÓN COMERCIAL
+</div>
+    
             {/* ===== OPORTUNIDADES ===== */}
             <div style={{ marginTop: 20 }}>
               <h3>Oportunidades</h3>
@@ -1514,6 +1550,18 @@ export default function CRMPage() {
               ))}
             </div>
 
+{/* ===== BLOQUE D — HISTORIAL DEL CLIENTE ===== */}
+<div
+  style={{
+    marginTop: 28,
+    fontWeight: 800,
+    fontSize: 14,
+    color: "#fbbf24",
+  }}
+>
+  HISTORIAL DEL CLIENTE
+</div>
+    
             {/* ===== TIMELINE ===== */}
             <div style={{ marginTop: 28 }}>
               <h3>Historial del cliente</h3>
