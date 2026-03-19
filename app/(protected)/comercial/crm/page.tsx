@@ -1079,12 +1079,231 @@ function buildCommandCenter() {
 }
 // ===== FIN BUILD COMMAND CENTER =====
   
-  // ===== INICIO RENDER =====
+// ===== INICIO RENDER =====
 
-  if (loading) return <div style={{ padding: 40 }}>Cargando CRM...</div>;
+if (loading) return <div style={{ padding: 40 }}>Cargando CRM...</div>;
 
-  return (
-    <div style={{ padding: 24, display: "grid", gap: 20 }}>
+return (
+  <div
+    style={{
+      height: "calc(100vh - 40px)",
+      display: "grid",
+      gridTemplateColumns: "320px 1fr 340px",
+      gap: 16,
+      padding: 16,
+      background: "#020617",
+    }}
+  >
+
+    {/* ========================================================= */}
+    {/* ===== PANEL IZQUIERDO — RADAR ===== */}
+    {/* ========================================================= */}
+
+    <div
+      style={{
+        background: "#020617",
+        border: "1px solid #1f2937",
+        borderRadius: 12,
+        padding: 12,
+        display: "flex",
+        flexDirection: "column",
+        overflow: "hidden",
+      }}
+    >
+      <div style={{ fontWeight: 800, marginBottom: 8 }}>
+        CUENTAS
+      </div>
+
+      {/* 🔎 Búsqueda futura */}
+      <input
+        placeholder="Buscar cuenta..."
+        style={{
+          padding: 8,
+          borderRadius: 8,
+          border: "1px solid #1f2937",
+          background: "#0b1220",
+          color: "#fff",
+          marginBottom: 10,
+        }}
+      />
+
+      {/* 📥 Import / Export */}
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        <button>Importar</button>
+        <button>Exportar</button>
+      </div>
+
+      {/* 🔥 LISTA DE CUENTAS */}
+      <div style={{ overflowY: "auto", flex: 1 }}>
+        <div style={{ display: "grid", gap: 10 }}>
+          {[...accounts]
+            .sort((a, b) => {
+              const pa = priorityMap[a.id]?.score || 0;
+              const pb = priorityMap[b.id]?.score || 0;
+              return pb - pa;
+            })
+            .map((a) => {
+              const r = radarMap[a.id];
+              const rev = revenueMap[a.id];
+              const p = priorityMap[a.id];
+
+              return (
+                <div
+                  key={a.id}
+                  onClick={() => setSelected(a)}
+                  style={{
+                    padding: 14,
+                    borderRadius: 12,
+                    background: "#0b1220",
+                    border: "1px solid #1f2937",
+                    cursor: "pointer",
+                    display: "grid",
+                    gap: 6,
+                  }}
+                >
+                  <strong>{a.name}</strong>
+
+                  {p && (
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        color: "#94a3b8",
+                      }}
+                    >
+                      Prioridad: {p.label}
+                    </span>
+                  )}
+
+                  {rev && (
+                    <span style={{ fontSize: 11 }}>
+                      Tier: {rev.tier}
+                    </span>
+                  )}
+
+                  {r && (
+                    <span style={{ fontSize: 11 }}>
+                      Temp: {r.temperature} · Urg: {r.urgency}
+                    </span>
+                  )}
+                </div>
+              );
+            })}
+        </div>
+      </div>
+    </div>
+
+    {/* ========================================================= */}
+    {/* ===== PANEL CENTRAL — WORKSPACE ===== */}
+    {/* ========================================================= */}
+
+    <div
+      style={{
+        background: "#020617",
+        border: "1px solid #1f2937",
+        borderRadius: 12,
+        padding: 16,
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
+      }}
+    >
+      {!selected && (
+        <div style={{ color: "#94a3b8" }}>
+          Selecciona una cuenta para ver detalles.
+        </div>
+      )}
+
+      {selected && (
+        <div
+          style={{
+            overflowY: "auto",
+            paddingRight: 8,
+            display: "grid",
+            gap: 16,
+          }}
+        >
+          <h2>{selected.name}</h2>
+
+          <div style={{ fontSize: 13 }}>
+            Industria: {selected.industry || "-"}
+          </div>
+
+          <div style={{ fontSize: 13 }}>
+            Ubicación: {selected.city || "-"}, {selected.country || "-"}
+          </div>
+
+          <div style={{ fontSize: 13 }}>
+            Estado: {selected.status}
+          </div>
+
+          {selected.notes && (
+            <div style={{ fontSize: 13 }}>
+              Notas: {selected.notes}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+
+    {/* ========================================================= */}
+    {/* ===== PANEL DERECHO — AI COPILOT ===== */}
+    {/* ========================================================= */}
+
+    <div
+      style={{
+        background: "#020617",
+        border: "1px solid #1f2937",
+        borderRadius: 12,
+        padding: 14,
+        display: "flex",
+        flexDirection: "column",
+        gap: 12,
+        overflowY: "auto",
+      }}
+    >
+      <div style={{ fontWeight: 800, color: "#38bdf8" }}>
+        COPILOT COMERCIAL IA
+      </div>
+
+      {!selected && (
+        <div style={{ color: "#94a3b8" }}>
+          Selecciona una cuenta para ver recomendaciones.
+        </div>
+      )}
+
+      {director && (
+        <div>
+          <div>
+            Urgencia: <strong>{director.urgency}</strong>
+          </div>
+
+          <div>
+            Temperatura:{" "}
+            <strong>{director.accountTemperature}</strong>
+          </div>
+
+          <div style={{ marginTop: 8 }}>
+            {director.recommendedAction}
+          </div>
+        </div>
+      )}
+
+      {alerts.length > 0 && (
+        <div style={{ marginTop: 10 }}>
+          <strong>Alertas</strong>
+
+          {alerts.map((a, i) => (
+            <div key={i}>• {a.title}</div>
+          ))}
+        </div>
+      )}
+    </div>
+
+  </div>
+);
+
+// ===== FIN RENDER =====
 
       <h1>CRM — Empresas / Cuentas</h1>
 
@@ -1145,51 +1364,6 @@ function buildCommandCenter() {
     />
   </div>
 )}
-
-    {/* ===== RADAR DE CUENTAS ===== */}
-<div style={{ display: "grid", gap: 10 }}>
-  {[...accounts]
-    .sort((a, b) => {
-      const pa = priorityMap[a.id]?.score || 0;
-      const pb = priorityMap[b.id]?.score || 0;
-      return pb - pa;
-    })
-    .map((a) => {
-      const r = radarMap[a.id];
-      const rev = revenueMap[a.id];
-      const p = priorityMap[a.id];
-      const act = actionMap[a.id];
-
-      const tempColor =
-        r?.temperature === "CALIENTE"
-          ? "#ef4444"
-          : r?.temperature === "TIBIA"
-          ? "#f59e0b"
-          : "#64748b";
-
-      const urgencyColor =
-        r?.urgency === "CRITICA"
-          ? "#dc2626"
-          : r?.urgency === "ALTA"
-          ? "#f97316"
-          : r?.urgency === "MEDIA"
-          ? "#eab308"
-          : "#475569";
-
-      return (
-        <div
-          key={a.id}
-          onClick={() => setSelected(a)}
-          style={{
-            padding: 14,
-            borderRadius: 12,
-            background: "#0b1220",
-            border: "1px solid #1f2937",
-            cursor: "pointer",
-            display: "grid",
-            gap: 6,
-          }}
-        >
           <strong>{a.name}</strong>
 
           {/* ===== INICIO ACCION RAPIDA EN RADAR ===== */}
@@ -1258,17 +1432,6 @@ function buildCommandCenter() {
       );
     })}
 </div>
-{/* ===== DETALLE COMPLETO CON SCROLL ===== */}
-{selected && (
-  <div
-    style={{
-      marginTop: 20,
-      maxHeight: "70vh",
-      overflowY: "auto",
-      paddingRight: 8,
-    }}
-  >
-    <h2>{selected.name}</h2>
 
     {/* ===== CRM 360 PANEL ===== */}
     <div
