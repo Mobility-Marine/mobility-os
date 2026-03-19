@@ -188,6 +188,18 @@ export default function CRMPage() {
     useState<CommandCenterData | null>(null);
 
   const [search, setSearch] = useState("");
+  // ===== ACCOUNT CREATION MODAL =====
+const [showCreateAccount, setShowCreateAccount] = useState(false);
+
+const [newAccount, setNewAccount] = useState({
+  name: "",
+  legal_name: "",
+  industry: "",
+  country: "",
+  city: "",
+  status: "active",
+  notes: "",
+});
   // ===== FIN STATE =====
 
   // ===== INICIO FILTERED ACCOUNTS =====
@@ -1841,11 +1853,33 @@ const executiveTopAccounts = useMemo(() => {
       >
         <div style={{ fontWeight: 800, color: "#38bdf8" }}>COPILOT IA</div>
 
-        {!selected && (
-          <div style={{ color: "#94a3b8" }}>
-            Selecciona una cuenta.
-          </div>
-        )}
+        {/* ===== ESTADO VACÍO DEL CRM ===== */}
+{!selected && (
+  <div
+    style={{
+      height: "100%",
+      display: "grid",
+      placeItems: "center",
+      textAlign: "center",
+      color: "#94a3b8",
+      gap: 16,
+    }}
+  >
+    <div style={{ fontSize: 22, fontWeight: 700 }}>
+      CRM listo para operar 🚀
+    </div>
+
+    <div style={{ fontSize: 14 }}>
+      No hay cuentas seleccionadas.<br />
+      Crea o importa clientes desde el panel izquierdo.
+    </div>
+
+    {/* CTA secundaria (no principal) */}
+    <div style={{ fontSize: 13, opacity: 0.8 }}>
+      Tip: Puedes importar cientos de cuentas desde Excel.
+    </div>
+  </div>
+)}
 
         {director && (
           <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
@@ -1891,6 +1925,151 @@ const executiveTopAccounts = useMemo(() => {
       </div>
     </div>
   );
+
+{/* ========================================================= */}
+{/* ===== MODAL CREAR CUENTA — UNICORN WIZARD ===== */}
+{/* ========================================================= */}
+{showCreateAccount && (
+  <div
+    style={{
+      position: "fixed",
+      inset: 0,
+      background: "rgba(0,0,0,0.7)",
+      display: "grid",
+      placeItems: "center",
+      zIndex: 1000,
+    }}
+  >
+    <div
+      style={{
+        width: 520,
+        maxWidth: "95vw",
+        background: "#020617",
+        border: "1px solid #1f2937",
+        borderRadius: 14,
+        padding: 22,
+        display: "grid",
+        gap: 14,
+      }}
+    >
+      <div style={{ fontSize: 20, fontWeight: 800 }}>
+        Nueva cuenta
+      </div>
+
+      {/* ===== CAMPOS ===== */}
+      <input
+        placeholder="Nombre comercial *"
+        value={newAccount.name}
+        onChange={(e) =>
+          setNewAccount({ ...newAccount, name: e.target.value })
+        }
+        style={inputStyle}
+      />
+
+      <input
+        placeholder="Razón social"
+        value={newAccount.legal_name}
+        onChange={(e) =>
+          setNewAccount({
+            ...newAccount,
+            legal_name: e.target.value,
+          })
+        }
+        style={inputStyle}
+      />
+
+      <input
+        placeholder="Industria"
+        value={newAccount.industry}
+        onChange={(e) =>
+          setNewAccount({
+            ...newAccount,
+            industry: e.target.value,
+          })
+        }
+        style={inputStyle}
+      />
+
+      <div style={{ display: "flex", gap: 10 }}>
+        <input
+          placeholder="Ciudad"
+          value={newAccount.city}
+          onChange={(e) =>
+            setNewAccount({ ...newAccount, city: e.target.value })
+          }
+          style={{ ...inputStyle, flex: 1 }}
+        />
+
+        <input
+          placeholder="País"
+          value={newAccount.country}
+          onChange={(e) =>
+            setNewAccount({
+              ...newAccount,
+              country: e.target.value,
+            })
+          }
+          style={{ ...inputStyle, flex: 1 }}
+        />
+      </div>
+
+      <textarea
+        placeholder="Notas estratégicas"
+        value={newAccount.notes}
+        onChange={(e) =>
+          setNewAccount({
+            ...newAccount,
+            notes: e.target.value,
+          })
+        }
+        style={{
+          ...inputStyle,
+          minHeight: 80,
+          resize: "vertical",
+        }}
+      />
+
+      {/* ===== BOTONES ===== */}
+      <div style={{ display: "flex", justifyContent: "flex-end", gap: 10 }}>
+        <button
+          style={miniButton}
+          onClick={() => setShowCreateAccount(false)}
+        >
+          Cancelar
+        </button>
+
+        <button
+          style={primaryButton}
+          onClick={async () => {
+            if (!newAccount.name || !companyId) return;
+
+            await supabase.from("crm_accounts").insert({
+              company_id: companyId,
+              ...newAccount,
+            });
+
+            setShowCreateAccount(false);
+
+            setNewAccount({
+              name: "",
+              legal_name: "",
+              industry: "",
+              country: "",
+              city: "",
+              status: "active",
+              notes: "",
+            });
+
+            loadAccounts();
+          }}
+        >
+          Crear cuenta
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+  
   // ===== FIN RENDER =====
 }
 
