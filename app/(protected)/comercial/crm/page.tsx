@@ -1095,9 +1095,7 @@ return (
     }}
   >
 
-    {/* ========================================================= */}
     {/* ===== PANEL IZQUIERDO — RADAR ===== */}
-    {/* ========================================================= */}
 
     <div
       style={{
@@ -1114,7 +1112,6 @@ return (
         CUENTAS
       </div>
 
-      {/* 🔎 Búsqueda futura */}
       <input
         placeholder="Buscar cuenta..."
         style={{
@@ -1127,13 +1124,11 @@ return (
         }}
       />
 
-      {/* 📥 Import / Export */}
       <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
         <button>Importar</button>
         <button>Exportar</button>
       </div>
 
-      {/* 🔥 LISTA DE CUENTAS */}
       <div style={{ overflowY: "auto", flex: 1 }}>
         <div style={{ display: "grid", gap: 10 }}>
           {[...accounts]
@@ -1164,13 +1159,7 @@ return (
                   <strong>{a.name}</strong>
 
                   {p && (
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        color: "#94a3b8",
-                      }}
-                    >
+                    <span style={{ fontSize: 11 }}>
                       Prioridad: {p.label}
                     </span>
                   )}
@@ -1193,9 +1182,7 @@ return (
       </div>
     </div>
 
-    {/* ========================================================= */}
-    {/* ===== PANEL CENTRAL — WORKSPACE ===== */}
-    {/* ========================================================= */}
+    {/* ===== PANEL CENTRAL ===== */}
 
     <div
       style={{
@@ -1215,40 +1202,21 @@ return (
       )}
 
       {selected && (
-        <div
-          style={{
-            overflowY: "auto",
-            paddingRight: 8,
-            display: "grid",
-            gap: 16,
-          }}
-        >
+        <div style={{ overflowY: "auto", display: "grid", gap: 16 }}>
           <h2>{selected.name}</h2>
 
-          <div style={{ fontSize: 13 }}>
-            Industria: {selected.industry || "-"}
-          </div>
-
-          <div style={{ fontSize: 13 }}>
+          <div>Industria: {selected.industry || "-"}</div>
+          <div>
             Ubicación: {selected.city || "-"}, {selected.country || "-"}
           </div>
+          <div>Estado: {selected.status}</div>
 
-          <div style={{ fontSize: 13 }}>
-            Estado: {selected.status}
-          </div>
-
-          {selected.notes && (
-            <div style={{ fontSize: 13 }}>
-              Notas: {selected.notes}
-            </div>
-          )}
+          {selected.notes && <div>Notas: {selected.notes}</div>}
         </div>
       )}
     </div>
 
-    {/* ========================================================= */}
-    {/* ===== PANEL DERECHO — AI COPILOT ===== */}
-    {/* ========================================================= */}
+    {/* ===== PANEL DERECHO — AI ===== */}
 
     <div
       style={{
@@ -1283,14 +1251,12 @@ return (
             <strong>{director.accountTemperature}</strong>
           </div>
 
-          <div style={{ marginTop: 8 }}>
-            {director.recommendedAction}
-          </div>
+          <div>{director.recommendedAction}</div>
         </div>
       )}
 
       {alerts.length > 0 && (
-        <div style={{ marginTop: 10 }}>
+        <div>
           <strong>Alertas</strong>
 
           {alerts.map((a, i) => (
@@ -1304,8 +1270,6 @@ return (
 );
 
 // ===== FIN RENDER =====
-
-      <h1>CRM — Empresas / Cuentas</h1>
 
       {/* ===== COMMERCIAL COMMAND CENTER ===== */}
 {commandCenter && (
