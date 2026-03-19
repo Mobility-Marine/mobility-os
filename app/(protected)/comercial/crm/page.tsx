@@ -587,7 +587,7 @@ async function createActivity() {
 
       <h1>CRM — Empresas / Cuentas</h1>
 
-      {/* ===== LISTA DE CUENTAS ===== */}
+     {/* ===== LISTA DE CUENTAS ===== */}
 <div style={{ display: "grid", gap: 10 }}>
   {accounts.map((a) => (
     <div
@@ -608,6 +608,7 @@ async function createActivity() {
     </div>
   ))}
 </div>
+
 
 {/* ===== DETALLE COMPLETO CON SCROLL ===== */}
 {selected && (
@@ -654,32 +655,6 @@ async function createActivity() {
       )}
     </div>
 
-    {/* ===== CRM AI INSIGHTS ===== */}
-    {insights && (
-      <div
-        style={{
-          marginTop: 16,
-          padding: 14,
-          borderRadius: 12,
-          background: "#111827",
-          border: "1px solid #1f2937",
-          display: "grid",
-          gap: 10,
-        }}
-      >
-        <div style={{ fontWeight: 800, color: "#60a5fa" }}>
-          CRM AI DIRECTOR
-        </div>
-
-        <div>Health score: <strong>{insights.healthScore}/100</strong></div>
-        <div>Prioridad: <strong>{insights.priority}</strong></div>
-        <div>Riesgo: <strong>{insights.churnRisk}</strong></div>
-        <div>{insights.nextBestAction}</div>
-        <div style={{ color: "#cbd5e1" }}>
-          {insights.executiveSummary}
-        </div>
-      </div>
-    )}
 
     {/* ===== CONTACTOS ===== */}
     <div style={{ marginTop: 24 }}>
@@ -689,18 +664,17 @@ async function createActivity() {
         + Nuevo contacto
       </button>
 
-      {contacts.length === 0 && <p>No hay contactos.</p>}
-
       {contacts.map((c) => (
         <div key={c.id} style={{ padding: 10 }}>
           <strong>{c.name}</strong>
+          {c.position && <div>{c.position}</div>}
           {c.email && <div>{c.email}</div>}
-          {c.phone && <div>{c.phone}</div>}
         </div>
       ))}
     </div>
 
-    {/* ===== UPLOAD DOCUMENTO ===== */}
+
+    {/* ===== UPLOAD ===== */}
     <input
       type="file"
       onChange={(e) => {
@@ -709,16 +683,20 @@ async function createActivity() {
       }}
     />
 
+
     {/* ===== ACTIVIDADES ===== */}
     <div style={{ marginTop: 24 }}>
       <h3>Actividades</h3>
 
-      <button onClick={createActivity}>Agregar</button>
+      <button onClick={createActivity}>
+        Agregar
+      </button>
 
       {activities.map((a) => (
         <ActivityRow key={a.id} activity={a} />
       ))}
     </div>
+
 
     {/* ===== DOCUMENTOS ===== */}
     <div style={{ marginTop: 16 }}>
@@ -728,6 +706,7 @@ async function createActivity() {
         <DocumentRow key={d.id} doc={d} />
       ))}
     </div>
+
 
     {/* ===== OPORTUNIDADES ===== */}
     <div style={{ marginTop: 20 }}>
@@ -740,9 +719,34 @@ async function createActivity() {
       ))}
     </div>
 
+
+    {/* ===== COTIZACIONES ===== */}
+    <div style={{ marginTop: 20 }}>
+      <h3>Cotizaciones</h3>
+
+      {quotes.map((q) => (
+        <div key={q.id}>
+          {q.quote_number} — {q.status}
+        </div>
+      ))}
+    </div>
+
+
+    {/* ===== PEDIDOS ===== */}
+    <div style={{ marginTop: 20 }}>
+      <h3>Pedidos</h3>
+
+      {orders.map((o) => (
+        <div key={o.id}>
+          {o.order_number} — {o.status}
+        </div>
+      ))}
+    </div>
+
+
     {/* ===== TIMELINE ===== */}
     <div style={{ marginTop: 28 }}>
-      <h3>Historial</h3>
+      <h3>Historial del cliente</h3>
 
       {timeline.map((t) => (
         <TimelineRow key={`${t.type}-${t.id}`} item={t} />
