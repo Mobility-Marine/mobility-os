@@ -2242,7 +2242,6 @@ function exportAccountsToCsv(onlyFiltered = false) {
                 <TimelineRow key={`${t.type}-${t.id}`} item={t} />
               ))}
             </div>
-          </>
         )}
       </div>
 
