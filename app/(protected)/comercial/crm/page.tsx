@@ -1,7 +1,7 @@
 "use client";
 
 // ===== INICIO IMPORTS =====
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 // ===== FIN IMPORTS =====
@@ -78,6 +78,16 @@ type TimelineItem = {
 };
 // ===== FIN TYPE TIMELINE ITEM =====
 
+// ===== INICIO TYPE CRM ACCOUNT INSIGHTS =====
+type CrmAccountInsights = {
+  healthScore: number;
+  priority: "BAJA" | "MEDIA" | "ALTA" | "CRITICA";
+  churnRisk: "BAJO" | "MEDIO" | "ALTO";
+  nextBestAction: string;
+  executiveSummary: string;
+};
+// ===== FIN TYPE CRM ACCOUNT INSIGHTS =====
+
 // ===== FIN TYPES =====
 
 // ===== INICIO TYPES CONTACTOS =====
@@ -117,6 +127,9 @@ const [newActivityDate, setNewActivityDate] = useState("");
   // ===== INICIO STATE TIMELINE =====
 const [timeline, setTimeline] = useState<TimelineItem[]>([]);
 // ===== FIN STATE TIMELINE =====
+  // ===== INICIO STATE INSIGHTS IA =====
+const [insights, setInsights] = useState<CrmAccountInsights | null>(null);
+// ===== FIN STATE INSIGHTS IA =====
   // ===== FIN STATE =====
 
   // ===== INICIO STATE RELACIONES CRM =====
@@ -212,9 +225,23 @@ useEffect(() => {
   loadDocuments(selected.id);
   loadRelations(selected.id);
   loadContacts(selected.id);
-  buildTimeline(selected.id);   // 🔥 AGREGAR ESTA LÍNEA
+  loadActivities(selected.id);
 }, [selected]);
 // ===== FIN LOAD DETALLE COMPLETO CRM =====
+
+// ===== INICIO RECALCULAR TIMELINE AUTOMATICO =====
+useEffect(() => {
+  if (!selected) return;
+  buildTimeline(selected.id);
+}, [activities, documents, opportunities, quotes, orders]);
+// ===== FIN RECALCULAR TIMELINE AUTOMATICO =====
+
+// ===== INICIO RECALCULAR INSIGHTS =====
+useEffect(() => {
+  if (!selected) return;
+  buildAccountInsights(selected);
+}, [selected, contacts, activities, documents, opportunities, quotes, orders, timeline]);
+// ===== FIN RECALCULAR INSIGHTS =====
 
   async function loadDocuments(accountId: string) {
     const { data } = await supabase
@@ -347,6 +374,96 @@ async function buildTimeline(accountId: string) {
   setTimeline(items);
 }
 // ===== FIN BUILD TIMELINE 360 =====
+
+// ===== INICIO BUILD CRM ACCOUNT INSIGHTS =====
+function buildAccountInsights(account: CrmAccount) {
+  let score = 0;
+
+  // 🔹 Base de completitud
+  if (account.legal_name) score += 10;
+  if (account.industry) score += 10;
+  if (account.country) score += 8;
+  if (account.city) score += 6;
+  if (account.notes) score += 6;
+
+  // 🔹 Contactos
+  if (contacts.length >= 1) score += 10;
+  if (contacts.length >= 3) score += 6;
+
+  const decisionMakers = contacts.filter(
+    (c) =>
+      c.role?.toLowerCase().includes("decision") ||
+      c.role?.toLowerCase().includes("director") ||
+      c.role?.toLowerCase().includes("buyer")
+  ).length;
+
+  if (decisionMakers > 0) score += 10;
+
+  // 🔹 Actividades
+  if (activities.length >= 1) score += 8;
+  if (activities.length >= 5) score += 6;
+
+  const futureActivities = activities.filter(
+    (a) => a.scheduled_at && !a.completed
+  ).length;
+
+  if (futureActivities > 0) score += 8;
+
+  // 🔹 Documentos
+  if (documents.length >= 1) score += 8;
+  if (documents.length >= 3) score += 4;
+
+  // 🔹 Comercial
+  if (opportunities.length >= 1) score += 10;
+  if (quotes.length >= 1) score += 8;
+  if (orders.length >= 1) score += 12;
+
+  // 🔹 Timeline / vida del cliente
+  if (timeline.length >= 3) score += 6;
+  if (timeline.length >= 8) score += 4;
+
+  const healthScore = Math.min(score, 100);
+
+  let churnRisk: "BAJO" | "MEDIO" | "ALTO" = "BAJO";
+  if (healthScore < 40) churnRisk = "ALTO";
+  else if (healthScore < 70) churnRisk = "MEDIO";
+
+  let priority: "BAJA" | "MEDIA" | "ALTA" | "CRITICA" = "BAJA";
+  if (opportunities.length > 0 && quotes.length > 0 && healthScore >= 70) {
+    priority = "CRITICA";
+  } else if (opportunities.length > 0 || quotes.length > 0) {
+    priority = "ALTA";
+  } else if (contacts.length > 0 || activities.length > 0) {
+    priority = "MEDIA";
+  }
+
+  let nextBestAction = "Registrar siguiente paso comercial.";
+  if (contacts.length === 0) {
+    nextBestAction = "Agregar al menos un contacto clave de la cuenta.";
+  } else if (futureActivities === 0) {
+    nextBestAction = "Programar una llamada o reunión en agenda.";
+  } else if (documents.length === 0) {
+    nextBestAction = "Subir contrato, propuesta o documento comercial.";
+  } else if (opportunities.length === 0) {
+    nextBestAction = "Crear una oportunidad comercial vinculada a esta cuenta.";
+  }
+
+  const executiveSummary =
+    healthScore >= 75
+      ? "Cuenta bien trabajada, con contexto comercial sólido y buena trazabilidad."
+      : healthScore >= 50
+      ? "Cuenta con base útil, pero todavía necesita estructura comercial adicional."
+      : "Cuenta frágil: faltan relaciones, actividad o activos comerciales clave.";
+
+  setInsights({
+    healthScore,
+    priority,
+    churnRisk,
+    nextBestAction,
+    executiveSummary,
+  });
+}
+// ===== FIN BUILD CRM ACCOUNT INSIGHTS =====
   
   // ===== INICIO LOAD CONTACTOS =====
 async function loadContacts(accountId: string) {
@@ -492,11 +609,18 @@ async function createActivity() {
         ))}
       </div>
 
-      {/* ===== DETALLE ===== */}
-      {selected && (
-        <div style={{ marginTop: 20 }}>
-          <h2>{selected.name}</h2>
-
+     {/* ===== INICIO CONTENEDOR DETALLE CON SCROLL ===== */}
+{selected && (
+  <div
+    style={{
+      marginTop: 20,
+      maxHeight: "70vh",   // 🔹 Altura máxima visible
+      overflowY: "auto",   // 🔹 Scroll interno independiente
+      paddingRight: 8,     // 🔹 Evita que scrollbar tape contenido
+    }}
+  >
+    <h2>{selected.name}</h2>
+          
           {/* ===== INICIO CRM 360 PANEL ===== */}
 <div
   style={{
@@ -531,6 +655,46 @@ async function createActivity() {
 </div>
 {/* ===== FIN CRM 360 PANEL ===== */}
 
+{/* ===== INICIO CRM AI INSIGHTS PANEL ===== */}
+{insights && (
+  <div
+    style={{
+      marginTop: 16,
+      padding: 14,
+      borderRadius: 12,
+      background: "#111827",
+      border: "1px solid #1f2937",
+      display: "grid",
+      gap: 10,
+    }}
+  >
+    <div style={{ fontWeight: 800, color: "#60a5fa" }}>
+      CRM AI DIRECTOR
+    </div>
+
+    <div style={{ fontSize: 13 }}>
+      Health score: <strong>{insights.healthScore}/100</strong>
+    </div>
+
+    <div style={{ fontSize: 13 }}>
+      Prioridad: <strong>{insights.priority}</strong>
+    </div>
+
+    <div style={{ fontSize: 13 }}>
+      Riesgo: <strong>{insights.churnRisk}</strong>
+    </div>
+
+    <div style={{ fontSize: 13 }}>
+      Siguiente mejor acción: {insights.nextBestAction}
+    </div>
+
+    <div style={{ fontSize: 13, color: "#cbd5e1" }}>
+      {insights.executiveSummary}
+    </div>
+  </div>
+)}
+{/* ===== FIN CRM AI INSIGHTS PANEL ===== */}
+          
 {/* ===== INICIO CONTACTOS ===== */}
 <div style={{ marginTop: 24 }}>
   <h3>Contactos</h3>
@@ -589,7 +753,7 @@ async function createActivity() {
   ))}
 </div>
 {/* ===== FIN CONTACTOS ===== */}
-          
+    
           {/* ===== FIN DETALLE ===== */}
 
           {/* ===== UPLOAD ===== */}
@@ -644,20 +808,6 @@ async function createActivity() {
   ))}
 
 </div>
-
-{/* ===== INICIO TIMELINE 360 ===== */}
-<div style={{ marginTop: 28 }}>
-  <h3>Historial del cliente</h3>
-
-  {timeline.length === 0 && (
-    <p>No hay historial disponible.</p>
-  )}
-
-  {timeline.map((t) => (
-    <TimelineRow key={`${t.type}-${t.id}`} item={t} />
-  ))}
-</div>
-{/* ===== FIN TIMELINE 360 ===== */}
           
           {/* ===== DOCUMENTOS ===== */}
           <div style={{ marginTop: 16 }}>
@@ -669,11 +819,6 @@ async function createActivity() {
               <DocumentRow key={d.id} doc={d} />
             ))}
           </div>
-        </div>
-      )}
-
-    </div>
-  );
 
 {/* ===== INICIO OPORTUNIDADES RELACIONADAS ===== */}
 <div style={{ marginTop: 20 }}>
@@ -721,6 +866,27 @@ async function createActivity() {
   ))}
 </div>
 {/* ===== FIN PEDIDOS RELACIONADOS ===== */}
+
+          {/* ===== INICIO TIMELINE 360 ===== */}
+<div style={{ marginTop: 28 }}>
+  <h3>Historial del cliente</h3>
+
+  {timeline.length === 0 && (
+    <p>No hay historial disponible.</p>
+  )}
+
+  {timeline.map((t) => (
+    <TimelineRow key={`${t.type}-${t.id}`} item={t} />
+  ))}
+</div>
+{/* ===== FIN TIMELINE 360 ===== */}
+          </div>
+)}
+        </div>
+      )}
+
+    </div>
+  );
   
   // ===== FIN RENDER =====
 }
@@ -785,7 +951,6 @@ function ActivityRow({ activity }: { activity: CrmActivity }) {
 
 // ===== INICIO COMPONENT TIMELINE ROW =====
 function TimelineRow({ item }: { item: TimelineItem }) {
-
   const colorMap: Record<string, string> = {
     activity: "#38bdf8",
     document: "#a78bfa",
