@@ -1705,7 +1705,6 @@ function exportAccountsToCsv(onlyFiltered = false) {
 )}
 
         {selected && (
-  <>
 
 {/* ===== QUICK ACTION BAR ===== */}
 <div
