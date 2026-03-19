@@ -155,6 +155,15 @@ type AccountPriority = {
 };
 // ===== FIN TYPE ACCOUNT PRIORITY =====
 
+// ===== INICIO TYPE ACCOUNT ACTION =====
+type AccountAction = {
+  accountId: string;
+  action: string;
+  reason: string;
+  urgency: "BAJA" | "MEDIA" | "ALTA" | "CRITICA";
+};
+// ===== FIN TYPE ACCOUNT ACTION =====
+
 export default function CRMPage() {
 
   // ===== INICIO TENANT =====
@@ -202,6 +211,10 @@ const [revenueMap, setRevenueMap] =
 const [priorityMap, setPriorityMap] =
   useState<Record<string, AccountPriority>>({});
 // ===== FIN STATE PRIORITY =====
+// ===== INICIO STATE ACTION MAP =====
+const [actionMap, setActionMap] =
+  useState<Record<string, AccountAction>>({});
+// ===== FIN STATE ACTION MAP =====
 
   // ===== INICIO LOAD ACCOUNTS =====
   useEffect(() => {
@@ -279,6 +292,7 @@ async function loadActivities(accountId: string) {
     (data || []).forEach((acc) => buildAccountRadar(acc));
     (data || []).forEach((acc) => buildAccountRevenue(acc));
     (data || []).forEach((acc) => buildAccountPriority(acc));
+    (data || []).forEach((acc) => buildAccountAction(acc));
   }
 
   // ===== INICIO LOAD DOCUMENTS =====
@@ -313,6 +327,12 @@ useEffect(() => {
   buildDirectorAdvice(selected);
 }, [selected, contacts, activities, opportunities, quotes, orders, timeline]);
 // ===== FIN RECALCULAR DIRECTOR IA =====
+
+  // ===== INICIO RECALCULAR ACTION ENGINE =====
+useEffect(() => {
+  accounts.forEach((acc) => buildAccountAction(acc));
+}, [accounts, radarMap, revenueMap, priorityMap]);
+// ===== FIN RECALCULAR ACTION ENGINE =====
 
   useEffect(() => {
   if (!selected) return;
@@ -925,6 +945,72 @@ else if (score >= 30) label = "MEDIA";
   }));
 }
 // ===== FIN BUILD ACCOUNT PRIORITY =====
+
+  // ===== INICIO BUILD ACCOUNT ACTION =====
+function buildAccountAction(account: CrmAccount) {
+  const id = account.id;
+  const radar = radarMap[id];
+  const rev = revenueMap[id];
+  const priority = priorityMap[id];
+
+  let action = "Monitorear cuenta";
+  let reason = "No hay señales suficientes para una acción inmediata.";
+  let urgency: AccountAction["urgency"] = "BAJA";
+
+  if (!radar) {
+    setActionMap((prev) => ({
+      ...prev,
+      [id]: {
+        accountId: id,
+        action,
+        reason,
+        urgency,
+      },
+    }));
+    return;
+  }
+
+  if (!radar.hasContacts) {
+    action = "Identificar contacto clave";
+    reason = "La cuenta no tiene contactos registrados.";
+    urgency = "CRITICA";
+  } else if (radar.hasQuote && !radar.hasOrder) {
+    action = "Dar seguimiento a cotización";
+    reason = "Hay cotización enviada pero todavía no existe pedido.";
+    urgency = "ALTA";
+  } else if (radar.hasOpportunity && !radar.hasQuote) {
+    action = "Convertir oportunidad en propuesta";
+    reason = "Existe una oportunidad abierta pero aún no hay cotización.";
+    urgency = "ALTA";
+  } else if (radar.hasOrder) {
+    action = "Buscar upsell o recompra";
+    reason = "La cuenta ya compra; conviene expandir relación comercial.";
+    urgency = "MEDIA";
+  } else if (priority?.label === "CRITICA") {
+    action = "Contactar hoy mismo";
+    reason = "La cuenta tiene alta prioridad comercial.";
+    urgency = "CRITICA";
+  } else if (priority?.label === "ALTA") {
+    action = "Programar seguimiento";
+    reason = "La cuenta tiene señales claras de valor u oportunidad.";
+    urgency = "ALTA";
+  } else if (rev?.tier === "STRATEGIC") {
+    action = "Diseñar plan estratégico";
+    reason = "La cuenta tiene alto potencial económico.";
+    urgency = "ALTA";
+  }
+
+  setActionMap((prev) => ({
+    ...prev,
+    [id]: {
+      accountId: id,
+      action,
+      reason,
+      urgency,
+    },
+  }));
+}
+// ===== FIN BUILD ACCOUNT ACTION =====
   
   // ===== INICIO RENDER =====
 
@@ -947,6 +1033,7 @@ else if (score >= 30) label = "MEDIA";
       const r = radarMap[a.id];
       const rev = revenueMap[a.id];
       const p = priorityMap[a.id];
+      const act = actionMap[a.id];
 
       const tempColor =
         r?.temperature === "CALIENTE"
@@ -979,6 +1066,14 @@ else if (score >= 30) label = "MEDIA";
           }}
         >
           <strong>{a.name}</strong>
+
+          {/* ===== INICIO ACCION RAPIDA EN RADAR ===== */}
+{act && (
+  <div style={{ fontSize: 12, color: "#cbd5e1" }}>
+    {act.action}
+  </div>
+)}
+{/* ===== FIN ACCION RAPIDA EN RADAR ===== */}
 
           {/* PRIORIDAD */}
           {p && (
@@ -1140,6 +1235,40 @@ else if (score >= 30) label = "MEDIA";
     )}
   </div>
 )}
+
+{/* ===== INICIO ACTION ENGINE PANEL ===== */}
+{selected && actionMap[selected.id] && (
+  <div
+    style={{
+      marginTop: 16,
+      padding: 14,
+      borderRadius: 12,
+      background: "#111827",
+      border: "1px solid #1f2937",
+      display: "grid",
+      gap: 8,
+    }}
+  >
+    <div style={{ fontWeight: 800, color: "#22c55e" }}>
+      ACTION ENGINE IA
+    </div>
+
+    <div>
+      Acción sugerida:{" "}
+      <strong>{actionMap[selected.id].action}</strong>
+    </div>
+
+    <div>
+      Urgencia:{" "}
+      <strong>{actionMap[selected.id].urgency}</strong>
+    </div>
+
+    <div style={{ color: "#cbd5e1", fontSize: 13 }}>
+      {actionMap[selected.id].reason}
+    </div>
+  </div>
+)}
+{/* ===== FIN ACTION ENGINE PANEL ===== */}
     
 {/* ===== CUSTOMER SUCCESS ALERTS ===== */}
     
