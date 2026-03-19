@@ -1227,65 +1227,6 @@ return (
 // ===== FIN RENDER =====
 }
 
-      {/* ===== COMMERCIAL COMMAND CENTER ===== */}
-{commandCenter && (
-  <div
-    style={{
-      padding: 16,
-      borderRadius: 12,
-      background: "#020617",
-      border: "1px solid #1f2937",
-      display: "grid",
-      gap: 12,
-    }}
-  >
-    <div style={{ fontWeight: 900, color: "#38bdf8" }}>
-      COMMERCIAL COMMAND CENTER
-    </div>
-
-    {/* 🔴 Cuentas críticas */}
-    <CommandList
-      title="Cuentas críticas"
-      color="#ef4444"
-      accounts={commandCenter.criticalAccounts}
-      onSelect={setSelected}
-    />
-
-    {/* ⚡ Acciones urgentes */}
-    <CommandList
-      title="Acciones urgentes"
-      color="#f97316"
-      accounts={commandCenter.urgentActions}
-      onSelect={setSelected}
-    />
-
-    {/* ⏰ Sin seguimiento */}
-    <CommandList
-      title="Sin seguimiento comercial"
-      color="#eab308"
-      accounts={commandCenter.noFollowUp}
-      onSelect={setSelected}
-    />
-
-    {/* 💰 Alto valor */}
-    <CommandList
-      title="Mayor potencial económico"
-      color="#22c55e"
-      accounts={commandCenter.highValue}
-      onSelect={setSelected}
-    />
-
-    {/* 🧊 Cuentas frías */}
-    <CommandList
-      title="Cuentas frías"
-      color="#64748b"
-      accounts={commandCenter.coldAccounts}
-      onSelect={setSelected}
-    />
-  </div>
-)}
-          <strong>{a.name}</strong>
-
           {/* ===== INICIO ACCION RAPIDA EN RADAR ===== */}
 {act && (
   <div style={{ fontSize: 12, color: "#cbd5e1" }}>
