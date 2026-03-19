@@ -1631,7 +1631,7 @@ function exportAccountsToCsv(onlyFiltered = false) {
 )}
 
         {selected && (
-
+  <>
     {/* ===== HEADER EJECUTIVO DE CUENTA ===== */}
     <div
       style={{
@@ -1657,8 +1657,6 @@ function exportAccountsToCsv(onlyFiltered = false) {
 
       {/* Indicadores clave */}
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-        
-        {/* PRIORIDAD */}
         {priorityMap[selected.id] && (
           <span
             style={{
@@ -1681,21 +1679,18 @@ function exportAccountsToCsv(onlyFiltered = false) {
           </span>
         )}
 
-        {/* TEMPERATURA */}
         {radarMap[selected.id] && (
           <span style={{ color: "#f59e0b", fontSize: 12 }}>
             🌡 {radarMap[selected.id].temperature}
           </span>
         )}
 
-        {/* URGENCIA */}
         {radarMap[selected.id] && (
           <span style={{ color: "#ef4444", fontSize: 12 }}>
             ⚠️ {radarMap[selected.id].urgency}
           </span>
         )}
 
-        {/* VALOR */}
         {revenueMap[selected.id] && (
           <span style={{ color: "#22c55e", fontSize: 12 }}>
             💰 {revenueMap[selected.id].tier}
@@ -1703,7 +1698,6 @@ function exportAccountsToCsv(onlyFiltered = false) {
         )}
       </div>
 
-      {/* Acción IA */}
       {actionMap[selected.id] && (
         <div style={{ fontSize: 14 }}>
           👉 <strong>{actionMap[selected.id].action}</strong>
@@ -1711,51 +1705,49 @@ function exportAccountsToCsv(onlyFiltered = false) {
       )}
     </div>
 
-{/* ===== QUICK ACTIONS BAR ===== */}
-<div
-  style={{
-    marginTop: 14,
-    padding: 12,
-    borderRadius: 12,
-    background: "#0b1220",
-    border: "1px solid #1f2937",
-    display: "flex",
-    gap: 8,
-    flexWrap: "wrap",
-  }}
->
-  <button style={primaryButton} onClick={createActivity}>
-    ➕ Actividad
-  </button>
+    {/* ===== QUICK ACTIONS BAR ===== */}
+    <div
+      style={{
+        marginTop: 14,
+        padding: 12,
+        borderRadius: 12,
+        background: "#0b1220",
+        border: "1px solid #1f2937",
+        display: "flex",
+        gap: 8,
+        flexWrap: "wrap",
+      }}
+    >
+      <button style={primaryButton} onClick={createActivity}>
+        ➕ Actividad
+      </button>
 
-  <button style={primaryButton} onClick={createContact}>
-    👤 Contacto
-  </button>
+      <button style={primaryButton} onClick={createContact}>
+        👤 Contacto
+      </button>
 
-  <button
-    style={primaryButton}
-    onClick={() => {
-      const input = document.createElement("input");
-      input.type = "file";
-      input.onchange = (e: any) => {
-        const file = e.target.files?.[0];
-        if (file) uploadDocument(file);
-      };
-      input.click();
-    }}
-  >
-    📎 Documento
-  </button>
+      <button
+        style={primaryButton}
+        onClick={() => {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.onchange = (e: any) => {
+            const file = e.target.files?.[0];
+            if (file) uploadDocument(file);
+          };
+          input.click();
+        }}
+      >
+        📎 Documento
+      </button>
 
-  {/* Futuro */}
-  <button style={miniButton}>
-    🎯 Oportunidad
-  </button>
+      <button style={miniButton}>🎯 Oportunidad</button>
+      <button style={miniButton}>📄 Cotización</button>
+    </div>
 
-  <button style={miniButton}>
-    📄 Cotización
-  </button>
-</div>
+    {/* 🔥 TODO LO DEMÁS SE QUEDA EXACTAMENTE IGUAL 🔥 */}
+  </>
+)}
     
 {/* ===== BLOQUE A — CONTEXTO ESTRATÉGICO ===== */}
 <div
