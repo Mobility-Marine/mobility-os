@@ -88,6 +88,12 @@ type CrmAccountInsights = {
 };
 // ===== FIN TYPE CRM ACCOUNT INSIGHTS =====
 
+type CustomerAlert = {
+  level: "INFO" | "WARNING" | "CRITICAL" | "SUCCESS";
+  title: string;
+  message: string;
+};
+
 // ===== FIN TYPES =====
 
 // ===== INICIO TYPES CONTACTOS =====
@@ -130,6 +136,7 @@ const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   // ===== INICIO STATE INSIGHTS IA =====
 const [insights, setInsights] = useState<CrmAccountInsights | null>(null);
 // ===== FIN STATE INSIGHTS IA =====
+const [alerts, setAlerts] = useState<CustomerAlert[]>([]);
   // ===== FIN STATE =====
 
   // ===== INICIO STATE RELACIONES CRM =====
@@ -242,6 +249,66 @@ useEffect(() => {
   buildAccountInsights(selected);
 }, [selected, contacts, activities, documents, opportunities, quotes, orders, timeline]);
 // ===== FIN RECALCULAR INSIGHTS =====
+
+  useEffect(() => {
+  if (!selected) return;
+  buildCustomerAlerts();
+}, [insights, activities, contacts, opportunities, quotes, orders]);
+
+  function buildCustomerAlerts() {
+  const list: CustomerAlert[] = [];
+
+  // 🔴 Riesgo alto
+  if (insights && insights.churnRisk === "ALTO") {
+    list.push({
+      level: "CRITICAL",
+      title: "Riesgo alto de pérdida",
+      message: "La cuenta presenta baja actividad o engagement.",
+    });
+  }
+
+  // 🟡 Sin actividades futuras
+  const futureActivities = activities.filter(
+    (a) => a.scheduled_at && !a.completed
+  );
+
+  if (futureActivities.length === 0) {
+    list.push({
+      level: "WARNING",
+      title: "Sin seguimiento programado",
+      message: "No hay llamadas o reuniones futuras agendadas.",
+    });
+  }
+
+  // ❌ Sin contactos
+  if (contacts.length === 0) {
+    list.push({
+      level: "CRITICAL",
+      title: "Sin contactos clave",
+      message: "La cuenta no tiene personas registradas.",
+    });
+  }
+
+  // ⭐ Prioridad comercial
+  if (opportunities.length > 0 || quotes.length > 0) {
+    list.push({
+      level: "INFO",
+      title: "Oportunidad activa",
+      message: "Existen procesos comerciales abiertos.",
+    });
+  }
+
+  // 🟢 Cliente activo
+  if (orders.length > 0) {
+    list.push({
+      level: "SUCCESS",
+      title: "Cliente activo",
+      message: "Tiene pedidos recientes.",
+    });
+  }
+
+  setAlerts(list);
+}
 
   async function loadDocuments(accountId: string) {
     const { data } = await supabase
@@ -655,7 +722,55 @@ async function createActivity() {
       )}
     </div>
 
+{/* ===== CUSTOMER SUCCESS ALERTS ===== */}
+    
+    {alerts.length > 0 && (
+  <div
+    style={{
+      marginTop: 16,
+      padding: 14,
+      borderRadius: 12,
+      background: "#0b1220",
+      border: "1px solid #1f2937",
+      display: "grid",
+      gap: 10,
+    }}
+  >
+    <div style={{ fontWeight: 800, color: "#f59e0b" }}>
+      CUSTOMER SUCCESS ALERTS
+    </div>
 
+    {alerts.map((a, i) => {
+      const colorMap = {
+        CRITICAL: "#ef4444",
+        WARNING: "#f59e0b",
+        INFO: "#60a5fa",
+        SUCCESS: "#34d399",
+      };
+
+      return (
+        <div
+          key={i}
+          style={{
+            padding: 10,
+            borderRadius: 8,
+            border: `1px solid ${colorMap[a.level]}`,
+            background: "#020617",
+          }}
+        >
+          <div style={{ fontWeight: 700, color: colorMap[a.level] }}>
+            {a.title}
+          </div>
+
+          <div style={{ fontSize: 12, color: "#cbd5e1" }}>
+            {a.message}
+          </div>
+        </div>
+      );
+    })}
+  </div>
+)}
+    
     {/* ===== CONTACTOS ===== */}
     <div style={{ marginTop: 24 }}>
       <h3>Contactos</h3>
