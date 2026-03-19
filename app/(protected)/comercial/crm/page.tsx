@@ -1331,6 +1331,44 @@ const executiveTopAccounts = useMemo(() => {
 
         {selected && (
   <>
+
+{/* ===== QUICK ACTION BAR ===== */}
+<div
+  style={{
+    display: "flex",
+    gap: 10,
+    flexWrap: "wrap",
+    marginBottom: 16,
+  }}
+>
+  <button
+    style={primaryButton}
+    onClick={() => createActivity()}
+  >
+    + Actividad
+  </button>
+
+  <button style={miniButton}>
+    + Oportunidad
+  </button>
+
+  <button
+    style={miniButton}
+    onClick={() =>
+      document.querySelector<HTMLInputElement>("#docUpload")?.click()
+    }
+  >
+    📄 Subir documento
+  </button>
+
+  <button
+    style={miniButton}
+    onClick={() => location.reload()}
+  >
+    🔄 Refrescar
+  </button>
+</div>
+    
     {/* ===== HEADER EJECUTIVO DE CUENTA ===== */}
     <div
       style={{
@@ -1723,14 +1761,15 @@ const executiveTopAccounts = useMemo(() => {
             <div style={{ marginTop: 16 }}>
               <h3>Documentos</h3>
 
-              <input
-                type="file"
-                onChange={(e) => {
-                  const f = e.target.files?.[0];
-                  if (f) uploadDocument(f);
-                }}
-                style={{ marginBottom: 12 }}
-              />
+             <input
+  id="docUpload"
+  type="file"
+  style={{ display: "none" }}
+  onChange={(e) => {
+    const f = e.target.files?.[0];
+    if (f) uploadDocument(f);
+  }}
+/>
 
               {documents.length === 0 && (
                 <div style={{ color: "#94a3b8" }}>No hay documentos.</div>
