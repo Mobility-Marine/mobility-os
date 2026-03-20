@@ -4,49 +4,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
-import AccountsSidebar from "./components/AccountsSidebar";
-import AccountWorkspace from "./components/AccountWorkspace";
-import AccountCopilot from "./components/AccountCopilot";
-// ===== INICIO TYPES =====
-import type {
-  CrmAccount,
-  CrmDocument,
-  CrmActivity,
-  CrmOpportunity,
-  CrmQuote,
-  CrmOrder,
-  TimelineItem,
-  CrmAccountInsights,
-  CustomerAlert,
-  AiDirectorAdvice,
-  CrmContact,
-  AccountRadar,
-  AccountRevenue,
-  AccountPriority,
-  AccountAction,
-  CommandCenterData
-} from "./types/crm.types";
-// ===== FIN TYPES =====
-// ===== INICIO SERVICE =====
-import {
-  fetchAccounts,
-  fetchDocuments,
-  fetchActivities,
-  fetchContacts,
-  fetchRelations,
-  fetchTimeline
-} from "./services/crm.service";
-// ===== FIN SERVICE =====
-"use client";
 
-// ===== INICIO IMPORTS =====
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { useTenant } from "@/lib/tenant/TenantProvider";
 import AccountsSidebar from "./components/AccountsSidebar";
 import AccountWorkspace from "./components/AccountWorkspace";
 import AccountCopilot from "./components/AccountCopilot";
-// ===== INICIO TYPES =====
+
+// ===== TYPES =====
 import type {
   CrmAccount,
   CrmDocument,
@@ -65,8 +28,8 @@ import type {
   AccountAction,
   CommandCenterData
 } from "./types/crm.types";
-// ===== FIN TYPES =====
-// ===== INICIO SERVICE =====
+
+// ===== SERVICES =====
 import {
   fetchAccounts,
   fetchDocuments,
@@ -75,11 +38,12 @@ import {
   fetchRelations,
   fetchTimeline
 } from "./services/crm.service";
-// ===== FIN SERVICE =====
-// ===== INICIO UI =====
+
+// ===== UI =====
 import {
   panelCard,
   panelCardTitle,
+  inputStyle,
   miniButton,
   primaryButton,
   chipHot,
@@ -94,7 +58,6 @@ import {
   CommercialHealthPanel,
   RiskOpportunityPanel
 } from "./components/ui/CRMSharedUI";
-// ===== FIN UI =====
 // ===== FIN IMPORTS =====
 
 export default function CRMPage() {
