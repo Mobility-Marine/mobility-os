@@ -58,6 +58,11 @@ import {
   CommercialHealthPanel,
   RiskOpportunityPanel
 } from "./components/ui/CRMSharedUI";
+// ===== INTELLIGENCE =====
+import {
+  buildAccountInsights,
+  buildCustomerAlerts
+} from "./services/crm.intelligence";
 // ===== FIN IMPORTS =====
 
 export default function CRMPage() {
@@ -265,18 +270,30 @@ useEffect(() => {
 
   // ===== INICIO RECALCULAR INSIGHTS =====
   useEffect(() => {
-    if (!selected) return;
-    buildAccountInsights(selected);
-  }, [
-    selected,
+  if (!selected) return;
+
+  const insights = buildAccountInsights(selected, {
     contacts,
     activities,
     documents,
     opportunities,
     quotes,
     orders,
-    timeline,
-  ]);
+    timeline
+  });
+
+  setInsights(insights);
+
+}, [
+  selected,
+  contacts,
+  activities,
+  documents,
+  opportunities,
+  quotes,
+  orders,
+  timeline
+]);
   // ===== FIN RECALCULAR INSIGHTS =====
 
   // ===== INICIO RECALCULAR DIRECTOR IA =====
@@ -300,149 +317,35 @@ useEffect(() => {
   // ===== FIN RECALCULAR COMMAND CENTER =====
 
   // ===== INICIO RECALCULAR CUSTOMER ALERTS =====
-  useEffect(() => {
-    if (!selected) return;
-    buildCustomerAlerts();
-  }, [selected, insights, activities, contacts, opportunities, quotes, orders]);
+ useEffect(() => {
+  if (!selected) return;
+
+  const alerts = buildCustomerAlerts(
+    insights,
+    activities,
+    contacts,
+    opportunities,
+    quotes,
+    orders
+  );
+
+  setAlerts(alerts);
+
+}, [
+  selected,
+  insights,
+  activities,
+  contacts,
+  opportunities,
+  quotes,
+  orders
+]);
   // ===== FIN RECALCULAR CUSTOMER ALERTS =====
-
-  function buildCustomerAlerts() {
-    const list: CustomerAlert[] = [];
-
-    if (insights && insights.churnRisk === "ALTO") {
-      list.push({
-        level: "CRITICAL",
-        title: "Riesgo alto de pérdida",
-        message: "La cuenta presenta baja actividad o engagement.",
-      });
-    }
-
-    const futureActivities = activities.filter(
-      (a) => a.scheduled_at && !a.completed
-    );
-
-    if (futureActivities.length === 0) {
-      list.push({
-        level: "WARNING",
-        title: "Sin seguimiento programado",
-        message: "No hay llamadas o reuniones futuras agendadas.",
-      });
-    }
-
-    if (contacts.length === 0) {
-      list.push({
-        level: "CRITICAL",
-        title: "Sin contactos clave",
-        message: "La cuenta no tiene personas registradas.",
-      });
-    }
-
-    if (opportunities.length > 0 || quotes.length > 0) {
-      list.push({
-        level: "INFO",
-        title: "Oportunidad activa",
-        message: "Existen procesos comerciales abiertos.",
-      });
-    }
-
-    if (orders.length > 0) {
-      list.push({
-        level: "SUCCESS",
-        title: "Cliente activo",
-        message: "Tiene pedidos recientes.",
-      });
-    }
-
-    setAlerts(list);
-  }
 
   async function buildTimeline(accountId: string) {
   const items = await fetchTimeline(accountId);
   setTimeline(items);
 }
-
-  function buildAccountInsights(account: CrmAccount) {
-    let score = 0;
-
-    if (account.legal_name) score += 10;
-    if (account.industry) score += 10;
-    if (account.country) score += 8;
-    if (account.city) score += 6;
-    if (account.notes) score += 6;
-
-    if (contacts.length >= 1) score += 10;
-    if (contacts.length >= 3) score += 6;
-
-    const decisionMakers = contacts.filter(
-      (c) =>
-        c.role?.toLowerCase().includes("decision") ||
-        c.role?.toLowerCase().includes("director") ||
-        c.role?.toLowerCase().includes("buyer")
-    ).length;
-
-    if (decisionMakers > 0) score += 10;
-
-    if (activities.length >= 1) score += 8;
-    if (activities.length >= 5) score += 6;
-
-    const futureActivities = activities.filter(
-      (a) => a.scheduled_at && !a.completed
-    ).length;
-
-    if (futureActivities > 0) score += 8;
-
-    if (documents.length >= 1) score += 8;
-    if (documents.length >= 3) score += 4;
-
-    if (opportunities.length >= 1) score += 10;
-    if (quotes.length >= 1) score += 8;
-    if (orders.length >= 1) score += 12;
-
-    if (timeline.length >= 3) score += 6;
-    if (timeline.length >= 8) score += 4;
-
-    const healthScore = Math.min(score, 100);
-
-    let churnRisk: "BAJO" | "MEDIO" | "ALTO" = "BAJO";
-    if (healthScore < 40) churnRisk = "ALTO";
-    else if (healthScore < 70) churnRisk = "MEDIO";
-
-    let priority: "BAJA" | "MEDIA" | "ALTA" | "CRITICA" = "BAJA";
-    if (opportunities.length > 0 && quotes.length > 0 && healthScore >= 70) {
-      priority = "CRITICA";
-    } else if (opportunities.length > 0 || quotes.length > 0) {
-      priority = "ALTA";
-    } else if (contacts.length > 0 || activities.length > 0) {
-      priority = "MEDIA";
-    }
-
-    let nextBestAction = "Registrar siguiente paso comercial.";
-    if (contacts.length === 0) {
-      nextBestAction = "Agregar al menos un contacto clave de la cuenta.";
-    } else if (futureActivities === 0) {
-      nextBestAction = "Programar una llamada o reunión en agenda.";
-    } else if (documents.length === 0) {
-      nextBestAction = "Subir contrato, propuesta o documento comercial.";
-    } else if (opportunities.length === 0) {
-      nextBestAction =
-        "Crear una oportunidad comercial vinculada a esta cuenta.";
-    }
-
-    const executiveSummary =
-      healthScore >= 75
-        ? "Cuenta bien trabajada, con contexto comercial sólido y buena trazabilidad."
-        : healthScore >= 50
-        ? "Cuenta con base útil, pero todavía necesita estructura comercial adicional."
-        : "Cuenta frágil: faltan relaciones, actividad o activos comerciales clave.";
-
-    setInsights({
-      healthScore,
-      priority,
-      churnRisk,
-      nextBestAction,
-      executiveSummary,
-    });
-  }
 
   async function uploadDocument(file: File) {
     if (!selected || !companyId) return;
