@@ -639,48 +639,16 @@ useEffect(() => {
 }
 
   function buildCommandCenter() {
-    const criticalAccounts: CrmAccount[] = [];
-    const urgentActions: CrmAccount[] = [];
-    const noFollowUp: CrmAccount[] = [];
-    const highValue: CrmAccount[] = [];
-    const coldAccounts: CrmAccount[] = [];
+  const data = calculateCommandCenter(
+    accounts,
+    radarMap,
+    revenueMap,
+    priorityMap,
+    actionMap
+  );
 
-    accounts.forEach((acc) => {
-      const id = acc.id;
-      const radar = radarMap[id];
-      const rev = revenueMap[id];
-      const act = actionMap[id];
-      const pr = priorityMap[id];
-
-      if (pr?.label === "CRITICA") {
-        criticalAccounts.push(acc);
-      }
-
-      if (act?.urgency === "CRITICA" || act?.urgency === "ALTA") {
-        urgentActions.push(acc);
-      }
-
-      if (radar && radar.hasContacts && !radar.hasOpportunity && !radar.hasOrder) {
-        noFollowUp.push(acc);
-      }
-
-      if (rev?.tier === "STRATEGIC" || rev?.tier === "HIGH") {
-        highValue.push(acc);
-      }
-
-      if (radar?.temperature === "FRIA") {
-        coldAccounts.push(acc);
-      }
-    });
-
-    setCommandCenter({
-      criticalAccounts,
-      urgentActions,
-      noFollowUp,
-      highValue,
-      coldAccounts,
-    });
-  }
+  setCommandCenter(data);
+}
 
   // ===== INICIO FUNCIONES IMPORTADOR =====
 function parseCsvLine(line: string) {
