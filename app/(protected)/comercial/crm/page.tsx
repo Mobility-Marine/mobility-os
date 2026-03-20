@@ -27,6 +27,15 @@ import type {
   CommandCenterData
 } from "./types/crm.types";
 // ===== FIN TYPES =====
+// ===== INICIO SERVICE =====
+import {
+  fetchAccounts,
+  fetchDocuments,
+  fetchActivities,
+  fetchContacts,
+  fetchRelations
+} from "./services/crm.service";
+// ===== FIN SERVICE =====
 // ===== FIN IMPORTS =====
 
 export default function CRMPage() {
@@ -167,35 +176,39 @@ const executiveTopAccounts = useMemo(() => {
   
   // ===== INICIO LOAD ACCOUNTS =====
   useEffect(() => {
-    if (!companyId) return;
+  if (!companyId) return;
 
-    loadAccounts();
+  // Carga inicial
+  fetchAccounts(companyId).then(setAccounts);
 
-    const channel = supabase
-      .channel("crm-accounts-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "crm_accounts",
-          filter: `company_id=eq.${companyId}`,
-        },
-        loadAccounts
-      )
-      .subscribe();
+  // Realtime
+  const channel = supabase
+    .channel("crm-accounts-realtime")
+    .on(
+      "postgres_changes",
+      {
+        event: "*",
+        schema: "public",
+        table: "crm_accounts",
+        filter: `company_id=eq.${companyId}`,
+      },
+      () => {
+        fetchAccounts(companyId).then(setAccounts);
+      }
+    )
+    .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [companyId]);
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}, [companyId]);
   // ===== FIN LOAD ACCOUNTS =====
 
   // ===== INICIO LOAD ACTIVITIES =====
   useEffect(() => {
     if (!selected) return;
 
-    loadActivities(selected.id);
+    fetchActivities(selected.id).then(setActivities);selected.id);
 
     const channel = supabase
       .channel("crm-activities-realtime")
@@ -207,7 +220,7 @@ const executiveTopAccounts = useMemo(() => {
           table: "crm_activities",
           filter: `account_id=eq.${selected.id}`,
         },
-        () => loadActivities(selected.id)
+        () => fetchActivities(selected.id).then(setActivities);selected.id)
       )
       .subscribe();
 
@@ -217,43 +230,21 @@ const executiveTopAccounts = useMemo(() => {
   }, [selected]);
   // ===== FIN LOAD ACTIVITIES =====
 
-  async function loadActivities(accountId: string) {
-    const { data } = await supabase
-      .from("crm_activities")
-      .select("*")
-      .eq("account_id", accountId)
-      .order("created_at", { ascending: false });
-
-    setActivities(data || []);
-  }
-
-  async function loadAccounts() {
-    if (!companyId) return;
-
-    const { data } = await supabase
-      .from("crm_accounts")
-      .select("*")
-      .eq("company_id", companyId)
-      .order("created_at", { ascending: false });
-
-    setAccounts(data || []);
-    setLoading(false);
-
-    (data || []).forEach((acc) => buildAccountRadar(acc));
-    (data || []).forEach((acc) => buildAccountRevenue(acc));
-    (data || []).forEach((acc) => buildAccountPriority(acc));
-    (data || []).forEach((acc) => buildAccountAction(acc));
-  }
-
   // ===== INICIO LOAD DETALLE COMPLETO CRM =====
   useEffect(() => {
-    if (!selected) return;
+  if (!selected) return;
 
-    loadDocuments(selected.id);
-    loadRelations(selected.id);
-    loadContacts(selected.id);
-    loadActivities(selected.id);
-  }, [selected]);
+  fetchDocuments(selected.id).then(setDocuments);
+  fetchActivities(selected.id).then(setActivities);
+  fetchContacts(selected.id).then(setContacts);
+
+  fetchRelations(selected.id).then((r) => {
+    setOpportunities(r.opportunities);
+    setQuotes(r.quotes);
+    setOrders(r.orders);
+  });
+
+}, [selected]);
   // ===== FIN LOAD DETALLE COMPLETO CRM =====
 
   // ===== INICIO RECALCULAR TIMELINE AUTOMATICO =====
@@ -354,37 +345,6 @@ const executiveTopAccounts = useMemo(() => {
     }
 
     setAlerts(list);
-  }
-
-  async function loadDocuments(accountId: string) {
-    const { data } = await supabase
-      .from("crm_documents")
-      .select("*")
-      .eq("account_id", accountId)
-      .order("created_at", { ascending: false });
-
-    setDocuments(data || []);
-  }
-
-  async function loadRelations(accountId: string) {
-    const { data: opps } = await supabase
-      .from("sales_opportunities")
-      .select("id, name, stage, estimated_value")
-      .eq("account_id", accountId);
-
-    const { data: qts } = await supabase
-      .from("quotes")
-      .select("id, quote_number, total_amount, status")
-      .eq("account_id", accountId);
-
-    const { data: ords } = await supabase
-      .from("orders")
-      .select("id, order_number, status, total_amount")
-      .eq("account_id", accountId);
-
-    setOpportunities(opps || []);
-    setQuotes(qts || []);
-    setOrders(ords || []);
   }
 
   async function buildTimeline(accountId: string) {
@@ -554,16 +514,6 @@ const executiveTopAccounts = useMemo(() => {
     });
   }
 
-  async function loadContacts(accountId: string) {
-    const { data } = await supabase
-      .from("crm_contacts")
-      .select("*")
-      .eq("account_id", accountId)
-      .order("created_at", { ascending: false });
-
-    setContacts(data || []);
-  }
-
   async function uploadDocument(file: File) {
     if (!selected || !companyId) return;
 
@@ -588,7 +538,7 @@ const executiveTopAccounts = useMemo(() => {
       storage_provider: "supabase",
     });
 
-    loadDocuments(selected.id);
+    fetchDocuments(selected.id).then(setDocuments);
   }
 
   async function createContact() {
@@ -613,7 +563,7 @@ const executiveTopAccounts = useMemo(() => {
       relationship_score: 50,
     });
 
-    loadContacts(selected.id);
+    fetchContacts(selected.id).then(setContacts);selected.id);
   }
 
   async function createActivity() {
@@ -1102,7 +1052,7 @@ async function confirmImportRows() {
 
       setShowImportModal(false);
       setImportRows([]);
-      await loadAccounts();
+      await fetchAccounts(companyId).then(setAccounts);
       alert(`Se importaron ${payload.length} cuentas.`);
       return;
     }
@@ -1173,7 +1123,7 @@ async function confirmImportRows() {
 
     setShowImportModal(false);
     setImportRows([]);
-    await loadAccounts();
+    await fetchAccounts(companyId).then(setAccounts);
     alert(`Importación completada en modo upsert (${importRows.length} filas).`);
   } finally {
     setImporting(false);
@@ -1459,7 +1409,7 @@ function exportAccountsToCsv(onlyFiltered = false) {
               notes: "",
             });
 
-            loadAccounts();
+            fetchAccounts(companyId).then(setAccounts);
           }}
         >
           Crear cuenta
