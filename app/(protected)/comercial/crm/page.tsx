@@ -80,7 +80,12 @@ const {
   opportunities,
   quotes,
   orders,
-  timeline
+  timeline,
+
+  createAccount,
+  createContact,
+  createActivity,
+  uploadDocument
 } = crm;
   
   const [newActivityTitle, setNewActivityTitle] = useState("");
@@ -295,24 +300,6 @@ useEffect(() => {
   quotes,
   orders
 ]);
-  
-// ===== ACTION — uploadDocument =====
-// TODO: migrar a crm.controller
-function uploadDocument(_: File) {
-  throw new Error("uploadDocument no migrado al controller");
-}
-
- // ===== ACTION — createContact =====
-// TODO: migrar a crm.controller
-function createContact() {
-  throw new Error("createContact no migrado al controller");
-}
-
-  // ===== ACTION — createActivity =====
-// TODO: migrar a crm.controller
-function createActivity() {
-  throw new Error("createActivity no migrado al controller");
-}
 
  // ===== CALCULO — Radar (legacy) =====
 // TODO: mover cálculo al analytics/controller
@@ -763,8 +750,22 @@ function exportAccountsToCsv(onlyFiltered = false) {
 
         <button
           style={primaryButton}
-        onClick={() => {
-  throw new Error("Crear cuenta no migrado al controller");
+        onClick={async () => {
+  if (!newAccount.name) return;
+
+  await createAccount(newAccount);
+
+  setShowCreateAccount(false);
+
+  setNewAccount({
+    name: "",
+    legal_name: "",
+    industry: "",
+    country: "",
+    city: "",
+    status: "active",
+    notes: "",
+  });
 }}
         >
           Crear cuenta
