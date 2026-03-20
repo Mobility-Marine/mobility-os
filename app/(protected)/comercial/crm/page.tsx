@@ -307,10 +307,22 @@ useEffect(() => {
   // ===== FIN RECALCULAR INSIGHTS =====
 
   // ===== INICIO RECALCULAR DIRECTOR IA =====
-  useEffect(() => {
-    if (!selected) return;
-    buildDirectorAdvice(selected);
-  }, [selected, contacts, activities, opportunities, quotes, orders, timeline]);
+ useEffect(() => {
+  if (!selected) return;
+
+  const advice = calculateDirectorAdvice(
+    selected,
+    contacts,
+    activities,
+    opportunities,
+    quotes,
+    orders,
+    timeline
+  );
+
+  setDirector(advice);
+
+}, [selected, contacts, activities, opportunities, quotes, orders, timeline]);
   // ===== FIN RECALCULAR DIRECTOR IA =====
 
   // ===== INICIO CALCULO PRIORIDAD =====
@@ -446,68 +458,6 @@ useEffect(() => {
 
     setNewActivityTitle("");
     setNewActivityDate("");
-  }
-
-  function buildDirectorAdvice(account: CrmAccount) {
-    const directorAlerts: string[] = [];
-    const opportunitiesDetected: string[] = [];
-    const risksDetected: string[] = [];
-
-    let urgency: AiDirectorAdvice["urgency"] = "BAJA";
-    let accountTemperature: AiDirectorAdvice["accountTemperature"] = "FRIA";
-    let recommendedAction = "Monitorear actividad.";
-
-    const recentActivity = activities.length > 0;
-
-    if (recentActivity) accountTemperature = "TIBIA";
-
-    if (opportunities.length > 0) {
-      accountTemperature = "CALIENTE";
-      opportunitiesDetected.push("Oportunidad comercial activa");
-    }
-
-    if (quotes.length > 0 && orders.length === 0) {
-      opportunitiesDetected.push("Cotización enviada sin cierre");
-      recommendedAction = "Dar seguimiento a cotización";
-      urgency = "ALTA";
-    }
-
-    if (orders.length > 0) {
-      opportunitiesDetected.push("Cliente activo con pedidos");
-      recommendedAction = "Mantener relación y detectar upsell";
-    }
-
-    if (contacts.length === 0) {
-      risksDetected.push("No hay contactos registrados");
-      directorAlerts.push("Cuenta sin relación identificada");
-      urgency = "ALTA";
-      recommendedAction = "Identificar contacto clave";
-    }
-
-    if (!recentActivity) {
-      risksDetected.push("Sin actividad registrada");
-      directorAlerts.push("Cuenta inactiva");
-      urgency = "MEDIA";
-      recommendedAction = "Programar contacto";
-    }
-
-    if (timeline.length < 2) {
-      risksDetected.push("Poco historial del cliente");
-    }
-
-    if (account.status === "strategic") {
-      urgency = "CRITICA";
-      directorAlerts.push("Cuenta estratégica");
-    }
-
-    setDirector({
-      urgency,
-      accountTemperature,
-      recommendedAction,
-      alerts: directorAlerts,
-      opportunitiesDetected,
-      risksDetected,
-    });
   }
 
   async function buildAccountRadar(account: CrmAccount) {
