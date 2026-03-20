@@ -420,7 +420,7 @@ async function confirmImportAccounts(
   createAccount,
   createContact,
   createActivity,
-  uploadDocument
+  uploadDocument,
   handleImportAccounts,
   confirmImportAccounts,
 };
