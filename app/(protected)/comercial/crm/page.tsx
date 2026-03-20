@@ -412,7 +412,7 @@ function findHeaderIndex(headers: string[], aliases: string[]) {
 }
 
 async function handleImportFile(file: File) {
-  if (!companyId) return;
+  // tenant manejado por el controller
 
   const text = await file.text();
   const lines = text
