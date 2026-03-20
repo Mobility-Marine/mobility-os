@@ -624,58 +624,19 @@ useEffect(() => {
 }
 
   function buildAccountAction(account: CrmAccount) {
-    const id = account.id;
-    const radar = radarMap[id];
-    const rev = revenueMap[id];
-    const priority = priorityMap[id];
+  const id = account.id;
 
-    let action = "Monitorear cuenta";
-    let reason = "No hay señales suficientes para una acción inmediata.";
-    let urgency: AccountAction["urgency"] = "BAJA";
+  const action = calculateAccountAction(
+    radarMap[id],
+    revenueMap[id],
+    priorityMap[id]
+  );
 
-    if (!radar) {
-      setActionMap((prev) => ({
-        ...prev,
-        [id]: { accountId: id, action, reason, urgency },
-      }));
-      return;
-    }
-
-    if (!radar.hasContacts) {
-      action = "Identificar contacto clave";
-      reason = "La cuenta no tiene contactos registrados.";
-      urgency = "CRITICA";
-    } else if (radar.hasQuote && !radar.hasOrder) {
-      action = "Dar seguimiento a cotización";
-      reason = "Hay cotización enviada pero todavía no existe pedido.";
-      urgency = "ALTA";
-    } else if (radar.hasOpportunity && !radar.hasQuote) {
-      action = "Convertir oportunidad en propuesta";
-      reason = "Existe una oportunidad abierta pero aún no hay cotización.";
-      urgency = "ALTA";
-    } else if (radar.hasOrder) {
-      action = "Buscar upsell o recompra";
-      reason = "La cuenta ya compra; conviene expandir relación comercial.";
-      urgency = "MEDIA";
-    } else if (priority?.label === "CRITICA") {
-      action = "Contactar hoy mismo";
-      reason = "La cuenta tiene alta prioridad comercial.";
-      urgency = "CRITICA";
-    } else if (priority?.label === "ALTA") {
-      action = "Programar seguimiento";
-      reason = "La cuenta tiene señales claras de valor u oportunidad.";
-      urgency = "ALTA";
-    } else if (rev?.tier === "STRATEGIC") {
-      action = "Diseñar plan estratégico";
-      reason = "La cuenta tiene alto potencial económico.";
-      urgency = "ALTA";
-    }
-
-    setActionMap((prev) => ({
-      ...prev,
-      [id]: { accountId: id, action, reason, urgency },
-    }));
-  }
+  setActionMap((prev) => ({
+    ...prev,
+    [id]: { ...action, accountId: id },
+  }));
+}
 
   function buildCommandCenter() {
     const criticalAccounts: CrmAccount[] = [];
