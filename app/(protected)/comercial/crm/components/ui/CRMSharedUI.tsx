@@ -12,7 +12,7 @@ import type {
   TimelineItem,
   CrmContact,
   AccountRevenue,
-from "../../types/crm.types";
+} from "../../types/crm.types";
 
  export const panelCard: React.CSSProperties = {
   marginTop: 16,
