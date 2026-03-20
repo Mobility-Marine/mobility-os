@@ -12,9 +12,9 @@ import type {
   TimelineItem,
   CrmContact,
   AccountRevenue,
-} from "../types/crm.types";
+} from "../types/crm.types/crm.types";
 
-const panelCard: React.CSSProperties = {
+ export const panelCard: React.CSSProperties = {
   marginTop: 16,
   padding: 14,
   borderRadius: 12,
@@ -24,11 +24,11 @@ const panelCard: React.CSSProperties = {
   gap: 8,
 };
 
-const panelCardTitle: React.CSSProperties = {
+export const panelCardTitle: React.CSSProperties = {
   fontWeight: 800,
 };
 
-const rowCard: React.CSSProperties = {
+export const rowCard: React.CSSProperties = {
   marginTop: 10,
   padding: 10,
   borderRadius: 8,
@@ -36,7 +36,7 @@ const rowCard: React.CSSProperties = {
   border: "1px solid #1f2937",
 };
 
-const inputStyle: React.CSSProperties = {
+export const inputStyle: React.CSSProperties = {
   padding: 10,
   borderRadius: 8,
   border: "1px solid #1f2937",
@@ -44,7 +44,7 @@ const inputStyle: React.CSSProperties = {
   color: "#fff",
 };
 
-const primaryButton: React.CSSProperties = {
+export const primaryButton: React.CSSProperties = {
   padding: "10px 14px",
   borderRadius: 8,
   border: "1px solid #1f2937",
@@ -54,7 +54,7 @@ const primaryButton: React.CSSProperties = {
   fontWeight: 700,
 };
 
-const miniButton: React.CSSProperties = {
+export const miniButton: React.CSSProperties = {
   padding: "8px 10px",
   borderRadius: 8,
   border: "1px solid #1f2937",
@@ -68,7 +68,7 @@ const miniButton: React.CSSProperties = {
 // ===== (Panel izquierdo — radar comercial) =====
 // =========================================================
 
-const chipHot: React.CSSProperties = {
+export const chipHot: React.CSSProperties = {
   background: "#ef4444",
   padding: "2px 6px",
   borderRadius: 6,
@@ -77,7 +77,7 @@ const chipHot: React.CSSProperties = {
   color: "#fff",
 };
 
-const chipCritical: React.CSSProperties = {
+export const chipCritical: React.CSSProperties = {
   background: "#dc2626",
   padding: "2px 6px",
   borderRadius: 6,
@@ -86,7 +86,7 @@ const chipCritical: React.CSSProperties = {
   color: "#fff",
 };
 
-const chipMoney: React.CSSProperties = {
+export const chipMoney: React.CSSProperties = {
   background: "#16a34a",
   padding: "2px 6px",
   borderRadius: 6,
@@ -95,7 +95,7 @@ const chipMoney: React.CSSProperties = {
   color: "#fff",
 };
 
-const chipQuote: React.CSSProperties = {
+export const chipQuote: React.CSSProperties = {
   background: "#f59e0b",
   padding: "2px 6px",
   borderRadius: 6,
@@ -104,7 +104,7 @@ const chipQuote: React.CSSProperties = {
   color: "#111",
 };
 
-const chipRisk: React.CSSProperties = {
+export const chipRisk: React.CSSProperties = {
   background: "#64748b",
   padding: "2px 6px",
   borderRadius: 6,
@@ -113,21 +113,21 @@ const chipRisk: React.CSSProperties = {
   color: "#fff",
 };
 
-const tableHead: React.CSSProperties = {
+export const tableHead: React.CSSProperties = {
   textAlign: "left",
   padding: "10px 12px",
   borderBottom: "1px solid #1f2937",
   color: "#cbd5e1",
 };
 
-const tableCell: React.CSSProperties = {
+export const tableCell: React.CSSProperties = {
   padding: "10px 12px",
   borderBottom: "1px solid #1f2937",
   color: "#e5e7eb",
 };
 
 // ===== INICIO COMPONENT COMMAND LIST =====
-function CommandList({
+export function CommandList({
   title,
   color,
   accounts,
@@ -167,8 +167,8 @@ function CommandList({
 // ===== FIN COMPONENT COMMAND LIST =====
 
 // ===== INICIO COMPONENT DOCUMENT ROW =====
-function DocumentRow({ doc }: { doc: CrmDocument }) {
-  const [url, setUrl] = useState<string | null>(null);
+export function DocumentRow({ doc }: { doc: CrmDocument }) {
+   const [url, setUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const { data } = supabase.storage
@@ -200,7 +200,7 @@ function DocumentRow({ doc }: { doc: CrmDocument }) {
 // ===== FIN COMPONENT DOCUMENT ROW =====
 
 // ===== INICIO COMPONENT ACTIVITY ROW =====
-function ActivityRow({ activity }: { activity: CrmActivity }) {
+export function ActivityRow({ activity }: { activity: CrmActivity }) {
   return (
     <div
       style={{
@@ -225,7 +225,7 @@ function ActivityRow({ activity }: { activity: CrmActivity }) {
 // ===== FIN COMPONENT ACTIVITY ROW =====
 
 // ===== INICIO COMPONENT TIMELINE ROW =====
-function TimelineRow({ item }: { item: TimelineItem }) {
+export function TimelineRow({ item }: { item: TimelineItem }) {
   const colorMap: Record<string, string> = {
     activity: "#38bdf8",
     document: "#a78bfa",
@@ -260,7 +260,7 @@ function TimelineRow({ item }: { item: TimelineItem }) {
 // ===== FIN COMPONENT TIMELINE ROW =====
 
 // ===== INICIO COMPONENT REVENUE CARD =====
-function RevenueCard({
+export function RevenueCard({
   label,
   value,
   color,
@@ -299,7 +299,7 @@ function RevenueCard({
 // ===== FIN COMPONENT REVENUE CARD =====
 
 // ===== INICIO COMPONENT COMMERCIAL HEALTH =====
-function CommercialHealthPanel({
+export function CommercialHealthPanel({
   opportunities,
   quotes,
   orders,
@@ -391,7 +391,7 @@ function CommercialHealthPanel({
 // ===== FIN COMPONENT COMMERCIAL HEALTH =====
 
 // ===== INICIO COMPONENT RISK OPPORTUNITY =====
-function RiskOpportunityPanel({
+export function RiskOpportunityPanel({
   opportunities,
   quotes,
   orders,
