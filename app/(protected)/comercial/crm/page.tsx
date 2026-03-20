@@ -85,7 +85,10 @@ const {
   createAccount,
   createContact,
   createActivity,
-  uploadDocument
+  uploadDocument,
+
+  handleImportAccounts,
+  confirmImportAccount,
 } = crm;
   
   const [newActivityTitle, setNewActivityTitle] = useState("");
@@ -398,98 +401,8 @@ function findHeaderIndex(headers: string[], aliases: string[]) {
   return normalized.findIndex((h) => aliasSet.includes(h));
 }
 
-async function handleImportFile(file: File) {
-  // tenant manejado por el controller
-
-  const text = await file.text();
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-
-  if (lines.length < 2) {
-    alert("El archivo no contiene datos.");
-    return;
-  }
-
-  const headers = parseCsvLine(lines[0]);
-
-  const idx = {
-    name: findHeaderIndex(headers, ["name", "nombre", "empresa", "account"]),
-    legal_name: findHeaderIndex(headers, [
-      "legal_name",
-      "razon_social",
-      "razón_social",
-      "legalname",
-    ]),
-    industry: findHeaderIndex(headers, ["industry", "industria", "sector"]),
-    country: findHeaderIndex(headers, ["country", "pais", "país"]),
-    city: findHeaderIndex(headers, ["city", "ciudad"]),
-    status: findHeaderIndex(headers, ["status", "estado"]),
-    notes: findHeaderIndex(headers, ["notes", "notas", "comentarios"]),
-  };
-
-  if (idx.name === -1) {
-    alert(
-      'No encontré la columna de nombre. Usa una de estas: "name", "nombre", "empresa", "account".'
-    );
-    return;
-  }
-
-  const seenKeys = new Set<string>();
-
-  const rows = lines.slice(1).map((line, i) => {
-    const cols = parseCsvLine(line);
-
-    const row = {
-      name: cols[idx.name] || "",
-      legal_name: idx.legal_name >= 0 ? cols[idx.legal_name] || "" : "",
-      industry: idx.industry >= 0 ? cols[idx.industry] || "" : "",
-      country: idx.country >= 0 ? cols[idx.country] || "" : "",
-      city: idx.city >= 0 ? cols[idx.city] || "" : "",
-      status: idx.status >= 0 ? cols[idx.status] || "active" : "active",
-      notes: idx.notes >= 0 ? cols[idx.notes] || "" : "",
-      _rowNumber: i + 2,
-      _warnings: [] as string[],
-    };
-
-    const uniqueKey = `${row.name}`.trim().toLowerCase() ||
-      `${row.legal_name}`.trim().toLowerCase();
-
-    if (!row.name.trim()) {
-      row._warnings.push("Fila sin nombre");
-    }
-
-    if (uniqueKey) {
-      if (seenKeys.has(uniqueKey)) {
-        row._warnings.push("Duplicada dentro del archivo");
-      } else {
-        seenKeys.add(uniqueKey);
-      }
-    }
-
-    if (!row.status.trim()) {
-      row.status = "active";
-    }
-
-    return row;
-  });
-
-  const validRows = rows.filter((r) => r.name.trim());
-
-  if (validRows.length === 0) {
-    alert("No se encontraron filas válidas para importar.");
-    return;
-  }
-
-  setImportRows(validRows);
-  setShowImportModal(true);
-}
-
-// ===== ACTION — Import Accounts =====
-// TODO: migrar al controller
-function confirmImportRows() {
-  throw new Error("Importación no migrada al controller");
+function handleImportFile(file: File) {
+  handleImportAccounts(file);
 }
   
   // ===== INICIO FUNCION EXPORTADOR =====
@@ -897,7 +810,7 @@ function exportAccountsToCsv(onlyFiltered = false) {
 
         <button
           style={primaryButton}
-          onClick={confirmImportRows}
+          onClick={() => confirmImportAccounts(importMode)}
           disabled={importing}
         >
           {importing ? "Importando..." : "Confirmar importación"}
