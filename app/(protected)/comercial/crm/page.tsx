@@ -307,22 +307,30 @@ useEffect(() => {
   // ===== FIN RECALCULAR INSIGHTS =====
 
   // ===== INICIO RECALCULAR DIRECTOR IA =====
- useEffect(() => {
+useEffect(() => {
   if (!selected) return;
 
   const advice = calculateDirectorAdvice(
     selected,
-    contacts,
-    activities,
     opportunities,
     quotes,
     orders,
-    timeline
+    contacts.length,
+    activities.length > 0,
+    timeline.length
   );
 
   setDirector(advice);
 
-}, [selected, contacts, activities, opportunities, quotes, orders, timeline]);
+}, [
+  selected,
+  opportunities,
+  quotes,
+  orders,
+  contacts,
+  activities,
+  timeline
+]);
   // ===== FIN RECALCULAR DIRECTOR IA =====
 
   // ===== INICIO CALCULO PRIORIDAD =====
