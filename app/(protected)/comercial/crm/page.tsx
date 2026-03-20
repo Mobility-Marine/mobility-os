@@ -7,11 +7,27 @@ import { useTenant } from "@/lib/tenant/TenantProvider";
 import AccountsSidebar from "./components/AccountsSidebar";
 import AccountWorkspace from "./components/AccountWorkspace";
 import AccountCopilot from "./components/AccountCopilot";
-// ===== FIN IMPORTS =====
-
 // ===== INICIO TYPES =====
-
+import type {
+  CrmAccount,
+  CrmDocument,
+  CrmActivity,
+  CrmOpportunity,
+  CrmQuote,
+  CrmOrder,
+  TimelineItem,
+  CrmAccountInsights,
+  CustomerAlert,
+  AiDirectorAdvice,
+  CrmContact,
+  AccountRadar,
+  AccountRevenue,
+  AccountPriority,
+  AccountAction,
+  CommandCenterData
+} from "./types/crm.types";
 // ===== FIN TYPES =====
+// ===== FIN IMPORTS =====
 
 export default function CRMPage() {
   // ===== INICIO TENANT =====
