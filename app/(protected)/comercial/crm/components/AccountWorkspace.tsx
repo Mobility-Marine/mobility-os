@@ -11,7 +11,6 @@
 type Props = any;
 
 export default function AccountWorkspace(props: Props) {
-  // ===== PROPS RECIBIDOS DESDE page.tsx =====
   const {
     selected,
     priorityMap,
@@ -36,6 +35,12 @@ export default function AccountWorkspace(props: Props) {
     CommercialHealthPanel,
     RiskOpportunityPanel,
   } = props;
+
+  // ===== ALIAS SEGUROS =====
+  const p = selected ? priorityMap[selected.id] : null;
+  const r = selected ? radarMap[selected.id] : null;
+  const rev = selected ? revenueMap[selected.id] : null;
+  const act = selected ? actionMap[selected.id] : null;
 
   return (
     <div
@@ -275,7 +280,7 @@ export default function AccountWorkspace(props: Props) {
           <div style={{ marginTop: 28 }}>
             <h3>Historial del cliente</h3>
 
-            {timeline.length === 0 && (
+            {!timeline || timeline.length === 0 && (
               <div style={{ color: "#94a3b8" }}>
                 No hay historial disponible.
               </div>
