@@ -810,7 +810,7 @@ function exportAccountsToCsv(onlyFiltered = false) {
 
         <button
           style={primaryButton}
-          onClick={() => confirmImportAccounts(importMode)}
+          onClick={() => confirmImportAccounts(importRows, importMode)}
           disabled={importing}
         >
           {importing ? "Importando..." : "Confirmar importación"}
