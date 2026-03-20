@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import AccountsSidebar from "./components/AccountsSidebar";
 import AccountWorkspace from "./components/AccountWorkspace";
+import AccountCopilot from "./components/AccountCopilot";
 // ===== FIN IMPORTS =====
 
 // ===== INICIO TYPES =====
@@ -1411,7 +1412,7 @@ function exportAccountsToCsv(onlyFiltered = false) {
   CommandList={CommandList}
 />
       
-     {/* ========================================================= */}
+{/* ========================================================= */}
 {/* ===== PANEL CENTRAL — WORKSPACE DEL CLIENTE ===== */}
 {/* ========================================================= */}
 <AccountWorkspace
@@ -1442,87 +1443,11 @@ function exportAccountsToCsv(onlyFiltered = false) {
       {/* ========================================================= */}
       {/* ===== PANEL DERECHO — COPILOT IA ===== */}
       {/* ========================================================= */}
-      <div
-        style={{
-          background: "#020617",
-          border: "1px solid #1f2937",
-          borderRadius: 12,
-          padding: 14,
-          overflowY: "auto",
-        }}
-      >
-        <div style={{ fontWeight: 800, color: "#38bdf8" }}>COPILOT IA</div>
-
-        {/* ===== ESTADO VACÍO DEL CRM ===== */}
-
-{!selected && (
-  <div
-    style={{
-      height: "100%",
-      display: "grid",
-      placeItems: "center",
-      textAlign: "center",
-      color: "#94a3b8",
-      gap: 16,
-    }}
-  >
-    <div style={{ fontSize: 22, fontWeight: 700 }}>
-      CRM listo para operar 🚀
-    </div>
-
-    <div style={{ fontSize: 14 }}>
-      No hay cuentas seleccionadas.<br />
-      Crea o importa clientes desde el panel izquierdo.
-    </div>
-
-    <div style={{ fontSize: 13, opacity: 0.8 }}>
-      Tip: Puedes importar cientos de cuentas desde Excel.
-    </div>
-  </div>
-)}
-        {director && (
-          <div style={{ display: "grid", gap: 10, marginTop: 12 }}>
-            <div>
-              Urgencia: <strong>{director.urgency}</strong>
-            </div>
-
-            <div>
-              Temperatura:{" "}
-              <strong>{director.accountTemperature}</strong>
-            </div>
-
-            <div>{director.recommendedAction}</div>
-
-            {director.alerts.length > 0 && (
-              <div>
-                <strong>Alertas</strong>
-                {director.alerts.map((a, i) => (
-                  <div key={i}>• {a}</div>
-                ))}
-              </div>
-            )}
-
-            {director.opportunitiesDetected.length > 0 && (
-              <div>
-                <strong>Oportunidades</strong>
-                {director.opportunitiesDetected.map((o, i) => (
-                  <div key={i}>• {o}</div>
-                ))}
-              </div>
-            )}
-
-            {director.risksDetected.length > 0 && (
-              <div>
-                <strong>Riesgos</strong>
-                {director.risksDetected.map((r, i) => (
-                  <div key={i}>• {r}</div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-    </div>
+      
+      <AccountCopilot
+  selected={selected}
+  director={director}
+/>
 
 {/* ========================================================= */}
 {/* ===== MODAL CREAR CUENTA — UNICORN WIZARD ===== */}
