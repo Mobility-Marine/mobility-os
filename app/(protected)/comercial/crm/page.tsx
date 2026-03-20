@@ -37,6 +37,25 @@ import {
   fetchTimeline
 } from "./services/crm.service";
 // ===== FIN SERVICE =====
+// ===== INICIO UI =====
+import {
+  panelCard,
+  panelCardTitle,
+  miniButton,
+  primaryButton,
+  chipHot,
+  chipCritical,
+  chipMoney,
+  chipQuote,
+  chipRisk,
+  tableHead,
+  tableCell,
+  CommandList,
+  TimelineRow,
+  CommercialHealthPanel,
+  RiskOpportunityPanel
+} from "./components/ui/CRMSharedUI";
+// ===== FIN UI =====
 // ===== FIN IMPORTS =====
 
 export default function CRMPage() {
