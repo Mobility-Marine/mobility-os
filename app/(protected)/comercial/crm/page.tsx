@@ -88,7 +88,7 @@ const {
   uploadDocument,
 
   handleImportAccounts,
-  confirmImportAccount,
+  confirmImportAccounts,
 } = crm;
   
   const [newActivityTitle, setNewActivityTitle] = useState("");
