@@ -67,23 +67,41 @@ export function useCRMController() {
 
   }, [companyId]);
 
-  // ===== LOAD ACCOUNT DETAIL =====
-  useEffect(() => {
-    if (!selected) return;
+  /// ===== LOAD ACCOUNT DETAIL =====
+useEffect(() => {
+  if (!selected) return;
 
-    fetchDocuments(selected.id).then(setDocuments);
-    fetchActivities(selected.id).then(setActivities);
-    fetchContacts(selected.id).then(setContacts);
+  let cancelled = false;
 
-    fetchRelations(selected.id).then((r) => {
+  fetchDocuments(selected.id).then((data) => {
+    if (!cancelled) setDocuments(data);
+  });
+
+  fetchActivities(selected.id).then((data) => {
+    if (!cancelled) setActivities(data);
+  });
+
+  fetchContacts(selected.id).then((data) => {
+    if (!cancelled) setContacts(data);
+  });
+
+  fetchRelations(selected.id).then((r) => {
+    if (!cancelled) {
       setOpportunities(r.opportunities);
       setQuotes(r.quotes);
       setOrders(r.orders);
-    });
+    }
+  });
 
-    fetchTimeline(selected.id).then(setTimeline);
+  fetchTimeline(selected.id).then((data) => {
+    if (!cancelled) setTimeline(data);
+  });
 
-  }, [selected]);
+  return () => {
+    cancelled = true;
+  };
+
+}, [selected]);
 
   return {
     loading,
