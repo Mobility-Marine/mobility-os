@@ -1724,9 +1724,11 @@ function exportAccountsToCsv(onlyFiltered = false) {
     </div>
   </div>
 )}
-      </div>
   
-  // ===== FIN RENDER =====
+</div>
+);
+
+ // ===== FIN RENDER =====
 }
 
 const panelCard: React.CSSProperties = {
