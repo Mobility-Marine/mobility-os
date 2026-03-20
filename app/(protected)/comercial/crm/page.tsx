@@ -176,12 +176,16 @@ const executiveTopAccounts = useMemo(() => {
   
   // ===== INICIO LOAD ACCOUNTS =====
   useEffect(() => {
-  if (!companyId) return;
+  if (!companyId) {
+  setLoading(false);
+  return;
+}
 
-  // Carga inicial
-  fetchAccounts(companyId).then(setAccounts);
+  fetchAccounts(companyId).then((data) => {
+    setAccounts(data);
+    setLoading(false);
+  });
 
-  // Realtime
   const channel = supabase
     .channel("crm-accounts-realtime")
     .on(
@@ -204,32 +208,15 @@ const executiveTopAccounts = useMemo(() => {
 }, [companyId]);
   // ===== FIN LOAD ACCOUNTS =====
 
-  // ===== INICIO LOAD ACTIVITIES =====
-  useEffect(() => {
-    if (!selected) return;
-
-    fetchActivities(selected.id).then(setActivities);selected.id);
-
-    const channel = supabase
-      .channel("crm-activities-realtime")
-      .on(
-        "postgres_changes",
-        {
-          event: "*",
-          schema: "public",
-          table: "crm_activities",
-          filter: `account_id=eq.${selected.id}`,
-        },
-        () => fetchActivities(selected.id).then(setActivities);selected.id)
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selected]);
-  // ===== FIN LOAD ACTIVITIES =====
-
+// ===== INICIO CALCULO INTELIGENCIA DE CUENTAS =====
+useEffect(() => {
+  accounts.forEach((acc) => {
+    buildAccountRadar(acc);
+    buildAccountRevenue(acc);
+  });
+}, [accounts]);
+// ===== FIN CALCULO INTELIGENCIA DE CUENTAS =====
+  
   // ===== INICIO LOAD DETALLE COMPLETO CRM =====
   useEffect(() => {
   if (!selected) return;
@@ -277,11 +264,11 @@ const executiveTopAccounts = useMemo(() => {
   }, [selected, contacts, activities, opportunities, quotes, orders, timeline]);
   // ===== FIN RECALCULAR DIRECTOR IA =====
 
-  // ===== INICIO RECALCULAR ACTION ENGINE =====
-  useEffect(() => {
-    accounts.forEach((acc) => buildAccountAction(acc));
-  }, [accounts, radarMap, revenueMap, priorityMap]);
-  // ===== FIN RECALCULAR ACTION ENGINE =====
+  // ===== INICIO CALCULO PRIORIDAD =====
+useEffect(() => {
+  accounts.forEach((acc) => buildAccountPriority(acc));
+}, [accounts, radarMap, revenueMap, activities]);
+// ===== FIN CALCULO PRIORIDAD =====
 
   // ===== INICIO RECALCULAR COMMAND CENTER =====
   useEffect(() => {
@@ -563,7 +550,7 @@ const executiveTopAccounts = useMemo(() => {
       relationship_score: 50,
     });
 
-    fetchContacts(selected.id).then(setContacts);selected.id);
+    fetchContacts(selected.id).then(setContacts);
   }
 
   async function createActivity() {
