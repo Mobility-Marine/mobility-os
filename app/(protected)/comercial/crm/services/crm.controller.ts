@@ -63,7 +63,9 @@ export function useCRMController() {
       )
       .subscribe();
 
-    return () => supabase.removeChannel(channel);
+   return () => {
+  void supabase.removeChannel(channel);
+};
 
   }, [companyId]);
 
