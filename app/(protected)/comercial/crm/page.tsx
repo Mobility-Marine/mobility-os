@@ -39,6 +39,16 @@ import {
   fetchTimeline
 } from "./services/crm.service";
 
+// ===== ANALYTICS ENGINE =====
+import {
+  calculateAccountRadar,
+  calculateAccountRevenue,
+  calculateAccountPriority,
+  calculateAccountAction,
+  calculateCommandCenter,
+  calculateDirectorAdvice
+} from "./services/crm.analytics";
+
 // ===== UI =====
 import {
   panelCard,
@@ -599,35 +609,19 @@ useEffect(() => {
   }
 
   function buildAccountPriority(account: CrmAccount) {
-    const id = account.id;
-    const radar = radarMap[id];
-    const rev = revenueMap[id];
+  const id = account.id;
 
-    let score = 0;
+  const priority = calculateAccountPriority(
+    radarMap[id],
+    revenueMap[id],
+    activities
+  );
 
-    if (radar?.temperature === "CALIENTE") score += 30;
-    else if (radar?.temperature === "TIBIA") score += 15;
-
-    if (radar?.urgency === "CRITICA") score += 30;
-    else if (radar?.urgency === "ALTA") score += 25;
-    else if (radar?.urgency === "MEDIA") score += 10;
-
-    if (rev?.tier === "STRATEGIC") score += 35;
-    else if (rev?.tier === "HIGH") score += 25;
-    else if (rev?.tier === "MEDIUM") score += 10;
-
-    if (activities.length === 0) score += 10;
-
-    let label: AccountPriority["label"] = "BAJA";
-    if (score >= 70) label = "CRITICA";
-    else if (score >= 50) label = "ALTA";
-    else if (score >= 30) label = "MEDIA";
-
-    setPriorityMap((prev) => ({
-      ...prev,
-      [id]: { accountId: id, score, label },
-    }));
-  }
+  setPriorityMap((prev) => ({
+    ...prev,
+    [id]: { ...priority, accountId: id },
+  }));
+}
 
   function buildAccountAction(account: CrmAccount) {
     const id = account.id;
