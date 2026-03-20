@@ -33,7 +33,8 @@ import {
   fetchDocuments,
   fetchActivities,
   fetchContacts,
-  fetchRelations
+  fetchRelations,
+  fetchTimeline
 } from "./services/crm.service";
 // ===== FIN SERVICE =====
 // ===== FIN IMPORTS =====
@@ -335,88 +336,9 @@ useEffect(() => {
   }
 
   async function buildTimeline(accountId: string) {
-    const items: TimelineItem[] = [];
-
-    const { data: acts } = await supabase
-      .from("crm_activities")
-      .select("*")
-      .eq("account_id", accountId);
-
-    acts?.forEach((a) => {
-      items.push({
-        id: a.id,
-        type: "activity",
-        title: a.title,
-        description: a.type,
-        date: a.created_at,
-      });
-    });
-
-    const { data: docs } = await supabase
-      .from("crm_documents")
-      .select("*")
-      .eq("account_id", accountId);
-
-    docs?.forEach((d) => {
-      items.push({
-        id: d.id,
-        type: "document",
-        title: d.name,
-        date: d.created_at,
-      });
-    });
-
-    const { data: opps } = await supabase
-      .from("sales_opportunities")
-      .select("*")
-      .eq("account_id", accountId);
-
-    opps?.forEach((o) => {
-      items.push({
-        id: o.id,
-        type: "opportunity",
-        title: o.name,
-        description: o.stage,
-        date: o.created_at,
-      });
-    });
-
-    const { data: qts } = await supabase
-      .from("quotes")
-      .select("*")
-      .eq("account_id", accountId);
-
-    qts?.forEach((q) => {
-      items.push({
-        id: q.id,
-        type: "quote",
-        title: q.quote_number,
-        description: q.status,
-        date: q.created_at,
-      });
-    });
-
-    const { data: ords } = await supabase
-      .from("orders")
-      .select("*")
-      .eq("account_id", accountId);
-
-    ords?.forEach((o) => {
-      items.push({
-        id: o.id,
-        type: "order",
-        title: o.order_number,
-        description: o.status,
-        date: o.created_at,
-      });
-    });
-
-    items.sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()
-    );
-
-    setTimeline(items);
-  }
+  const items = await fetchTimeline(accountId);
+  setTimeline(items);
+}
 
   function buildAccountInsights(account: CrmAccount) {
     let score = 0;
