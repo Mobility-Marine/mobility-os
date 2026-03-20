@@ -2,8 +2,6 @@
 
 // ===== INICIO IMPORTS =====
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { useTenant } from "@/lib/tenant/TenantProvider";
 
 import AccountsSidebar from "./components/AccountsSidebar";
 import AccountWorkspace from "./components/AccountWorkspace";
@@ -29,20 +27,8 @@ import type {
   CommandCenterData
 } from "./types/crm.types";
 
-// ===== SERVICES =====
-import {
-  fetchAccounts,
-  fetchDocuments,
-  fetchActivities,
-  fetchContacts,
-  fetchRelations,
-  fetchTimeline
-} from "./services/crm.service";
-
 // ===== ANALYTICS ENGINE =====
 import {
-  calculateAccountRadar,
-  calculateAccountRevenue,
   calculateAccountPriority,
   calculateAccountAction,
   calculateCommandCenter,
@@ -73,33 +59,37 @@ import {
   buildAccountInsights,
   buildCustomerAlerts
 } from "./services/crm.intelligence";
+// ===== CONTROLLER =====
+import { useCRMController } from "./services/crm.controller";
 // ===== FIN IMPORTS =====
 
 export default function CRMPage() {
-  // ===== INICIO TENANT =====
-  const { companyId } = useTenant();
-  // ===== FIN TENANT =====
 
   // ===== INICIO STATE =====
-  const [accounts, setAccounts] = useState<CrmAccount[]>([]);
-  const [selected, setSelected] = useState<CrmAccount | null>(null);
-  const [documents, setDocuments] = useState<CrmDocument[]>([]);
-  const [loading, setLoading] = useState(true);
 
-  const [activities, setActivities] = useState<CrmActivity[]>([]);
+  const crm = useCRMController();
+
+const {
+  loading,
+  accounts,
+  selected,
+  setSelected,
+  documents,
+  activities,
+  contacts,
+  opportunities,
+  quotes,
+  orders,
+  timeline
+} = crm;
+  
   const [newActivityTitle, setNewActivityTitle] = useState("");
   const [newActivityType, setNewActivityType] = useState("call");
   const [newActivityDate, setNewActivityDate] = useState("");
 
-  const [timeline, setTimeline] = useState<TimelineItem[]>([]);
   const [insights, setInsights] = useState<CrmAccountInsights | null>(null);
   const [director, setDirector] = useState<AiDirectorAdvice | null>(null);
   const [alerts, setAlerts] = useState<CustomerAlert[]>([]);
-
-  const [opportunities, setOpportunities] = useState<CrmOpportunity[]>([]);
-  const [quotes, setQuotes] = useState<CrmQuote[]>([]);
-  const [orders, setOrders] = useState<CrmOrder[]>([]);
-  const [contacts, setContacts] = useState<CrmContact[]>([]);
 
   const [radarMap, setRadarMap] = useState<Record<string, AccountRadar>>({});
   const [revenueMap, setRevenueMap] = useState<Record<string, AccountRevenue>>(
@@ -210,73 +200,8 @@ const executiveTopAccounts = useMemo(() => {
     .slice(0, 3);
 }, [accounts, priorityMap, revenueMap, radarMap, actionMap]);
 // ===== FIN EXECUTIVE TOP ACCOUNTS =====
-  
-  // ===== INICIO LOAD ACCOUNTS =====
-  useEffect(() => {
-  if (!companyId) {
-  setLoading(false);
-  return;
-}
 
-  fetchAccounts(companyId).then((data) => {
-    setAccounts(data);
-    setLoading(false);
-  });
-
-  const channel = supabase
-    .channel("crm-accounts-realtime")
-    .on(
-      "postgres_changes",
-      {
-        event: "*",
-        schema: "public",
-        table: "crm_accounts",
-        filter: `company_id=eq.${companyId}`,
-      },
-      () => {
-        fetchAccounts(companyId).then(setAccounts);
-      }
-    )
-    .subscribe();
-
-  return () => {
-    supabase.removeChannel(channel);
-  };
-}, [companyId]);
-  // ===== FIN LOAD ACCOUNTS =====
-
-// ===== INICIO CALCULO INTELIGENCIA DE CUENTAS =====
-useEffect(() => {
-  accounts.forEach((acc) => {
-    buildAccountRadar(acc);
-    buildAccountRevenue(acc);
-  });
-}, [accounts]);
-// ===== FIN CALCULO INTELIGENCIA DE CUENTAS =====
-  
-  // ===== INICIO LOAD DETALLE COMPLETO CRM =====
-  useEffect(() => {
-  if (!selected) return;
-
-  fetchDocuments(selected.id).then(setDocuments);
-  fetchActivities(selected.id).then(setActivities);
-  fetchContacts(selected.id).then(setContacts);
-
-  fetchRelations(selected.id).then((r) => {
-    setOpportunities(r.opportunities);
-    setQuotes(r.quotes);
-    setOrders(r.orders);
-  });
-
-}, [selected]);
-  // ===== FIN LOAD DETALLE COMPLETO CRM =====
-
-  // ===== INICIO RECALCULAR TIMELINE AUTOMATICO =====
-  useEffect(() => {
-    if (!selected) return;
-    buildTimeline(selected.id);
-  }, [activities, documents, opportunities, quotes, orders, selected]);
-  // ===== FIN RECALCULAR TIMELINE AUTOMATICO =====
+// ===== INTELIGENCIA MIGRADA AL CONTROLLER =====
 
   // ===== INICIO RECALCULAR INSIGHTS =====
   useEffect(() => {
@@ -370,202 +295,37 @@ useEffect(() => {
   quotes,
   orders
 ]);
-  // ===== FIN RECALCULAR CUSTOMER ALERTS =====
-
-  async function buildTimeline(accountId: string) {
-  const items = await fetchTimeline(accountId);
-  setTimeline(items);
+  
+// ===== ACTION — uploadDocument =====
+// TODO: migrar a crm.controller
+function uploadDocument(_: File) {
+  throw new Error("uploadDocument no migrado al controller");
 }
 
-  async function uploadDocument(file: File) {
-    if (!selected || !companyId) return;
+ // ===== ACTION — createContact =====
+// TODO: migrar a crm.controller
+function createContact() {
+  throw new Error("createContact no migrado al controller");
+}
 
-    const filePath = `${companyId}/${selected.id}/${Date.now()}-${file.name}`;
+  // ===== ACTION — createActivity =====
+// TODO: migrar a crm.controller
+function createActivity() {
+  throw new Error("createActivity no migrado al controller");
+}
 
-    const { error } = await supabase.storage
-      .from("crm-documents")
-      .upload(filePath, file);
+ // ===== CALCULO — Radar (legacy) =====
+// TODO: mover cálculo al analytics/controller
+function buildAccountRadar(_: CrmAccount) {
+  // intentionally empty
+}
 
-    if (error) {
-      alert("Error subiendo archivo");
-      return;
-    }
-
-    await supabase.from("crm_documents").insert({
-      company_id: companyId,
-      account_id: selected.id,
-      name: file.name,
-      file_path: filePath,
-      file_type: file.type,
-      size: file.size,
-      storage_provider: "supabase",
-    });
-
-    fetchDocuments(selected.id).then(setDocuments);
-  }
-
-  async function createContact() {
-    if (!selected || !companyId) return;
-
-    const name = prompt("Nombre del contacto");
-    if (!name) return;
-
-    const position = prompt("Puesto") || null;
-    const email = prompt("Email") || null;
-    const phone = prompt("Teléfono") || null;
-
-    await supabase.from("crm_contacts").insert({
-      company_id: companyId,
-      account_id: selected.id,
-      name,
-      position,
-      email,
-      phone,
-      role: "user",
-      influence_level: 3,
-      relationship_score: 50,
-    });
-
-    fetchContacts(selected.id).then(setContacts);
-  }
-
-  async function createActivity() {
-    if (!selected || !companyId) return;
-    if (!newActivityTitle.trim()) return;
-
-    const scheduled = newActivityDate
-      ? new Date(newActivityDate).toISOString()
-      : null;
-
-    const { error } = await supabase
-      .from("crm_activities")
-      .insert({
-        company_id: companyId,
-        account_id: selected.id,
-        type: newActivityType,
-        title: newActivityTitle,
-        scheduled_at: scheduled,
-        completed: false,
-      });
-
-    if (error) {
-      alert("Error creando actividad");
-      return;
-    }
-
-    if (scheduled) {
-      await supabase.from("calendar_events").insert({
-        company_id: companyId,
-        title: newActivityTitle,
-        event_type: newActivityType,
-        related_account_id: selected.id,
-        start_at: scheduled,
-        source: "crm",
-      });
-    }
-
-    setNewActivityTitle("");
-    setNewActivityDate("");
-  }
-
-  async function buildAccountRadar(account: CrmAccount) {
-    const id = account.id;
-
-    const { data: opps } = await supabase
-      .from("sales_opportunities")
-      .select("id")
-      .eq("account_id", id);
-
-    const { data: qts } = await supabase
-      .from("quotes")
-      .select("id")
-      .eq("account_id", id);
-
-    const { data: ords } = await supabase
-      .from("orders")
-      .select("id")
-      .eq("account_id", id);
-
-    const { data: cts } = await supabase
-      .from("crm_contacts")
-      .select("id")
-      .eq("account_id", id);
-
-    let temperature: AccountRadar["temperature"] = "FRIA";
-    let urgency: AccountRadar["urgency"] = "BAJA";
-
-    if ((opps?.length || 0) > 0) temperature = "CALIENTE";
-    else if ((cts?.length || 0) > 0) temperature = "TIBIA";
-
-    if ((qts?.length || 0) > 0 && (ords?.length || 0) === 0) {
-      urgency = "ALTA";
-    }
-
-    if ((cts?.length || 0) === 0) {
-      urgency = "CRITICA";
-    }
-
-    setRadarMap((prev) => ({
-      ...prev,
-      [id]: {
-        accountId: id,
-        temperature,
-        urgency,
-        hasOpportunity: (opps?.length || 0) > 0,
-        hasQuote: (qts?.length || 0) > 0,
-        hasOrder: (ords?.length || 0) > 0,
-        hasContacts: (cts?.length || 0) > 0,
-      },
-    }));
-  }
-
-  async function buildAccountRevenue(account: CrmAccount) {
-    const id = account.id;
-
-    const { data: opps } = await supabase
-      .from("sales_opportunities")
-      .select("estimated_value")
-      .eq("account_id", id);
-
-    const { data: qts } = await supabase
-      .from("quotes")
-      .select("total_amount")
-      .eq("account_id", id);
-
-    const { data: ords } = await supabase
-      .from("orders")
-      .select("total_amount")
-      .eq("account_id", id);
-
-    const pipelineValue =
-      opps?.reduce((s, o) => s + (o.estimated_value || 0), 0) || 0;
-
-    const quotedValue =
-      qts?.reduce((s, q) => s + (q.total_amount || 0), 0) || 0;
-
-    const wonValue =
-      ords?.reduce((s, o) => s + (o.total_amount || 0), 0) || 0;
-
-    const totalPotential = pipelineValue + quotedValue + wonValue;
-
-    let tier: AccountRevenue["tier"] = "LOW";
-    if (totalPotential > 5_000_000) tier = "STRATEGIC";
-    else if (totalPotential > 1_000_000) tier = "HIGH";
-    else if (totalPotential > 100_000) tier = "MEDIUM";
-
-    setRevenueMap((prev) => ({
-      ...prev,
-      [id]: {
-        accountId: id,
-        pipelineValue,
-        quotedValue,
-        wonValue,
-        totalPotential,
-        tier,
-      },
-    }));
-  }
-
+ // ===== CALCULO — Revenue (legacy) =====
+// TODO: mover cálculo al analytics/controller
+function buildAccountRevenue(_: CrmAccount) {
+  // intentionally empty
+}
+  
   function buildAccountPriority(account: CrmAccount) {
   const id = account.id;
 
@@ -739,112 +499,12 @@ async function handleImportFile(file: File) {
   setShowImportModal(true);
 }
 
-async function confirmImportRows() {
-  if (!companyId || importRows.length === 0) return;
-
-  try {
-    setImporting(true);
-
-    if (importMode === "insert") {
-      const payload = importRows.map((row) => ({
-        company_id: companyId,
-        name: row.name,
-        legal_name: row.legal_name || null,
-        industry: row.industry || null,
-        country: row.country || null,
-        city: row.city || null,
-        status: row.status || "active",
-        notes: row.notes || null,
-      }));
-
-      const { error } = await supabase.from("crm_accounts").insert(payload);
-
-      if (error) {
-        alert("Error importando cuentas.");
-        return;
-      }
-
-      setShowImportModal(false);
-      setImportRows([]);
-      await fetchAccounts(companyId).then(setAccounts);
-      alert(`Se importaron ${payload.length} cuentas.`);
-      return;
-    }
-
-    for (const row of importRows) {
-      const legalName = row.legal_name?.trim();
-      const name = row.name.trim();
-
-      let existingId: string | null = null;
-
-      if (legalName) {
-        const { data } = await supabase
-          .from("crm_accounts")
-          .select("id")
-          .eq("company_id", companyId)
-          .eq("legal_name", legalName)
-          .maybeSingle();
-
-        if (data?.id) existingId = data.id;
-      }
-
-      if (!existingId) {
-        const { data } = await supabase
-          .from("crm_accounts")
-          .select("id")
-          .eq("company_id", companyId)
-          .eq("name", name)
-          .maybeSingle();
-
-        if (data?.id) existingId = data.id;
-      }
-
-      if (existingId) {
-        const { error } = await supabase
-          .from("crm_accounts")
-          .update({
-            legal_name: row.legal_name || null,
-            industry: row.industry || null,
-            country: row.country || null,
-            city: row.city || null,
-            status: row.status || "active",
-            notes: row.notes || null,
-          })
-          .eq("id", existingId);
-
-        if (error) {
-          alert(`Error actualizando cuenta: ${row.name}`);
-          return;
-        }
-      } else {
-        const { error } = await supabase.from("crm_accounts").insert({
-          company_id: companyId,
-          name: row.name,
-          legal_name: row.legal_name || null,
-          industry: row.industry || null,
-          country: row.country || null,
-          city: row.city || null,
-          status: row.status || "active",
-          notes: row.notes || null,
-        });
-
-        if (error) {
-          alert(`Error insertando cuenta: ${row.name}`);
-          return;
-        }
-      }
-    }
-
-    setShowImportModal(false);
-    setImportRows([]);
-    await fetchAccounts(companyId).then(setAccounts);
-    alert(`Importación completada en modo upsert (${importRows.length} filas).`);
-  } finally {
-    setImporting(false);
-  }
+// ===== ACTION — Import Accounts =====
+// TODO: migrar al controller
+function confirmImportRows() {
+  throw new Error("Importación no migrada al controller");
 }
-// ===== FIN FUNCIONES IMPORTADOR =====
-
+  
   // ===== INICIO FUNCION EXPORTADOR =====
 function exportAccountsToCsv(onlyFiltered = false) {
   const list = onlyFiltered ? filteredAccounts : accounts;
@@ -1103,28 +763,9 @@ function exportAccountsToCsv(onlyFiltered = false) {
 
         <button
           style={primaryButton}
-          onClick={async () => {
-            if (!newAccount.name || !companyId) return;
-
-            await supabase.from("crm_accounts").insert({
-              company_id: companyId,
-              ...newAccount,
-            });
-
-            setShowCreateAccount(false);
-
-            setNewAccount({
-              name: "",
-              legal_name: "",
-              industry: "",
-              country: "",
-              city: "",
-              status: "active",
-              notes: "",
-            });
-
-            fetchAccounts(companyId).then(setAccounts);
-          }}
+        onClick={() => {
+  throw new Error("Crear cuenta no migrado al controller");
+}}
         >
           Crear cuenta
         </button>
