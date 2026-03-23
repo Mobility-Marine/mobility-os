@@ -1,37 +1,65 @@
 // ============================================================
-// CRM — CORE TYPES
-// Customer Master + Entidades base
+// 🌐 CRM — CORE TYPES (GLOBAL CUSTOMER MASTER ALIGNED)
+// Compatible con entidad global, multi-empresa y multi-módulo
+// ============================================================
+
+// ============================================================
+// 🧠 CUSTOMER MASTER (Entidad central de negocio)
 // ============================================================
 
 export type CrmAccount = {
   id: string;
+
+  // 🔐 Multi-tenant / multi-empresa
   company_id: string;
 
-  // ===== CUSTOMER MASTER =====
+  // 🌐 Vinculación con entidad global (Customer Master)
+  client_id?: string | null;      // ← NUEVO: ID del cliente global
+  prospect_id?: string | null;    // ← Para conversión prospecto → cliente
+
+  // ===== IDENTIDAD =====
   name: string;
   legal_name: string | null;
   industry: string | null;
 
   country: string | null;
+  state?: string | null;
   city: string | null;
+  address?: string | null;
+  website?: string | null;
 
-  status: string;
-  notes: string | null;
+  tax_id?: string | null;
 
-  // ===== MASTER METADATA =====
+  // ===== CLASIFICACIÓN GLOBAL =====
   customer_type?: "PROSPECT" | "CLIENT" | "PARTNER" | "SUPPLIER";
   lifecycle_stage?: "LEAD" | "OPPORTUNITY" | "CUSTOMER" | "INACTIVE";
 
+  segment?: string | null;
+  priority_tier?: string | null;
+
+  // ===== ESTADO OPERATIVO =====
+  status: string;
+  notes: string | null;
+
+  strategic_account?: boolean;
+  health_status?: string | null;
+  risk_level?: string | null;
+
+  // ===== METADATA =====
   created_at?: string;
   updated_at?: string;
+  created_by?: string | null;
 };
 
+
 // ============================================================
-// DOCUMENTS
+// 📎 DOCUMENTOS
 // ============================================================
 
 export type CrmDocument = {
   id: string;
+
+  company_id?: string;
   account_id: string;
 
   name: string;
@@ -41,11 +69,13 @@ export type CrmDocument = {
   size: number | null;
   storage_provider: string;
 
+  created_by?: string | null;
   created_at: string;
 };
 
+
 // ============================================================
-// ACTIVITIES
+// 📅 ACTIVIDADES
 // ============================================================
 
 export type CrmActivity = {
@@ -54,115 +84,36 @@ export type CrmActivity = {
   company_id: string;
   account_id: string;
 
+  contact_id?: string | null;
+  opportunity_id?: string | null;
+  prospect_id?: string | null;
+
   type: string;
   title: string;
   description: string | null;
 
-  scheduled_at: string | null;
-  completed: boolean;
+  status?: string;
+  priority?: string;
 
+  scheduled_at: string | null;
+  ended_at?: string | null;
+
+  completed: boolean;
+  completed_at?: string | null;
+
+  created_by?: string | null;
   created_at: string;
 };
 
-// ============================================================
-// OPPORTUNITIES
-// ============================================================
-
-export type CrmOpportunity = {
-  id: string;
-  name: string;
-
-  stage: string;
-  estimated_value: number | null;
-};
 
 // ============================================================
-// QUOTES
-// ============================================================
-
-export type CrmQuote = {
-  id: string;
-
-  quote_number: string;
-  total_amount: number | null;
-
-  status: string;
-};
-
-// ============================================================
-// ORDERS
-// ============================================================
-
-export type CrmOrder = {
-  id: string;
-
-  order_number: string;
-  status: string;
-
-  total_amount: number | null;
-};
-
-// ============================================================
-// TIMELINE
-// ============================================================
-
-export type TimelineItem = {
-  id: string;
-  type: string;
-
-  title: string;
-  description?: string | null;
-
-  date: string;
-};
-
-// ============================================================
-// INSIGHTS (IA / HEALTH)
-// ============================================================
-
-export type CrmAccountInsights = {
-  healthScore: number;
-
-  priority: "BAJA" | "MEDIA" | "ALTA" | "CRITICA";
-  churnRisk: "BAJO" | "MEDIO" | "ALTO";
-
-  nextBestAction: string;
-  executiveSummary: string;
-};
-
-// ============================================================
-// CUSTOMER ALERTS
-// ============================================================
-
-export type CustomerAlert = {
-  level: "INFO" | "WARNING" | "CRITICAL" | "SUCCESS";
-
-  title: string;
-  message: string;
-};
-
-// ============================================================
-// DIRECTOR IA ADVICE
-// ============================================================
-
-export type AiDirectorAdvice = {
-  urgency: "BAJA" | "MEDIA" | "ALTA" | "CRITICA";
-
-  accountTemperature: "FRIA" | "TIBIA" | "CALIENTE";
-
-  recommendedAction: string;
-
-  alerts: string[];
-  opportunitiesDetected: string[];
-  risksDetected: string[];
-};
-
-// ============================================================
-// CONTACTS
+// 👤 CONTACTOS
 // ============================================================
 
 export type CrmContact = {
   id: string;
+
+  company_id?: string;
   account_id: string;
 
   name: string;
@@ -180,10 +131,144 @@ export type CrmContact = {
   relationship_score: number | null;
 
   notes: string | null;
+
+  created_at?: string;
+  updated_at?: string;
 };
 
 // ============================================================
-// RADAR
+// 💼 PIPELINE COMERCIAL (Conectado a TODA la plataforma)
+// ============================================================
+
+export type CrmOpportunity = {
+  id: string;
+
+  company_id?: string;
+
+  account_id?: string | null;   // Cliente existente
+  prospect_id?: string | null;  // Prospecto no convertido
+
+  name: string;
+
+  stage: string;
+  status?: string;
+
+  estimated_value: number | null;
+  probability?: number | null;
+
+  expected_close_date?: string | null;
+
+  assigned_to?: string | null;
+
+  created_at?: string;
+  updated_at?: string;
+};
+
+
+export type CrmQuote = {
+  id: string;
+
+  company_id?: string;
+
+  account_id?: string | null;
+  client_id?: string | null;
+
+  quote_number: string;
+  total_amount: number | null;
+
+  currency?: string | null;
+
+  status: string;
+
+  created_at?: string;
+};
+
+
+export type CrmOrder = {
+  id: string;
+
+  company_id?: string;
+
+  account_id?: string | null;
+  client_id?: string | null;
+
+  order_number: string;
+
+  status: string;
+  total_amount: number | null;
+
+  currency?: string | null;
+
+  created_at?: string;
+};
+
+
+// ============================================================
+// 🕓 TIMELINE GLOBAL DE ENTIDAD
+// (Debe poder unificar TODA la plataforma)
+// ============================================================
+
+export type TimelineItem = {
+  id: string;
+
+  entity_type?: string;   // account, opportunity, order, etc.
+  entity_id?: string;
+
+  type: string;
+
+  title: string;
+  description?: string | null;
+
+  date: string;
+};
+
+
+// ============================================================
+// 🧠 INSIGHTS (IA / HEALTH ENGINE)
+// ============================================================
+
+export type CrmAccountInsights = {
+  healthScore: number;
+
+  priority: "BAJA" | "MEDIA" | "ALTA" | "CRITICA";
+  churnRisk: "BAJO" | "MEDIO" | "ALTO";
+
+  nextBestAction: string;
+  executiveSummary: string;
+};
+
+
+// ============================================================
+// 🚨 CUSTOMER ALERTS
+// ============================================================
+
+export type CustomerAlert = {
+  level: "INFO" | "WARNING" | "CRITICAL" | "SUCCESS";
+
+  title: string;
+  message: string;
+};
+
+
+// ============================================================
+// 🤖 DIRECTOR IA — ADVICE ENGINE
+// ============================================================
+
+export type AiDirectorAdvice = {
+  urgency: "BAJA" | "MEDIA" | "ALTA" | "CRITICA";
+
+  accountTemperature: "FRIA" | "TIBIA" | "CALIENTE";
+
+  recommendedAction: string;
+
+  alerts: string[];
+  opportunitiesDetected: string[];
+  risksDetected: string[];
+};
+
+
+// ============================================================
+// 📡 ACCOUNT RADAR
 // ============================================================
 
 export type AccountRadar = {
@@ -198,8 +283,9 @@ export type AccountRadar = {
   hasContacts: boolean;
 };
 
+
 // ============================================================
-// REVENUE
+// 💰 REVENUE ENGINE
 // ============================================================
 
 export type AccountRevenue = {
@@ -214,8 +300,9 @@ export type AccountRevenue = {
   tier: "LOW" | "MEDIUM" | "HIGH" | "STRATEGIC";
 };
 
+
 // ============================================================
-// PRIORITY
+// 🎯 PRIORITY ENGINE
 // ============================================================
 
 export type AccountPriority = {
@@ -225,8 +312,9 @@ export type AccountPriority = {
   label: "CRITICA" | "ALTA" | "MEDIA" | "BAJA";
 };
 
+
 // ============================================================
-// ACTION ENGINE
+// ⚡ NEXT BEST ACTION
 // ============================================================
 
 export type AccountAction = {
@@ -238,8 +326,9 @@ export type AccountAction = {
   urgency: "BAJA" | "MEDIA" | "ALTA" | "CRITICA";
 };
 
+
 // ============================================================
-// COMMAND CENTER
+// 🧭 COMMAND CENTER GLOBAL
 // ============================================================
 
 export type CommandCenterData = {
