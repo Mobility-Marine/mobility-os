@@ -145,11 +145,11 @@ export default function ProspectsPage() {
 // ============================================================
 
 const loadingWrap: React.CSSProperties = {
-  minHeight: "calc(100vh - 40px)",
+  height: "100%",
+  minHeight: 0,
   display: "grid",
   placeItems: "center",
   background: "#020617",
-  padding: 24,
 };
 
 const loadingCard: React.CSSProperties = {
@@ -162,14 +162,12 @@ const loadingCard: React.CSSProperties = {
 };
 
 const pageWrap: React.CSSProperties = {
-  height: "calc(100vh - 40px)",
+  height: "100%",
   minHeight: 0,
   overflow: "hidden",
   display: "grid",
   gridTemplateRows: "auto auto minmax(0, 1fr)",
   gap: 16,
-  padding: 16,
-  background: "#020617",
 };
 
 const topBlocks: React.CSSProperties = {
@@ -182,11 +180,9 @@ const workRow: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "320px minmax(0, 1fr) 320px",
   gap: 16,
-
   alignItems: "stretch",
-
   minHeight: 0,
-  height: "clamp(420px, 46vh, 560px)", // 🔥 altura fluida SaaS
+  height: "clamp(420px, 44vh, 540px)",
 };
 
 const panelShell: React.CSSProperties = {
@@ -200,7 +196,8 @@ const panelShell: React.CSSProperties = {
 
 const pipelineArea: React.CSSProperties = {
   minHeight: 0,
-  overflow: "auto", // 🔥 scroll real
+  overflow: "auto",
   display: "flex",
   borderRadius: 16,
+  paddingBottom: 4,
 };
