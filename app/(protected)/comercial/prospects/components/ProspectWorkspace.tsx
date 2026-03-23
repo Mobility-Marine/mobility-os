@@ -117,11 +117,15 @@ async function handleSave() {
   // ==========================================================
 
   return (
-    <div style={container}>
-     {/* HEADER */}
-<div style={{ fontSize: 22, fontWeight: 800 }}>
-  {prospect.company_name || prospect.name || "Detalle del prospecto"}
-</div>
+  <div style={container}>
+    
+    {/* HEADER — FIJO */}
+    <div style={{ fontSize: 22, fontWeight: 800 }}>
+      {prospect?.company_name || prospect?.name || "Centro de trabajo de prospectos"}
+    </div>
+
+    {/* 🔥 CONTENIDO SCROLLABLE */}
+    <div style={contentArea}>
 
       {/* FORM */}
       <div style={grid}>
@@ -181,7 +185,7 @@ async function handleSave() {
         />
       </Field>
       
-      {/* KPIs SOLO SI EXISTE */}
+      {/* KPIs */}
       {prospect && (
         <div style={kpiGrid}>
           <InfoCard
@@ -211,32 +215,32 @@ async function handleSave() {
         </div>
       )}
 
-{/* READY FOR OPPORTUNITY — REVENUE HANDOFF */}
-{prospect && shouldMoveToOpportunity(prospect) && (
-  <div style={handoffBox}>
-    <div style={handoffTitle}>
-      🚀 Listo para mover a Oportunidades
-    </div>
+      {/* READY FOR OPPORTUNITY */}
+      {prospect && shouldMoveToOpportunity(prospect) && (
+        <div style={handoffBox}>
+          <div style={handoffTitle}>
+            🚀 Listo para mover a Oportunidades
+          </div>
 
-    <div style={handoffText}>
-      Este prospecto cumple criterios comerciales para iniciar
-      gestión de ingresos (pipeline de ventas).
-    </div>
-  </div>
-)}
+          <div style={handoffText}>
+            Este prospecto cumple criterios comerciales para iniciar
+            gestión de ingresos (pipeline de ventas).
+          </div>
+        </div>
+      )}
       
-{/* ACTIVIDAD — AUDITORÍA / CUSTOMER 360 */}
-{prospect && (
-  <ProspectActivityTimeline
-    activities={prospect?.activities || []}
-  />
-)}
+      {/* ACTIVIDAD */}
+      {prospect && (
+        <ProspectActivityTimeline
+          activities={prospect?.activities || []}
+        />
+      )}
       
       {/* ACCIONES */}
       <div style={actions}>
-      <button style={primaryButton} onClick={handleSave}>
-  Guardar cambios
-</button>
+        <button style={primaryButton} onClick={handleSave}>
+          {prospect ? "Guardar cambios" : "Crear prospecto"}
+        </button>
 
         {prospect && (
           <>
@@ -258,9 +262,10 @@ async function handleSave() {
           </>
         )}
       </div>
+
     </div>
-  );
-}
+  </div>
+);
 
 // ============================================================
 // COMPONENTES UI
@@ -407,4 +412,13 @@ const heroTitle: React.CSSProperties = {
 const heroSubtitle: React.CSSProperties = {
   maxWidth: 420,
   margin: "0 auto",
+};
+
+const contentArea: React.CSSProperties = {
+  flex: 1,
+  overflowY: "auto",
+  display: "flex",
+  flexDirection: "column",
+  gap: 16,
+  paddingRight: 4,
 };
