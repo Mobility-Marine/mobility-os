@@ -59,15 +59,15 @@ export default function ProspectsPage() {
   // LOADING
   // ==========================================================
 
-  if (loading) {
-    return (
-      <div style={{ padding: 40 }}>
-        Cargando prospectos...
-      </div>
-    );
-  }
+ if (loading) {
+  return (
+    <div style={{ padding: 40 }}>
+      Cargando prospectos...
+    </div>
+  );
+}
 
- <div
+<div
   style={{
     height: "calc(100vh - 40px)",
     display: "flex",
