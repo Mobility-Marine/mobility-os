@@ -7,6 +7,7 @@
 // ============================================================
 
 import type { Prospect } from "../types/prospects.types";
+import ProspectHealthPanel from "./ProspectHealthPanel";
 
 type Props = {
   prospect: Prospect | null;
@@ -19,12 +20,16 @@ export default function ProspectCopilot({ prospect }: Props) {
 
   if (!prospect) {
     return (
-      <div style={container}>
-        <div style={title}>COPILOT PROSPECTING</div>
+      <div style={{ display: "grid", gap: 16 }}>
+        <div style={container}>
+          <div style={title}>COPILOT PROSPECTING</div>
 
-        <div style={empty}>
-          Selecciona un prospecto para ver recomendaciones.
+          <div style={empty}>
+            Selecciona un prospecto para ver recomendaciones.
+          </div>
         </div>
+
+        <ProspectHealthPanel prospect={null} />
       </div>
     );
   }
@@ -63,38 +68,47 @@ export default function ProspectCopilot({ prospect }: Props) {
   // ==========================================================
 
   return (
-    <div style={container}>
-      <div style={title}>COPILOT PROSPECTING</div>
+    <div style={{ display: "grid", gap: 16 }}>
+      <div style={container}>
+        <div style={title}>COPILOT PROSPECTING</div>
 
-      {/* RECOMENDACIÓN */}
-      <Card label="Recomendación" value={recommendation} />
+        {/* RECOMENDACIÓN */}
+        <Card label="Recomendación" value={recommendation} />
 
-      {/* SIGUIENTE PASO */}
-      <Card label="Siguiente paso" value={nextStep} />
+        {/* SIGUIENTE PASO */}
+        <Card label="Siguiente paso" value={nextStep} />
 
-      {/* PRIORIDAD */}
-      <Card label="Prioridad" value={priority} />
+        {/* PRIORIDAD */}
+        <Card label="Prioridad" value={priority} />
 
-      {/* RIESGO */}
-      <Card label="Riesgo comercial" value={risk} />
+        {/* RIESGO */}
+        <Card label="Riesgo comercial" value={risk} />
 
-      {/* CONTEXTO */}
-      <div style={contextBox}>
-        <div style={contextTitle}>Contexto</div>
+        {/* CONTEXTO */}
+        <div style={contextBox}>
+          <div style={contextTitle}>Contexto</div>
 
-        <div style={contextText}>
-          Servicio:{" "}
-          {prospect.interested_service || "No especificado"}
-        </div>
+          <div style={contextText}>
+            Servicio:{" "}
+            {prospect.interested_service || "No especificado"}
+          </div>
 
-        <div style={contextText}>
-          Origen: {prospect.lead_source || "Manual"}
-        </div>
+          <div style={contextText}>
+            Origen: {prospect.lead_source || "Manual"}
+          </div>
 
-        <div style={contextText}>
-          Estatus: {prospect.stage || prospect.status || "new"}
+          <div style={contextText}>
+            Estatus: {prospect.stage || prospect.status || "new"}
+          </div>
         </div>
       </div>
+
+      <ProspectHealthPanel
+        prospect={prospect}
+        activities={prospect.activities || []}
+        tasks={prospect.tasks || []}
+        followups={prospect.followups || []}
+      />
     </div>
   );
 }
