@@ -3,7 +3,7 @@
 // ============================================================
 // 📡 PROSPECTS SIDEBAR — ELITE RADAR PANEL
 // Unicorn Revenue OS Grade
-// Inteligencia + navegación + creación rápida
+// Inteligencia + navegación + creación
 // ============================================================
 
 import type { Prospect } from "../types/prospects.types";
@@ -17,7 +17,8 @@ type Props = {
   selected: Prospect | null;
   setSelected: (prospect: Prospect) => void;
 
- onOpenCreate: () => void;
+  // ⭐ ELITE — abre drawer/modal externo
+  onOpenCreate: () => void;
 };
 
 export default function ProspectsSidebar({
@@ -28,12 +29,11 @@ export default function ProspectsSidebar({
   setSelected,
   onOpenCreate,
 }: Props) {
-
   // ==========================================================
-  // CREACIÓN RÁPIDA — ELITE
+  // CREACIÓN — ELITE
   // ==========================================================
 
-   function handleCreate() {
+  function handleCreate() {
     onOpenCreate();
   }
 
@@ -53,7 +53,7 @@ export default function ProspectsSidebar({
   });
 
   // ==========================================================
-  // MÉTRICAS — RADAR COMERCIAL
+  // MÉTRICAS RADAR
   // ==========================================================
 
   const active = filtered.filter(
@@ -71,6 +71,10 @@ export default function ProspectsSidebar({
   const qualified = filtered.filter(
     (p) => p.stage === "qualified" || p.status === "qualified"
   );
+
+  // ==========================================================
+  // UI
+  // ==========================================================
 
   return (
     <div style={container}>
@@ -91,7 +95,7 @@ export default function ProspectsSidebar({
         style={searchInput}
       />
 
-            {/* RADAR KPIs */}
+      {/* KPIs RADAR */}
       <div style={kpiBox}>
         <MiniKpi label="Activos" value={active.length} />
         <MiniKpi label="Alto valor" value={hot.length} />
@@ -99,12 +103,10 @@ export default function ProspectsSidebar({
         <MiniKpi label="Calificados" value={qualified.length} />
       </div>
 
-            {/* LISTA */}
+      {/* LISTA */}
       <div style={listWrap}>
         {filtered.length === 0 ? (
-          <div style={emptyState}>
-            No hay prospectos
-          </div>
+          <div style={emptyState}>No hay prospectos</div>
         ) : (
           <div style={listGrid}>
             {filtered.map((p) => {
@@ -122,6 +124,7 @@ export default function ProspectsSidebar({
                     ...(isSelected ? selectedCard : {}),
                   }}
                 >
+                  {/* FILA SUPERIOR */}
                   <div style={cardTopRow}>
                     <div style={name}>
                       {p.company_name || p.name || "Sin nombre"}
@@ -137,14 +140,17 @@ export default function ProspectsSidebar({
                     </span>
                   </div>
 
+                  {/* META */}
                   <div style={metaRow}>
                     {p.email || "Sin email"} · {p.phone || "Sin teléfono"}
                   </div>
 
+                  {/* BADGES */}
                   <div style={badges}>
                     {hasValue && (
                       <span style={valueBadge}>
-                        ${Number(p.estimated_value).toLocaleString("es-MX")}
+                        $
+                        {Number(p.estimated_value).toLocaleString("es-MX")}
                       </span>
                     )}
 
@@ -154,7 +160,8 @@ export default function ProspectsSidebar({
                       </span>
                     )}
 
-                    {(stage === "proposal" || stage === "negotiation") && (
+                    {(stage === "proposal" ||
+                      stage === "negotiation") && (
                       <span style={readyBadge}>
                         🚀 Revenue ready
                       </span>
@@ -188,6 +195,10 @@ function MiniKpi({
     </div>
   );
 }
+
+// ============================================================
+// HELPERS
+// ============================================================
 
 function getStageBadgeStyle(stage: string): React.CSSProperties {
   switch (stage) {
@@ -318,7 +329,6 @@ const kpiValue: React.CSSProperties = {
 const listWrap: React.CSSProperties = {
   overflowY: "auto",
   flex: 1,
-  paddingRight: 2,
 };
 
 const emptyState: React.CSSProperties = {
@@ -340,7 +350,6 @@ const card: React.CSSProperties = {
   cursor: "pointer",
   display: "grid",
   gap: 10,
-  transition: "all .15s ease",
 };
 
 const selectedCard: React.CSSProperties = {
@@ -377,7 +386,6 @@ const stageBadge: React.CSSProperties = {
   padding: "4px 8px",
   borderRadius: 999,
   fontWeight: 800,
-  whiteSpace: "nowrap",
 };
 
 const valueBadge: React.CSSProperties = {
