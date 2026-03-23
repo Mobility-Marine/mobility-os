@@ -71,24 +71,26 @@ export default function ProspectsPage() {
   return (
   <div
     style={{
+      height: "calc(100vh - 40px)",
       display: "flex",
       flexDirection: "column",
-      height: "calc(100vh - 40px)",
+      gap: 16,
+      padding: 16,
       background: "#020617",
     }}
   >
-    {/* ================= TOP — 3 COLUMNAS ================= */}
+    {/* ===================================================== */}
+    {/* FILA SUPERIOR — OPERACIÓN */}
+    {/* ===================================================== */}
 
     <div
       style={{
         display: "grid",
         gridTemplateColumns: "320px minmax(0, 1fr) 340px",
         gap: 16,
-        padding: 16,
+        flex: "0 0 auto",
       }}
     >
-      {/* SIDEBAR */}
-
       <ProspectsSidebar
         search={search}
         setSearch={setSearch}
@@ -98,8 +100,6 @@ export default function ProspectsPage() {
         createProspect={createProspect}
       />
 
-      {/* WORKSPACE */}
-
       <ProspectWorkspace
         prospect={selected}
         createProspect={createProspect}
@@ -107,19 +107,23 @@ export default function ProspectsPage() {
         archiveProspect={archiveProspect}
       />
 
-      {/* COPILOT */}
-
       <ProspectCopilot prospect={selected} />
     </div>
 
-    {/* ================= BOTTOM — PIPELINE ================= */}
+    {/* ===================================================== */}
+    {/* FILA INFERIOR — PIPELINE */}
+    {/* ===================================================== */}
 
-    <div style={{ padding: "0 16px 16px 16px" }}>
+    <div
+      style={{
+        flex: 1,
+        minHeight: 0,
+      }}
+    >
       <ProspectPipelineBoard
         prospects={prospects}
         onSelect={setSelected}
       />
     </div>
   </div>
-);
-}
+);}
