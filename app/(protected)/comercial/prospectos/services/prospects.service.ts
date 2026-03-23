@@ -232,3 +232,17 @@ export async function updateProspectStage(
 
   if (error) throw error;
 }
+
+// ============================================================
+// 💰 ESTIMACIONES COMERCIALES
+// ============================================================
+
+export async function fetchEstimations(prospectId: string) {
+  const { data } = await supabase
+    .from("prospect_estimations")
+    .select("*")
+    .eq("prospect_id", prospectId)
+    .order("created_at", { ascending: false });
+
+  return data || [];
+}
