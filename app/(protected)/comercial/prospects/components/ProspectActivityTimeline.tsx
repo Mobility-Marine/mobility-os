@@ -2,20 +2,13 @@
 
 // ============================================================
 // 🕒 PROSPECT ACTIVITY TIMELINE — Enterprise Audit Ready
-// Seguimiento operativo universal
-// Compatible con cualquier industria
+// Seguimiento operativo universal (Prospectos)
 // ============================================================
 
-type Activity = {
-  id: string;
-  type: "call" | "email" | "meeting" | "note" | "task";
-  description: string;
-  created_at: string;
-  user?: string;
-};
+import type { ProspectActivity } from "../types/prospects.types";
 
 type Props = {
-  activities?: Activity[];
+  activities?: ProspectActivity[];
 };
 
 export default function ProspectActivityTimeline({
@@ -32,14 +25,18 @@ export default function ProspectActivityTimeline({
       <div style={list}>
         {activities.map((a) => (
           <div key={a.id} style={item}>
-            <div style={icon}>{getIcon(a.type)}</div>
+            <div style={icon}>{getIcon(a.activity_type)}</div>
 
             <div style={{ flex: 1 }}>
-              <div style={desc}>{a.description}</div>
+              <div style={desc}>
+                {a.comments || "Actividad registrada"}
+              </div>
 
               <div style={meta}>
-                {a.user || "Sistema"} ·{" "}
-                {new Date(a.created_at).toLocaleString("es-MX")}
+                Sistema ·{" "}
+                {a.activity_date
+                  ? new Date(a.activity_date).toLocaleString("es-MX")
+                  : "Sin fecha"}
               </div>
             </div>
           </div>
@@ -49,20 +46,24 @@ export default function ProspectActivityTimeline({
   );
 }
 
-function getIcon(type: Activity["type"]) {
-  switch (type) {
-    case "call":
-      return "📞";
-    case "email":
-      return "✉️";
-    case "meeting":
-      return "📅";
-    case "task":
-      return "✔";
-    default:
-      return "📝";
-  }
+// ============================================================
+// ICONOS SEGÚN ACTIVIDAD
+// ============================================================
+
+function getIcon(type: string | null) {
+  const t = (type || "").toLowerCase();
+
+  if (t.includes("call")) return "📞";
+  if (t.includes("email")) return "✉️";
+  if (t.includes("meeting")) return "📅";
+  if (t.includes("task")) return "✔";
+
+  return "📝";
 }
+
+// ============================================================
+// ESTILOS
+// ============================================================
 
 const container: React.CSSProperties = {
   background: "#020617",
