@@ -107,9 +107,7 @@ export default function ProspectsPage() {
       {/* COPILOT IA */}
       {/* ===================================================== */}
 
-      <ProspectCopilot prospect={selected} />
-    </div>
-    {/* ================= PIPELINE BOARD ================= */}
+ {/* ================= PIPELINE BOARD ================= */}
 
 <div style={{ marginTop: 16 }}>
   <ProspectPipelineBoard
@@ -117,5 +115,8 @@ export default function ProspectsPage() {
     onSelect={setSelected}
   />
 </div>
+      
+      <ProspectCopilot prospect={selected} />
+    </div>
   );
 }
