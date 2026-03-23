@@ -1,9 +1,9 @@
 "use client";
 
 // ============================================================
-// 📂 PROSPECTS SIDEBAR — Enterprise Radar Panel
-// Vista estratégica de adquisición
-// Compatible con Auditoría + Revenue OS
+// 📂 PROSPECTS SIDEBAR — Enterprise Radar Panel (FINAL)
+// Vista estratégica + creación + control de selección
+// Revenue OS Ready
 // ============================================================
 
 import type { Prospect } from "../types/prospects.types";
@@ -11,9 +11,20 @@ import type { Prospect } from "../types/prospects.types";
 type Props = {
   search: string;
   setSearch: (value: string) => void;
+
   prospects: Prospect[];
+
   selected: Prospect | null;
   setSelected: (prospect: Prospect) => void;
+
+  // ⭐ NUEVO — CREACIÓN
+  createProspect: (payload: {
+    name?: string;
+    company_name?: string;
+    email?: string;
+    phone?: string;
+    notes?: string;
+  }) => Promise<Prospect>;
 };
 
 export default function ProspectsSidebar({
@@ -22,7 +33,31 @@ export default function ProspectsSidebar({
   prospects,
   selected,
   setSelected,
+  createProspect,
 }: Props) {
+
+  // ==========================================================
+  // CREACIÓN RÁPIDA
+  // ==========================================================
+
+  async function handleCreate() {
+    const name = prompt("Nombre o empresa del prospecto");
+
+    if (!name) return;
+
+    try {
+      const newProspect = await createProspect({
+        company_name: name,
+      });
+
+      if (newProspect) {
+        setSelected(newProspect);
+      }
+    } catch (err) {
+      alert("No se pudo crear el prospecto");
+    }
+  }
+
   // ==========================================================
   // FILTRADO LOCAL
   // ==========================================================
@@ -61,7 +96,13 @@ export default function ProspectsSidebar({
   return (
     <div style={container}>
       {/* HEADER */}
-      <div style={title}>PROSPECTS</div>
+      <div style={headerRow}>
+        <div style={title}>PROSPECTS</div>
+
+        <button style={addButton} onClick={handleCreate}>
+          + Nuevo
+        </button>
+      </div>
 
       {/* BUSCADOR */}
       <input
@@ -80,57 +121,60 @@ export default function ProspectsSidebar({
 
       {/* LISTA */}
       <div style={listWrap}>
-        <div style={listGrid}>
-          {filtered.map((p) => {
-            const isSelected = selected?.id === p.id;
-            const hasValue = (p.estimated_value || 0) > 0;
-            const hasContact = !!(p.email || p.phone);
+        {filtered.length === 0 ? (
+          <div style={emptyState}>
+            No hay prospectos
+          </div>
+        ) : (
+          <div style={listGrid}>
+            {filtered.map((p) => {
+              const isSelected = selected?.id === p.id;
+              const hasValue = (p.estimated_value || 0) > 0;
+              const hasContact = !!(p.email || p.phone);
 
-            return (
-              <div
-                key={p.id}
-                onClick={() => setSelected(p)}
-                style={{
-                  ...card,
-                  ...(isSelected ? selectedCard : {}),
-                }}
-              >
-                {/* NOMBRE */}
-                <div style={name}>
-                  {p.company_name || p.name || "Sin nombre"}
-                </div>
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => setSelected(p)}
+                  style={{
+                    ...card,
+                    ...(isSelected ? selectedCard : {}),
+                  }}
+                >
+                  {/* NOMBRE */}
+                  <div style={name}>
+                    {p.company_name || p.name || "Sin nombre"}
+                  </div>
 
-                {/* EMAIL */}
-                {p.email && (
-                  <div style={email}>{p.email}</div>
-                )}
-
-                {/* BADGES */}
-                <div style={badges}>
-                  {/* ETAPA */}
-                  <span style={badgeStage}>
-                    {p.stage || p.status || "new"}
-                  </span>
-
-                  {/* VALOR */}
-                  {hasValue && (
-                    <span style={badgeValue}>
-                      $
-                      {Number(p.estimated_value).toLocaleString()}
-                    </span>
+                  {/* EMAIL */}
+                  {p.email && (
+                    <div style={email}>{p.email}</div>
                   )}
 
-                  {/* SIN CONTACTO */}
-                  {!hasContact && (
-                    <span style={badgeRisk}>
-                      ⚠ sin contacto
+                  {/* BADGES */}
+                  <div style={badges}>
+                    <span style={badgeStage}>
+                      {p.stage || p.status || "new"}
                     </span>
-                  )}
+
+                    {hasValue && (
+                      <span style={badgeValue}>
+                        $
+                        {Number(p.estimated_value).toLocaleString()}
+                      </span>
+                    )}
+
+                    {!hasContact && (
+                      <span style={badgeRisk}>
+                        ⚠ sin contacto
+                      </span>
+                    )}
+                  </div>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -163,9 +207,25 @@ const container: React.CSSProperties = {
   overflow: "hidden",
 };
 
+const headerRow: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  marginBottom: 8,
+};
+
 const title: React.CSSProperties = {
   fontWeight: 800,
-  marginBottom: 8,
+};
+
+const addButton: React.CSSProperties = {
+  background: "#3b82f6",
+  border: "none",
+  color: "#fff",
+  padding: "6px 10px",
+  borderRadius: 8,
+  cursor: "pointer",
+  fontWeight: 700,
 };
 
 const searchInput: React.CSSProperties = {
@@ -204,6 +264,12 @@ const kpiValue: React.CSSProperties = {
 const listWrap: React.CSSProperties = {
   overflowY: "auto",
   flex: 1,
+};
+
+const emptyState: React.CSSProperties = {
+  color: "#94a3b8",
+  textAlign: "center",
+  marginTop: 40,
 };
 
 const listGrid: React.CSSProperties = {
