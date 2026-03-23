@@ -1,5 +1,10 @@
 "use client";
 
+// ============================================================
+// CRM SERVICE — CUSTOMER MASTER INTEGRATION
+// Fuente única de datos conectada a TODA la plataforma
+// ============================================================
+
 import { supabase } from "@/lib/supabaseClient";
 
 import type {
@@ -12,23 +17,35 @@ import type {
   CrmContact
 } from "../types/crm.types";
 
-// =====================================================
-// ===== CRM SERVICE — ACCESO A DATOS SUPABASE =====
-// =====================================================
 
-// ===== CUENTAS =====
+// ============================================================
+// 🏢 ACCOUNTS (Customer Master conectado a clients)
+// ============================================================
 
 export async function fetchAccounts(companyId: string) {
   const { data } = await supabase
     .from("crm_accounts")
-    .select("*")
+    .select(`
+      *,
+      client:clients (
+        id,
+        name,
+        email,
+        rfc,
+        is_active
+      )
+    `)
     .eq("company_id", companyId)
+    .eq("archived", false)
     .order("created_at", { ascending: false });
 
   return (data || []) as CrmAccount[];
 }
 
-// ===== DOCUMENTOS =====
+
+// ============================================================
+// 📄 DOCUMENTOS
+// ============================================================
 
 export async function fetchDocuments(accountId: string) {
   const { data } = await supabase
@@ -40,46 +57,57 @@ export async function fetchDocuments(accountId: string) {
   return (data || []) as CrmDocument[];
 }
 
-// ===== ACTIVIDADES =====
+
+// ============================================================
+// 📝 ACTIVIDADES
+// ============================================================
 
 export async function fetchActivities(accountId: string) {
   const { data } = await supabase
     .from("crm_activities")
     .select("*")
     .eq("account_id", accountId)
+    .eq("archived", false)
     .order("created_at", { ascending: false });
 
   return (data || []) as CrmActivity[];
 }
 
-// ===== CONTACTOS =====
+
+// ============================================================
+// 👥 CONTACTOS
+// ============================================================
 
 export async function fetchContacts(accountId: string) {
   const { data } = await supabase
     .from("crm_contacts")
     .select("*")
     .eq("account_id", accountId)
+    .eq("archived", false)
     .order("created_at", { ascending: false });
 
   return (data || []) as CrmContact[];
 }
 
-// ===== RELACIONES COMERCIALES =====
+// ============================================================
+// 💼 RELACIONES COMERCIALES
+// ============================================================
 
 export async function fetchRelations(accountId: string) {
+
   const { data: opps } = await supabase
     .from("sales_opportunities")
     .select("id, name, stage, estimated_value")
     .eq("account_id", accountId);
 
   const { data: quotes } = await supabase
-    .from("quotes")
-    .select("id, quote_number, total_amount, status")
+    .from("quotations")
+    .select("id, total, status")
     .eq("account_id", accountId);
 
   const { data: orders } = await supabase
-    .from("orders")
-    .select("id, order_number, status, total_amount")
+    .from("shipments")
+    .select("id, status, profit")
     .eq("account_id", accountId);
 
   return {
@@ -89,13 +117,17 @@ export async function fetchRelations(accountId: string) {
   };
 }
 
+
 // ============================================================
-// ===== TIMELINE UNIFICADO DE CUENTA =====
+// 🕓 TIMELINE GLOBAL DE CLIENTE
+// Integra TODA la plataforma
 // ============================================================
 
 export async function fetchTimeline(accountId: string) {
+
   const items: any[] = [];
 
+  // ACTIVIDADES
   const { data: acts } = await supabase
     .from("crm_activities")
     .select("*")
@@ -111,6 +143,8 @@ export async function fetchTimeline(accountId: string) {
     });
   });
 
+
+  // DOCUMENTOS
   const { data: docs } = await supabase
     .from("crm_documents")
     .select("*")
@@ -125,6 +159,8 @@ export async function fetchTimeline(accountId: string) {
     });
   });
 
+
+  // OPORTUNIDADES
   const { data: opps } = await supabase
     .from("sales_opportunities")
     .select("*")
@@ -140,8 +176,10 @@ export async function fetchTimeline(accountId: string) {
     });
   });
 
+
+  // COTIZACIONES
   const { data: qts } = await supabase
-    .from("quotes")
+    .from("quotations")
     .select("*")
     .eq("account_id", accountId);
 
@@ -149,30 +187,35 @@ export async function fetchTimeline(accountId: string) {
     items.push({
       id: q.id,
       type: "quote",
-      title: q.quote_number,
+      title: `Cotización`,
       description: q.status,
       date: q.created_at,
     });
   });
 
+
+  // ENVÍOS / ÓRDENES
   const { data: ords } = await supabase
-    .from("orders")
+    .from("shipments")
     .select("*")
     .eq("account_id", accountId);
 
   ords?.forEach((o) => {
     items.push({
       id: o.id,
-      type: "order",
-      title: o.order_number,
+      type: "shipment",
+      title: "Envío",
       description: o.status,
       date: o.created_at,
     });
   });
 
+
+  // ORDENAR
   items.sort(
     (a, b) =>
-      new Date(b.date).getTime() - new Date(a.date).getTime()
+      new Date(b.date).getTime() -
+      new Date(a.date).getTime()
   );
 
   return items;
