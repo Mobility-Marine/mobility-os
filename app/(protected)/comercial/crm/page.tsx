@@ -90,6 +90,8 @@ const {
   handleImportAccounts,
   confirmImportAccounts,
 } = crm;
+
+  const { globalCommandCenter } = crm as any;
   
   const [newActivityTitle, setNewActivityTitle] = useState("");
   const [newActivityType, setNewActivityType] = useState("call");
@@ -501,6 +503,7 @@ function exportAccountsToCsv(onlyFiltered = false) {
   actionMap={actionMap}
   executiveTopAccounts={executiveTopAccounts}
   commandCenter={commandCenter}
+  globalCommandCenter={globalCommandCenter}
   handleImportFile={handleImportFile}
   exportAccountsToCsv={exportAccountsToCsv}
   miniButton={miniButton}
