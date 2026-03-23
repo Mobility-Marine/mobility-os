@@ -282,21 +282,17 @@ const title: React.CSSProperties = {
 };
 
 const addButton: React.CSSProperties = {
-  background: "linear-gradient(135deg,#2563eb,#1d4ed8)",
-  border: "1px solid rgba(59,130,246,0.45)",
-  color: "#fff",
+  background: "transparent",
+  border: "1px dashed #334155",
+  color: "#cbd5f5",
 
-  padding: "6px 12px",
-  borderRadius: 999,        // 🔥 pill SaaS
+  padding: "6px 10px",
+  borderRadius: 8,
 
-  fontWeight: 800,
+  fontWeight: 700,
   fontSize: 12,
-  letterSpacing: 0.4,
 
   cursor: "pointer",
-
-  boxShadow: "0 6px 18px rgba(37,99,235,0.35)",
-  transition: "all .15s ease",
 
   display: "flex",
   alignItems: "center",
