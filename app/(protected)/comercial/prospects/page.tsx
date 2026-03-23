@@ -1,10 +1,5 @@
 "use client";
 
-// ============================================================
-// 👤 PROSPECTS PAGE — REVENUE OS ELITE
-// Control central del módulo comercial
-// ============================================================
-
 import { useMemo, useState } from "react";
 
 import ProspectsSidebar from "./components/ProspectsSidebar";
@@ -35,13 +30,9 @@ export default function ProspectsPage() {
   } = prospectsCtrl;
 
   const [search, setSearch] = useState("");
-
-  // 👉 Drawer ELITE state
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
-  // ==========================================================
-  // FILTRADO
-  // ==========================================================
+  // ================= FILTRADO =================
 
   const filteredProspects = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -55,32 +46,27 @@ export default function ProspectsPage() {
     );
   }, [prospects, search]);
 
-  // ==========================================================
-  // LOADING
-  // ==========================================================
+  // ================= LOADING =================
 
- if (loading) {
+  if (loading) {
+    return <div style={{ padding: 40 }}>Cargando prospectos...</div>;
+  }
+
+  // ================= PAGE =================
+
   return (
-    <div style={{ padding: 40 }}>
-      Cargando prospectos...
-    </div>
-  );
-}
-
-return (
-  <div
-    style={{
-      height: "calc(100vh - 40px)",
-      display: "flex",
-      flexDirection: "column",
-      gap: 16,
-      padding: 16,
-      background: "#020617",
-      minHeight: 0,
-      overflow: "hidden",
-    }}
-  >
-      {/* ================= COMMAND CENTER ================= */}
+    <div
+      style={{
+        height: "calc(100vh - 40px)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
+        padding: 16,
+        background: "#020617",
+        overflow: "hidden",
+      }}
+    >
+      {/* ===== COMMAND CENTER ===== */}
 
       <ProspectCommandCenter
         prospects={prospects}
@@ -99,19 +85,17 @@ return (
         onSelect={setSelected}
       />
 
-            {/* ===================================================== */}
-      {/* FILA OPERATIVA — RADAR + WORKSPACE + AI */}
-      {/* ===================================================== */}
+      {/* ===== FILA OPERATIVA ===== */}
 
-     style={{
-  display: "grid",
-  gridTemplateColumns: "320px minmax(0, 1fr) 340px",
-  gap: 16,
-
-  alignItems: "stretch",
-
-  flex: "0 0 auto",
-}}
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "320px minmax(0, 1fr) 340px",
+          gap: 16,
+          alignItems: "stretch",
+          flex: "0 0 auto",
+        }}
+      >
         <ProspectsSidebar
           search={search}
           setSearch={setSearch}
@@ -131,34 +115,29 @@ return (
         <ProspectCopilot prospect={selected} />
       </div>
 
-            {/* ===================================================== */}
-      {/* PIPELINE — EJECUCIÓN COMERCIAL */}
-      {/* ===================================================== */}
+      {/* ===== PIPELINE ===== */}
 
       <div
-  style={{
-    flex: "1 1 auto",
-    minHeight: 0,
-    overflowY: "auto",
-    overflowX: "hidden",
-  }}
->
-  <ProspectPipelineBoard
-    prospects={prospects}
-    onSelect={setSelected}
-  />
-</div>
-            {/* ===================================================== */}
-      {/* CREATE PROSPECT DRAWER — GLOBAL */}
-      {/* ===================================================== */}
+        style={{
+          flex: 1,
+          minHeight: 0,
+          overflowY: "auto",
+          overflowX: "hidden",
+        }}
+      >
+        <ProspectPipelineBoard
+          prospects={prospects}
+          onSelect={setSelected}
+        />
+      </div>
+
+      {/* ===== CREATE DRAWER ===== */}
 
       <ProspectCreateDrawer
         open={showCreateDrawer}
         onClose={() => setShowCreateDrawer(false)}
         createProspect={createProspect}
-        onCreated={(p: Prospect) => {
-          setSelected(p);      // auto-selección
-        }}
+        onCreated={(p: Prospect) => setSelected(p)}
       />
     </div>
   );
