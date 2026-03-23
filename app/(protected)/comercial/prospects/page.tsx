@@ -69,19 +69,25 @@ export default function ProspectsPage() {
   // ==========================================================
 
   return (
+  <div
+    style={{
+      display: "flex",
+      flexDirection: "column",
+      height: "calc(100vh - 40px)",
+      background: "#020617",
+    }}
+  >
+    {/* ================= TOP — 3 COLUMNAS ================= */}
+
     <div
       style={{
-        height: "calc(100vh - 40px)",
         display: "grid",
         gridTemplateColumns: "320px minmax(0, 1fr) 340px",
         gap: 16,
         padding: 16,
-        background: "#020617",
       }}
     >
-      {/* ===================================================== */}
-      {/* SIDEBAR — LISTA + CREACIÓN */}
-      {/* ===================================================== */}
+      {/* SIDEBAR */}
 
       <ProspectsSidebar
         search={search}
@@ -89,12 +95,10 @@ export default function ProspectsPage() {
         prospects={filteredProspects}
         selected={selected}
         setSelected={setSelected}
-        createProspect={createProspect}   // ⭐ IMPORTANTE
+        createProspect={createProspect}
       />
 
-      {/* ===================================================== */}
-      {/* WORKSPACE — DETALLE */}
-      {/* ===================================================== */}
+      {/* WORKSPACE */}
 
       <ProspectWorkspace
         prospect={selected}
@@ -103,20 +107,19 @@ export default function ProspectsPage() {
         archiveProspect={archiveProspect}
       />
 
-      {/* ===================================================== */}
-      {/* COPILOT IA */}
-      {/* ===================================================== */}
+      {/* COPILOT */}
 
- {/* ================= PIPELINE BOARD ================= */}
-
-<div style={{ marginTop: 16 }}>
-  <ProspectPipelineBoard
-    prospects={prospects}
-    onSelect={setSelected}
-  />
-</div>
-      
       <ProspectCopilot prospect={selected} />
     </div>
-  );
+
+    {/* ================= BOTTOM — PIPELINE ================= */}
+
+    <div style={{ padding: "0 16px 16px 16px" }}>
+      <ProspectPipelineBoard
+        prospects={prospects}
+        onSelect={setSelected}
+      />
+    </div>
+  </div>
+);
 }
