@@ -134,8 +134,9 @@ export default function ProspectsPage() {
 
       <div
         style={{
-          flex: 1,
-          minHeight: 0,
+          flex: "1 1 auto",
+minHeight: 0,
+overflow: "hidden",
         }}
       >
         <ProspectPipelineBoard
