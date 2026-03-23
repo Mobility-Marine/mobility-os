@@ -9,6 +9,7 @@ import type { Prospect } from "../types/prospects.types";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { convertProspectToCustomer } from "../services/prospect-conversion.service";
 import { useEffect, useState } from "react";
+import ProspectActivityTimeline from "./ProspectActivityTimeline";
 
 type Props = {
   prospect: Prospect | null;
@@ -158,6 +159,8 @@ export default function ProspectWorkspace({
         />
       </Field>
 
+<ProspectActivityTimeline activities={prospect?.activities || []} />
+      
       {/* KPIs SOLO SI EXISTE */}
       {prospect && (
         <div style={kpiGrid}>
