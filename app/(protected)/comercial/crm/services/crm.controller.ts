@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
+import { buildGlobalCommandCenter } from "./globalCommandCenter.service";
 
 import type {
   CrmAccount,
@@ -41,6 +42,8 @@ export function useCRMController() {
   const [timeline, setTimeline] = useState<TimelineItem[]>([]);
 
   const [loading, setLoading] = useState(true);
+
+  const [globalCommandCenter, setGlobalCommandCenter] = useState<any | null>(null);
 
   // ===== LOAD ACCOUNTS =====
   useEffect(() => {
@@ -106,6 +109,27 @@ useEffect(() => {
   };
 
 }, [selected]);
+
+  // ===== GLOBAL COMMAND CENTER =====
+useEffect(() => {
+  if (!companyId || accounts.length === 0) {
+    setGlobalCommandCenter(null);
+    return;
+  }
+
+  const clientIds = accounts
+    .map((a) => a.client_id)
+    .filter(Boolean) as string[];
+
+  if (clientIds.length === 0) {
+    setGlobalCommandCenter(null);
+    return;
+  }
+
+  buildGlobalCommandCenter(companyId, [...new Set(clientIds)])
+    .then(setGlobalCommandCenter)
+    .catch(() => setGlobalCommandCenter(null));
+}, [companyId, accounts]);
 
 // ===== ACTIONS =====
 
@@ -714,6 +738,7 @@ async function confirmImportAccounts(
   quotes,
   orders,
   timeline,
+  globalCommandCenter,
 
   // ===== ACTIONS =====
 createAccount,
