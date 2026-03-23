@@ -1,11 +1,19 @@
 "use client";
 
+// ============================================================
+// 📂 PROSPECTS SIDEBAR — Enterprise Radar Panel
+// Vista estratégica de adquisición
+// Compatible con Auditoría + Revenue OS
+// ============================================================
+
+import type { Prospect } from "../types/prospects.types";
+
 type Props = {
   search: string;
   setSearch: (value: string) => void;
-  prospects: any[];
-  selected: any;
-  setSelected: (prospect: any) => void;
+  prospects: Prospect[];
+  selected: Prospect | null;
+  setSelected: (prospect: Prospect) => void;
 };
 
 export default function ProspectsSidebar({
@@ -15,94 +23,247 @@ export default function ProspectsSidebar({
   selected,
   setSelected,
 }: Props) {
-  return (
-    <div
-      style={{
-        background: "#020617",
-        border: "1px solid #1f2937",
-        borderRadius: 12,
-        padding: 12,
-        display: "flex",
-        flexDirection: "column",
-        overflow: "hidden",
-      }}
-    >
-      <div style={{ fontWeight: 800, marginBottom: 8 }}>PROSPECTS</div>
+  // ==========================================================
+  // FILTRADO LOCAL
+  // ==========================================================
 
+  const filtered = prospects.filter((p) => {
+    const q = search.toLowerCase();
+
+    return (
+      !q ||
+      p.name?.toLowerCase().includes(q) ||
+      p.company_name?.toLowerCase().includes(q) ||
+      p.email?.toLowerCase().includes(q)
+    );
+  });
+
+  // ==========================================================
+  // MÉTRICAS RÁPIDAS
+  // ==========================================================
+
+  const active = filtered.filter(
+    (p) => !["converted", "lost"].includes(p.stage || p.status || "")
+  );
+
+  const hot = filtered.filter(
+    (p) => (p.estimated_value || 0) >= 50000
+  );
+
+  const noContact = filtered.filter(
+    (p) => !p.email && !p.phone
+  );
+
+  // ==========================================================
+  // UI
+  // ==========================================================
+
+  return (
+    <div style={container}>
+      {/* HEADER */}
+      <div style={title}>PROSPECTS</div>
+
+      {/* BUSCADOR */}
       <input
         placeholder="Buscar prospecto..."
         value={search}
         onChange={(e) => setSearch(e.target.value)}
-        style={{
-          padding: 8,
-          borderRadius: 8,
-          border: "1px solid #1f2937",
-          background: "#0b1220",
-          color: "#fff",
-          marginBottom: 10,
-        }}
+        style={searchInput}
       />
 
-      <div style={{ overflowY: "auto", flex: 1 }}>
-        <div style={{ display: "grid", gap: 10 }}>
-          {prospects.map((p) => (
-            <div
-              key={p.id}
-              onClick={() => setSelected(p)}
-              style={{
-                padding: 14,
-                borderRadius: 12,
-                background: selected?.id === p.id ? "#111827" : "#0b1220",
-                border:
-                  selected?.id === p.id
-                    ? "1px solid #3b82f6"
-                    : "1px solid #1f2937",
-                cursor: "pointer",
-                display: "grid",
-                gap: 8,
-              }}
-            >
-              <div style={{ fontWeight: 800 }}>
-                {p.company_name || p.name || "Sin nombre"}
-              </div>
+      {/* KPIs RÁPIDOS */}
+      <div style={kpiBox}>
+        <MiniKpi label="Activos" value={active.length} />
+        <MiniKpi label="Alto valor" value={hot.length} />
+        <MiniKpi label="Sin contacto" value={noContact.length} />
+      </div>
 
-              {p.email && (
-                <div style={{ fontSize: 12, color: "#94a3b8" }}>{p.email}</div>
-              )}
+      {/* LISTA */}
+      <div style={listWrap}>
+        <div style={listGrid}>
+          {filtered.map((p) => {
+            const isSelected = selected?.id === p.id;
+            const hasValue = (p.estimated_value || 0) > 0;
+            const hasContact = !!(p.email || p.phone);
 
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                <span
-                  style={{
-                    fontSize: 11,
-                    padding: "4px 8px",
-                    borderRadius: 999,
-                    background: "#1e293b",
-                    color: "#cbd5e1",
-                    border: "1px solid #334155",
-                  }}
-                >
-                  {p.stage || p.status || "new"}
-                </span>
+            return (
+              <div
+                key={p.id}
+                onClick={() => setSelected(p)}
+                style={{
+                  ...card,
+                  ...(isSelected ? selectedCard : {}),
+                }}
+              >
+                {/* NOMBRE */}
+                <div style={name}>
+                  {p.company_name || p.name || "Sin nombre"}
+                </div>
 
-                {p.estimated_value ? (
-                  <span
-                    style={{
-                      fontSize: 11,
-                      padding: "4px 8px",
-                      borderRadius: 999,
-                      background: "#052e16",
-                      color: "#86efac",
-                      border: "1px solid #166534",
-                    }}
-                  >
-                    ${Number(p.estimated_value).toLocaleString()}
+                {/* EMAIL */}
+                {p.email && (
+                  <div style={email}>{p.email}</div>
+                )}
+
+                {/* BADGES */}
+                <div style={badges}>
+                  {/* ETAPA */}
+                  <span style={badgeStage}>
+                    {p.stage || p.status || "new"}
                   </span>
-                ) : null}
+
+                  {/* VALOR */}
+                  {hasValue && (
+                    <span style={badgeValue}>
+                      $
+                      {Number(p.estimated_value).toLocaleString()}
+                    </span>
+                  )}
+
+                  {/* SIN CONTACTO */}
+                  {!hasContact && (
+                    <span style={badgeRisk}>
+                      ⚠ sin contacto
+                    </span>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
+
+// ============================================================
+// SUBCOMPONENTES
+// ============================================================
+
+function MiniKpi({ label, value }: { label: string; value: number }) {
+  return (
+    <div style={kpiCard}>
+      <div style={kpiLabel}>{label}</div>
+      <div style={kpiValue}>{value}</div>
+    </div>
+  );
+}
+
+// ============================================================
+// ESTILOS
+// ============================================================
+
+const container: React.CSSProperties = {
+  background: "#020617",
+  border: "1px solid #1f2937",
+  borderRadius: 12,
+  padding: 12,
+  display: "flex",
+  flexDirection: "column",
+  overflow: "hidden",
+};
+
+const title: React.CSSProperties = {
+  fontWeight: 800,
+  marginBottom: 8,
+};
+
+const searchInput: React.CSSProperties = {
+  padding: 8,
+  borderRadius: 8,
+  border: "1px solid #1f2937",
+  background: "#0b1220",
+  color: "#fff",
+  marginBottom: 10,
+};
+
+const kpiBox: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3,1fr)",
+  gap: 6,
+  marginBottom: 10,
+};
+
+const kpiCard: React.CSSProperties = {
+  background: "#0b1220",
+  border: "1px solid #1f2937",
+  borderRadius: 8,
+  padding: 6,
+  textAlign: "center",
+};
+
+const kpiLabel: React.CSSProperties = {
+  fontSize: 10,
+  color: "#94a3b8",
+};
+
+const kpiValue: React.CSSProperties = {
+  fontWeight: 800,
+};
+
+const listWrap: React.CSSProperties = {
+  overflowY: "auto",
+  flex: 1,
+};
+
+const listGrid: React.CSSProperties = {
+  display: "grid",
+  gap: 10,
+};
+
+const card: React.CSSProperties = {
+  padding: 14,
+  borderRadius: 12,
+  background: "#0b1220",
+  border: "1px solid #1f2937",
+  cursor: "pointer",
+  display: "grid",
+  gap: 8,
+};
+
+const selectedCard: React.CSSProperties = {
+  background: "#111827",
+  border: "1px solid #3b82f6",
+};
+
+const name: React.CSSProperties = {
+  fontWeight: 800,
+};
+
+const email: React.CSSProperties = {
+  fontSize: 12,
+  color: "#94a3b8",
+};
+
+const badges: React.CSSProperties = {
+  display: "flex",
+  gap: 6,
+  flexWrap: "wrap",
+};
+
+const badgeStage: React.CSSProperties = {
+  fontSize: 11,
+  padding: "4px 8px",
+  borderRadius: 999,
+  background: "#1e293b",
+  color: "#cbd5e1",
+  border: "1px solid #334155",
+};
+
+const badgeValue: React.CSSProperties = {
+  fontSize: 11,
+  padding: "4px 8px",
+  borderRadius: 999,
+  background: "#052e16",
+  color: "#86efac",
+  border: "1px solid #166534",
+};
+
+const badgeRisk: React.CSSProperties = {
+  fontSize: 11,
+  padding: "4px 8px",
+  borderRadius: 999,
+  background: "#3f1d1d",
+  color: "#fca5a5",
+  border: "1px solid #7f1d1d",
+};
