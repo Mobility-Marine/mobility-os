@@ -301,10 +301,17 @@ function InfoCard({
 const container: React.CSSProperties = {
   background: "#020617",
   border: "1px solid #1f2937",
-  borderRadius: 12,
+  borderRadius: 16,
   padding: 20,
-  display: "grid",
+
+  display: "flex",
+  flexDirection: "column",
   gap: 16,
+
+  height: "100%",
+  minHeight: 0,
+
+  overflow: "hidden",
 };
 
 const grid: React.CSSProperties = {
