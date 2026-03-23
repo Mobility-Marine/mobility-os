@@ -67,20 +67,19 @@ export default function ProspectsPage() {
     );
   }
 
-  return (
-    <div
-      style={{
-       height: "calc(100vh - 40px)",
-display: "flex",
-flexDirection: "column",
+ <div
+  style={{
+    height: "calc(100vh - 40px)",
+    display: "flex",
+    flexDirection: "column",
+    gap: 16,
+    padding: 16,
+    background: "#020617",
 
-minHeight: 0,   // ⭐⭐⭐ CLAVE ABSOLUTA
-overflow: "hidden",
-        gap: 16,
-        padding: 16,
-        background: "#020617",
-      }}
-    >
+    minHeight: 0,
+    overflow: "hidden",
+  }}
+>
       {/* ================= COMMAND CENTER ================= */}
 
       <ProspectCommandCenter
@@ -141,18 +140,18 @@ height: "clamp(480px, 55vh, 680px)",
       {/* ===================================================== */}
 
       <div
-        style={{
-          flex: "1 1 auto",
-minHeight: 0,
-overflow: "hidden",
-        }}
-      >
-        <ProspectPipelineBoard
-          prospects={prospects}
-          onSelect={setSelected}
-        />
-      </div>
-
+  style={{
+    flex: "1 1 auto",
+    minHeight: 0,
+    overflowY: "auto",
+    overflowX: "hidden",
+  }}
+>
+  <ProspectPipelineBoard
+    prospects={prospects}
+    onSelect={setSelected}
+  />
+</div>
             {/* ===================================================== */}
       {/* CREATE PROSPECT DRAWER — GLOBAL */}
       {/* ===================================================== */}
