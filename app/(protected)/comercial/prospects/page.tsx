@@ -1,6 +1,6 @@
 "use client";
 
-// ===== INICIO imports =====
+// ===== INICIO import =====
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
