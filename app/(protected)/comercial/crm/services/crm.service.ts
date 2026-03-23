@@ -250,3 +250,53 @@ export async function fetchTimeline(accountId: string) {
 
   return items;
 }
+
+// ============================================================
+// 👑 GLOBAL CLIENT MASTER (Entidad única del negocio)
+// ============================================================
+
+// ===== BUSCAR CLIENTE GLOBAL POR NOMBRE =====
+export async function findClientByName(
+  companyId: string,
+  name: string
+) {
+  const { data } = await supabase
+    .from("clients")
+    .select("*")
+    .eq("company_id", companyId)
+    .ilike("name", name)
+    .maybeSingle();
+
+  return data || null;
+}
+
+// ===== CREAR CLIENTE GLOBAL =====
+export async function createGlobalClient(
+  companyId: string,
+  payload: {
+    name: string;
+    legal_name?: string;
+    country?: string;
+    city?: string;
+    notes?: string;
+  }
+) {
+  const { data, error } = await supabase
+    .from("clients")
+    .insert({
+      company_id: companyId,
+      name: payload.name,
+      rfc: null,
+      address: payload.city || null,
+      contact: null,
+      email: null,
+      notes: payload.notes || null,
+      is_active: true,
+    })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+
+  return data;
+}
