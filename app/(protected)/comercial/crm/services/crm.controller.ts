@@ -110,6 +110,95 @@ useEffect(() => {
 // ===== ACTIONS =====
 
 // ======================================================
+// ===== CONVERT PROSPECT → GLOBAL CUSTOMER → CRM =======
+// ======================================================
+async function convertProspectToCustomer(
+  prospectId: string,
+  prospectData: {
+    name: string;
+    company_name?: string;
+    email?: string;
+    phone?: string;
+    notes?: string;
+  }
+) {
+  if (!companyId) return;
+
+  const name = prospectData.company_name || prospectData.name;
+
+  // ===== 1) CREAR CLIENTE GLOBAL =====
+  const client = await createGlobalClient(companyId, {
+    name,
+    legal_name: prospectData.company_name,
+    notes: prospectData.notes,
+  });
+
+  if (!client) return;
+
+  // ===== 2) CREAR CUENTA CRM =====
+  const { data: account, error } = await supabase
+    .from("crm_accounts")
+    .insert({
+      company_id: companyId,
+      client_id: client.id,
+      name,
+      legal_name: prospectData.company_name || null,
+      status: "active",
+      notes: prospectData.notes || null,
+      is_customer: true,
+      lifecycle_stage: "customer",
+    })
+    .select("*")
+    .single();
+
+  if (error || !account) throw error;
+
+  // ===== 3) BRIDGE GLOBAL =====
+  await supabase.from("customer_identity_bridge").insert({
+    company_id: companyId,
+    crm_account_id: account.id,
+    client_id: client.id,
+    prospect_id: prospectId,
+    bridge_status: "converted",
+    source_of_truth: "crm_accounts",
+    conversion_type: "prospect_to_customer",
+    conversion_source: "prospects_module",
+    is_primary: true,
+  });
+
+  // ===== 4) MARCAR PROSPECTO COMO CONVERTIDO =====
+  await supabase
+    .from("prospects")
+    .update({
+      status: "converted",
+      is_active: false,
+    })
+    .eq("id", prospectId)
+    .eq("company_id", companyId);
+
+  // ===== 5) EVENTO GLOBAL =====
+  await supabase.from("entity_timeline_events").insert({
+    company_id: companyId,
+    entity_type: "crm_account",
+    entity_id: account.id,
+    related_account_id: account.id,
+    related_client_id: client.id,
+    related_prospect_id: prospectId,
+    module_key: "crm",
+    event_type: "converted_from_prospect",
+    event_category: "commercial",
+    title: "Prospecto convertido a cliente",
+    description: name,
+  });
+
+  // ===== 6) REFRESCAR LISTA CRM =====
+  const data = await fetchAccounts(companyId);
+  setAccounts(data);
+
+  return account;
+}
+  
+// ======================================================
 // ===== CREATE ACCOUNT — GLOBAL CUSTOMER CONNECTED =====
 // ======================================================
 async function createAccount(payload: {
@@ -634,5 +723,6 @@ uploadDocument,
 handleImportAccounts,
 confirmImportAccounts,
 updateAccountLifecycle,
+convertProspectToCustomer,
 };
 }
