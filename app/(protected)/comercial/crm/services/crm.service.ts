@@ -100,20 +100,50 @@ export async function fetchRelations(accountId: string) {
     .select("id, name, stage, estimated_value")
     .eq("account_id", accountId);
 
-  const { data: quotes } = await supabase
+  const { data: quotesData } = await supabase
     .from("quotations")
     .select("id, total, status")
     .eq("account_id", accountId);
 
-  const { data: orders } = await supabase
+  const { data: ordersData } = await supabase
     .from("shipments")
     .select("id, status, profit")
     .eq("account_id", accountId);
 
+
+  // ===== MAPEO A TIPOS CRM =====
+
+  const opportunities: CrmOpportunity[] =
+    (opps || []).map(o => ({
+      id: o.id,
+      name: o.name,
+      stage: o.stage,
+      estimated_value: o.estimated_value ?? null
+    }));
+
+
+  const quotes: CrmQuote[] =
+    (quotesData || []).map(q => ({
+      id: q.id,
+      quote_number: q.id,       // fallback si no existe número
+      total_amount: q.total ?? null,
+      status: q.status
+    }));
+
+
+  const orders: CrmOrder[] =
+    (ordersData || []).map(o => ({
+      id: o.id,
+      order_number: o.id,
+      status: o.status,
+      total_amount: o.profit ?? null
+    }));
+
+
   return {
-    opportunities: (opps || []) as CrmOpportunity[],
-    quotes: (quotes || []) as CrmQuote[],
-    orders: (orders || []) as CrmOrder[],
+    opportunities,
+    quotes,
+    orders,
   };
 }
 
