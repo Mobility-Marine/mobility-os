@@ -1,8 +1,8 @@
 "use client";
 
 // ============================================================
-// 👤 PROSPECTS PAGE — Enterprise Revenue OS
-// Arquitectura en capas (NO monolítica)
+// 👤 PROSPECTS PAGE — REVENUE OS ELITE
+// Control central del módulo comercial
 // ============================================================
 
 import { useMemo, useState } from "react";
@@ -11,25 +11,15 @@ import ProspectsSidebar from "./components/ProspectsSidebar";
 import ProspectWorkspace from "./components/ProspectWorkspace";
 import ProspectCopilot from "./components/ProspectCopilot";
 
-import { useProspectsController } from "./services/prospects.controller";
-
-import type { Prospect } from "./types/prospects.types";
-
 import ProspectPipelineBoard from "./components/ProspectPipelineBoard";
-
 import ProspectCommandCenter from "./components/ProspectCommandCenter";
-
 import ProspectRevenueInsights from "./components/ProspectRevenueInsights";
-
 import ProspectDailyActionPanel from "./components/ProspectDailyActionPanel";
-
 import ProspectAutomationPanel from "./components/ProspectAutomationPanel";
-
 import ProspectCreateDrawer from "./components/ProspectCreateDrawer";
 
-// ============================================================
-// PAGE
-// ============================================================
+import { useProspectsController } from "./services/prospects.controller";
+import type { Prospect } from "./types/prospects.types";
 
 export default function ProspectsPage() {
   const prospectsCtrl = useProspectsController();
@@ -46,10 +36,11 @@ export default function ProspectsPage() {
 
   const [search, setSearch] = useState("");
 
+  // 👉 Drawer ELITE state
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   // ==========================================================
-  // FILTERED LIST
+  // FILTRADO
   // ==========================================================
 
   const filteredProspects = useMemo(() => {
@@ -76,94 +67,95 @@ export default function ProspectsPage() {
     );
   }
 
-  // ==========================================================
-  // LAYOUT
-  // ==========================================================
-
   return (
-  <div
-    style={{
-      height: "calc(100vh - 40px)",
-      display: "flex",
-      flexDirection: "column",
-      gap: 16,
-      padding: 16,
-      background: "#020617",
-    }}
-  >
-
-{/* ================= COMMAND CENTER ================= */}
-
-<ProspectCommandCenter
-  prospects={prospects}
-  onSelect={setSelected}
-/>
-
-<ProspectRevenueInsights prospects={prospects} />
-
-<ProspectDailyActionPanel
-  prospects={prospects}
-  onSelect={setSelected}
-/>
-
-<ProspectAutomationPanel
-  prospects={prospects}
-  onSelect={setSelected}
-/>
-    
-    {/* ===================================================== */}
-    {/* FILA SUPERIOR — OPERACIÓN */}
-    {/* ===================================================== */}
-
     <div
       style={{
-        display: "grid",
-        gridTemplateColumns: "320px minmax(0, 1fr) 340px",
+        height: "calc(100vh - 40px)",
+        display: "flex",
+        flexDirection: "column",
         gap: 16,
-        flex: "0 0 auto",
+        padding: 16,
+        background: "#020617",
       }}
     >
-     <ProspectsSidebar
-  search={search}
-  setSearch={setSearch}
-  prospects={filteredProspects}
-  selected={selected}
-  setSelected={setSelected}
-  createProspect={createProspect}
-  onOpenCreate={() => setShowCreateDrawer(true)}
-/>
+      {/* ================= COMMAND CENTER ================= */}
 
-      <ProspectWorkspace
-        prospect={selected}
-        createProspect={createProspect}
-        updateProspect={updateProspect}
-        archiveProspect={archiveProspect}
-      />
-
-      <ProspectCopilot prospect={selected} />
-    </div>
-
-    {/* ===================================================== */}
-    {/* FILA INFERIOR — PIPELINE */}
-    {/* ===================================================== */}
-
-    <div
-      style={{
-        flex: 1,
-        minHeight: 0,
-      }}
-    >
-      <ProspectPipelineBoard
+      <ProspectCommandCenter
         prospects={prospects}
         onSelect={setSelected}
       />
-      {/* ================= CREATE PROSPECT DRAWER ================= */}
 
-<ProspectCreateDrawer
-  open={showCreateDrawer}
-  onClose={() => setShowCreateDrawer(false)}
-  createProspect={createProspect}
-/>
+      <ProspectRevenueInsights prospects={prospects} />
+
+      <ProspectDailyActionPanel
+        prospects={prospects}
+        onSelect={setSelected}
+      />
+
+      <ProspectAutomationPanel
+        prospects={prospects}
+        onSelect={setSelected}
+      />
+
+            {/* ===================================================== */}
+      {/* FILA OPERATIVA — RADAR + WORKSPACE + AI */}
+      {/* ===================================================== */}
+
+      <div
+        style={{
+          display: "grid",
+          gridTemplateColumns: "320px minmax(0, 1fr) 340px",
+          gap: 16,
+          flex: "0 0 auto",
+        }}
+      >
+        <ProspectsSidebar
+          search={search}
+          setSearch={setSearch}
+          prospects={filteredProspects}
+          selected={selected}
+          setSelected={setSelected}
+          onOpenCreate={() => setShowCreateDrawer(true)}
+        />
+
+        <ProspectWorkspace
+          prospect={selected}
+          createProspect={createProspect}
+          updateProspect={updateProspect}
+          archiveProspect={archiveProspect}
+        />
+
+        <ProspectCopilot prospect={selected} />
+      </div>
+
+            {/* ===================================================== */}
+      {/* PIPELINE — EJECUCIÓN COMERCIAL */}
+      {/* ===================================================== */}
+
+      <div
+        style={{
+          flex: 1,
+          minHeight: 0,
+        }}
+      >
+        <ProspectPipelineBoard
+          prospects={prospects}
+          onSelect={setSelected}
+        />
+      </div>
+
+            {/* ===================================================== */}
+      {/* CREATE PROSPECT DRAWER — GLOBAL */}
+      {/* ===================================================== */}
+
+      <ProspectCreateDrawer
+        open={showCreateDrawer}
+        onClose={() => setShowCreateDrawer(false)}
+        createProspect={createProspect}
+        onCreated={(p: Prospect) => {
+          setSelected(p);      // auto-selección
+        }}
+      />
     </div>
-  </div>
-);}
+  );
+}
