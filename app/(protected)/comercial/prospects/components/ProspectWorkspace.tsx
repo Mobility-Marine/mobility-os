@@ -64,16 +64,12 @@ export default function ProspectWorkspace({
   // SAVE (CREATE O UPDATE)
   // ==========================================================
 
-  async function handleSave() {
-    if (prospect?.id) {
-      await updateProspect(prospect.id, form);
-      alert("Prospecto actualizado");
-    } else {
-      await createProspect(form);
-      alert("Prospecto creado");
-    }
-  }
+async function handleSave() {
+  if (!prospect?.id) return;
 
+  await updateProspect(prospect.id, form);
+  alert("Prospecto actualizado");
+}
   // ==========================================================
   // CONVERSIÓN A CLIENTE
   // ==========================================================
@@ -122,10 +118,10 @@ export default function ProspectWorkspace({
 
   return (
     <div style={container}>
-      {/* HEADER */}
-      <div style={{ fontSize: 22, fontWeight: 800 }}>
-        {prospect ? "DETALLE DEL PROSPECTO" : "NUEVO PROSPECTO"}
-      </div>
+     {/* HEADER */}
+<div style={{ fontSize: 22, fontWeight: 800 }}>
+  {prospect.company_name || prospect.name || "Detalle del prospecto"}
+</div>
 
       {/* FORM */}
       <div style={grid}>
@@ -238,9 +234,9 @@ export default function ProspectWorkspace({
       
       {/* ACCIONES */}
       <div style={actions}>
-        <button style={primaryButton} onClick={handleSave}>
-          {prospect ? "Guardar cambios" : "Crear prospecto"}
-        </button>
+      <button style={primaryButton} onClick={handleSave}>
+  Guardar cambios
+</button>
 
         {prospect && (
           <>
