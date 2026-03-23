@@ -19,6 +19,8 @@ import ProspectPipelineBoard from "./components/ProspectPipelineBoard";
 
 import ProspectCommandCenter from "./components/ProspectCommandCenter";
 
+import ProspectRevenueInsights from "./components/ProspectRevenueInsights";
+
 // ============================================================
 // PAGE
 // ============================================================
@@ -88,6 +90,10 @@ export default function ProspectsPage() {
       prospects={prospects}
       onSelect={setSelected}
     />
+
+{/* ================= REVENUE INSIGHTS ================= */}
+    
+<ProspectRevenueInsights prospects={prospects} />
     
     {/* ===================================================== */}
     {/* FILA SUPERIOR — OPERACIÓN */}
