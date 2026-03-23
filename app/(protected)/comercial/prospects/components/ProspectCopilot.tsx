@@ -1,9 +1,9 @@
 "use client";
 
 // ============================================================
-// 🤖 PROSPECT COPILOT — Enterprise AI Panel
-// Inteligencia comercial previa a CRM
-// Compatible con Auditoría + Customer 360
+// 🤖 PROSPECT COPILOT — SaaS AI Panel
+// Inteligencia comercial contextual
+// Layout estable + scroll interno
 // ============================================================
 
 import type { Prospect } from "../types/prospects.types";
@@ -15,17 +15,18 @@ type Props = {
 
 export default function ProspectCopilot({ prospect }: Props) {
   // ==========================================================
-  // SIN SELECCIÓN
+  // EMPTY STATE
   // ==========================================================
 
   if (!prospect) {
     return (
-      <div style={{ display: "grid", gap: 16 }}>
+      <div style={shell}>
         <div style={container}>
-          <div style={title}>COPILOT PROSPECTING</div>
+          <div style={title}>Copilot Prospecting</div>
 
           <div style={empty}>
-            Selecciona un prospecto para ver recomendaciones.
+            Selecciona un prospecto para ver recomendaciones
+            inteligentes.
           </div>
         </div>
 
@@ -35,7 +36,7 @@ export default function ProspectCopilot({ prospect }: Props) {
   }
 
   // ==========================================================
-  // LÓGICA DE IA COMERCIAL
+  // AI LOGIC
   // ==========================================================
 
   const hasContact = !!(prospect.email || prospect.phone);
@@ -51,7 +52,7 @@ export default function ProspectCopilot({ prospect }: Props) {
 
   const risk =
     !hasContact
-      ? "Alto — No hay información de contacto"
+      ? "Alto — Sin datos de contacto"
       : !hasValue
       ? "Medio — Sin valor estimado"
       : "Bajo";
@@ -68,23 +69,15 @@ export default function ProspectCopilot({ prospect }: Props) {
   // ==========================================================
 
   return (
-    <div style={{ display: "grid", gap: 16 }}>
+    <div style={shell}>
       <div style={container}>
-        <div style={title}>COPILOT PROSPECTING</div>
+        <div style={title}>Copilot Prospecting</div>
 
-        {/* RECOMENDACIÓN */}
         <Card label="Recomendación" value={recommendation} />
-
-        {/* SIGUIENTE PASO */}
         <Card label="Siguiente paso" value={nextStep} />
-
-        {/* PRIORIDAD */}
         <Card label="Prioridad" value={priority} />
-
-        {/* RIESGO */}
         <Card label="Riesgo comercial" value={risk} />
 
-        {/* CONTEXTO */}
         <div style={contextBox}>
           <div style={contextTitle}>Contexto</div>
 
@@ -127,24 +120,49 @@ function Card({ label, value }: { label: string; value: string }) {
 }
 
 // ============================================================
-// ESTILOS
+// STYLES — SaaS Layout Safe
 // ============================================================
 
+// 🔥 Contenedor externo compatible con Page
+const shell: React.CSSProperties = {
+  display: "flex",
+  flexDirection: "column",
+  gap: 16,
+
+  height: "100%",
+  minHeight: 0,
+
+  overflow: "hidden",
+};
+
+// 🔥 Panel principal con scroll interno
 const container: React.CSSProperties = {
   background: "#020617",
   border: "1px solid #1f2937",
-  borderRadius: 12,
+  borderRadius: 14,
   padding: 16,
-  display: "grid",
+
+  display: "flex",
+  flexDirection: "column",
   gap: 12,
+
+  flex: "1 1 auto",
+  minHeight: 0,
+
+  overflowY: "auto",
 };
 
 const title: React.CSSProperties = {
   fontWeight: 800,
+  fontSize: 14,
+  letterSpacing: 0.4,
+  textTransform: "uppercase",
+  color: "#e5e7eb",
 };
 
 const empty: React.CSSProperties = {
   color: "#94a3b8",
+  fontSize: 13,
 };
 
 const card: React.CSSProperties = {
@@ -155,13 +173,15 @@ const card: React.CSSProperties = {
 };
 
 const labelStyle: React.CSSProperties = {
-  fontSize: 12,
+  fontSize: 11,
   color: "#94a3b8",
+  textTransform: "uppercase",
+  letterSpacing: 0.4,
 };
 
 const valueStyle: React.CSSProperties = {
   fontWeight: 700,
-  marginTop: 6,
+  marginTop: 4,
 };
 
 const contextBox: React.CSSProperties = {
@@ -172,10 +192,11 @@ const contextBox: React.CSSProperties = {
 };
 
 const contextTitle: React.CSSProperties = {
-  fontSize: 12,
+  fontSize: 11,
   fontWeight: 800,
   color: "#60a5fa",
   marginBottom: 6,
+  textTransform: "uppercase",
 };
 
 const contextText: React.CSSProperties = {
