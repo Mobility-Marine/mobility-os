@@ -158,8 +158,6 @@ export default function ProspectWorkspace({
           }
         />
       </Field>
-
-<ProspectActivityTimeline activities={prospect?.activities || []} />
       
       {/* KPIs SOLO SI EXISTE */}
       {prospect && (
@@ -191,6 +189,13 @@ export default function ProspectWorkspace({
         </div>
       )}
 
+{/* ACTIVIDAD — AUDITORÍA / CUSTOMER 360 */}
+{prospect && (
+  <ProspectActivityTimeline
+    activities={prospect?.activities || []}
+  />
+)}
+      
       {/* ACCIONES */}
       <div style={actions}>
         <button style={primaryButton} onClick={handleSave}>
