@@ -11,6 +11,8 @@ import { supabase } from "@/lib/supabaseClient";
 
 import type { Prospect } from "../types/prospects.types";
 
+import { convertProspectToCustomer } from "./prospect-conversion.service";
+
 import {
   fetchProspects,
   createProspect as createProspectService,
@@ -97,6 +99,21 @@ export function useProspectsController() {
     setProspects(data);
   }
 
+async function convertProspect(prospectId: string) {
+  if (!companyId) return;
+
+  const result = await convertProspectToCustomer(
+    companyId,
+    prospectId,
+    {}
+  );
+
+  const data = await fetchProspects(companyId);
+  setProspects(data);
+
+  return result;
+}
+  
   return {
     loading,
     prospects,
@@ -106,5 +123,8 @@ export function useProspectsController() {
     createProspect,
     updateProspect,
     archiveProspect,
+    convertProspect,
   };
 }
+
+
