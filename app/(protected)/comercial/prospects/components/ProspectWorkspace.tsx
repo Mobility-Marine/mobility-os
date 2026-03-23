@@ -92,6 +92,31 @@ export default function ProspectWorkspace({
   }
 
   // ==========================================================
+  // EMPTY STATE — WORKSPACE INTELIGENTE
+  // ==========================================================
+
+  if (!prospect) {
+    return (
+      <div style={container}>
+        <div style={{ fontSize: 20, fontWeight: 800 }}>
+          Centro de trabajo de prospectos
+        </div>
+
+        <div style={emptyHero}>
+          <div style={heroTitle}>
+            Selecciona un prospecto o crea uno nuevo
+          </div>
+
+          <div style={heroSubtitle}>
+            Aquí podrás gestionar información, actividades,
+            inteligencia comercial y conversión a cliente.
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  // ==========================================================
   // UI
   // ==========================================================
 
@@ -358,4 +383,25 @@ const handoffTitle: React.CSSProperties = {
 const handoffText: React.CSSProperties = {
   fontSize: 13,
   color: "#d1fae5",
+};
+
+const emptyHero: React.CSSProperties = {
+  background: "#0b1220",
+  border: "1px dashed #334155",
+  borderRadius: 12,
+  padding: 40,
+  textAlign: "center",
+  color: "#94a3b8",
+};
+
+const heroTitle: React.CSSProperties = {
+  fontSize: 18,
+  fontWeight: 800,
+  marginBottom: 8,
+  color: "#e5e7eb",
+};
+
+const heroSubtitle: React.CSSProperties = {
+  maxWidth: 420,
+  margin: "0 auto",
 };
