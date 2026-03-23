@@ -34,7 +34,7 @@ const navSections: NavSection[] = [
     title: "COMERCIAL",
     subtitle: "Ventas y relación",
     items: [
-      { name: "Prospectos", path: "/comercial/prospects" }
+      { name: "Prospectos", path: "/comercial/prospects" },
       { name: "Oportunidades", path: "/comercial/opportunities" },
       { name: "CRM", path: "/comercial/crm" },
       { name: "Clientes", path: "/comercial/clientes" },
