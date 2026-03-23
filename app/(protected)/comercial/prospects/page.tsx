@@ -17,6 +17,8 @@ import type { Prospect } from "./types/prospects.types";
 
 import ProspectPipelineBoard from "./components/ProspectPipelineBoard";
 
+import ProspectCommandCenter from "./components/ProspectCommandCenter";
+
 // ============================================================
 // PAGE
 // ============================================================
@@ -79,6 +81,14 @@ export default function ProspectsPage() {
       background: "#020617",
     }}
   >
+
+{/* ================= COMMAND CENTER ================= */}
+
+    <ProspectCommandCenter
+      prospects={prospects}
+      onSelect={setSelected}
+    />
+    
     {/* ===================================================== */}
     {/* FILA SUPERIOR — OPERACIÓN */}
     {/* ===================================================== */}
