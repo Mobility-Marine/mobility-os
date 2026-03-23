@@ -3,10 +3,12 @@
 // ============================================================
 // 👤 PROSPECT WORKSPACE — Enterprise Final
 // Panel central del módulo Prospectos
-// Compatible con Customer 360 + Auditoría
+// Compatible con Customer 360 + Auditoría + Conversión
 // ============================================================
 
 import type { Prospect } from "../types/prospects.types";
+import { useTenant } from "@/lib/tenant/TenantProvider";
+import { convertProspectToCustomer } from "../services/prospect-conversion.service";
 
 type Props = {
   prospect: Prospect | null;
@@ -21,6 +23,8 @@ export default function ProspectWorkspace({
   updateProspect,
   archiveProspect,
 }: Props) {
+  const { companyId } = useTenant();
+
   // ==========================================================
   // SIN SELECCIÓN
   // ==========================================================
@@ -39,6 +43,24 @@ export default function ProspectWorkspace({
         Selecciona un prospecto para ver su detalle.
       </div>
     );
+  }
+
+  // ==========================================================
+  // CONVERSIÓN A CLIENTE
+  // ==========================================================
+
+  async function handleConvert() {
+    if (!companyId) return;
+
+    if (!confirm("¿Convertir este prospecto en cliente?")) return;
+
+    try {
+      await convertProspectToCustomer(companyId, prospect.id, {});
+
+      alert("Prospecto convertido a cliente correctamente.");
+    } catch (err: any) {
+      alert(err.message || "Error al convertir prospecto.");
+    }
   }
 
   // ==========================================================
@@ -141,6 +163,13 @@ export default function ProspectWorkspace({
         </button>
 
         <button
+          style={secondaryButton}
+          onClick={handleConvert}
+        >
+          Convertir a cliente
+        </button>
+
+        <button
           style={dangerButton}
           onClick={() => archiveProspect(prospect.id)}
         >
@@ -182,6 +211,16 @@ function InfoCard({
 
 const primaryButton: React.CSSProperties = {
   background: "#3b82f6",
+  border: "none",
+  color: "#fff",
+  padding: "10px 14px",
+  borderRadius: 8,
+  cursor: "pointer",
+  fontWeight: 700,
+};
+
+const secondaryButton: React.CSSProperties = {
+  background: "#16a34a",
   border: "none",
   color: "#fff",
   padding: "10px 14px",
