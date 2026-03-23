@@ -25,6 +25,8 @@ import ProspectDailyActionPanel from "./components/ProspectDailyActionPanel";
 
 import ProspectAutomationPanel from "./components/ProspectAutomationPanel";
 
+import ProspectCreateDrawer from "./components/ProspectCreateDrawer";
+
 // ============================================================
 // PAGE
 // ============================================================
@@ -43,6 +45,8 @@ export default function ProspectsPage() {
   } = prospectsCtrl;
 
   const [search, setSearch] = useState("");
+
+  const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   // ==========================================================
   // FILTERED LIST
@@ -119,14 +123,15 @@ export default function ProspectsPage() {
         flex: "0 0 auto",
       }}
     >
-      <ProspectsSidebar
-        search={search}
-        setSearch={setSearch}
-        prospects={filteredProspects}
-        selected={selected}
-        setSelected={setSelected}
-        createProspect={createProspect}
-      />
+     <ProspectsSidebar
+  search={search}
+  setSearch={setSearch}
+  prospects={filteredProspects}
+  selected={selected}
+  setSelected={setSelected}
+  createProspect={createProspect}
+  onOpenCreate={() => setShowCreateDrawer(true)}
+/>
 
       <ProspectWorkspace
         prospect={selected}
@@ -152,6 +157,13 @@ export default function ProspectsPage() {
         prospects={prospects}
         onSelect={setSelected}
       />
+      {/* ================= CREATE PROSPECT DRAWER ================= */}
+
+<ProspectCreateDrawer
+  open={showCreateDrawer}
+  onClose={() => setShowCreateDrawer(false)}
+  createProspect={createProspect}
+/>
     </div>
   </div>
 );}
