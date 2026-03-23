@@ -82,9 +82,10 @@ export default function ProspectsSidebar({
       <div style={headerRow}>
         <div style={title}>PROSPECT RADAR</div>
 
-        <button style={addButton} onClick={handleCreate}>
-          + Nuevo
-        </button>
+       <button style={addButton} onClick={handleCreate}>
+  <span style={{ fontSize: 16 }}>＋</span>
+  Nuevo
+</button>
       </div>
 
       {/* BUSCADOR */}
@@ -281,14 +282,25 @@ const title: React.CSSProperties = {
 };
 
 const addButton: React.CSSProperties = {
-  background: "#3b82f6",
-  border: "none",
+  background: "linear-gradient(135deg,#2563eb,#1d4ed8)",
+  border: "1px solid rgba(59,130,246,0.45)",
   color: "#fff",
-  padding: "8px 12px",
-  borderRadius: 10,
-  cursor: "pointer",
+
+  padding: "6px 12px",
+  borderRadius: 999,        // 🔥 pill SaaS
+
   fontWeight: 800,
-  boxShadow: "0 8px 20px rgba(59,130,246,0.28)",
+  fontSize: 12,
+  letterSpacing: 0.4,
+
+  cursor: "pointer",
+
+  boxShadow: "0 6px 18px rgba(37,99,235,0.35)",
+  transition: "all .15s ease",
+
+  display: "flex",
+  alignItems: "center",
+  gap: 6,
 };
 
 const searchInput: React.CSSProperties = {
