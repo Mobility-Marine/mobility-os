@@ -266,6 +266,7 @@ async function handleSave() {
     </div>
   </div>
 );
+}
 
 // ============================================================
 // COMPONENTES UI
