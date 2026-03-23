@@ -102,13 +102,17 @@ export default function ProspectsPage() {
       {/* ===================================================== */}
 
       <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "320px minmax(0, 1fr) 340px",
-          gap: 16,
-          flex: "0 0 auto",
-        }}
-      >
+  style={{
+    display: "grid",
+    gridTemplateColumns: "320px minmax(0, 1fr) 340px",
+    gap: 16,
+
+    // 🔥 CLAVE ELITE
+    alignItems: "stretch",
+    minHeight: 520,
+    height: "clamp(520px, 58vh, 720px)",
+  }}
+>
         <ProspectsSidebar
           search={search}
           setSearch={setSearch}
