@@ -151,6 +151,20 @@ export async function convertProspectToCustomer(
     description: name,
   });
 
+// ==========================================================
+// 8) CREAR OPORTUNIDAD AUTOMÁTICA
+// ==========================================================
+
+await supabase.from("opportunities").insert({
+  company_id: companyId,
+  client_id: client.id,
+  source_prospect_id: prospectId,
+  name,
+  stage: "qualification",
+  status: "open",
+  estimated_value: prospect.estimated_value,
+});
+  
   return {
     client,
     account,
