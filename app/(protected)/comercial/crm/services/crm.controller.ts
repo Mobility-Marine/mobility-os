@@ -21,7 +21,9 @@ import {
   fetchActivities,
   fetchContacts,
   fetchRelations,
-  fetchTimeline
+  fetchTimeline,
+  findClientByName,
+  createGlobalClient
 } from "./crm.service";
 
 export function useCRMController() {
@@ -107,6 +109,9 @@ useEffect(() => {
 
 // ===== ACTIONS =====
 
+// ======================================================
+// ===== CREATE ACCOUNT — GLOBAL CUSTOMER CONNECTED =====
+// ======================================================
 async function createAccount(payload: {
   name: string;
   legal_name?: string;
@@ -118,41 +123,125 @@ async function createAccount(payload: {
 }) {
   if (!companyId) return;
 
-  await supabase.from("crm_accounts").insert({
+  // ===== 1) BUSCAR CLIENTE GLOBAL EXISTENTE =====
+  let client = await findClientByName(companyId, payload.name);
+
+  // ===== 2) CREAR CLIENTE GLOBAL SI NO EXISTE =====
+  if (!client) {
+    client = await createGlobalClient(companyId, {
+      name: payload.name,
+      legal_name: payload.legal_name,
+      country: payload.country,
+      city: payload.city,
+      notes: payload.notes,
+    });
+  }
+
+  // ===== 3) CREAR CUENTA CRM LIGADA AL CLIENTE GLOBAL =====
+  const { data: account, error } = await supabase
+    .from("crm_accounts")
+    .insert({
+      company_id: companyId,
+      client_id: client.id,
+      name: payload.name,
+      legal_name: payload.legal_name || null,
+      industry: payload.industry || null,
+      country: payload.country || null,
+      city: payload.city || null,
+      status: payload.status || "active",
+      notes: payload.notes || null,
+      is_customer: true,
+      lifecycle_stage: "customer",
+    })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+
+  // ===== 4) REGISTRAR TRAZABILIDAD =====
+  await supabase.from("customer_identity_bridge").insert({
     company_id: companyId,
-    ...payload,
+    crm_account_id: account.id,
+    client_id: client.id,
+    bridge_status: "linked",
+    source_of_truth: "crm_accounts",
+    conversion_type: "manual_account_creation",
+    conversion_source: "crm_module",
+    is_primary: true,
+  });
+
+  // ===== 5) REGISTRAR EVENTO GLOBAL =====
+  await supabase.from("entity_timeline_events").insert({
+    company_id: companyId,
+    entity_type: "crm_account",
+    entity_id: account.id,
+    related_account_id: account.id,
+    related_client_id: client.id,
+    module_key: "crm",
+    event_type: "created",
+    event_category: "commercial",
+    title: "Cuenta CRM creada",
+    description: `Cuenta ligada al cliente global ${client.name ?? payload.name}`,
   });
 
   const data = await fetchAccounts(companyId);
   setAccounts(data);
 }
 
+// ======================================================
+// ===== CREATE CONTACT — ALIGNED TO REAL DB SCHEMA =====
+// ======================================================
 async function createContact(accountId: string) {
   if (!companyId) return;
 
-  const name = prompt("Nombre del contacto");
-  if (!name) return;
+  const fullName = prompt("Nombre completo del contacto");
+  if (!fullName) return;
 
-  const position = prompt("Puesto") || null;
+  const parts = fullName.trim().split(" ");
+  const first_name = parts.shift() || "";
+  const last_name = parts.join(" ") || null;
+
+  const job_title = prompt("Puesto") || null;
   const email = prompt("Email") || null;
   const phone = prompt("Teléfono") || null;
 
-  await supabase.from("crm_contacts").insert({
+  const { error } = await supabase.from("crm_contacts").insert({
     company_id: companyId,
     account_id: accountId,
-    name,
-    position,
+    first_name,
+    last_name,
     email,
     phone,
-    role: "user",
+    mobile_phone: null,
+    job_title,
+    department: null,
+    role_in_decision: "user",
     influence_level: 3,
-    relationship_score: 50,
+    notes: null,
   });
+
+  if (error) throw error;
 
   const data = await fetchContacts(accountId);
   setContacts(data);
+
+  // ===== TIMELINE GLOBAL =====
+  await supabase.from("entity_timeline_events").insert({
+    company_id: companyId,
+    entity_type: "crm_account",
+    entity_id: accountId,
+    related_account_id: accountId,
+    module_key: "crm",
+    event_type: "contact_created",
+    event_category: "relationship",
+    title: "Contacto agregado",
+    description: fullName,
+  });
 }
 
+// ======================================================
+// ===== CREATE ACTIVITY — GLOBAL TIMELINE CONNECTED =====
+// ======================================================
 async function createActivity(
   accountId: string,
   title: string,
@@ -165,44 +254,144 @@ async function createActivity(
     ? new Date(date).toISOString()
     : null;
 
-  await supabase.from("crm_activities").insert({
+  const { data: activity, error } = await supabase
+    .from("crm_activities")
+    .insert({
+      company_id: companyId,
+      account_id: accountId,
+      type,
+      title,
+      scheduled_at: scheduled,
+      completed: false,
+    })
+    .select("*")
+    .single();
+
+  if (error) throw error;
+
+  // ===== TIMELINE GLOBAL =====
+  await supabase.from("entity_timeline_events").insert({
     company_id: companyId,
-    account_id: accountId,
-    type,
-    title,
-    scheduled_at: scheduled,
-    completed: false,
+    entity_type: "crm_account",
+    entity_id: accountId,
+    related_account_id: accountId,
+    related_activity_id: activity.id,
+    module_key: "crm",
+    event_type: "activity_created",
+    event_category: "commercial",
+    title: "Actividad creada",
+    description: title,
+    occurred_at: activity.created_at,
   });
 
   const data = await fetchActivities(accountId);
   setActivities(data);
 }
 
+// ======================================================
+// ===== UPLOAD DOCUMENT — GLOBAL EVENT CONNECTED =======
+// ======================================================
 async function uploadDocument(accountId: string, file: File) {
   if (!companyId) return;
 
   const filePath = `${companyId}/${accountId}/${Date.now()}-${file.name}`;
 
-  const { error } = await supabase.storage
+  const { error: uploadError } = await supabase.storage
     .from("crm-documents")
     .upload(filePath, file);
 
+  if (uploadError) throw uploadError;
+
+  const { data: doc, error } = await supabase
+    .from("crm_documents")
+    .insert({
+      company_id: companyId,
+      account_id: accountId,
+      name: file.name,
+      file_path: filePath,
+      file_type: file.type,
+      size: file.size,
+      storage_provider: "supabase",
+    })
+    .select("*")
+    .single();
+
   if (error) throw error;
 
-  await supabase.from("crm_documents").insert({
+  // ===== EVENTO GLOBAL =====
+  await supabase.from("entity_timeline_events").insert({
     company_id: companyId,
-    account_id: accountId,
-    name: file.name,
-    file_path: filePath,
-    file_type: file.type,
-    size: file.size,
-    storage_provider: "supabase",
+    entity_type: "crm_account",
+    entity_id: accountId,
+    related_account_id: accountId,
+    related_document_id: doc.id,
+    module_key: "crm",
+    event_type: "document_uploaded",
+    event_category: "information",
+    title: "Documento cargado",
+    description: file.name,
+    occurred_at: doc.created_at,
   });
 
   const data = await fetchDocuments(accountId);
   setDocuments(data);
 }
 
+// ======================================================
+// ===== UPDATE ACCOUNT LIFECYCLE — GLOBAL SAFE =========
+// ======================================================
+async function updateAccountLifecycle(
+  accountId: string,
+  stage: "lead" | "prospect" | "customer" | "inactive" | "strategic"
+) {
+  if (!companyId) return;
+
+  // ===== 1) ACTUALIZAR CUENTA CRM =====
+  const { data: account, error } = await supabase
+    .from("crm_accounts")
+    .update({
+      lifecycle_stage: stage,
+    })
+    .eq("id", accountId)
+    .eq("company_id", companyId)
+    .select("*")
+    .single();
+
+  if (error || !account) return;
+
+  // ===== 2) EVENTO GLOBAL =====
+  await supabase.from("entity_timeline_events").insert({
+    company_id: companyId,
+    entity_type: "crm_account",
+    entity_id: accountId,
+    related_account_id: accountId,
+    related_client_id: account.client_id ?? null,
+    module_key: "crm",
+    event_type: "lifecycle_changed",
+    event_category: "commercial",
+    title: "Cambio de etapa",
+    description: `Nueva etapa: ${stage}`,
+  });
+
+  // ===== 3) SI SE CONVIERTE EN CLIENTE — ASEGURAR FLAG =====
+  if (stage === "customer") {
+    await supabase
+      .from("crm_accounts")
+      .update({ is_customer: true })
+      .eq("id", accountId)
+      .eq("company_id", companyId);
+  }
+
+  // ===== 4) SI SE INACTIVA =====
+  if (stage === "inactive") {
+    await supabase
+      .from("crm_accounts")
+      .update({ archived: true })
+      .eq("id", accountId)
+      .eq("company_id", companyId);
+  }
+}
+  
 // ======================================================
 // ===== IMPORTADOR DE CUENTAS — PRO ====================
 // ======================================================
@@ -319,60 +508,46 @@ async function handleImportAccounts(file: File) {
   return rows.filter((r) => r.name.trim());
 }
 
-// ===== CONFIRMAR IMPORTACIÓN =====
-
+// ======================================================
+// ===== CONFIRM IMPORT — GLOBAL SAFE VERSION ===========
+// ======================================================
 async function confirmImportAccounts(
   rows: any[],
   mode: "insert" | "upsert"
 ) {
   if (!companyId || rows.length === 0) return;
 
-  if (mode === "insert") {
-    const payload = rows.map((row) => ({
-      company_id: companyId,
-      name: row.name,
-      legal_name: row.legal_name || null,
-      industry: row.industry || null,
-      country: row.country || null,
-      city: row.city || null,
-      status: row.status || "active",
-      notes: row.notes || null,
-    }));
-
-    await supabase.from("crm_accounts").insert(payload);
-    await fetchAccounts(companyId).then(setAccounts);
-    return;
-  }
-
   for (const row of rows) {
-    const legalName = row.legal_name?.trim();
-    const name = row.name.trim();
 
-    let existingId: string | null = null;
+    // ===== 1) BUSCAR CLIENTE GLOBAL =====
+    let client = await findClientByName(companyId, row.name);
 
-    if (legalName) {
-      const { data } = await supabase
-        .from("crm_accounts")
-        .select("id")
-        .eq("company_id", companyId)
-        .eq("legal_name", legalName)
-        .maybeSingle();
-
-      if (data?.id) existingId = data.id;
+    // ===== 2) CREAR CLIENTE GLOBAL SI NO EXISTE =====
+    if (!client) {
+      client = await createGlobalClient(companyId, {
+        name: row.name,
+        legal_name: row.legal_name,
+        country: row.country,
+        city: row.city,
+        notes: row.notes,
+      });
     }
 
-    if (!existingId) {
-      const { data } = await supabase
-        .from("crm_accounts")
-        .select("id")
-        .eq("company_id", companyId)
-        .eq("name", name)
-        .maybeSingle();
+    // ===== 3) BUSCAR CUENTA CRM EXISTENTE =====
+    let existingAccountId: string | null = null;
 
-      if (data?.id) existingId = data.id;
-    }
+    const { data: existing } = await supabase
+      .from("crm_accounts")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("client_id", client.id)
+      .maybeSingle();
 
-    if (existingId) {
+    if (existing?.id) existingAccountId = existing.id;
+
+    // ===== 4) UPSERT LOGIC =====
+    if (existingAccountId && mode === "upsert") {
+
       await supabase
         .from("crm_accounts")
         .update({
@@ -383,17 +558,52 @@ async function confirmImportAccounts(
           status: row.status || "active",
           notes: row.notes || null,
         })
-        .eq("id", existingId);
-    } else {
-      await supabase.from("crm_accounts").insert({
+        .eq("id", existingAccountId);
+
+    } else if (!existingAccountId) {
+
+      const { data: account } = await supabase
+        .from("crm_accounts")
+        .insert({
+          company_id: companyId,
+          client_id: client.id,
+          name: row.name,
+          legal_name: row.legal_name || null,
+          industry: row.industry || null,
+          country: row.country || null,
+          city: row.city || null,
+          status: row.status || "active",
+          notes: row.notes || null,
+          is_customer: true,
+          lifecycle_stage: "customer",
+        })
+        .select("*")
+        .single();
+
+      // ===== BRIDGE =====
+      await supabase.from("customer_identity_bridge").insert({
         company_id: companyId,
-        name: row.name,
-        legal_name: row.legal_name || null,
-        industry: row.industry || null,
-        country: row.country || null,
-        city: row.city || null,
-        status: row.status || "active",
-        notes: row.notes || null,
+        crm_account_id: account.id,
+        client_id: client.id,
+        bridge_status: "linked",
+        source_of_truth: "crm_accounts",
+        conversion_type: "import",
+        conversion_source: "crm_import",
+        is_primary: true,
+      });
+
+      // ===== EVENTO GLOBAL =====
+      await supabase.from("entity_timeline_events").insert({
+        company_id: companyId,
+        entity_type: "crm_account",
+        entity_id: account.id,
+        related_account_id: account.id,
+        related_client_id: client.id,
+        module_key: "crm",
+        event_type: "imported",
+        event_category: "commercial",
+        title: "Cuenta importada",
+        description: row.name,
       });
     }
   }
@@ -417,11 +627,12 @@ async function confirmImportAccounts(
   timeline,
 
   // ===== ACTIONS =====
-  createAccount,
-  createContact,
-  createActivity,
-  uploadDocument,
-  handleImportAccounts,
-  confirmImportAccounts,
+createAccount,
+createContact,
+createActivity,
+uploadDocument,
+handleImportAccounts,
+confirmImportAccounts,
+updateAccountLifecycle,
 };
 }
