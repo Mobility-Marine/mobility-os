@@ -10,6 +10,7 @@ import { useTenant } from "@/lib/tenant/TenantProvider";
 import { convertProspectToCustomer } from "../services/prospect-conversion.service";
 import { useEffect, useState } from "react";
 import ProspectActivityTimeline from "./ProspectActivityTimeline";
+import { shouldMoveToOpportunity } from "../services/prospects.normalization";
 
 type Props = {
   prospect: Prospect | null;
@@ -189,6 +190,20 @@ export default function ProspectWorkspace({
         </div>
       )}
 
+{/* READY FOR OPPORTUNITY — REVENUE HANDOFF */}
+{prospect && shouldMoveToOpportunity(prospect) && (
+  <div style={handoffBox}>
+    <div style={handoffTitle}>
+      🚀 Listo para mover a Oportunidades
+    </div>
+
+    <div style={handoffText}>
+      Este prospecto cumple criterios comerciales para iniciar
+      gestión de ingresos (pipeline de ventas).
+    </div>
+  </div>
+)}
+      
 {/* ACTIVIDAD — AUDITORÍA / CUSTOMER 360 */}
 {prospect && (
   <ProspectActivityTimeline
@@ -325,4 +340,22 @@ const dangerButton: React.CSSProperties = {
   borderRadius: 8,
   cursor: "pointer",
   fontWeight: 700,
+};
+
+const handoffBox: React.CSSProperties = {
+  background: "rgba(16,185,129,0.10)",
+  border: "1px solid rgba(16,185,129,0.35)",
+  borderRadius: 12,
+  padding: 14,
+};
+
+const handoffTitle: React.CSSProperties = {
+  fontWeight: 800,
+  color: "#34d399",
+  marginBottom: 4,
+};
+
+const handoffText: React.CSSProperties = {
+  fontSize: 13,
+  color: "#d1fae5",
 };
