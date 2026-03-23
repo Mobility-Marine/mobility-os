@@ -80,7 +80,7 @@ export default function ProspectsSidebar({
     <div style={container}>
       {/* HEADER */}
       <div style={headerRow}>
-        <div style={title}>PROSPECT RADAR</div>
+        <div style={title}>Prospectos</div>
 
        <button style={addButton} onClick={handleCreate}>
   <span style={{ fontSize: 16 }}>＋</span>
@@ -273,30 +273,33 @@ const headerRow: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  marginBottom: 10,
+  marginBottom: 12,
+  gap: 10,
 };
 
 const title: React.CSSProperties = {
-  fontWeight: 900,
-  letterSpacing: 0.3,
+  fontWeight: 800,
+  fontSize: 13,
+  letterSpacing: 0.6,
+  textTransform: "uppercase",
+  color: "#e5e7eb",
 };
 
 const addButton: React.CSSProperties = {
-  background: "transparent",
-  border: "1px dashed #334155",
-  color: "#cbd5f5",
-
-  padding: "6px 10px",
-  borderRadius: 8,
-
-  fontWeight: 700,
+  height: 32,
+  padding: "0 12px",
+  borderRadius: 10,
+  background: "#0f141b",
+  border: "1px solid #1b222c",
+  color: "#c5cfdb",
   fontSize: 12,
-
+  fontWeight: 700,
   cursor: "pointer",
-
-  display: "flex",
+  display: "inline-flex",
   alignItems: "center",
-  gap: 6,
+  justifyContent: "center",
+  lineHeight: 1,
+  whiteSpace: "nowrap",
 };
 
 const searchInput: React.CSSProperties = {
