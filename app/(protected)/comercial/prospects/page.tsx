@@ -103,19 +103,15 @@ return (
       {/* FILA OPERATIVA — RADAR + WORKSPACE + AI */}
       {/* ===================================================== */}
 
-      <div
-  style={{
-    display: "grid",
-    gridTemplateColumns: "320px minmax(0, 1fr) 340px",
-    gap: 16,
+     style={{
+  display: "grid",
+  gridTemplateColumns: "320px minmax(0, 1fr) 340px",
+  gap: 16,
 
-    // 🔥 CLAVE ELITE
-    alignItems: "stretch",
-   flex: "0 0 auto",
-minHeight: 0,
-height: "clamp(480px, 55vh, 680px)",
-  }}
->
+  alignItems: "stretch",
+
+  flex: "0 0 auto",
+}}
         <ProspectsSidebar
           search={search}
           setSearch={setSearch}
