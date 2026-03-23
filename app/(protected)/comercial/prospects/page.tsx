@@ -70,9 +70,12 @@ export default function ProspectsPage() {
   return (
     <div
       style={{
-        height: "calc(100vh - 40px)",
-        display: "flex",
-        flexDirection: "column",
+       height: "calc(100vh - 40px)",
+display: "flex",
+flexDirection: "column",
+
+minHeight: 0,   // ⭐⭐⭐ CLAVE ABSOLUTA
+overflow: "hidden",
         gap: 16,
         padding: 16,
         background: "#020617",
@@ -109,8 +112,9 @@ export default function ProspectsPage() {
 
     // 🔥 CLAVE ELITE
     alignItems: "stretch",
-    minHeight: 520,
-    height: "clamp(520px, 58vh, 720px)",
+   flex: "0 0 auto",
+minHeight: 0,
+height: "clamp(480px, 55vh, 680px)",
   }}
 >
         <ProspectsSidebar
