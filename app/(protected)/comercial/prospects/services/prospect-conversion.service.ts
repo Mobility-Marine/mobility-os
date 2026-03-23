@@ -152,17 +152,31 @@ export async function convertProspectToCustomer(
   });
 
 // ==========================================================
-// 8) CREAR OPORTUNIDAD AUTOMÁTICA
+// 8) CREAR OPORTUNIDAD AUTOMÁTICA (REVENUE HANDOFF)
 // ==========================================================
 
 await supabase.from("opportunities").insert({
   company_id: companyId,
+
+  // 🔗 IDENTIDAD
   client_id: client.id,
+  crm_account_id: account.id,
   source_prospect_id: prospectId,
+
+  // 📄 INFO COMERCIAL
   name,
   stage: "qualification",
   status: "open",
+
+  // 💰 REVENUE
   estimated_value: prospect.estimated_value,
+
+  // 🧭 ATRIBUCIÓN
+  source_module: "prospects",
+  origin_type: "prospect_conversion",
+
+  // 🧠 CONTROL
+  created_from_conversion: true,
 });
   
   return {
