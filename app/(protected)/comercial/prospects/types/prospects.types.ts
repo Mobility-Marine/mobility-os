@@ -57,6 +57,12 @@ export type Prospect = {
   converted_to_client_id?: string | null;
   converted_to_account_id?: string | null;
   converted_at?: string | null;
+
+  // ===== CUSTOMER 360 / AUDITORÍA =====
+activities?: ProspectActivity[];
+followups?: ProspectFollowup[];
+tasks?: ProspectTask[];
+estimations?: ProspectEstimation[];
 };
 
 export type ProspectActivity = {
