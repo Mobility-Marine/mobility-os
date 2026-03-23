@@ -124,3 +124,22 @@ export type ProspectFilters = {
   assignedTo?: string | "all";
   onlyActive?: boolean;
 };
+
+export type ProspectEstimation = {
+  id: string;
+  prospect_id: string;
+
+  title: string;
+
+  estimated_value: number | null;
+  currency: string;
+
+  probability: number | null;
+  expected_close_date: string | null;
+
+  status: "draft" | "sent" | "negotiating" | "won" | "lost";
+
+  notes: string | null;
+
+  created_at: string;
+};
