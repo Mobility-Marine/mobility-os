@@ -5,7 +5,6 @@
 // Arquitectura en capas (NO monolítica)
 // ============================================================
 
-// ===== IMPORTS =====
 import { useMemo, useState } from "react";
 
 import ProspectsSidebar from "./components/ProspectsSidebar";
@@ -21,7 +20,6 @@ import type { Prospect } from "./types/prospects.types";
 // ============================================================
 
 export default function ProspectsPage() {
-
   const prospectsCtrl = useProspectsController();
 
   const {
@@ -57,7 +55,11 @@ export default function ProspectsPage() {
   // ==========================================================
 
   if (loading) {
-    return <div style={{ padding: 40 }}>Cargando prospectos...</div>;
+    return (
+      <div style={{ padding: 40 }}>
+        Cargando prospectos...
+      </div>
+    );
   }
 
   // ==========================================================
@@ -76,7 +78,7 @@ export default function ProspectsPage() {
       }}
     >
       {/* ===================================================== */}
-      {/* SIDEBAR — LISTA */}
+      {/* SIDEBAR — LISTA + CREACIÓN */}
       {/* ===================================================== */}
 
       <ProspectsSidebar
@@ -85,6 +87,7 @@ export default function ProspectsPage() {
         prospects={filteredProspects}
         selected={selected}
         setSelected={setSelected}
+        createProspect={createProspect}   // ⭐ IMPORTANTE
       />
 
       {/* ===================================================== */}
