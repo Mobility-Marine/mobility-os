@@ -1,14 +1,14 @@
 "use client";
 
 // ============================================================
-// 👤 PROSPECT WORKSPACE — Enterprise Final
-// Panel central del módulo Prospectos
+// 👤 PROSPECT WORKSPACE — Enterprise Final (Editable + Create)
 // Compatible con Customer 360 + Auditoría + Conversión
 // ============================================================
 
 import type { Prospect } from "../types/prospects.types";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { convertProspectToCustomer } from "../services/prospect-conversion.service";
+import { useEffect, useState } from "react";
 
 type Props = {
   prospect: Prospect | null;
@@ -20,29 +20,56 @@ type Props = {
 
 export default function ProspectWorkspace({
   prospect,
+  createProspect,
   updateProspect,
   archiveProspect,
 }: Props) {
   const { companyId } = useTenant();
 
   // ==========================================================
-  // SIN SELECCIÓN
+  // FORM STATE (CREATE + EDIT)
   // ==========================================================
 
-  if (!prospect) {
-    return (
-      <div
-        style={{
-          background: "#020617",
-          border: "1px solid #1f2937",
-          borderRadius: 12,
-          padding: 20,
-          color: "#94a3b8",
-        }}
-      >
-        Selecciona un prospecto para ver su detalle.
-      </div>
-    );
+  const [form, setForm] = useState<any>({
+    name: "",
+    company_name: "",
+    email: "",
+    phone: "",
+    estimated_value: "",
+    notes: "",
+  });
+
+  useEffect(() => {
+    if (prospect) {
+      setForm(prospect);
+    } else {
+      setForm({
+        name: "",
+        company_name: "",
+        email: "",
+        phone: "",
+        estimated_value: "",
+        notes: "",
+      });
+    }
+  }, [prospect]);
+
+  function setField(key: string, value: any) {
+    setForm((prev: any) => ({ ...prev, [key]: value }));
+  }
+
+  // ==========================================================
+  // SAVE (CREATE O UPDATE)
+  // ==========================================================
+
+  async function handleSave() {
+    if (prospect?.id) {
+      await updateProspect(prospect.id, form);
+      alert("Prospecto actualizado");
+    } else {
+      await createProspect(form);
+      alert("Prospecto creado");
+    }
   }
 
   // ==========================================================
@@ -50,13 +77,12 @@ export default function ProspectWorkspace({
   // ==========================================================
 
   async function handleConvert() {
-    if (!companyId) return;
+    if (!companyId || !prospect) return;
 
     if (!confirm("¿Convertir este prospecto en cliente?")) return;
 
     try {
       await convertProspectToCustomer(companyId, prospect.id, {});
-
       alert("Prospecto convertido a cliente correctamente.");
     } catch (err: any) {
       alert(err.message || "Error al convertir prospecto.");
@@ -64,125 +90,148 @@ export default function ProspectWorkspace({
   }
 
   // ==========================================================
-  // WORKSPACE
+  // UI
   // ==========================================================
 
   return (
-    <div
-      style={{
-        background: "#020617",
-        border: "1px solid #1f2937",
-        borderRadius: 12,
-        padding: 20,
-        display: "grid",
-        gap: 16,
-      }}
-    >
+    <div style={container}>
       {/* HEADER */}
-      <div>
-        <div style={{ fontSize: 24, fontWeight: 800 }}>
-          {prospect.company_name || prospect.name || "Sin nombre"}
-        </div>
-
-        <div style={{ color: "#94a3b8", marginTop: 6 }}>
-          {prospect.email || "Sin email"} ·{" "}
-          {prospect.phone || "Sin teléfono"}
-        </div>
+      <div style={{ fontSize: 22, fontWeight: 800 }}>
+        {prospect ? "DETALLE DEL PROSPECTO" : "NUEVO PROSPECTO"}
       </div>
 
-      {/* KPIs */}
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(3, minmax(0,1fr))",
-          gap: 12,
-        }}
-      >
-        <InfoCard
-          label="Etapa"
-          value={prospect.stage || prospect.status || "new"}
-        />
+      {/* FORM */}
+      <div style={grid}>
+        <Field label="Nombre">
+          <input
+            value={form.name || ""}
+            onChange={(e) => setField("name", e.target.value)}
+          />
+        </Field>
 
-        <InfoCard
-          label="Origen"
-          value={
-            prospect.lead_source ||
-            prospect.sourceNormalized ||
-            "manual"
-          }
-        />
+        <Field label="Empresa">
+          <input
+            value={form.company_name || ""}
+            onChange={(e) =>
+              setField("company_name", e.target.value)
+            }
+          />
+        </Field>
 
-        <InfoCard
-          label="Valor estimado"
-          value={
-            prospect.estimated_value
-              ? `$${Number(
-                  prospect.estimated_value
-                ).toLocaleString("es-MX")}`
-              : "Sin estimación"
-          }
-        />
+        <Field label="Email">
+          <input
+            value={form.email || ""}
+            onChange={(e) =>
+              setField("email", e.target.value)
+            }
+          />
+        </Field>
+
+        <Field label="Teléfono">
+          <input
+            value={form.phone || ""}
+            onChange={(e) =>
+              setField("phone", e.target.value)
+            }
+          />
+        </Field>
+
+        <Field label="Valor estimado">
+          <input
+            type="number"
+            value={form.estimated_value || ""}
+            onChange={(e) =>
+              setField("estimated_value", e.target.value)
+            }
+          />
+        </Field>
       </div>
 
       {/* NOTAS */}
-      <div
-        style={{
-          background: "#0b1220",
-          border: "1px solid #1f2937",
-          borderRadius: 10,
-          padding: 14,
-        }}
-      >
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>
-          Notas
-        </div>
-
-        <div style={{ color: "#cbd5e1" }}>
-          {prospect.notes || "Sin notas registradas."}
-        </div>
-      </div>
-
-      {/* ACCIONES ENTERPRISE */}
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          marginTop: 6,
-        }}
-      >
-        <button
-          style={primaryButton}
-          onClick={() =>
-            updateProspect(prospect.id, {
-              status: "qualified",
-            })
+      <Field label="Notas">
+        <textarea
+          rows={4}
+          value={form.notes || ""}
+          onChange={(e) =>
+            setField("notes", e.target.value)
           }
-        >
-          Marcar como calificado
+        />
+      </Field>
+
+      {/* KPIs SOLO SI EXISTE */}
+      {prospect && (
+        <div style={kpiGrid}>
+          <InfoCard
+            label="Etapa"
+            value={prospect.stage || prospect.status || "new"}
+          />
+
+          <InfoCard
+            label="Origen"
+            value={
+              prospect.lead_source ||
+              prospect.sourceNormalized ||
+              "manual"
+            }
+          />
+
+          <InfoCard
+            label="Valor estimado"
+            value={
+              prospect.estimated_value
+                ? `$${Number(
+                    prospect.estimated_value
+                  ).toLocaleString("es-MX")}`
+                : "Sin estimación"
+            }
+          />
+        </div>
+      )}
+
+      {/* ACCIONES */}
+      <div style={actions}>
+        <button style={primaryButton} onClick={handleSave}>
+          {prospect ? "Guardar cambios" : "Crear prospecto"}
         </button>
 
-        <button
-          style={secondaryButton}
-          onClick={handleConvert}
-        >
-          Convertir a cliente
-        </button>
+        {prospect && (
+          <>
+            <button
+              style={secondaryButton}
+              onClick={handleConvert}
+            >
+              Convertir a cliente
+            </button>
 
-        <button
-          style={dangerButton}
-          onClick={() => archiveProspect(prospect.id)}
-        >
-          Marcar como perdido
-        </button>
+            <button
+              style={dangerButton}
+              onClick={() =>
+                archiveProspect(prospect.id)
+              }
+            >
+              Marcar como perdido
+            </button>
+          </>
+        )}
       </div>
     </div>
   );
 }
 
 // ============================================================
-// UI HELPERS
+// COMPONENTES UI
 // ============================================================
+
+function Field({ label, children }: any) {
+  return (
+    <div style={{ display: "grid", gap: 4 }}>
+      <label style={{ fontSize: 12, color: "#94a3b8" }}>
+        {label}
+      </label>
+      {children}
+    </div>
+  );
+}
 
 function InfoCard({
   label,
@@ -192,22 +241,53 @@ function InfoCard({
   value: string;
 }) {
   return (
-    <div
-      style={{
-        background: "#0b1220",
-        border: "1px solid #1f2937",
-        borderRadius: 10,
-        padding: 12,
-      }}
-    >
+    <div style={infoCard}>
       <div style={{ fontSize: 12, color: "#94a3b8" }}>
         {label}
       </div>
-
       <div style={{ fontWeight: 700 }}>{value}</div>
     </div>
   );
 }
+
+// ============================================================
+// ESTILOS
+// ============================================================
+
+const container: React.CSSProperties = {
+  background: "#020617",
+  border: "1px solid #1f2937",
+  borderRadius: 12,
+  padding: 20,
+  display: "grid",
+  gap: 16,
+};
+
+const grid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(2, minmax(0,1fr))",
+  gap: 12,
+};
+
+const kpiGrid: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(3, minmax(0,1fr))",
+  gap: 12,
+};
+
+const infoCard: React.CSSProperties = {
+  background: "#0b1220",
+  border: "1px solid #1f2937",
+  borderRadius: 10,
+  padding: 12,
+};
+
+const actions: React.CSSProperties = {
+  display: "flex",
+  gap: 10,
+  flexWrap: "wrap",
+  marginTop: 6,
+};
 
 const primaryButton: React.CSSProperties = {
   background: "#3b82f6",
