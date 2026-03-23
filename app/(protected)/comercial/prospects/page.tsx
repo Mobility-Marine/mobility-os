@@ -21,6 +21,8 @@ import ProspectCommandCenter from "./components/ProspectCommandCenter";
 
 import ProspectRevenueInsights from "./components/ProspectRevenueInsights";
 
+import ProspectDailyActionPanel from "./components/ProspectDailyActionPanel";
+
 // ============================================================
 // PAGE
 // ============================================================
@@ -86,14 +88,17 @@ export default function ProspectsPage() {
 
 {/* ================= COMMAND CENTER ================= */}
 
-    <ProspectCommandCenter
-      prospects={prospects}
-      onSelect={setSelected}
-    />
+   <ProspectCommandCenter
+  prospects={prospects}
+  onSelect={setSelected}
+/>
 
-{/* ================= REVENUE INSIGHTS ================= */}
-    
 <ProspectRevenueInsights prospects={prospects} />
+
+<ProspectDailyActionPanel
+  prospects={prospects}
+  onSelect={setSelected}
+/>
     
     {/* ===================================================== */}
     {/* FILA SUPERIOR — OPERACIÓN */}
