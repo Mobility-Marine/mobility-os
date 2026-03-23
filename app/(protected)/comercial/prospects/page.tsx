@@ -1,5 +1,10 @@
 "use client";
 
+// ============================================================
+// 👤 PROSPECTS PAGE — SaaS Product Layout
+// Revenue OS / Enterprise CRM / Stable viewport composition
+// ============================================================
+
 import { useMemo, useState } from "react";
 
 import ProspectsSidebar from "./components/ProspectsSidebar";
@@ -32,8 +37,6 @@ export default function ProspectsPage() {
   const [search, setSearch] = useState("");
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
-  // ================= FILTRADO =================
-
   const filteredProspects = useMemo(() => {
     const q = search.trim().toLowerCase();
 
@@ -46,99 +49,154 @@ export default function ProspectsPage() {
     );
   }, [prospects, search]);
 
-  // ================= LOADING =================
-
   if (loading) {
-    return <div style={{ padding: 40 }}>Cargando prospectos...</div>;
+    return (
+      <div style={loadingWrap}>
+        <div style={loadingCard}>Cargando prospectos...</div>
+      </div>
+    );
   }
 
-  // ================= PAGE =================
-
   return (
-    <div
-      style={{
-        height: "calc(100vh - 40px)",
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-        padding: 16,
-        background: "#020617",
-        overflow: "hidden",
-      }}
-    >
-      {/* ===== COMMAND CENTER ===== */}
+    <div style={pageWrap}>
+      {/* ===================================================== */}
+      {/* CAPA 1 — EJECUTIVA / INTELIGENCIA */}
+      {/* ===================================================== */}
 
-      <ProspectCommandCenter
-        prospects={prospects}
-        onSelect={setSelected}
-      />
-
-      <ProspectRevenueInsights prospects={prospects} />
-
-      <ProspectDailyActionPanel
-        prospects={prospects}
-        onSelect={setSelected}
-      />
-
-      <ProspectAutomationPanel
-        prospects={prospects}
-        onSelect={setSelected}
-      />
-
-      {/* ===== FILA OPERATIVA ===== */}
-
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns: "320px minmax(0, 1fr) 340px",
-          gap: 16,
-          alignItems: "stretch",
-          flex: "0 0 auto",
-        }}
-      >
-        <ProspectsSidebar
-          search={search}
-          setSearch={setSearch}
-          prospects={filteredProspects}
-          selected={selected}
-          setSelected={setSelected}
-          onOpenCreate={() => setShowCreateDrawer(true)}
+      <div style={topBlocks}>
+        <ProspectCommandCenter
+          prospects={prospects}
+          onSelect={setSelected}
         />
 
-        <ProspectWorkspace
-          prospect={selected}
-          createProspect={createProspect}
-          updateProspect={updateProspect}
-          archiveProspect={archiveProspect}
+        <ProspectRevenueInsights prospects={prospects} />
+
+        <ProspectDailyActionPanel
+          prospects={prospects}
+          onSelect={setSelected}
         />
 
-        <ProspectCopilot prospect={selected} />
+        <ProspectAutomationPanel
+          prospects={prospects}
+          onSelect={setSelected}
+        />
       </div>
 
-      {/* ===== PIPELINE ===== */}
+      {/* ===================================================== */}
+      {/* CAPA 2 — OPERATIVA */}
+      {/* ===================================================== */}
 
-      <div
-        style={{
-          flex: 1,
-          minHeight: 0,
-          overflowY: "auto",
-          overflowX: "hidden",
-        }}
-      >
+      <div style={workRow}>
+        <div style={panelShell}>
+          <ProspectsSidebar
+            search={search}
+            setSearch={setSearch}
+            prospects={filteredProspects}
+            selected={selected}
+            setSelected={setSelected}
+            onOpenCreate={() => setShowCreateDrawer(true)}
+          />
+        </div>
+
+        <div style={panelShell}>
+          <ProspectWorkspace
+            prospect={selected}
+            createProspect={createProspect}
+            updateProspect={updateProspect}
+            archiveProspect={archiveProspect}
+          />
+        </div>
+
+        <div style={panelShell}>
+          <ProspectCopilot prospect={selected} />
+        </div>
+      </div>
+
+      {/* ===================================================== */}
+      {/* CAPA 3 — PIPELINE */}
+      {/* ===================================================== */}
+
+      <div style={pipelineArea}>
         <ProspectPipelineBoard
           prospects={prospects}
           onSelect={setSelected}
         />
       </div>
 
-      {/* ===== CREATE DRAWER ===== */}
+      {/* ===================================================== */}
+      {/* DRAWER GLOBAL */}
+      {/* ===================================================== */}
 
       <ProspectCreateDrawer
         open={showCreateDrawer}
         onClose={() => setShowCreateDrawer(false)}
         createProspect={createProspect}
-        onCreated={(p: Prospect) => setSelected(p)}
+        onCreated={(p: Prospect) => {
+          setSelected(p);
+          setShowCreateDrawer(false);
+        }}
       />
     </div>
   );
 }
+
+// ============================================================
+// STYLES
+// ============================================================
+
+const loadingWrap: React.CSSProperties = {
+  minHeight: "calc(100vh - 40px)",
+  display: "grid",
+  placeItems: "center",
+  background: "#020617",
+  padding: 24,
+};
+
+const loadingCard: React.CSSProperties = {
+  background: "#0b1220",
+  border: "1px solid #1f2937",
+  color: "#e5e7eb",
+  borderRadius: 14,
+  padding: "16px 20px",
+  fontWeight: 700,
+};
+
+const pageWrap: React.CSSProperties = {
+  height: "calc(100vh - 40px)",
+  minHeight: 0,
+  overflow: "hidden",
+  display: "grid",
+  gridTemplateRows: "auto auto minmax(0, 1fr)",
+  gap: 16,
+  padding: 16,
+  background: "#020617",
+};
+
+const topBlocks: React.CSSProperties = {
+  display: "grid",
+  gap: 16,
+  alignContent: "start",
+};
+
+const workRow: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "320px minmax(0, 1fr) 320px",
+  gap: 16,
+  alignItems: "stretch",
+  minHeight: 420,
+  maxHeight: 520,
+};
+
+const panelShell: React.CSSProperties = {
+  minWidth: 0,
+  minHeight: 0,
+  height: "100%",
+  overflow: "hidden",
+  display: "flex",
+};
+
+const pipelineArea: React.CSSProperties = {
+  minHeight: 0,
+  overflow: "hidden",
+  display: "flex",
+};
