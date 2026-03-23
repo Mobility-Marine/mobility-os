@@ -1,11 +1,31 @@
 "use client";
 
+// ============================================================
+// 👤 PROSPECT WORKSPACE — Enterprise Final
+// Panel central del módulo Prospectos
+// Compatible con Customer 360 + Auditoría
+// ============================================================
+
+import type { Prospect } from "../types/prospects.types";
+
 type Props = {
-  selected: any;
+  prospect: Prospect | null;
+
+  createProspect: (payload: any) => Promise<any>;
+  updateProspect: (id: string, payload: any) => Promise<any>;
+  archiveProspect: (id: string) => Promise<any>;
 };
 
-export default function ProspectWorkspace({ selected }: Props) {
-  if (!selected) {
+export default function ProspectWorkspace({
+  prospect,
+  updateProspect,
+  archiveProspect,
+}: Props) {
+  // ==========================================================
+  // SIN SELECCIÓN
+  // ==========================================================
+
+  if (!prospect) {
     return (
       <div
         style={{
@@ -21,6 +41,10 @@ export default function ProspectWorkspace({ selected }: Props) {
     );
   }
 
+  // ==========================================================
+  // WORKSPACE
+  // ==========================================================
+
   return (
     <div
       style={{
@@ -32,15 +56,19 @@ export default function ProspectWorkspace({ selected }: Props) {
         gap: 16,
       }}
     >
+      {/* HEADER */}
       <div>
         <div style={{ fontSize: 24, fontWeight: 800 }}>
-          {selected.company_name || selected.name || "Sin nombre"}
+          {prospect.company_name || prospect.name || "Sin nombre"}
         </div>
+
         <div style={{ color: "#94a3b8", marginTop: 6 }}>
-          {selected.email || "Sin email"} · {selected.phone || "Sin teléfono"}
+          {prospect.email || "Sin email"} ·{" "}
+          {prospect.phone || "Sin teléfono"}
         </div>
       </div>
 
+      {/* KPIs */}
       <div
         style={{
           display: "grid",
@@ -48,49 +76,33 @@ export default function ProspectWorkspace({ selected }: Props) {
           gap: 12,
         }}
       >
-        <div
-          style={{
-            background: "#0b1220",
-            border: "1px solid #1f2937",
-            borderRadius: 10,
-            padding: 12,
-          }}
-        >
-          <div style={{ fontSize: 12, color: "#94a3b8" }}>Etapa</div>
-          <div style={{ fontWeight: 700 }}>{selected.stage || selected.status || "new"}</div>
-        </div>
+        <InfoCard
+          label="Etapa"
+          value={prospect.stage || prospect.status || "new"}
+        />
 
-        <div
-          style={{
-            background: "#0b1220",
-            border: "1px solid #1f2937",
-            borderRadius: 10,
-            padding: 12,
-          }}
-        >
-          <div style={{ fontSize: 12, color: "#94a3b8" }}>Origen</div>
-          <div style={{ fontWeight: 700 }}>
-            {selected.lead_source || selected.sourceNormalized || "manual"}
-          </div>
-        </div>
+        <InfoCard
+          label="Origen"
+          value={
+            prospect.lead_source ||
+            prospect.sourceNormalized ||
+            "manual"
+          }
+        />
 
-        <div
-          style={{
-            background: "#0b1220",
-            border: "1px solid #1f2937",
-            borderRadius: 10,
-            padding: 12,
-          }}
-        >
-          <div style={{ fontSize: 12, color: "#94a3b8" }}>Valor estimado</div>
-          <div style={{ fontWeight: 700 }}>
-            {selected.estimated_value
-              ? `$${Number(selected.estimated_value).toLocaleString()}`
-              : "Sin estimación"}
-          </div>
-        </div>
+        <InfoCard
+          label="Valor estimado"
+          value={
+            prospect.estimated_value
+              ? `$${Number(
+                  prospect.estimated_value
+                ).toLocaleString("es-MX")}`
+              : "Sin estimación"
+          }
+        />
       </div>
 
+      {/* NOTAS */}
       <div
         style={{
           background: "#0b1220",
@@ -99,11 +111,91 @@ export default function ProspectWorkspace({ selected }: Props) {
           padding: 14,
         }}
       >
-        <div style={{ fontWeight: 700, marginBottom: 8 }}>Notas</div>
-        <div style={{ color: "#cbd5e1" }}>
-          {selected.notes || "Sin notas registradas."}
+        <div style={{ fontWeight: 700, marginBottom: 8 }}>
+          Notas
         </div>
+
+        <div style={{ color: "#cbd5e1" }}>
+          {prospect.notes || "Sin notas registradas."}
+        </div>
+      </div>
+
+      {/* ACCIONES ENTERPRISE */}
+      <div
+        style={{
+          display: "flex",
+          gap: 10,
+          flexWrap: "wrap",
+          marginTop: 6,
+        }}
+      >
+        <button
+          style={primaryButton}
+          onClick={() =>
+            updateProspect(prospect.id, {
+              status: "qualified",
+            })
+          }
+        >
+          Marcar como calificado
+        </button>
+
+        <button
+          style={dangerButton}
+          onClick={() => archiveProspect(prospect.id)}
+        >
+          Marcar como perdido
+        </button>
       </div>
     </div>
   );
 }
+
+// ============================================================
+// UI HELPERS
+// ============================================================
+
+function InfoCard({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div
+      style={{
+        background: "#0b1220",
+        border: "1px solid #1f2937",
+        borderRadius: 10,
+        padding: 12,
+      }}
+    >
+      <div style={{ fontSize: 12, color: "#94a3b8" }}>
+        {label}
+      </div>
+
+      <div style={{ fontWeight: 700 }}>{value}</div>
+    </div>
+  );
+}
+
+const primaryButton: React.CSSProperties = {
+  background: "#3b82f6",
+  border: "none",
+  color: "#fff",
+  padding: "10px 14px",
+  borderRadius: 8,
+  cursor: "pointer",
+  fontWeight: 700,
+};
+
+const dangerButton: React.CSSProperties = {
+  background: "#ef4444",
+  border: "none",
+  color: "#fff",
+  padding: "10px 14px",
+  borderRadius: 8,
+  cursor: "pointer",
+  fontWeight: 700,
+};
