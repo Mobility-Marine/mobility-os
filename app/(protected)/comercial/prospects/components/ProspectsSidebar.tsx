@@ -1,9 +1,9 @@
 "use client";
 
 // ============================================================
-// 📂 PROSPECTS SIDEBAR — Enterprise Radar Panel (FINAL)
-// Vista estratégica + creación + control de selección
-// Revenue OS Ready
+// 📡 PROSPECTS SIDEBAR — ELITE RADAR PANEL
+// Unicorn Revenue OS Grade
+// Inteligencia + navegación + creación rápida
 // ============================================================
 
 import type { Prospect } from "../types/prospects.types";
@@ -17,14 +17,7 @@ type Props = {
   selected: Prospect | null;
   setSelected: (prospect: Prospect) => void;
 
-  // ⭐ NUEVO — CREACIÓN
-  createProspect: (payload: {
-    name?: string;
-    company_name?: string;
-    email?: string;
-    phone?: string;
-    notes?: string;
-  }) => Promise<Prospect>;
+ onOpenCreate: () => void;
 };
 
 export default function ProspectsSidebar({
@@ -33,29 +26,15 @@ export default function ProspectsSidebar({
   prospects,
   selected,
   setSelected,
-  createProspect,
+  onOpenCreate,
 }: Props) {
 
   // ==========================================================
-  // CREACIÓN RÁPIDA
+  // CREACIÓN RÁPIDA — ELITE
   // ==========================================================
 
-  async function handleCreate() {
-    const name = prompt("Nombre o empresa del prospecto");
-
-    if (!name) return;
-
-    try {
-      const newProspect = await createProspect({
-        company_name: name,
-      });
-
-      if (newProspect) {
-        setSelected(newProspect);
-      }
-    } catch (err) {
-      alert("No se pudo crear el prospecto");
-    }
+   function handleCreate() {
+    onOpenCreate();
   }
 
   // ==========================================================
@@ -74,7 +53,7 @@ export default function ProspectsSidebar({
   });
 
   // ==========================================================
-  // MÉTRICAS RÁPIDAS
+  // MÉTRICAS — RADAR COMERCIAL
   // ==========================================================
 
   const active = filtered.filter(
@@ -89,15 +68,15 @@ export default function ProspectsSidebar({
     (p) => !p.email && !p.phone
   );
 
-  // ==========================================================
-  // UI
-  // ==========================================================
+  const qualified = filtered.filter(
+    (p) => p.stage === "qualified" || p.status === "qualified"
+  );
 
   return (
     <div style={container}>
       {/* HEADER */}
       <div style={headerRow}>
-        <div style={title}>PROSPECTS</div>
+        <div style={title}>PROSPECT RADAR</div>
 
         <button style={addButton} onClick={handleCreate}>
           + Nuevo
@@ -112,14 +91,15 @@ export default function ProspectsSidebar({
         style={searchInput}
       />
 
-      {/* KPIs RÁPIDOS */}
+            {/* RADAR KPIs */}
       <div style={kpiBox}>
         <MiniKpi label="Activos" value={active.length} />
         <MiniKpi label="Alto valor" value={hot.length} />
         <MiniKpi label="Sin contacto" value={noContact.length} />
+        <MiniKpi label="Calificados" value={qualified.length} />
       </div>
 
-      {/* LISTA */}
+            {/* LISTA */}
       <div style={listWrap}>
         {filtered.length === 0 ? (
           <div style={emptyState}>
@@ -131,6 +111,7 @@ export default function ProspectsSidebar({
               const isSelected = selected?.id === p.id;
               const hasValue = (p.estimated_value || 0) > 0;
               const hasContact = !!(p.email || p.phone);
+              const stage = (p.stage || p.status || "new").toLowerCase();
 
               return (
                 <div
@@ -141,32 +122,41 @@ export default function ProspectsSidebar({
                     ...(isSelected ? selectedCard : {}),
                   }}
                 >
-                  {/* NOMBRE */}
-                  <div style={name}>
-                    {p.company_name || p.name || "Sin nombre"}
+                  <div style={cardTopRow}>
+                    <div style={name}>
+                      {p.company_name || p.name || "Sin nombre"}
+                    </div>
+
+                    <span
+                      style={{
+                        ...stageBadge,
+                        ...getStageBadgeStyle(stage),
+                      }}
+                    >
+                      {stage.toUpperCase()}
+                    </span>
                   </div>
 
-                  {/* EMAIL */}
-                  {p.email && (
-                    <div style={email}>{p.email}</div>
-                  )}
+                  <div style={metaRow}>
+                    {p.email || "Sin email"} · {p.phone || "Sin teléfono"}
+                  </div>
 
-                  {/* BADGES */}
                   <div style={badges}>
-                    <span style={badgeStage}>
-                      {p.stage || p.status || "new"}
-                    </span>
-
                     {hasValue && (
-                      <span style={badgeValue}>
-                        $
-                        {Number(p.estimated_value).toLocaleString()}
+                      <span style={valueBadge}>
+                        ${Number(p.estimated_value).toLocaleString("es-MX")}
                       </span>
                     )}
 
                     {!hasContact && (
-                      <span style={badgeRisk}>
-                        ⚠ sin contacto
+                      <span style={riskBadge}>
+                        ⚠ Sin contacto
+                      </span>
+                    )}
+
+                    {(stage === "proposal" || stage === "negotiation") && (
+                      <span style={readyBadge}>
+                        🚀 Revenue ready
                       </span>
                     )}
                   </div>
@@ -184,13 +174,72 @@ export default function ProspectsSidebar({
 // SUBCOMPONENTES
 // ============================================================
 
-function MiniKpi({ label, value }: { label: string; value: number }) {
+function MiniKpi({
+  label,
+  value,
+}: {
+  label: string;
+  value: number;
+}) {
   return (
     <div style={kpiCard}>
       <div style={kpiLabel}>{label}</div>
       <div style={kpiValue}>{value}</div>
     </div>
   );
+}
+
+function getStageBadgeStyle(stage: string): React.CSSProperties {
+  switch (stage) {
+    case "new":
+      return {
+        background: "#172554",
+        color: "#bfdbfe",
+        border: "1px solid #1d4ed8",
+      };
+    case "contacted":
+      return {
+        background: "#1e293b",
+        color: "#cbd5e1",
+        border: "1px solid #475569",
+      };
+    case "qualified":
+      return {
+        background: "#052e16",
+        color: "#86efac",
+        border: "1px solid #166534",
+      };
+    case "proposal":
+      return {
+        background: "#3b0764",
+        color: "#e9d5ff",
+        border: "1px solid #9333ea",
+      };
+    case "negotiation":
+      return {
+        background: "#422006",
+        color: "#fdba74",
+        border: "1px solid #ea580c",
+      };
+    case "converted":
+      return {
+        background: "#064e3b",
+        color: "#a7f3d0",
+        border: "1px solid #10b981",
+      };
+    case "lost":
+      return {
+        background: "#3f1d1d",
+        color: "#fca5a5",
+        border: "1px solid #7f1d1d",
+      };
+    default:
+      return {
+        background: "#1e293b",
+        color: "#cbd5e1",
+        border: "1px solid #334155",
+      };
+  }
 }
 
 // ============================================================
@@ -200,76 +249,82 @@ function MiniKpi({ label, value }: { label: string; value: number }) {
 const container: React.CSSProperties = {
   background: "#020617",
   border: "1px solid #1f2937",
-  borderRadius: 12,
-  padding: 12,
+  borderRadius: 16,
+  padding: 14,
   display: "flex",
   flexDirection: "column",
   overflow: "hidden",
+  minHeight: 560,
 };
 
 const headerRow: React.CSSProperties = {
   display: "flex",
   justifyContent: "space-between",
   alignItems: "center",
-  marginBottom: 8,
+  marginBottom: 10,
 };
 
 const title: React.CSSProperties = {
-  fontWeight: 800,
+  fontWeight: 900,
+  letterSpacing: 0.3,
 };
 
 const addButton: React.CSSProperties = {
   background: "#3b82f6",
   border: "none",
   color: "#fff",
-  padding: "6px 10px",
-  borderRadius: 8,
+  padding: "8px 12px",
+  borderRadius: 10,
   cursor: "pointer",
-  fontWeight: 700,
+  fontWeight: 800,
+  boxShadow: "0 8px 20px rgba(59,130,246,0.28)",
 };
 
 const searchInput: React.CSSProperties = {
-  padding: 8,
-  borderRadius: 8,
+  padding: 10,
+  borderRadius: 10,
   border: "1px solid #1f2937",
   background: "#0b1220",
   color: "#fff",
-  marginBottom: 10,
+  marginBottom: 12,
+  outline: "none",
 };
 
 const kpiBox: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "repeat(3,1fr)",
-  gap: 6,
-  marginBottom: 10,
+  gridTemplateColumns: "repeat(2, 1fr)",
+  gap: 8,
+  marginBottom: 12,
 };
 
 const kpiCard: React.CSSProperties = {
   background: "#0b1220",
   border: "1px solid #1f2937",
-  borderRadius: 8,
-  padding: 6,
+  borderRadius: 10,
+  padding: 8,
   textAlign: "center",
 };
 
 const kpiLabel: React.CSSProperties = {
-  fontSize: 10,
+  fontSize: 11,
   color: "#94a3b8",
 };
 
 const kpiValue: React.CSSProperties = {
-  fontWeight: 800,
+  fontWeight: 900,
+  marginTop: 2,
 };
 
 const listWrap: React.CSSProperties = {
   overflowY: "auto",
   flex: 1,
+  paddingRight: 2,
 };
 
 const emptyState: React.CSSProperties = {
   color: "#94a3b8",
   textAlign: "center",
-  marginTop: 40,
+  marginTop: 56,
 };
 
 const listGrid: React.CSSProperties = {
@@ -279,24 +334,34 @@ const listGrid: React.CSSProperties = {
 
 const card: React.CSSProperties = {
   padding: 14,
-  borderRadius: 12,
+  borderRadius: 14,
   background: "#0b1220",
   border: "1px solid #1f2937",
   cursor: "pointer",
   display: "grid",
-  gap: 8,
+  gap: 10,
+  transition: "all .15s ease",
 };
 
 const selectedCard: React.CSSProperties = {
   background: "#111827",
   border: "1px solid #3b82f6",
+  boxShadow: "0 0 0 1px rgba(59,130,246,0.20) inset",
+};
+
+const cardTopRow: React.CSSProperties = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "flex-start",
+  gap: 8,
 };
 
 const name: React.CSSProperties = {
   fontWeight: 800,
+  lineHeight: 1.25,
 };
 
-const email: React.CSSProperties = {
+const metaRow: React.CSSProperties = {
   fontSize: 12,
   color: "#94a3b8",
 };
@@ -307,29 +372,40 @@ const badges: React.CSSProperties = {
   flexWrap: "wrap",
 };
 
-const badgeStage: React.CSSProperties = {
-  fontSize: 11,
+const stageBadge: React.CSSProperties = {
+  fontSize: 10,
   padding: "4px 8px",
   borderRadius: 999,
-  background: "#1e293b",
-  color: "#cbd5e1",
-  border: "1px solid #334155",
+  fontWeight: 800,
+  whiteSpace: "nowrap",
 };
 
-const badgeValue: React.CSSProperties = {
+const valueBadge: React.CSSProperties = {
   fontSize: 11,
   padding: "4px 8px",
   borderRadius: 999,
   background: "#052e16",
   color: "#86efac",
   border: "1px solid #166534",
+  fontWeight: 700,
 };
 
-const badgeRisk: React.CSSProperties = {
+const riskBadge: React.CSSProperties = {
   fontSize: 11,
   padding: "4px 8px",
   borderRadius: 999,
   background: "#3f1d1d",
   color: "#fca5a5",
   border: "1px solid #7f1d1d",
+  fontWeight: 700,
+};
+
+const readyBadge: React.CSSProperties = {
+  fontSize: 11,
+  padding: "4px 8px",
+  borderRadius: 999,
+  background: "#1d4ed8",
+  color: "#dbeafe",
+  border: "1px solid #2563eb",
+  fontWeight: 700,
 };
