@@ -164,10 +164,12 @@ const loadingCard: React.CSSProperties = {
 const pageWrap: React.CSSProperties = {
   height: "100%",
   minHeight: 0,
+  width: "100%",
   overflow: "hidden",
   display: "grid",
   gridTemplateRows: "auto auto minmax(0, 1fr)",
   gap: 16,
+  margin: "0 auto",      // centra si el layout lo limita
 };
 
 const topBlocks: React.CSSProperties = {
