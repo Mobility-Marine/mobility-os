@@ -182,21 +182,25 @@ const workRow: React.CSSProperties = {
   display: "grid",
   gridTemplateColumns: "320px minmax(0, 1fr) 320px",
   gap: 16,
+
   alignItems: "stretch",
-  minHeight: 420,
-  maxHeight: 520,
+
+  minHeight: 0,
+  height: "clamp(420px, 46vh, 560px)", // 🔥 altura fluida SaaS
 };
 
 const panelShell: React.CSSProperties = {
   minWidth: 0,
   minHeight: 0,
   height: "100%",
-  overflow: "hidden",
+
   display: "flex",
+  overflow: "hidden", // contenedor limpio
 };
 
 const pipelineArea: React.CSSProperties = {
   minHeight: 0,
-  overflow: "hidden",
+  overflow: "auto", // 🔥 scroll real
   display: "flex",
+  borderRadius: 16,
 };
