@@ -6,7 +6,7 @@ import type {
   ProspectTask,
   ProspectFollowup,
 } from "../types/prospects.types";
-import { buildProspectHealth } from "../services/prospects.intelligence";
+import { buildProspectHealth } from "./prospects.intelligence";
 
 type Props = {
   prospect: Prospect | null;
