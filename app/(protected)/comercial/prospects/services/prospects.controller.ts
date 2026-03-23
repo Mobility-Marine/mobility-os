@@ -13,9 +13,9 @@ import type { Prospect } from "../types/prospects.types";
 
 import {
   fetchProspects,
-  createProspectService,
-  updateProspectService,
-  archiveProspectService,
+  createProspect as createProspectService,
+  updateProspect as updateProspectService,
+  archiveProspect as archiveProspectService,
 } from "./prospects.service";
 
 export function useProspectsController() {
@@ -63,7 +63,7 @@ export function useProspectsController() {
   // ==========================================================
 
   async function createProspect(payload: {
-    name: string;
+    name?: string;
     company_name?: string;
     email?: string;
     phone?: string;
@@ -79,10 +79,10 @@ export function useProspectsController() {
     return prospect;
   }
 
-  async function updateProspect(id: string, payload: any) {
+  async function updateProspect(id: string, payload: Partial<Prospect>) {
     if (!companyId) return;
 
-    await updateProspectService(companyId, id, payload);
+    await updateProspectService(id, payload);
 
     const data = await fetchProspects(companyId);
     setProspects(data);
@@ -91,7 +91,7 @@ export function useProspectsController() {
   async function archiveProspect(id: string) {
     if (!companyId) return;
 
-    await archiveProspectService(companyId, id);
+    await archiveProspectService(id);
 
     const data = await fetchProspects(companyId);
     setProspects(data);
