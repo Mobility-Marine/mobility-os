@@ -14,6 +14,7 @@ export default function AccountsSidebar(props: Props) {
     actionMap,
     executiveTopAccounts,
     commandCenter,
+    globalCommandCenter,
     handleImportFile,
     exportAccountsToCsv,
     miniButton,
@@ -131,6 +132,52 @@ export default function AccountsSidebar(props: Props) {
         </div>
       )}
 
+{/* ========================================================= */}
+{/* ===== GLOBAL COMMAND CENTER — CLIENTE REAL ===== */}
+{/* ========================================================= */}
+
+{globalCommandCenter && (
+  <div
+    style={{
+      marginBottom: 12,
+      padding: 12,
+      borderRadius: 12,
+      background: "#0b1220",
+      border: "1px solid #1f2937",
+      display: "grid",
+      gap: 8,
+    }}
+  >
+    <div style={{ fontWeight: 800, color: "#60a5fa", fontSize: 13 }}>
+      🌐 PANEL GLOBAL DE CLIENTES
+    </div>
+
+    {globalCommandCenter.criticalRiskClients?.length > 0 && (
+      <div style={{ fontSize: 12, color: "#ef4444" }}>
+        ⚠ {globalCommandCenter.criticalRiskClients.length} en riesgo
+      </div>
+    )}
+
+    {globalCommandCenter.quotePendingClients?.length > 0 && (
+      <div style={{ fontSize: 12, color: "#f59e0b" }}>
+        📄 {globalCommandCenter.quotePendingClients.length} cotizaciones sin cierre
+      </div>
+    )}
+
+    {globalCommandCenter.noPipelineClients?.length > 0 && (
+      <div style={{ fontSize: 12, color: "#94a3b8" }}>
+        💤 {globalCommandCenter.noPipelineClients.length} sin pipeline
+      </div>
+    )}
+
+    {globalCommandCenter.strategicClients?.length > 0 && (
+      <div style={{ fontSize: 12, color: "#10b981" }}>
+        💎 {globalCommandCenter.strategicClients.length} estratégicos
+      </div>
+    )}
+  </div>
+)}
+      
       {/* LISTADO */}
       <div style={{ overflowY: "auto", flex: 1 }}>
         <div style={{ display: "grid", gap: 10 }}>
