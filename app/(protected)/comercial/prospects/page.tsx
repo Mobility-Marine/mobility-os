@@ -15,6 +15,8 @@ import { useProspectsController } from "./services/prospects.controller";
 
 import type { Prospect } from "./types/prospects.types";
 
+import ProspectPipelineBoard from "./components/ProspectPipelineBoard";
+
 // ============================================================
 // PAGE
 // ============================================================
@@ -107,5 +109,13 @@ export default function ProspectsPage() {
 
       <ProspectCopilot prospect={selected} />
     </div>
+    {/* ================= PIPELINE BOARD ================= */}
+
+<div style={{ marginTop: 16 }}>
+  <ProspectPipelineBoard
+    prospects={prospects}
+    onSelect={setSelected}
+  />
+</div>
   );
 }
