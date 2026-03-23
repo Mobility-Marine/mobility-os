@@ -7,7 +7,7 @@
 // ============================================================
 
 import type { Prospect } from "../types/prospects.types";
-import ProspectHealthPanel from "./ProspectHealthPanel";
+import ProspectHealthPanel from "../services/ProspectHealthPanel";
 
 type Props = {
   prospect: Prospect | null;
