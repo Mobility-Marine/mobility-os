@@ -23,6 +23,8 @@ import ProspectRevenueInsights from "./components/ProspectRevenueInsights";
 
 import ProspectDailyActionPanel from "./components/ProspectDailyActionPanel";
 
+import ProspectAutomationPanel from "./components/ProspectAutomationPanel";
+
 // ============================================================
 // PAGE
 // ============================================================
@@ -88,7 +90,7 @@ export default function ProspectsPage() {
 
 {/* ================= COMMAND CENTER ================= */}
 
-   <ProspectCommandCenter
+<ProspectCommandCenter
   prospects={prospects}
   onSelect={setSelected}
 />
@@ -96,6 +98,11 @@ export default function ProspectsPage() {
 <ProspectRevenueInsights prospects={prospects} />
 
 <ProspectDailyActionPanel
+  prospects={prospects}
+  onSelect={setSelected}
+/>
+
+<ProspectAutomationPanel
   prospects={prospects}
   onSelect={setSelected}
 />
