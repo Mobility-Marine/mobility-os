@@ -47,10 +47,13 @@ export default function WidgetShell({
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => { e.preventDefault(); dragCounter.current = 0; onDrop(id); }}
       style={{
-        gridColumn: colSpan[size],
-        position: "relative",
-        borderRadius: "var(--radius-lg)",
-        transition: "var(--transition-normal)",
+  gridColumn: colSpan[size],
+  position: "relative",
+  borderRadius: "var(--radius-lg)",
+  transition: "var(--transition-normal)",
+  display: "flex",
+  flexDirection: "column",
+  height: "100%",
         outline: isDraggingOver
           ? "2px dashed var(--color-brand-blue)"
           : editMode
