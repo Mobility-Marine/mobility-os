@@ -2,6 +2,8 @@
 
 import React, { useRef } from "react";
 import { CalendarEvent, HOURS_START, HOURS_END, HOUR_HEIGHT } from "../types/agenda.types";
+import { isModuleEvent } from "@/services/agenda/module-events.service";
+import ModuleEventBadge from "./ModuleEventBadge";
 
 interface WeekViewProps {
   weekDays: Date[];
@@ -185,16 +187,25 @@ export default function WeekView({
                   zIndex: 2,
                 }}
               >
-                <div style={{ fontSize: "11px", fontWeight: 700, color: "#fff", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {ev.title}
-                </div>
-                {height > 40 && (
-                  <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.8)", marginTop: "1px" }}>
-                    {start.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
-                    {" — "}
-                    {end.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
-                  </div>
-                )}
+                <div style={{ display: "flex", alignItems: "center", gap: "4px", overflow: "hidden" }}>
+  <div style={{ fontSize: "11px", fontWeight: 700, color: "#fff", lineHeight: 1.3, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }}>
+    {ev.title}
+  </div>
+  {isModuleEvent(ev.event_type) && (
+    <div style={{
+      width: "6px", height: "6px", borderRadius: "50%",
+      background: "rgba(255,255,255,0.8)", flexShrink: 0,
+    }} />
+  )}
+</div>
+{height > 40 && (
+  <div style={{ fontSize: "10px", color: "rgba(255,255,255,0.8)", marginTop: "1px" }}>
+    {isModuleEvent(ev.event_type)
+      ? "Evento automático"
+      : `${start.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })} — ${end.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`
+    }
+  </div>
+)}
               </div>
             );
           });
