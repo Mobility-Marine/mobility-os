@@ -11,7 +11,10 @@ import ReminderPicker from "./ReminderPicker";
 import RecurrencePicker from "./RecurrencePicker";
 import type { ReminderConfig, RecurrenceConfig } from "../types/recurrence.types";
 import { DEFAULT_RECURRENCE } from "../types/recurrence.types";
-import { saveReminders, saveRecurrence, getReminders, getRecurrence } from "../services/reminders.service";
+import {
+  saveReminders, saveRecurrence,
+  getReminders, getRecurrence,
+} from "../services/reminders.service";
 
 interface EventModalProps {
   event?: CalendarEvent | null;
@@ -70,11 +73,11 @@ export default function EventModal({
   members, companyId, userId,
   onSave, onDelete, onClose,
 }: EventModalProps) {
-  const [form, setForm] = useState<EventFormData>(DEFAULT_FORM);
-  const [saving, setSaving] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [reminders,   setReminders]   = useState<ReminderConfig[]>([]);
-  const [recurrence,  setRecurrence]   = useState<RecurrenceConfig>(DEFAULT_RECURRENCE);
+  const [form, setForm]           = useState<EventFormData>(DEFAULT_FORM);
+  const [saving, setSaving]       = useState(false);
+  const [deleting, setDeleting]   = useState(false);
+  const [reminders, setReminders] = useState<ReminderConfig[]>([]);
+  const [recurrence, setRecurrence] = useState<RecurrenceConfig>(DEFAULT_RECURRENCE);
 
   useEffect(() => {
     if (event) {
@@ -117,6 +120,8 @@ export default function EventModal({
         end:   formatDTLocal(end),
         internal_attendees: prefilledAttendee ? [prefilledAttendee] : [],
       });
+      setReminders([]);
+      setRecurrence(DEFAULT_RECURRENCE);
     }
   }, [event, initialDateTime, prefilledAttendee]);
 
@@ -129,27 +134,27 @@ export default function EventModal({
     setSaving(true);
     try {
       await onSave({
-  title:          form.title,
-  description:    form.description || null,
-  event_type:     form.event_type,
-  priority:       form.priority,
-  status:         form.status,
-  color:          form.color,
-  location:       form.location || null,
-  meeting_link:   form.meeting_link || null,
-  start_datetime: new Date(form.start).toISOString(),
-  end_datetime:   new Date(form.end || form.start).toISOString(),
-  all_day:        form.all_day,
-  visibility:     form.visibility,
-  company_id:     companyId,
-  created_by:     userId,
-}, form);
-    if (event?.id) {
-      await saveReminders(event.id, reminders);
-      await saveRecurrence(event.id, recurrence);
-    }
-  } finally {
-    setSaving(false);
+        title:          form.title,
+        description:    form.description || null,
+        event_type:     form.event_type,
+        priority:       form.priority,
+        status:         form.status,
+        color:          form.color,
+        location:       form.location || null,
+        meeting_link:   form.meeting_link || null,
+        start_datetime: new Date(form.start).toISOString(),
+        end_datetime:   new Date(form.end || form.start).toISOString(),
+        all_day:        form.all_day,
+        visibility:     form.visibility,
+        company_id:     companyId,
+        created_by:     userId,
+      }, form);
+      if (event?.id) {
+        await saveReminders(event.id, reminders);
+        await saveRecurrence(event.id, recurrence);
+      }
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -200,10 +205,7 @@ export default function EventModal({
           </div>
           <button
             onClick={onClose}
-            style={{
-              background: "none", border: "none",
-              cursor: "pointer", color: "var(--color-text-muted)", padding: "4px",
-            }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "var(--color-text-muted)", padding: "4px" }}
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <line x1="18" y1="6" x2="6" y2="18"/>
@@ -214,12 +216,9 @@ export default function EventModal({
 
         {/* COLOR STRIP */}
         <div style={{
-          height: "4px",
-          borderRadius: "var(--radius-full)",
-          background: form.color,
-          marginBottom: "20px",
-          opacity: 0.8,
-          transition: "background var(--transition-normal)",
+          height: "4px", borderRadius: "var(--radius-full)",
+          background: form.color, marginBottom: "20px",
+          opacity: 0.8, transition: "background var(--transition-normal)",
         }} />
 
         <div style={{ display: "grid", gap: "14px" }}>
@@ -252,28 +251,17 @@ export default function EventModal({
           {/* FECHAS */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <Field label="Inicio">
-              <input
-                type="datetime-local"
-                value={form.start}
-                onChange={(e) => set("start", e.target.value)}
-                style={INPUT_STYLE}
-              />
+              <input type="datetime-local" value={form.start} onChange={(e) => set("start", e.target.value)} style={INPUT_STYLE} />
             </Field>
             <Field label="Fin">
-              <input
-                type="datetime-local"
-                value={form.end}
-                onChange={(e) => set("end", e.target.value)}
-                style={INPUT_STYLE}
-              />
+              <input type="datetime-local" value={form.end} onChange={(e) => set("end", e.target.value)} style={INPUT_STYLE} />
             </Field>
           </div>
 
           {/* TODO EL DÍA */}
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
             <input
-              type="checkbox"
-              id="all-day"
+              type="checkbox" id="all-day"
               checked={form.all_day}
               onChange={(e) => set("all_day", e.target.checked)}
               style={{ width: "16px", height: "16px", cursor: "pointer" }}
@@ -297,20 +285,10 @@ export default function EventModal({
           {/* UBICACIÓN + LINK */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
             <Field label="Ubicación">
-              <input
-                value={form.location}
-                onChange={(e) => set("location", e.target.value)}
-                placeholder="Sala, dirección..."
-                style={INPUT_STYLE}
-              />
+              <input value={form.location} onChange={(e) => set("location", e.target.value)} placeholder="Sala, dirección..." style={INPUT_STYLE} />
             </Field>
             <Field label="Link de reunión">
-              <input
-                value={form.meeting_link}
-                onChange={(e) => set("meeting_link", e.target.value)}
-                placeholder="https://meet.google.com/..."
-                style={INPUT_STYLE}
-              />
+              <input value={form.meeting_link} onChange={(e) => set("meeting_link", e.target.value)} placeholder="https://meet.google.com/..." style={INPUT_STYLE} />
             </Field>
           </div>
 
@@ -328,7 +306,7 @@ export default function EventModal({
             </Field>
           </div>
 
-          {/* COLOR PICKER */}
+          {/* COLOR */}
           <Field label="Color del evento">
             <ColorPicker value={form.color} onChange={(c) => set("color", c)} />
           </Field>
@@ -342,20 +320,17 @@ export default function EventModal({
                   return (
                     <div
                       key={m.id}
-                      onClick={() => {
-                        set("internal_attendees", selected
+                      onClick={() => set("internal_attendees",
+                        selected
                           ? form.internal_attendees.filter((id) => id !== m.user_id)
                           : [...form.internal_attendees, m.user_id]
-                        );
-                      }}
+                      )}
                       style={{
                         display: "flex", alignItems: "center", gap: "8px",
-                        padding: "7px 10px",
-                        borderRadius: "var(--radius-md)",
+                        padding: "7px 10px", borderRadius: "var(--radius-md)",
                         border: `1px solid ${selected ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
                         background: selected ? "var(--color-brand-blue-light)" : "var(--color-bg-subtle)",
-                        cursor: "pointer",
-                        transition: "var(--transition-fast)",
+                        cursor: "pointer", transition: "var(--transition-fast)",
                       }}
                     >
                       <div style={{
@@ -394,38 +369,27 @@ export default function EventModal({
               Separa múltiples correos con comas
             </div>
           </Field>
-<div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "4px" }}>
-          Separa múltiples correos con comas
-        </div>
-      </Field>
 
-      {/* RECORDATORIOS */}
-      <Field label="Recordatorios">
-        <ReminderPicker
-          reminders={reminders}
-          onChange={setReminders}
-        />
-      </Field>
+          {/* RECORDATORIOS */}
+          <Field label="Recordatorios">
+            <ReminderPicker reminders={reminders} onChange={setReminders} />
+          </Field>
 
-      {/* RECURRENCIA */}
-      <Field label="Repetición">
-        <RecurrencePicker
-          value={recurrence}
-          onChange={setRecurrence}
-          eventStart={form.start}
-        />
-      </Field>
+          {/* RECURRENCIA */}
+          <Field label="Repetición">
+            <RecurrencePicker
+              value={recurrence}
+              onChange={setRecurrence}
+              eventStart={form.start}
+            />
+          </Field>
 
-      </div>
         </div>
 
         {/* FOOTER */}
         <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginTop: "24px",
-          paddingTop: "16px",
+          display: "flex", justifyContent: "space-between", alignItems: "center",
+          marginTop: "24px", paddingTop: "16px",
           borderTop: "1px solid var(--color-border-faint)",
         }}>
           <div>
