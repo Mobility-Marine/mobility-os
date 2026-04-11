@@ -32,7 +32,7 @@ export const navSections: NavSection[] = [
     key: "comercial",
     title: "Comercial",
     subtitle: "Ventas y relación",
-    roles: ["admin", "comercial"],
+    roles: ["admin", "owner", "comercial"],
     items: [
       { name: "Prospectos",    path: "/comercial/prospects" },
       { name: "Oportunidades", path: "/comercial/opportunities" },
@@ -47,7 +47,7 @@ export const navSections: NavSection[] = [
     key: "logistica",
     title: "Logística",
     subtitle: "Operación del servicio",
-    roles: ["admin", "logistica"],
+    roles: ["admin", "owner", "logistica"],
     items: [
       { name: "Embarques",            path: "/logistica/embarques" },
       { name: "Transporte",           path: "/logistica/transporte" },
@@ -62,7 +62,7 @@ export const navSections: NavSection[] = [
     key: "abastecimiento",
     title: "Compras & Abastecimiento",
     subtitle: "Inventario y suministro",
-    roles: ["admin", "compras"],
+    roles: ["admin", "owner", "compras"],
     items: [
       { name: "Proveedores",      path: "/abastecimiento/proveedores" },
       { name: "Compras",          path: "/abastecimiento/compras" },
@@ -76,7 +76,7 @@ export const navSections: NavSection[] = [
     key: "finanzas",
     title: "Finanzas",
     subtitle: "Control económico",
-    roles: ["admin", "finanzas"],
+    roles: ["admin", "owner", "finanzas"],
     items: [
       { name: "Facturación",       path: "/finanzas/facturacion" },
       { name: "Cuentas por cobrar", path: "/finanzas/cxc" },
