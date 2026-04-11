@@ -41,12 +41,6 @@ function timeAgo(iso: string): string {
   return `hace ${Math.floor(diff / 1440)}d`;
 }
 
-const PLACEHOLDER_EVENTS = [
-  { id: "p1", event_type: "prospect", description: "Sin actividad reciente registrada", created_at: new Date().toISOString() },
-  { id: "p2", event_type: "quotation", description: "Los eventos aparecerán aquí en tiempo real", created_at: new Date(Date.now() - 300000).toISOString() },
-  { id: "p3", event_type: "invoice", description: "Conecta módulos para ver actividad", created_at: new Date(Date.now() - 600000).toISOString() },
-];
-
 export default function ActivityFeed() {
   const { companyId } = useTenant();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
@@ -77,8 +71,7 @@ export default function ActivityFeed() {
     setLoading(false);
   }
 
-  const displayEvents = events.length > 0 ? events : PLACEHOLDER_EVENTS;
-  const isEmpty = events.length === 0;
+  const isEmpty = !loading && events.length === 0;
 
   return (
     <div style={{
@@ -87,12 +80,13 @@ export default function ActivityFeed() {
       borderRadius: "var(--radius-lg)",
       padding: "18px",
       boxShadow: "var(--shadow-sm)",
-      display: "grid",
+      display: "flex",
+      flexDirection: "column",
       gap: "14px",
       height: "100%",
-      alignContent: "start",
     }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      {/* HEADER */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
         <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)" }}>
           Actividad reciente
         </div>
@@ -115,77 +109,57 @@ export default function ActivityFeed() {
         </div>
       </div>
 
-      <div style={{ display: "grid", gap: "2px" }}>
-        {displayEvents.map((event, i) => (
-          <div
-            key={event.id}
-            style={{
-              display: "flex",
-              gap: "10px",
-              padding: "8px 0",
-              borderBottom: i < displayEvents.length - 1 ? "1px solid var(--color-border-faint)" : "none",
-              opacity: isEmpty ? 0.5 : 1,
-            }}
-          >
-            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "0", flexShrink: 0 }}>
-              <div style={{
-                width: "28px", height: "28px", borderRadius: "var(--radius-sm)",
-                background: getEventBg(event.event_type),
-                display: "flex", alignItems: "center", justifyContent: "center",
-                flexShrink: 0,
-              }}>
-                <div style={{
-                  width: "8px", height: "8px", borderRadius: "50%",
-                  background: getEventColor(event.event_type),
-                }} />
+      {/* CONTENIDO */}
+      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+        {loading ? (
+          <div style={{ display: "grid", gap: "12px" }}>
+            {[1, 2, 3].map((i) => (
+              <div key={i} style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+                <div style={{ width: 28, height: 28, borderRadius: "var(--radius-sm)", background: "var(--color-bg-subtle)", flexShrink: 0 }} />
+                <div style={{ flex: 1, display: "grid", gap: "4px" }}>
+                  <div style={{ height: 10, background: "var(--color-bg-subtle)", borderRadius: 4, width: "70%" }} />
+                  <div style={{ height: 8, background: "var(--color-bg-subtle)", borderRadius: 4, width: "40%" }} />
+                </div>
               </div>
-              {i < displayEvents.length - 1 && (
-                <div style={{ width: "1px", flex: 1, minHeight: "8px", background: "var(--color-border-faint)", margin: "3px 0" }} />
-              )}
-            </div>
-            <div style={{ flex: 1, minWidth: 0, paddingTop: "4px" }}>
-              <div style={{
-                fontSize: "12px", fontWeight: 500,
-                color: "var(--color-text-primary)",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                lineHeight: 1.4,
-              }}>
-                {event.description || event.event_type}
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
-                <span style={{
-                  fontSize: "10px", fontWeight: 600,
-                  color: getEventColor(event.event_type),
-                  textTransform: "capitalize",
+            ))}
+          </div>
+        ) : isEmpty ? (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            {/* ESTADO VACÍO CON CONTENIDO ÚTIL */}
+            <div style={{ display: "grid", gap: "6px" }}>
+              {[
+                { label: "Prospectos", hint: "Se registrará cuando crees o actualices prospectos", color: "var(--color-brand-blue)", bg: "var(--color-brand-blue-light)" },
+                { label: "Cotizaciones", hint: "Aparecerá cuando generes o modifiques cotizaciones", color: "var(--color-info-text)", bg: "var(--color-info-bg)" },
+                { label: "Embarques", hint: "Se mostrará con movimientos logísticos activos", color: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
+                { label: "Facturas", hint: "Registrará emisiones y pagos de facturas", color: "var(--color-success-text)", bg: "var(--color-success-bg)" },
+              ].map((item) => (
+                <div key={item.label} style={{
+                  display: "flex", alignItems: "center", gap: "10px",
+                  padding: "8px 10px", borderRadius: "var(--radius-md)",
+                  background: item.bg, border: `1px solid ${item.color}20`,
                 }}>
-                  {event.event_type?.replace(/_/g, " ") || "evento"}
-                </span>
-                <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>·</span>
-                <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
-                  {timeAgo(event.created_at)}
-                </span>
-              </div>
+                  <div style={{
+                    width: "24px", height: "24px", borderRadius: "var(--radius-sm)",
+                    background: item.color + "20", display: "flex", alignItems: "center", justifyContent: "center",
+                    flexShrink: 0,
+                  }}>
+                    <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: item.color }} />
+                  </div>
+                  <div>
+                    <div style={{ fontSize: "11px", fontWeight: 600, color: item.color }}>{item.label}</div>
+                    <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "1px", lineHeight: 1.3 }}>{item.hint}</div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", flexShrink: 0, paddingTop: "4px" }}>
-              {formatTime(event.created_at)}
+            <div style={{
+              textAlign: "center", fontSize: "11px",
+              color: "var(--color-text-muted)", paddingTop: "12px",
+              borderTop: "1px solid var(--color-border-faint)", marginTop: "10px",
+            }}>
+              La actividad aparecerá aquí en tiempo real
             </div>
           </div>
-        ))}
-      </div>
-
-      {!isEmpty && (
-        <div style={{
-          textAlign: "center",
-          fontSize: "11px",
-          color: "var(--color-brand-blue)",
-          cursor: "pointer",
-          fontWeight: 500,
-          borderTop: "1px solid var(--color-border-faint)",
-          paddingTop: "10px",
-        }}>
-          Ver historial completo
-        </div>
-      )}
-    </div>
-  );
-}
+        ) : (
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
+            <div style={{ di
