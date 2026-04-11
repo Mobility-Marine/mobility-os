@@ -15,7 +15,7 @@ interface EventModalProps {
   members: CompanyMember[];
   companyId: string;
   userId: string;
-  onSave: (payload: Partial<CalendarEvent>) => Promise<void>;
+  onSave: (payload: Partial<CalendarEvent>, form: EventFormData) => Promise<void>;
   onDelete?: () => Promise<void>;
   onClose: () => void;
 }
@@ -111,21 +111,21 @@ export default function EventModal({
     setSaving(true);
     try {
       await onSave({
-        title:          form.title,
-        description:    form.description || null,
-        event_type:     form.event_type,
-        priority:       form.priority,
-        status:         form.status,
-        color:          form.color,
-        location:       form.location || null,
-        meeting_link:   form.meeting_link || null,
-        start_datetime: new Date(form.start).toISOString(),
-        end_datetime:   new Date(form.end || form.start).toISOString(),
-        all_day:        form.all_day,
-        visibility:     form.visibility,
-        company_id:     companyId,
-        created_by:     userId,
-      });
+  title:          form.title,
+  description:    form.description || null,
+  event_type:     form.event_type,
+  priority:       form.priority,
+  status:         form.status,
+  color:          form.color,
+  location:       form.location || null,
+  meeting_link:   form.meeting_link || null,
+  start_datetime: new Date(form.start).toISOString(),
+  end_datetime:   new Date(form.end || form.start).toISOString(),
+  all_day:        form.all_day,
+  visibility:     form.visibility,
+  company_id:     companyId,
+  created_by:     userId,
+}, form);
     } finally {
       setSaving(false);
     }
