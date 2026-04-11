@@ -1,7 +1,5 @@
 "use client";
-
-import Agenda from "./components/Agenda";
-
+import AgendaShell from "./components/AgendaShell";
 export default function AgendaPage() {
-  return <Agenda />;
+  return <AgendaShell />;
 }
