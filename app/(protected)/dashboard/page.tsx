@@ -1,21 +1,15 @@
 "use client";
 
 import { useDashboard } from "./hooks/useDashboard";
-import CommandStrip from "./components/CommandStrip";
-import HeroPanel from "./components/HeroPanel";
-import AIPanel from "./components/AIPanel";
-import ActivityFeed from "./components/ActivityFeed";
-import AlertsPanel from "./components/AlertsPanel";
-import QuickActions from "./components/QuickActions";
-import DomainCards from "./components/DomainCards";
+import DashboardGrid from "./components/DashboardGrid";
 
 function LoadingState() {
   return (
     <div style={{
       padding: "60px 40px",
       display: "grid",
-      gap: "8px",
       placeItems: "center",
+      gap: "8px",
     }}>
       <div style={{ fontSize: "16px", fontWeight: 600, color: "var(--color-text-primary)" }}>
         Cargando Command Center…
@@ -33,31 +27,9 @@ export default function DashboardPage() {
   if (loading) return <LoadingState />;
 
   return (
-    <div style={{ display: "grid", gap: "20px" }}>
-      <CommandStrip metrics={metrics} />
-
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(0, 1fr) 360px",
-        gap: "20px",
-        alignItems: "start",
-      }}>
-        <HeroPanel metrics={metrics} />
-        <AIPanel companyState={companyState} />
-      </div>
-
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(3, minmax(0, 1fr))",
-        gap: "20px",
-        alignItems: "start",
-      }}>
-        <ActivityFeed />
-        <AlertsPanel metrics={metrics} />
-        <QuickActions />
-      </div>
-
-      <DomainCards metrics={metrics} />
-    </div>
+    <DashboardGrid
+      metrics={metrics}
+      companyState={companyState}
+    />
   );
 }
