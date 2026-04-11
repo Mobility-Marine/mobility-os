@@ -76,14 +76,18 @@ export default function AgendaShell() {
     setModalOpen(true);
   }
 
-  async function handleSave(payload: Partial<CalendarEvent>) {
-    if (editingEvent) {
-      await updateEvent(editingEvent.id, payload);
-    } else {
-      await createEvent(payload);
-    }
-    setModalOpen(false);
+  async function handleSave(payload: Partial<CalendarEvent>, form?: any) {
+  if (editingEvent) {
+    await agenda.updateEvent(editingEvent.id, payload);
+  } else {
+    await agenda.createEvent(
+      payload,
+      form?.internal_attendees ?? [],
+      form?.external_emails ? form.external_emails.split(",").map((e: string) => e.trim()).filter(Boolean) : []
+    );
   }
+  setModalOpen(false);
+}
 
   async function handleDelete() {
     if (!editingEvent) return;
