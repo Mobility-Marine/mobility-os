@@ -11,6 +11,11 @@ import ActivityFeed from "./ActivityFeed";
 import AlertsPanel from "./AlertsPanel";
 import QuickActions from "./QuickActions";
 import DomainCards from "./DomainCards";
+import RevenueGoalBar from "./RevenueGoalBar";
+import HealthScore from "./HealthScore";
+import PipelineFunnel from "./PipelineFunnel";
+import UpcomingEvents from "./UpcomingEvents";
+import TeamActivity from "./TeamActivity";
 
 interface DashboardGridProps {
   metrics: DashboardMetrics;
@@ -19,14 +24,19 @@ interface DashboardGridProps {
 
 function renderWidget(id: string, metrics: DashboardMetrics, companyState: any) {
   switch (id) {
-    case "command_strip":  return <CommandStrip metrics={metrics} />;
-    case "hero_panel":     return <HeroPanel metrics={metrics} />;
-    case "ai_panel":       return <AIPanel companyState={companyState} />;
-    case "activity_feed":  return <ActivityFeed />;
-    case "alerts_panel":   return <AlertsPanel metrics={metrics} />;
-    case "quick_actions":  return <QuickActions />;
-    case "domain_cards":   return <DomainCards metrics={metrics} />;
-    default:               return null;
+    case "command_strip":   return <CommandStrip metrics={metrics} />;
+    case "revenue_goal":    return <RevenueGoalBar />;
+    case "hero_panel":      return <HeroPanel metrics={metrics} />;
+    case "ai_panel":        return <AIPanel companyState={companyState} />;
+    case "health_score":    return <HealthScore metrics={metrics} />;
+    case "pipeline_funnel": return <PipelineFunnel metrics={metrics} />;
+    case "upcoming_events": return <UpcomingEvents />;
+    case "activity_feed":   return <ActivityFeed />;
+    case "alerts_panel":    return <AlertsPanel metrics={metrics} />;
+    case "quick_actions":   return <QuickActions />;
+    case "team_activity":   return <TeamActivity />;
+    case "domain_cards":    return <DomainCards metrics={metrics} />;
+    default:                return null;
   }
 }
 
