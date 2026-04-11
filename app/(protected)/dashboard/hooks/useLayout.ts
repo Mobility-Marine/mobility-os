@@ -14,13 +14,18 @@ export interface WidgetConfig {
 }
 
 export const DEFAULT_LAYOUT: WidgetConfig[] = [
-  { id: "command_strip", size: "full",   visible: true },
-  { id: "hero_panel",    size: "large",  visible: true },
-  { id: "ai_panel",      size: "medium", visible: true },
-  { id: "activity_feed", size: "small",  visible: true },
-  { id: "alerts_panel",  size: "small",  visible: true },
-  { id: "quick_actions", size: "small",  visible: true },
-  { id: "domain_cards",  size: "full",   visible: true },
+  { id: "command_strip",  size: "full",   visible: true },
+  { id: "revenue_goal",   size: "full",   visible: true },
+  { id: "hero_panel",     size: "large",  visible: true },
+  { id: "ai_panel",       size: "small",  visible: true },
+  { id: "health_score",   size: "small",  visible: true },
+  { id: "pipeline_funnel",size: "medium", visible: true },
+  { id: "upcoming_events",size: "small",  visible: true },
+  { id: "activity_feed",  size: "small",  visible: true },
+  { id: "alerts_panel",   size: "small",  visible: true },
+  { id: "quick_actions",  size: "small",  visible: true },
+  { id: "team_activity",  size: "small",  visible: true },
+  { id: "domain_cards",   size: "full",   visible: true },
 ];
 
 const SETTING_KEY = "dashboard_layout";
