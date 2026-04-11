@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 
@@ -11,6 +11,8 @@ export interface DashboardMetrics {
   pendingInvoices: number;
   criticalPending: number;
 }
+
+const REFRESH_INTERVAL_MS = 60_000;
 
 export function useDashboard() {
   const { companyId } = useTenant();
@@ -23,15 +25,60 @@ export function useDashboard() {
   });
   const [loading, setLoading] = useState(true);
   const [companyState, setCompanyState] = useState<any>(null);
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!companyId) return;
     void loadMetrics();
+    setupRealtime();
+    startPolling();
+    return () => {
+      cleanup();
+    };
   }, [companyId]);
+
+  function startPolling() {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    intervalRef.current = setInterval(() => {
+      void loadMetrics();
+    }, REFRESH_INTERVAL_MS);
+  }
+
+  function setupRealtime() {
+    if (!companyId) return;
+    if (channelRef.current) {
+      supabase.removeChannel(channelRef.current);
+    }
+    const channel = supabase
+      .channel(`dashboard-${companyId}`)
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "prospects",
+        filter: `company_id=eq.${companyId}`,
+      }, () => void loadMetrics())
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "quotations",
+        filter: `company_id=eq.${companyId}`,
+      }, () => void loadMetrics())
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "shipments",
+        filter: `company_id=eq.${companyId}`,
+      }, () => void loadMetrics())
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "invoices",
+        filter: `company_id=eq.${companyId}`,
+      }, () => void loadMetrics())
+      .subscribe();
+    channelRef.current = channel;
+  }
+
+  function cleanup() {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (channelRef.current) supabase.removeChannel(channelRef.current);
+  }
 
   async function loadMetrics() {
     if (!companyId) return;
-    setLoading(true);
     try {
       const [prospects, quotations, shipments, invoices] = await Promise.all([
         supabase.from("prospects").select("id", { count: "exact", head: true }).eq("company_id", companyId),
