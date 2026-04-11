@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import { DashboardMetrics } from "../hooks/useDashboard";
 
 interface CommandStripProps {
@@ -20,23 +20,62 @@ function Dot({ color }: { color: string }) {
   );
 }
 
-export default function CommandStrip({ metrics }: CommandStripProps) {
-  const now = useMemo(() =>
-    new Date().toLocaleString("es-MX", {
-      weekday: "long", day: "numeric", month: "long",
-      hour: "2-digit", minute: "2-digit",
-    }), []);
+function LiveClock() {
+  const [now, setNow] = useState(() => formatDate(new Date()));
 
+  useEffect(() => {
+    const tick = () => setNow(formatDate(new Date()));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  return (
+    <div style={{
+      fontSize: "12px",
+      color: "var(--color-text-muted)",
+      marginTop: "3px",
+      textTransform: "capitalize",
+      fontVariantNumeric: "tabular-nums",
+    }}>
+      {now}
+    </div>
+  );
+}
+
+function formatDate(date: Date): string {
+  const day = date.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
+  const time = date.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+  return `${day}, ${time}`;
+}
+
+export default function CommandStrip({ metrics }: CommandStripProps) {
   const items = [
-    { label: "Estado", value: "Operativo", dot: "var(--color-success-text)" },
+    {
+      label: "Estado",
+      value: "Operativo",
+      dot: "var(--color-success-text)",
+    },
     {
       label: "Alertas",
       value: metrics.criticalPending > 0 ? `${metrics.criticalPending} activas` : "Sin alertas",
       dot: metrics.criticalPending > 0 ? "var(--color-warning-text)" : "var(--color-success-text)",
     },
-    { label: "Prospectos", value: String(metrics.activeProspects), dot: "var(--color-info-text)" },
-    { label: "Embarques", value: String(metrics.activeShipments), dot: "var(--color-info-text)" },
-    { label: "IA", value: "Online", dot: "var(--color-brand-blue)" },
+    {
+      label: "Prospectos",
+      value: String(metrics.activeProspects),
+      dot: "var(--color-brand-blue)",
+    },
+    {
+      label: "Embarques",
+      value: String(metrics.activeShipments),
+      dot: "var(--color-brand-blue)",
+    },
+    {
+      label: "IA",
+      value: "Online",
+      dot: "var(--color-brand-blue)",
+    },
   ];
 
   return (
@@ -53,26 +92,50 @@ export default function CommandStrip({ metrics }: CommandStripProps) {
       boxShadow: "var(--shadow-sm)",
     }}>
       <div>
-        <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "1.2px", textTransform: "uppercase", color: "var(--color-text-muted)", marginBottom: "2px" }}>
+        <div style={{
+          fontSize: "10px",
+          fontWeight: 600,
+          letterSpacing: "1.2px",
+          textTransform: "uppercase",
+          color: "var(--color-text-muted)",
+          marginBottom: "2px",
+        }}>
           Command Center
         </div>
-        <div style={{ fontSize: "22px", fontWeight: 700, color: "var(--color-text-primary)", lineHeight: 1 }}>
+        <div style={{
+          fontSize: "22px",
+          fontWeight: 700,
+          color: "var(--color-text-primary)",
+          lineHeight: 1,
+        }}>
           Mobility OS
         </div>
-        <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "3px", textTransform: "capitalize" }}>
-          {now}
-        </div>
+        <LiveClock />
       </div>
 
-      <div style={{ display: "flex", gap: "28px", flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{
+        display: "flex",
+        gap: "28px",
+        flexWrap: "wrap",
+        alignItems: "center",
+      }}>
         {items.map((item) => (
           <div key={item.label}>
-            <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "4px" }}>
+            <div style={{
+              fontSize: "11px",
+              color: "var(--color-text-muted)",
+              marginBottom: "4px",
+            }}>
               {item.label}
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <Dot color={item.dot} />
-              <span style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-text-primary)" }}>
+              <span style={{
+                fontSize: "14px",
+                fontWeight: 600,
+                color: "var(--color-text-primary)",
+                fontVariantNumeric: "tabular-nums",
+              }}>
                 {item.value}
               </span>
             </div>
