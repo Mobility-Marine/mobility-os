@@ -142,11 +142,11 @@ export default function DashboardGrid({ metrics, companyState }: DashboardGridPr
 
       {/* GRID */}
       <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-        gap: "16px",
-        alignItems: "start",
-      }}>
+  display: "grid",
+  gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
+  gap: "16px",
+  alignItems: "stretch",
+}}>
         {visible.map((widget) => (
           <WidgetShell
             key={widget.id}
