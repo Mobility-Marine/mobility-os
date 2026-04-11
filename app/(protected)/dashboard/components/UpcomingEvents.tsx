@@ -64,7 +64,8 @@ export default function UpcomingEvents() {
       boxShadow: "var(--shadow-sm)",
       display: "grid",
       gap: "12px",
-      alignContent: "start",
+      height: "100%",
+  alignContent: "start",
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)" }}>
