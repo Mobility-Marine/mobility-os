@@ -52,7 +52,8 @@ export default function ActivityFeed() {
       boxShadow: "var(--shadow-sm)",
       display: "grid",
       gap: "14px",
-      alignContent: "start",
+      height: "100%",
+  alignContent: "start",
     }}>
       <div style={{ fontSize: "15px", fontWeight: 700, color: "var(--color-text-primary)" }}>
         Actividad reciente
