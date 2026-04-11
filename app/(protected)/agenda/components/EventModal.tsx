@@ -7,6 +7,11 @@ import {
 } from "../types/agenda.types";
 import type { CompanyMember } from "../types/agenda.types";
 import ColorPicker from "./ColorPicker";
+import ReminderPicker from "./ReminderPicker";
+import RecurrencePicker from "./RecurrencePicker";
+import type { ReminderConfig, RecurrenceConfig } from "../types/recurrence.types";
+import { DEFAULT_RECURRENCE } from "../types/recurrence.types";
+import { saveReminders, saveRecurrence, getReminders, getRecurrence } from "../services/reminders.service";
 
 interface EventModalProps {
   event?: CalendarEvent | null;
@@ -68,6 +73,8 @@ export default function EventModal({
   const [form, setForm] = useState<EventFormData>(DEFAULT_FORM);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [reminders,   setReminders]   = useState<ReminderConfig[]>([]);
+  const [recurrence,  setRecurrence]   = useState<RecurrenceConfig>(DEFAULT_RECURRENCE);
 
   useEffect(() => {
     if (event) {
@@ -88,6 +95,17 @@ export default function EventModal({
         visibility:         event.visibility ?? "company",
         internal_attendees: prefilledAttendee ? [prefilledAttendee] : [],
         external_emails:    "",
+      });
+      void getReminders(event.id).then(setReminders);
+      void getRecurrence(event.id).then((r) => {
+        if (r) setRecurrence({
+          frequency:    r.frequency,
+          interval:     r.interval ?? 1,
+          days_of_week: r.days_of_week ? JSON.parse(r.days_of_week) : [],
+          end_type:     r.end_type ?? "never",
+          end_date:     r.end_date ?? undefined,
+          end_count:    r.end_count ?? undefined,
+        });
       });
     } else {
       const now = new Date(initialDateTime ? initialDateTime + ":00" : new Date().toISOString());
@@ -126,8 +144,12 @@ export default function EventModal({
   company_id:     companyId,
   created_by:     userId,
 }, form);
-    } finally {
-      setSaving(false);
+    if (event?.id) {
+      await saveReminders(event.id, reminders);
+      await saveRecurrence(event.id, recurrence);
+    }
+  } finally {
+    setSaving(false);
     }
   }
 
@@ -372,7 +394,29 @@ export default function EventModal({
               Separa múltiples correos con comas
             </div>
           </Field>
+<div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "4px" }}>
+          Separa múltiples correos con comas
+        </div>
+      </Field>
 
+      {/* RECORDATORIOS */}
+      <Field label="Recordatorios">
+        <ReminderPicker
+          reminders={reminders}
+          onChange={setReminders}
+        />
+      </Field>
+
+      {/* RECURRENCIA */}
+      <Field label="Repetición">
+        <RecurrencePicker
+          value={recurrence}
+          onChange={setRecurrence}
+          eventStart={form.start}
+        />
+      </Field>
+
+      </div>
         </div>
 
         {/* FOOTER */}
