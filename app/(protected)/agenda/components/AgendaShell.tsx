@@ -4,6 +4,8 @@ import React, { useMemo, useState } from "react";
 import { CalendarView, CalendarEvent } from "../types/agenda.types";
 import { useAgenda } from "../hooks/useAgenda";
 import { useTeamAvailability } from "../hooks/useTeamAvailability";
+import { useModuleEvents } from "../hooks/useModuleEvents";
+import { isModuleEvent } from "@/services/agenda/module-events.service";
 import AgendaHeader from "./AgendaHeader";
 import WeekView from "./WeekView";
 import DayView from "./DayView";
@@ -32,13 +34,14 @@ export default function AgendaShell() {
     createEvent, updateEvent, deleteEvent, moveEvent,
   } = agenda;
 
-  const [view, setView] = useState<CalendarView>("week");
-  const [modalOpen, setModalOpen] = useState(false);
-  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const [slotDateTime, setSlotDateTime] = useState<string | undefined>();
+  const [view, setView]                     = useState<CalendarView>("week");
+  const [modalOpen, setModalOpen]           = useState(false);
+  const [editingEvent, setEditingEvent]     = useState<CalendarEvent | null>(null);
+  const [slotDateTime, setSlotDateTime]     = useState<string | undefined>();
   const [prefilledAttendee, setPrefilledAttendee] = useState<string | undefined>();
 
-  const { availability } = useTeamAvailability(members, companyId, selectedDate);
+  const { availability }        = useTeamAvailability(members, companyId, selectedDate);
+  const { syncing }             = useModuleEvents(companyId);
 
   const currentDate = useMemo(() => new Date(selectedDate + "T12:00:00"), [selectedDate]);
 
@@ -53,12 +56,12 @@ export default function AgendaShell() {
 
   function navigate(dir: "prev" | "next" | "today") {
     if (dir === "today") { setSelectedDate(getLocalDateISO()); return; }
-    const d = new Date(currentDate);
+    const d     = new Date(currentDate);
     const delta = dir === "prev" ? -1 : 1;
-    if (view === "day")   d.setDate(d.getDate()          + delta);
-    if (view === "week")  d.setDate(d.getDate()          + delta * 7);
-    if (view === "month") d.setMonth(d.getMonth()        + delta);
-    if (view === "year")  d.setFullYear(d.getFullYear()  + delta);
+    if (view === "day")   d.setDate(d.getDate()         + delta);
+    if (view === "week")  d.setDate(d.getDate()         + delta * 7);
+    if (view === "month") d.setMonth(d.getMonth()       + delta);
+    if (view === "year")  d.setFullYear(d.getFullYear() + delta);
     setSelectedDate(getLocalDateISO(d));
   }
 
@@ -70,6 +73,7 @@ export default function AgendaShell() {
   }
 
   function openEditEvent(ev: CalendarEvent) {
+    if (isModuleEvent(ev.event_type)) return;
     setEditingEvent(ev);
     setSlotDateTime(undefined);
     setPrefilledAttendee(undefined);
@@ -77,17 +81,19 @@ export default function AgendaShell() {
   }
 
   async function handleSave(payload: Partial<CalendarEvent>, form?: any) {
-  if (editingEvent) {
-    await agenda.updateEvent(editingEvent.id, payload);
-  } else {
-    await agenda.createEvent(
-      payload,
-      form?.internal_attendees ?? [],
-      form?.external_emails ? form.external_emails.split(",").map((e: string) => e.trim()).filter(Boolean) : []
-    );
+    if (editingEvent) {
+      await agenda.updateEvent(editingEvent.id, payload);
+    } else {
+      await agenda.createEvent(
+        payload,
+        form?.internal_attendees ?? [],
+        form?.external_emails
+          ? form.external_emails.split(",").map((e: string) => e.trim()).filter(Boolean)
+          : []
+      );
+    }
+    setModalOpen(false);
   }
-  setModalOpen(false);
-}
 
   async function handleDelete() {
     if (!editingEvent) return;
@@ -97,14 +103,33 @@ export default function AgendaShell() {
 
   return (
     <div style={{ display: "grid", gap: "16px" }}>
-      <AgendaHeader
-        view={view}
-        onViewChange={setView}
-        selectedDate={selectedDate}
-        onNavigate={navigate}
-        onNewEvent={() => openNewEvent()}
-      />
 
+      {/* HEADER + SYNC INDICATOR */}
+      <div>
+        <AgendaHeader
+          view={view}
+          onViewChange={setView}
+          selectedDate={selectedDate}
+          onNavigate={navigate}
+          onNewEvent={() => openNewEvent()}
+        />
+        {syncing && (
+          <div style={{
+            display: "flex", alignItems: "center", gap: "6px",
+            fontSize: "11px", color: "var(--color-text-muted)",
+            marginTop: "6px",
+          }}>
+            <div style={{
+              width: "6px", height: "6px", borderRadius: "50%",
+              background: "var(--color-brand-blue)",
+              opacity: 0.7,
+            }} />
+            Sincronizando eventos de módulos…
+          </div>
+        )}
+      </div>
+
+      {/* GRID PRINCIPAL */}
       <div style={{
         display: "grid",
         gridTemplateColumns: "minmax(0, 1fr) 260px",
@@ -175,6 +200,7 @@ export default function AgendaShell() {
         />
       </div>
 
+      {/* MODAL */}
       {modalOpen && companyId && user && (
         <EventModal
           event={editingEvent}
