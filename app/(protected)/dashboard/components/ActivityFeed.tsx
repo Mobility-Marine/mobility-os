@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 
@@ -41,6 +41,13 @@ function timeAgo(iso: string): string {
   return `hace ${Math.floor(diff / 1440)}d`;
 }
 
+const EMPTY_TYPES = [
+  { label: "Prospectos",   hint: "Cuando crees o actualices prospectos",  color: "var(--color-brand-blue)",   bg: "var(--color-brand-blue-light)" },
+  { label: "Cotizaciones", hint: "Al generar o modificar cotizaciones",   color: "var(--color-info-text)",    bg: "var(--color-info-bg)" },
+  { label: "Embarques",    hint: "Con movimientos logísticos activos",    color: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
+  { label: "Facturas",     hint: "Al emitir o registrar pagos",           color: "var(--color-success-text)", bg: "var(--color-success-bg)" },
+];
+
 export default function ActivityFeed() {
   const { companyId } = useTenant();
   const [events, setEvents] = useState<TimelineEvent[]>([]);
@@ -74,49 +81,25 @@ export default function ActivityFeed() {
   const isEmpty = !loading && events.length === 0;
 
   return (
-    <div style={{
-      background: "var(--color-bg-base)",
-      border: "1px solid var(--color-border-faint)",
-      borderRadius: "var(--radius-lg)",
-      padding: "18px",
-      boxShadow: "var(--shadow-sm)",
-      display: "flex",
-      flexDirection: "column",
-      gap: "14px",
-      height: "100%",
-    }}>
-      {/* HEADER */}
+    <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: "14px", height: "100%" }}>
+
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-        <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)" }}>
-          Actividad reciente
-        </div>
-        <div style={{
-          display: "flex", alignItems: "center", gap: "5px",
-          padding: "2px 8px", borderRadius: "var(--radius-full)",
-          background: isEmpty ? "var(--color-bg-subtle)" : "var(--color-success-bg)",
-          border: `1px solid ${isEmpty ? "var(--color-border-faint)" : "var(--color-success-border)"}`,
-        }}>
-          <div style={{
-            width: "5px", height: "5px", borderRadius: "50%",
-            background: isEmpty ? "var(--color-text-muted)" : "var(--color-success-text)",
-          }} />
-          <span style={{
-            fontSize: "10px", fontWeight: 600,
-            color: isEmpty ? "var(--color-text-muted)" : "var(--color-success-text)",
-          }}>
+        <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)" }}>Actividad reciente</div>
+        <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "2px 8px", borderRadius: "var(--radius-full)", background: isEmpty ? "var(--color-bg-subtle)" : "var(--color-success-bg)", border: `1px solid ${isEmpty ? "var(--color-border-faint)" : "var(--color-success-border)"}` }}>
+          <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: isEmpty ? "var(--color-text-muted)" : "var(--color-success-text)" }} />
+          <span style={{ fontSize: "10px", fontWeight: 600, color: isEmpty ? "var(--color-text-muted)" : "var(--color-success-text)" }}>
             {isEmpty ? "En espera" : "En vivo"}
           </span>
         </div>
       </div>
 
-      {/* CONTENIDO */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
         {loading ? (
-          <div style={{ display: "grid", gap: "12px" }}>
+          <div style={{ display: "grid", gap: "10px" }}>
             {[1, 2, 3].map((i) => (
               <div key={i} style={{ display: "flex", gap: "10px", alignItems: "center" }}>
                 <div style={{ width: 28, height: 28, borderRadius: "var(--radius-sm)", background: "var(--color-bg-subtle)", flexShrink: 0 }} />
-                <div style={{ flex: 1, display: "grid", gap: "4px" }}>
+                <div style={{ flex: 1, display: "grid", gap: "5px" }}>
                   <div style={{ height: 10, background: "var(--color-bg-subtle)", borderRadius: 4, width: "70%" }} />
                   <div style={{ height: 8, background: "var(--color-bg-subtle)", borderRadius: 4, width: "40%" }} />
                 </div>
@@ -124,42 +107,59 @@ export default function ActivityFeed() {
             ))}
           </div>
         ) : isEmpty ? (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-            {/* ESTADO VACÍO CON CONTENIDO ÚTIL */}
-            <div style={{ display: "grid", gap: "6px" }}>
-              {[
-                { label: "Prospectos", hint: "Se registrará cuando crees o actualices prospectos", color: "var(--color-brand-blue)", bg: "var(--color-brand-blue-light)" },
-                { label: "Cotizaciones", hint: "Aparecerá cuando generes o modifiques cotizaciones", color: "var(--color-info-text)", bg: "var(--color-info-bg)" },
-                { label: "Embarques", hint: "Se mostrará con movimientos logísticos activos", color: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
-                { label: "Facturas", hint: "Registrará emisiones y pagos de facturas", color: "var(--color-success-text)", bg: "var(--color-success-bg)" },
-              ].map((item) => (
-                <div key={item.label} style={{
-                  display: "flex", alignItems: "center", gap: "10px",
-                  padding: "8px 10px", borderRadius: "var(--radius-md)",
-                  background: item.bg, border: `1px solid ${item.color}20`,
-                }}>
-                  <div style={{
-                    width: "24px", height: "24px", borderRadius: "var(--radius-sm)",
-                    background: item.color + "20", display: "flex", alignItems: "center", justifyContent: "center",
-                    flexShrink: 0,
-                  }}>
-                    <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: item.color }} />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "11px", fontWeight: 600, color: item.color }}>{item.label}</div>
-                    <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "1px", lineHeight: 1.3 }}>{item.hint}</div>
-                  </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "6px", flex: 1 }}>
+            {EMPTY_TYPES.map((item) => (
+              <div key={item.label} style={{ display: "flex", alignItems: "center", gap: "10px", padding: "8px 10px", borderRadius: "var(--radius-md)", background: item.bg, border: `1px solid ${item.color}20` }}>
+                <div style={{ width: "24px", height: "24px", borderRadius: "var(--radius-sm)", background: item.color + "20", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ width: "7px", height: "7px", borderRadius: "50%", background: item.color }} />
                 </div>
-              ))}
-            </div>
-            <div style={{
-              textAlign: "center", fontSize: "11px",
-              color: "var(--color-text-muted)", paddingTop: "12px",
-              borderTop: "1px solid var(--color-border-faint)", marginTop: "10px",
-            }}>
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 600, color: item.color }}>{item.label}</div>
+                  <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "1px", lineHeight: 1.3 }}>{item.hint}</div>
+                </div>
+              </div>
+            ))}
+            <div style={{ textAlign: "center", fontSize: "11px", color: "var(--color-text-muted)", paddingTop: "10px", borderTop: "1px solid var(--color-border-faint)", marginTop: "auto" }}>
               La actividad aparecerá aquí en tiempo real
             </div>
           </div>
         ) : (
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-            <div style={{ di
+          <div style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+            <div style={{ flex: 1 }}>
+              {events.map((event, i) => (
+                <div key={event.id} style={{ display: "flex", gap: "10px", paddingBottom: i < events.length - 1 ? "10px" : "0" }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+                    <div style={{ width: "28px", height: "28px", borderRadius: "var(--radius-sm)", background: getEventBg(event.event_type), display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: getEventColor(event.event_type) }} />
+                    </div>
+                    {i < events.length - 1 && (
+                      <div style={{ width: "1px", flex: 1, minHeight: "10px", background: "var(--color-border-faint)", margin: "3px 0" }} />
+                    )}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0, paddingTop: "4px" }}>
+                    <div style={{ fontSize: "12px", fontWeight: 500, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", lineHeight: 1.4 }}>
+                      {event.description || event.event_type}
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", marginTop: "2px" }}>
+                      <span style={{ fontSize: "10px", fontWeight: 600, color: getEventColor(event.event_type), textTransform: "capitalize" }}>
+                        {event.event_type?.replace(/_/g, " ") || "evento"}
+                      </span>
+                      <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>·</span>
+                      <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{timeAgo(event.created_at)}</span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: "10px", color: "var(--color-text-muted)", flexShrink: 0, paddingTop: "4px" }}>
+                    {formatTime(event.created_at)}
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ textAlign: "center", fontSize: "11px", color: "var(--color-brand-blue)", cursor: "pointer", fontWeight: 500, borderTop: "1px solid var(--color-border-faint)", paddingTop: "10px", marginTop: "10px" }}>
+              Ver historial completo
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
