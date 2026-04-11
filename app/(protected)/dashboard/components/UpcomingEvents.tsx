@@ -84,13 +84,43 @@ export default function UpcomingEvents() {
       </div>
 
       {loading ? null : events.length === 0 ? (
-        <div style={{
-          padding: "20px 0",
-          textAlign: "center",
-          fontSize: "12px",
-          color: "var(--color-text-muted)",
-        }}>
-          Sin eventos para hoy
+        <div style={{ display: "grid", gap: "8px" }}>
+          {[1, 2, 3].map((i) => (
+            <div key={i} style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              padding: "8px 10px",
+              borderRadius: "var(--radius-md)",
+              background: "var(--color-bg-subtle)",
+              border: "1px solid var(--color-border-faint)",
+              opacity: 0.4 + i * 0.1,
+            }}>
+              <div style={{
+                width: "3px", height: "32px",
+                borderRadius: "var(--radius-full)",
+                background: "var(--color-border)",
+                flexShrink: 0,
+              }} />
+              <div style={{ flex: 1, display: "grid", gap: "5px" }}>
+                <div style={{
+                  height: "10px",
+                  borderRadius: "var(--radius-full)",
+                  background: "var(--color-border)",
+                  width: `${70 - i * 10}%`,
+                }} />
+                <div style={{
+                  height: "8px",
+                  borderRadius: "var(--radius-full)",
+                  background: "var(--color-border-faint)",
+                  width: "40%",
+                }} />
+              </div>
+            </div>
+          ))}
+          <div style={{ textAlign: "center", fontSize: "11px", color: "var(--color-text-muted)", paddingTop: "4px" }}>
+            Sin eventos programados para hoy
+          </div>
         </div>
       ) : (
         <div style={{ display: "grid", gap: "8px" }}>
