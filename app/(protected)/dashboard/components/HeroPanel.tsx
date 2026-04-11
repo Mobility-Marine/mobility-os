@@ -104,6 +104,46 @@ export default function HeroPanel({ metrics }: HeroPanelProps) {
         <SparkChart data={revenueTrend}   title="Ingresos / tendencia" label="Ritmo mensual" />
         <SparkChart data={logisticsTrend} title="Capacidad logística"  label="Carga vs disponibilidad" />
       </div>
+
+      {/* RESUMEN OPERATIVO */}
+      <div style={{
+        padding: "12px 14px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-bg-subtle)",
+        border: "1px solid var(--color-border-faint)",
+        display: "grid",
+        gap: "6px",
+      }}>
+        <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase", color: "var(--color-text-muted)" }}>
+          Resumen operativo
+        </div>
+        <div style={{ fontSize: "13px", color: "var(--color-text-second)", lineHeight: 1.6 }}>
+          {metrics.pendingInvoices > 0
+            ? `Hay ${metrics.pendingInvoices} factura${metrics.pendingInvoices > 1 ? "s" : ""} pendiente${metrics.pendingInvoices > 1 ? "s" : ""} que requieren atención. `
+            : "Cobranza al día, sin facturas pendientes. "}
+          {metrics.activeProspects > 0
+            ? `${metrics.activeProspects} prospecto${metrics.activeProspects > 1 ? "s" : ""} activo${metrics.activeProspects > 1 ? "s" : ""} en seguimiento comercial. `
+            : "Sin prospectos activos en este momento. "}
+          {metrics.activeShipments > 0
+            ? `${metrics.activeShipments} embarque${metrics.activeShipments > 1 ? "s" : ""} en operación logística.`
+            : "Sin embarques activos hoy."}
+        </div>
+        <div style={{ display: "flex", gap: "16px", marginTop: "4px" }}>
+          {[
+            { label: "Comercial",  ok: metrics.activeProspects > 0 || metrics.openQuotations > 0 },
+            { label: "Logística",  ok: metrics.activeShipments >= 0 },
+            { label: "Finanzas",   ok: metrics.pendingInvoices === 0 },
+          ].map((item) => (
+            <div key={item.label} style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+              <div style={{
+                width: "6px", height: "6px", borderRadius: "50%",
+                background: item.ok ? "var(--color-success-text)" : "var(--color-danger-text)",
+              }} />
+              <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{item.label}</span>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
