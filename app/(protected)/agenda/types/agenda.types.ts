@@ -82,3 +82,5 @@ export const VISIBILITIES = [
 export const HOURS_START = 7;
 export const HOURS_END   = 21;
 export const HOUR_HEIGHT = 64;
+
+export type { RecurrenceConfig, ReminderConfig } from "./recurrence.types";
