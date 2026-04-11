@@ -57,14 +57,16 @@ export default function HealthScore({ metrics }: HealthScoreProps) {
 
   return (
     <div style={{
-      background: "var(--color-bg-base)",
-      border: "1px solid var(--color-border-faint)",
-      borderRadius: "var(--radius-lg)",
-      padding: "18px",
-      boxShadow: "var(--shadow-sm)",
-      display: "grid",
-      gap: "12px",
-    }}>
+  background: "var(--color-bg-base)",
+  border: "1px solid var(--color-border-faint)",
+  borderRadius: "var(--radius-lg)",
+  padding: "18px",
+  boxShadow: "var(--shadow-sm)",
+  display: "grid",
+  gap: "12px",
+  height: "100%",
+  alignContent: "start",
+}}>
       <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)" }}>
         Health Score
       </div>
