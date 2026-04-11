@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface AppHeaderProps {
   section: string;
@@ -16,6 +16,21 @@ export default function AppHeader({
   onSearch,
 }: AppHeaderProps) {
   const [query, setQuery] = useState("");
+  const [isDark, setIsDark] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem("mos-theme");
+    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const theme = saved ?? (prefersDark ? "dark" : "light");
+    setIsDark(theme === "dark");
+  }, []);
+
+  function toggleTheme() {
+    const next = isDark ? "light" : "dark";
+    setIsDark(!isDark);
+    localStorage.setItem("mos-theme", next);
+    document.documentElement.setAttribute("data-theme", next);
+  }
 
   function handleSearch(e: React.FormEvent) {
     e.preventDefault();
@@ -56,7 +71,7 @@ export default function AppHeader({
         </div>
       </div>
 
-      {/* BÚSQUEDA + ACCIONES */}
+      {/* ACCIONES */}
       <div style={{
         display: "flex",
         alignItems: "center",
@@ -64,6 +79,8 @@ export default function AppHeader({
         flex: 1,
         justifyContent: "flex-end",
       }}>
+
+        {/* BÚSQUEDA */}
         <form onSubmit={handleSearch} style={{ flex: "1 1 0", maxWidth: "280px" }}>
           <input
             value={query}
@@ -83,26 +100,21 @@ export default function AppHeader({
           />
         </form>
 
-        {/* BOTÓN IA */}
+        {/* TOGGLE DARK / LIGHT */}
         <button
-          onClick={onOpenHub}
+          onClick={toggleTheme}
+          title={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
           style={{
+            width: "34px",
             height: "34px",
-            padding: "0 14px",
             borderRadius: "var(--radius-md)",
-            background: "var(--color-brand-blue)",
-            color: "#ffffff",
-            border: "none",
-            fontSize: "12px",
-            fontWeight: 600,
+            border: "1px solid var(--color-border)",
+            background: "var(--color-bg-subtle)",
+            color: "var(--color-text-second)",
             cursor: "pointer",
-            letterSpacing: "0.5px",
-            boxShadow: "var(--shadow-brand-blue)",
-          }}
-        >
-          IA
-        </button>
-      </div>
-    </header>
-  );
-}
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: "16px",
+            flexShrink: 0,
+            tr
