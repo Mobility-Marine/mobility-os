@@ -23,6 +23,8 @@ export default function PipelineFunnel({ metrics }: PipelineFunnelProps) {
       boxShadow: "var(--shadow-sm)",
       display: "grid",
       gap: "14px",
+      height: "100%",
+  alignContent: "start",
     }}>
       <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)" }}>
         Pipeline comercial
