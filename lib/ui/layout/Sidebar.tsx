@@ -179,7 +179,6 @@ export default function Sidebar({
                           width: "100%",
                           textAlign: "left",
                           padding: "7px 12px",
-                          borderRadius: "var(--radius-md)",
                           border: "none",
                           borderLeft: active
                             ? "3px solid var(--color-brand-blue)"
