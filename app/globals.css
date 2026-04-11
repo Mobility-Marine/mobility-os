@@ -1,0 +1,171 @@
+/* ================================================================
+   MOBILITY OS — GLOBAL STYLES
+   Reset base + estilos fundamentales del sistema.
+   No poner estilos de componentes aquí. Solo fundación.
+   ================================================================ */
+
+/* ----------------------------------------------------------------
+   BOX MODEL
+   ---------------------------------------------------------------- */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ----------------------------------------------------------------
+   DOCUMENTO BASE
+   ---------------------------------------------------------------- */
+html {
+  font-size: 14px;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  scroll-behavior: smooth;
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  color: var(--color-text-primary);
+  background-color: var(--color-bg-page);
+  min-height: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ----------------------------------------------------------------
+   TIPOGRAFÍA BASE
+   ---------------------------------------------------------------- */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 600;
+  line-height: 1.25;
+  color: var(--color-text-primary);
+}
+
+p {
+  line-height: 1.6;
+  color: var(--color-text-second);
+}
+
+a {
+  color: var(--color-brand-blue);
+  text-decoration: none;
+}
+
+a:hover {
+  color: var(--color-brand-blue-hover);
+}
+
+/* ----------------------------------------------------------------
+   LISTAS
+   ---------------------------------------------------------------- */
+ul, ol {
+  list-style: none;
+}
+
+/* ----------------------------------------------------------------
+   IMÁGENES Y MEDIA
+   ---------------------------------------------------------------- */
+img, video, svg {
+  display: block;
+  max-width: 100%;
+}
+
+/* ----------------------------------------------------------------
+   FORMULARIOS
+   ---------------------------------------------------------------- */
+button, input, select, textarea {
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+input, textarea, select {
+  outline: none;
+}
+
+textarea {
+  resize: vertical;
+}
+
+/* ----------------------------------------------------------------
+   SCROLLBAR PERSONALIZADO
+   ---------------------------------------------------------------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: var(--radius-full);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-text-muted);
+}
+
+/* ----------------------------------------------------------------
+   SELECCIÓN DE TEXTO
+   ---------------------------------------------------------------- */
+::selection {
+  background: var(--color-brand-blue-light);
+  color: var(--color-brand-blue);
+}
+
+/* ----------------------------------------------------------------
+   FOCUS VISIBLE (accesibilidad)
+   ---------------------------------------------------------------- */
+:focus-visible {
+  outline: 2px solid var(--color-brand-blue);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* ----------------------------------------------------------------
+   UTILIDADES BASE
+   ---------------------------------------------------------------- */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border-width: 0;
+}
+
+/* ----------------------------------------------------------------
+   TRANSICIONES GLOBALES SUAVES
+   ---------------------------------------------------------------- */
+* {
+  transition-property: background-color, border-color, color, opacity;
+  transition-duration: 0.12s;
+  transition-timing-function: ease;
+}
+
+/* Excepciones — no animar layout ni transforms globalmente */
+*:where(
+  [class*="animate-"],
+  [class*="transition-"],
+  button,
+  a
+) {
+  transition: var(--transition-normal);
+}
