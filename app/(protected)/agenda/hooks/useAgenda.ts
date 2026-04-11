@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { useAuth } from "@/lib/auth/AuthProvider";
 import type { CalendarEvent, CompanyMember } from "../types/agenda.types";
+import { insertAttendees, sendEventNotifications } from "../services/attendees.service";
 
 function getLocalDateISO(date = new Date()) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -93,16 +94,57 @@ export function useAgenda() {
     setMembers(data ?? []);
   }
 
-  async function createEvent(payload: Partial<CalendarEvent>): Promise<CalendarEvent | null> {
-    const { data, error } = await supabase
-      .from("calendar_events")
-      .insert({ ...payload, company_id: companyId, created_by: user?.id })
-      .select()
-      .single();
-    if (error) { console.error(error); return null; }
-    await loadEvents();
-    return data;
+  async function createEvent(
+  payload: Partial<CalendarEvent>,
+  internalAttendees: string[] = [],
+  externalEmails: string[] = []
+): Promise<CalendarEvent | null> {
+  const { data, error } = await supabase
+    .from("calendar_events")
+    .insert({ ...payload, company_id: companyId, created_by: user?.id })
+    .select()
+    .single();
+  if (error) { console.error(error); return null; }
+
+  const eventId = data.id;
+
+  // Insertar asistentes internos
+  const internalRows = internalAttendees.map((uid) => ({
+    event_id:      eventId,
+    user_id:       uid,
+    attendee_type: "internal" as const,
+    role:          "attendee" as const,
+    status:        "pending" as const,
+  }));
+
+  // Insertar asistentes externos
+  const externalRows = externalEmails
+    .filter((e) => e.trim())
+    .map((email) => ({
+      event_id:      eventId,
+      email:         email.trim(),
+      attendee_type: "external" as const,
+      role:          "attendee" as const,
+      status:        "pending" as const,
+    }));
+
+  await insertAttendees([...internalRows, ...externalRows]);
+
+  // Enviar notificaciones
+  if (companyId && user?.id) {
+    await sendEventNotifications({
+      eventId,
+      eventTitle: payload.title ?? "Nuevo evento",
+      companyId,
+      organizerId: user.id,
+      internalUserIds: internalAttendees,
+      externalEmails,
+    });
   }
+
+  await loadEvents();
+  return data;
+}
 
   async function updateEvent(id: string, payload: Partial<CalendarEvent>): Promise<boolean> {
     const { error } = await supabase
