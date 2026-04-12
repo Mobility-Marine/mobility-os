@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { getEventAttendees, updateAttendeeStatus } from "../services/attendees.service";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface Attendee {
   id: string;
@@ -16,13 +17,6 @@ interface AttendeeStatusProps {
   eventId: string;
   currentUserId: string;
 }
-
-const STATUS_CONFIG = {
-  pending:   { label: "Pendiente",  color: "var(--color-warning-text)",  bg: "var(--color-warning-bg)" },
-  accepted:  { label: "Aceptado",   color: "var(--color-success-text)",  bg: "var(--color-success-bg)" },
-  declined:  { label: "Rechazado",  color: "var(--color-danger-text)",   bg: "var(--color-danger-bg)" },
-  tentative: { label: "Tentativo",  color: "var(--color-info-text)",     bg: "var(--color-info-bg)" },
-};
 
 function CheckIcon() {
   return (
@@ -51,14 +45,20 @@ function QuestionIcon() {
 }
 
 export default function AttendeeStatus({ eventId, currentUserId }: AttendeeStatusProps) {
+  const { t } = useTranslation();
   const [attendees, setAttendees] = useState<Attendee[]>([]);
-  const [myStatus, setMyStatus] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [updating, setUpdating] = useState(false);
+  const [myStatus, setMyStatus]   = useState<string | null>(null);
+  const [loading, setLoading]     = useState(true);
+  const [updating, setUpdating]   = useState(false);
 
-  useEffect(() => {
-    void load();
-  }, [eventId]);
+  const STATUS_CONFIG = {
+    pending:   { label: t.agenda.pending,   color: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
+    accepted:  { label: t.agenda.accepted,  color: "var(--color-success-text)", bg: "var(--color-success-bg)" },
+    declined:  { label: t.agenda.declined,  color: "var(--color-danger-text)",  bg: "var(--color-danger-bg)"  },
+    tentative: { label: t.agenda.tentative, color: "var(--color-info-text)",    bg: "var(--color-info-bg)"    },
+  };
+
+  useEffect(() => { void load(); }, [eventId]);
 
   async function load() {
     const data = await getEventAttendees(eventId);
@@ -78,78 +78,46 @@ export default function AttendeeStatus({ eventId, currentUserId }: AttendeeStatu
 
   if (loading) return null;
 
-  const accepted  = attendees.filter((a) => a.status === "accepted").length;
-  const declined  = attendees.filter((a) => a.status === "declined").length;
-  const pending   = attendees.filter((a) => a.status === "pending").length;
-  const total     = attendees.length;
+  const accepted = attendees.filter((a) => a.status === "accepted").length;
+  const declined = attendees.filter((a) => a.status === "declined").length;
+  const pending  = attendees.filter((a) => a.status === "pending").length;
 
   return (
     <div style={{ display: "grid", gap: "12px" }}>
-      {/* RESUMEN */}
-      {total > 0 && (
-        <div style={{
-          display: "flex", gap: "8px", flexWrap: "wrap",
-        }}>
-          <div style={{
-            padding: "4px 10px", borderRadius: "var(--radius-full)",
-            background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)",
-            fontSize: "11px", fontWeight: 600, color: "var(--color-success-text)",
-            display: "flex", alignItems: "center", gap: "4px",
-          }}>
-            <CheckIcon /> {accepted} aceptaron
+      {attendees.length > 0 && (
+        <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+          <div style={{ padding: "4px 10px", borderRadius: "var(--radius-full)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", fontSize: "11px", fontWeight: 600, color: "var(--color-success-text)", display: "flex", alignItems: "center", gap: "4px" }}>
+            <CheckIcon /> {accepted} {t.agenda.accepted2}
           </div>
-          <div style={{
-            padding: "4px 10px", borderRadius: "var(--radius-full)",
-            background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)",
-            fontSize: "11px", fontWeight: 600, color: "var(--color-danger-text)",
-            display: "flex", alignItems: "center", gap: "4px",
-          }}>
-            <XIcon /> {declined} rechazaron
+          <div style={{ padding: "4px 10px", borderRadius: "var(--radius-full)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", fontSize: "11px", fontWeight: 600, color: "var(--color-danger-text)", display: "flex", alignItems: "center", gap: "4px" }}>
+            <XIcon /> {declined} {t.agenda.declined2}
           </div>
-          <div style={{
-            padding: "4px 10px", borderRadius: "var(--radius-full)",
-            background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)",
-            fontSize: "11px", fontWeight: 600, color: "var(--color-warning-text)",
-          }}>
-            {pending} pendientes
+          <div style={{ padding: "4px 10px", borderRadius: "var(--radius-full)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", fontSize: "11px", fontWeight: 600, color: "var(--color-warning-text)" }}>
+            {pending} {t.agenda.pendingCount}
           </div>
         </div>
       )}
 
-      {/* LISTA DE ASISTENTES */}
       {attendees.length > 0 && (
         <div style={{ display: "grid", gap: "6px" }}>
           {attendees.map((a) => {
             const cfg = STATUS_CONFIG[a.status as keyof typeof STATUS_CONFIG] ?? STATUS_CONFIG.pending;
             return (
-              <div key={a.id} style={{
-                display: "flex", alignItems: "center", gap: "8px",
-                padding: "6px 10px", borderRadius: "var(--radius-md)",
-                background: "var(--color-bg-subtle)",
-                border: "1px solid var(--color-border-faint)",
-              }}>
-                <div style={{
-                  width: "26px", height: "26px", borderRadius: "50%",
-                  background: "var(--color-brand-blue-light)",
-                  color: "var(--color-brand-blue)",
-                  display: "flex", alignItems: "center", justifyContent: "center",
-                  fontSize: "11px", fontWeight: 700, flexShrink: 0,
-                }}>
+              <div key={a.id} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)" }}>
+                <div style={{ width: "26px", height: "26px", borderRadius: "50%", background: "var(--color-brand-blue-light)", color: "var(--color-brand-blue)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: 700, flexShrink: 0 }}>
                   {(a.user_id ?? a.email ?? "?").charAt(0).toUpperCase()}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontSize: "11px", fontWeight: 500, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {a.email ?? `${a.user_id?.slice(0, 14)}…`}
                   </div>
-                  <div style={{ fontSize: "10px", color: "var(--color-text-muted)", textTransform: "capitalize" }}>
-                    {a.attendee_type === "internal" ? "Interno" : "Externo"}
+                  <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
+                    {a.attendee_type === "internal"
+                      ? (t.agenda.inviteTeam.split(" ")[0])
+                      : t.agenda.externalGuests.split(" ")[0]}
                   </div>
                 </div>
-                <div style={{
-                  padding: "2px 8px", borderRadius: "var(--radius-full)",
-                  background: cfg.bg, color: cfg.color,
-                  fontSize: "10px", fontWeight: 600,
-                }}>
+                <div style={{ padding: "2px 8px", borderRadius: "var(--radius-full)", background: cfg.bg, color: cfg.color, fontSize: "10px", fontWeight: 600 }}>
                   {cfg.label}
                 </div>
               </div>
@@ -158,20 +126,14 @@ export default function AttendeeStatus({ eventId, currentUserId }: AttendeeStatu
         </div>
       )}
 
-      {/* MI RESPUESTA */}
       {myStatus !== null && (
-        <div style={{
-          padding: "12px",
-          borderRadius: "var(--radius-md)",
-          border: "1px solid var(--color-border-faint)",
-          background: "var(--color-bg-subtle)",
-        }}>
+        <div style={{ padding: "12px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-faint)", background: "var(--color-bg-subtle)" }}>
           <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-            Tu respuesta
+            {t.agenda.myResponse}
           </div>
           <div style={{ display: "flex", gap: "8px" }}>
             {(["accepted", "tentative", "declined"] as const).map((s) => {
-              const cfg = STATUS_CONFIG[s];
+              const cfg      = STATUS_CONFIG[s];
               const isActive = myStatus === s;
               return (
                 <button
