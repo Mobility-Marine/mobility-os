@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface Member {
   id: string;
@@ -50,6 +51,7 @@ function lastSeen(lastActive?: string): string {
 
 export default function TeamActivity() {
   const { companyId } = useTenant();
+  const { t } = useTranslation();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -139,7 +141,7 @@ export default function TeamActivity() {
             </div>
           )}
           <div style={{ marginLeft: "12px", fontSize: "12px", color: "var(--color-success-text)", fontWeight: 500 }}>
-            {online.length === 1 ? "1 persona activa" : `${online.length} personas activas`}
+            {online.length === 1 ? `1 ${t.dashboard.activePerson}` : `${online.length} ${t.dashboard.activePersons}`}
           </div>
         </div>
       )}
