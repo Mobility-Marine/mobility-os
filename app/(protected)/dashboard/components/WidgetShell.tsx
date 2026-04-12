@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { WidgetSize } from "../hooks/useLayout";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 const colSpan: Record<WidgetSize, string> = {
   small:  "span 1",
@@ -9,13 +10,6 @@ const colSpan: Record<WidgetSize, string> = {
   large:  "span 3",
   full:   "span 4",
 };
-
-const sizeLabels: { key: WidgetSize; label: string }[] = [
-  { key: "small",  label: "Pequeño" },
-  { key: "medium", label: "Mediano" },
-  { key: "large",  label: "Grande"  },
-  { key: "full",   label: "Completo"},
-];
 
 interface WidgetShellProps {
   id: string;
@@ -35,8 +29,16 @@ export default function WidgetShell({
   onDragStart, onDragOver, onDrop,
   onResize, onHide, children,
 }: WidgetShellProps) {
+  const { t, lang }    = useTranslation();
   const [showMenu, setShowMenu] = useState(false);
   const dragCounter = useRef(0);
+
+  const sizeLabels: { key: WidgetSize; label: string }[] = [
+    { key: "small",  label: lang === "en" ? "Small"    : "Pequeño"  },
+    { key: "medium", label: lang === "en" ? "Medium"   : "Mediano"  },
+    { key: "large",  label: lang === "en" ? "Large"    : "Grande"   },
+    { key: "full",   label: lang === "en" ? "Full"     : "Completo" },
+  ];
 
   return (
     <div
@@ -47,45 +49,35 @@ export default function WidgetShell({
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => { e.preventDefault(); dragCounter.current = 0; onDrop(id); }}
       style={{
-  gridColumn: colSpan[size],
-  position: "relative",
-  borderRadius: "var(--radius-lg)",
-  transition: "var(--transition-normal)",
-  display: "flex",
-  flexDirection: "column",
-  height: "100%",
+        gridColumn:    colSpan[size],
+        position:      "relative",
+        borderRadius:  "var(--radius-lg)",
+        transition:    "var(--transition-normal)",
+        display:       "flex",
+        flexDirection: "column",
+        height:        "100%",
         outline: isDraggingOver
           ? "2px dashed var(--color-brand-blue)"
           : editMode
           ? "2px dashed var(--color-border)"
           : "2px solid transparent",
         outlineOffset: "2px",
-        opacity: isDraggingOver ? 0.7 : 1,
-        cursor: editMode ? "grab" : "default",
+        opacity:  isDraggingOver ? 0.7 : 1,
+        cursor:   editMode ? "grab" : "default",
         userSelect: "none",
       }}
     >
       {editMode && (
-        <div style={{
-          position: "absolute",
-          top: "8px",
-          right: "8px",
-          zIndex: 10,
-          display: "flex",
-          gap: "4px",
-        }}>
+        <div style={{ position: "absolute", top: "8px", right: "8px", zIndex: 10, display: "flex", gap: "4px" }}>
           <button
             onClick={() => setShowMenu((v) => !v)}
             style={{
-              width: "28px",
-              height: "28px",
+              width: "28px", height: "28px",
               borderRadius: "var(--radius-md)",
               background: "var(--color-bg-base)",
               border: "1px solid var(--color-border)",
               cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
+              display: "flex", alignItems: "center", justifyContent: "center",
               boxShadow: "var(--shadow-md)",
             }}
           >
@@ -96,35 +88,28 @@ export default function WidgetShell({
 
           {showMenu && (
             <div style={{
-              position: "absolute",
-              top: "32px",
-              right: 0,
+              position: "absolute", top: "32px", right: 0,
               background: "var(--color-bg-base)",
               border: "1px solid var(--color-border)",
               borderRadius: "var(--radius-md)",
               boxShadow: "var(--shadow-lg)",
               padding: "6px",
-              display: "grid",
-              gap: "2px",
-              minWidth: "140px",
-              zIndex: 20,
+              display: "grid", gap: "2px",
+              minWidth: "140px", zIndex: 20,
             }}>
               <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", padding: "4px 8px", letterSpacing: "0.8px", textTransform: "uppercase" }}>
-                Tamaño
+                {lang === "en" ? "Size" : "Tamaño"}
               </div>
               {sizeLabels.map(({ key, label }) => (
                 <button
                   key={key}
                   onClick={() => { onResize(id, key); setShowMenu(false); }}
                   style={{
-                    textAlign: "left",
-                    padding: "7px 10px",
-                    borderRadius: "var(--radius-sm)",
-                    border: "none",
+                    textAlign: "left", padding: "7px 10px",
+                    borderRadius: "var(--radius-sm)", border: "none",
                     background: size === key ? "var(--color-bg-active)" : "transparent",
                     color: size === key ? "var(--color-brand-blue)" : "var(--color-text-second)",
-                    fontSize: "13px",
-                    fontWeight: size === key ? 600 : 400,
+                    fontSize: "13px", fontWeight: size === key ? 600 : 400,
                     cursor: "pointer",
                   }}
                 >
@@ -135,17 +120,14 @@ export default function WidgetShell({
               <button
                 onClick={() => { onHide(id); setShowMenu(false); }}
                 style={{
-                  textAlign: "left",
-                  padding: "7px 10px",
-                  borderRadius: "var(--radius-sm)",
-                  border: "none",
+                  textAlign: "left", padding: "7px 10px",
+                  borderRadius: "var(--radius-sm)", border: "none",
                   background: "transparent",
                   color: "var(--color-danger-text)",
-                  fontSize: "13px",
-                  cursor: "pointer",
+                  fontSize: "13px", cursor: "pointer",
                 }}
               >
-                Ocultar
+                {t.general.delete}
               </button>
             </div>
           )}
@@ -154,20 +136,13 @@ export default function WidgetShell({
 
       {editMode && (
         <div style={{
-          position: "absolute",
-          top: "8px",
-          left: "8px",
-          zIndex: 10,
-          width: "28px",
-          height: "28px",
+          position: "absolute", top: "8px", left: "8px", zIndex: 10,
+          width: "28px", height: "28px",
           borderRadius: "var(--radius-md)",
           background: "var(--color-bg-base)",
           border: "1px solid var(--color-border)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          boxShadow: "var(--shadow-md)",
-          cursor: "grab",
+          display: "flex", alignItems: "center", justifyContent: "center",
+          boxShadow: "var(--shadow-md)", cursor: "grab",
         }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/>
