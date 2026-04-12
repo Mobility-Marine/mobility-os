@@ -2,6 +2,7 @@
 
 import React from "react";
 import { CalendarView } from "../types/agenda.types";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface AgendaHeaderProps {
   view: CalendarView;
@@ -11,27 +12,21 @@ interface AgendaHeaderProps {
   onNewEvent: () => void;
 }
 
-function getLabel(view: CalendarView, dateStr: string): string {
+function getLabel(view: CalendarView, dateStr: string, lang: string): string {
+  const locale = lang === "en" ? "en-US" : "es-MX";
   const d = new Date(dateStr + "T12:00:00");
-  if (view === "day") return d.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  if (view === "day") return d.toLocaleDateString(locale, { weekday: "long", day: "numeric", month: "long", year: "numeric" });
   if (view === "week") {
     const start = new Date(d);
     const day = d.getDay();
     start.setDate(d.getDate() - (day === 0 ? 6 : day - 1));
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
-    return `${start.toLocaleDateString("es-MX", { day: "numeric", month: "short" })} — ${end.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" })}`;
+    return `${start.toLocaleDateString(locale, { day: "numeric", month: "short" })} — ${end.toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}`;
   }
-  if (view === "month") return d.toLocaleDateString("es-MX", { month: "long", year: "numeric" });
+  if (view === "month") return d.toLocaleDateString(locale, { month: "long", year: "numeric" });
   return d.getFullYear().toString();
 }
-
-const views: { key: CalendarView; label: string }[] = [
-  { key: "day",   label: "Día" },
-  { key: "week",  label: "Semana" },
-  { key: "month", label: "Mes" },
-  { key: "year",  label: "Año" },
-];
 
 function ChevronIcon({ dir }: { dir: "left" | "right" }) {
   return (
@@ -53,13 +48,20 @@ function PlusIcon() {
 export default function AgendaHeader({
   view, onViewChange, selectedDate, onNavigate, onNewEvent,
 }: AgendaHeaderProps) {
+  const { t, lang } = useTranslation();
+
+  const views: { key: CalendarView; label: string }[] = [
+    { key: "day",   label: t.agenda.day   },
+    { key: "week",  label: t.agenda.week  },
+    { key: "month", label: t.agenda.month },
+    { key: "year",  label: t.agenda.year  },
+  ];
+
   return (
     <div style={{
-      display: "flex",
-      alignItems: "center",
+      display: "flex", alignItems: "center",
       justifyContent: "space-between",
-      gap: "12px",
-      flexWrap: "wrap",
+      gap: "12px", flexWrap: "wrap",
       marginBottom: "20px",
     }}>
       <div style={{ display: "flex", alignItems: "center", gap: "12px", flexWrap: "wrap" }}>
@@ -77,7 +79,7 @@ export default function AgendaHeader({
           }}
         >
           <PlusIcon />
-          Nuevo evento
+          {t.agenda.newEvent}
         </button>
 
         <div style={{ display: "flex", gap: "1px", background: "var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "2px", overflow: "hidden" }}>
@@ -116,7 +118,7 @@ export default function AgendaHeader({
             cursor: "pointer",
           }}
         >
-          Hoy
+          {t.agenda.today}
         </button>
 
         <div style={{ display: "flex", gap: "4px" }}>
@@ -145,7 +147,7 @@ export default function AgendaHeader({
           textTransform: "capitalize",
           minWidth: "200px",
         }}>
-          {getLabel(view, selectedDate)}
+          {getLabel(view, selectedDate, lang)}
         </div>
       </div>
     </div>
