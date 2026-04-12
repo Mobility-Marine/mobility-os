@@ -24,7 +24,7 @@ export const en: TranslationKeys = {
     optional:   "Optional",
     required:   "Required",
     none:       "No recurrence",
-    reset: "Restablecer",
+    reset:      "Reset",
   },
 
   nav: {
