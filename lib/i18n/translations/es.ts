@@ -23,6 +23,7 @@ export const es = {
     optional:   "Opcional",
     required:   "Requerido",
     none:       "Sin repetición",
+    reset: "Restablecer",
   },
 
   // NAVEGACIÓN
