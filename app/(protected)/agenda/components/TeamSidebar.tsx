@@ -2,6 +2,7 @@
 
 import React from "react";
 import type { MemberAvailability } from "../hooks/useTeamAvailability";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface TeamSidebarProps {
   availability: MemberAvailability[];
@@ -11,7 +12,7 @@ interface TeamSidebarProps {
 
 function Avatar({ userId, size = 32 }: { userId: string; size?: number }) {
   const colors = ["#274B97", "#1D9E75", "#BA7517", "#D4537E", "#534AB7"];
-  const color = colors[userId.charCodeAt(0) % colors.length];
+  const color  = colors[userId.charCodeAt(0) % colors.length];
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%",
@@ -25,27 +26,34 @@ function Avatar({ userId, size = 32 }: { userId: string; size?: number }) {
 }
 
 export default function TeamSidebar({ availability, loading, onScheduleWith }: TeamSidebarProps) {
+  const { t, lang } = useTranslation();
+  const freeCount   = availability.filter((a) => !a.isBusy).length;
+
+  const CALENDARS = [
+    { name: "Google Calendar", color: "#4285F4", connected: false },
+    { name: "Outlook",         color: "#0078D4", connected: false },
+    { name: "Apple Calendar",  color: "#555555", connected: false },
+  ];
+
   return (
     <div style={{
       background: "var(--color-bg-base)",
       border: "1px solid var(--color-border-faint)",
       borderRadius: "var(--radius-lg)",
-      padding: "16px",
-      boxShadow: "var(--shadow-sm)",
-      display: "grid",
-      gap: "14px",
-      alignContent: "start",
+      padding: "16px", boxShadow: "var(--shadow-sm)",
+      display: "grid", gap: "14px", alignContent: "start",
     }}>
+      {/* HEADER */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)" }}>
-          Disponibilidad
+          {t.agenda.availability}
         </div>
         <div style={{
           padding: "2px 8px", borderRadius: "var(--radius-full)",
           background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)",
           fontSize: "11px", fontWeight: 600, color: "var(--color-success-text)",
         }}>
-          {availability.filter((a) => !a.isBusy).length} libres
+          {freeCount} {t.agenda.free}
         </div>
       </div>
 
@@ -63,7 +71,7 @@ export default function TeamSidebar({ availability, loading, onScheduleWith }: T
         </div>
       ) : availability.length === 0 ? (
         <div style={{ fontSize: "12px", color: "var(--color-text-muted)", textAlign: "center", padding: "16px 0" }}>
-          Sin miembros en el equipo
+          {lang === "en" ? "No team members" : "Sin miembros en el equipo"}
         </div>
       ) : (
         <div style={{ display: "grid", gap: "6px" }}>
@@ -71,8 +79,7 @@ export default function TeamSidebar({ availability, loading, onScheduleWith }: T
             <div
               key={member.id}
               style={{
-                padding: "8px 10px",
-                borderRadius: "var(--radius-md)",
+                padding: "8px 10px", borderRadius: "var(--radius-md)",
                 border: `1px solid ${isBusy ? "var(--color-warning-border)" : "var(--color-border-faint)"}`,
                 background: isBusy ? "var(--color-warning-bg)" : "var(--color-bg-subtle)",
                 display: "grid", gap: "6px",
@@ -93,21 +100,18 @@ export default function TeamSidebar({ availability, loading, onScheduleWith }: T
                     {member.user_id.slice(0, 12)}…
                   </div>
                   <div style={{ fontSize: "10px", color: "var(--color-text-muted)", textTransform: "capitalize" }}>
-                    {member.role ?? "usuario"}
+                    {member.role ?? t.navItems.user}
                   </div>
                 </div>
-                <div style={{
-                  fontSize: "10px", fontWeight: 600,
-                  color: isBusy ? "var(--color-warning-text)" : "var(--color-success-text)",
-                }}>
-                  {isBusy ? "Ocupado" : "Libre"}
+                <div style={{ fontSize: "10px", fontWeight: 600, color: isBusy ? "var(--color-warning-text)" : "var(--color-success-text)" }}>
+                  {isBusy ? t.agenda.busy : t.agenda.freeStatus}
                 </div>
               </div>
 
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
-                  {eventsToday.length} evento{eventsToday.length !== 1 ? "s" : ""} hoy
-                  {nextFree ? ` · próx. ${nextFree}` : ""}
+                  {eventsToday.length} {eventsToday.length === 1 ? t.agenda.scheduledEvent : t.agenda.scheduledEvents} {t.agenda.today.toLowerCase()}
+                  {nextFree ? ` · ${lang === "en" ? "next" : "próx."} ${nextFree}` : ""}
                 </div>
                 <button
                   onClick={() => onScheduleWith(member.user_id)}
@@ -119,7 +123,7 @@ export default function TeamSidebar({ availability, loading, onScheduleWith }: T
                     padding: "3px 8px", cursor: "pointer",
                   }}
                 >
-                  Agendar
+                  {t.agenda.schedule}
                 </button>
               </div>
             </div>
@@ -127,28 +131,21 @@ export default function TeamSidebar({ availability, loading, onScheduleWith }: T
         </div>
       )}
 
-      {/* INTEGRACIONES */}
+      {/* CALENDARIOS EXTERNOS */}
       <div style={{ borderTop: "1px solid var(--color-border-faint)", paddingTop: "12px" }}>
         <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase", color: "var(--color-text-muted)", marginBottom: "8px" }}>
-          Calendarios externos
+          {t.agenda.externalCalendars}
         </div>
         <div style={{ display: "grid", gap: "6px" }}>
-          {[
-            { name: "Google Calendar", color: "#4285F4", connected: false },
-            { name: "Outlook",         color: "#0078D4", connected: false },
-            { name: "Apple Calendar",  color: "#555555", connected: false },
-          ].map((cal) => (
+          {CALENDARS.map((cal) => (
             <button
               key={cal.name}
               style={{
                 display: "flex", alignItems: "center", gap: "8px",
-                padding: "8px 10px",
-                borderRadius: "var(--radius-md)",
+                padding: "8px 10px", borderRadius: "var(--radius-md)",
                 border: "1px solid var(--color-border-faint)",
                 background: cal.connected ? "var(--color-success-bg)" : "var(--color-bg-subtle)",
-                cursor: "pointer",
-                textAlign: "left",
-                width: "100%",
+                cursor: "pointer", textAlign: "left", width: "100%",
                 transition: "var(--transition-fast)",
               }}
               onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.borderColor = cal.color; }}
@@ -158,11 +155,8 @@ export default function TeamSidebar({ availability, loading, onScheduleWith }: T
               <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--color-text-second)", flex: 1 }}>
                 {cal.name}
               </span>
-              <span style={{
-                fontSize: "10px", fontWeight: 600,
-                color: cal.connected ? "var(--color-success-text)" : "var(--color-brand-orange)",
-              }}>
-                {cal.connected ? "Conectado" : "Conectar"}
+              <span style={{ fontSize: "10px", fontWeight: 600, color: cal.connected ? "var(--color-success-text)" : "var(--color-brand-orange)" }}>
+                {cal.connected ? t.agenda.connected : t.agenda.connect}
               </span>
             </button>
           ))}
