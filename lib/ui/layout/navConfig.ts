@@ -1,106 +1,99 @@
-// ================================================================
-// NAVEGACIÓN POR ROL
-// Fuente única de verdad para el sidebar.
-// Agregar módulos aquí — el sidebar los refleja automáticamente.
-// ================================================================
-
 export type NavItem = {
-  name: string;
+  nameKey: string;
   path: string;
 };
 
 export type NavSection = {
   key: string;
-  title: string;
-  subtitle: string;
-  roles: string[]; // qué roles ven esta sección ("*" = todos)
+  titleKey: string;
+  subtitleKey: string;
+  roles: string[];
   items: NavItem[];
 };
 
 export const navSections: NavSection[] = [
   {
-    key: "general",
-    title: "General",
-    subtitle: "Base operativa",
-    roles: ["*"],
+    key:         "general",
+    titleKey:    "general",
+    subtitleKey: "baseOps",
+    roles:       ["*"],
     items: [
-      { name: "Dashboard", path: "/dashboard" },
-      { name: "Agenda",    path: "/agenda" },
+      { nameKey: "dashboard", path: "/dashboard" },
+      { nameKey: "agenda",    path: "/agenda" },
     ],
   },
   {
-    key: "comercial",
-    title: "Comercial",
-    subtitle: "Ventas y relación",
-    roles: ["admin", "owner", "comercial"],
+    key:         "comercial",
+    titleKey:    "commercial",
+    subtitleKey: "salesRel",
+    roles:       ["admin", "owner", "comercial"],
     items: [
-      { name: "Prospectos",    path: "/comercial/prospects" },
-      { name: "Oportunidades", path: "/comercial/opportunities" },
-      { name: "CRM",           path: "/comercial/crm" },
-      { name: "Clientes",      path: "/comercial/clientes" },
-      { name: "Cotizaciones",  path: "/comercial/cotizaciones" },
-      { name: "Productos",     path: "/comercial/productos" },
-      { name: "Pedidos",       path: "/comercial/pedidos" },
+      { nameKey: "prospects",     path: "/comercial/prospects" },
+      { nameKey: "opportunities", path: "/comercial/opportunities" },
+      { nameKey: "crm",           path: "/comercial/crm" },
+      { nameKey: "clients",       path: "/comercial/clientes" },
+      { nameKey: "quotations",    path: "/comercial/cotizaciones" },
+      { nameKey: "products",      path: "/comercial/productos" },
+      { nameKey: "orders",        path: "/comercial/pedidos" },
     ],
   },
   {
-    key: "logistica",
-    title: "Logística",
-    subtitle: "Operación del servicio",
-    roles: ["admin", "owner", "logistica"],
+    key:         "logistica",
+    titleKey:    "logistics",
+    subtitleKey: "serviceOps",
+    roles:       ["admin", "owner", "logistica"],
     items: [
-      { name: "Embarques",            path: "/logistica/embarques" },
-      { name: "Transporte",           path: "/logistica/transporte" },
-      { name: "Comercio Exterior",    path: "/logistica/comercio-exterior" },
-      { name: "Tracking",             path: "/logistica/tracking" },
-      { name: "Documentación",        path: "/logistica/documentacion" },
-      { name: "Proveedores logísticos", path: "/logistica/proveedores-logisticos" },
-      { name: "Órdenes de servicio",  path: "/logistica/ordenes-servicio" },
+      { nameKey: "shipments",          path: "/logistica/embarques" },
+      { nameKey: "transport",          path: "/logistica/transporte" },
+      { nameKey: "foreignTrade",       path: "/logistica/comercio-exterior" },
+      { nameKey: "tracking",           path: "/logistica/tracking" },
+      { nameKey: "documentation",      path: "/logistica/documentacion" },
+      { nameKey: "logisticsProviders", path: "/logistica/proveedores-logisticos" },
+      { nameKey: "serviceOrders",      path: "/logistica/ordenes-servicio" },
     ],
   },
   {
-    key: "abastecimiento",
-    title: "Compras & Abastecimiento",
-    subtitle: "Inventario y suministro",
-    roles: ["admin", "owner", "compras"],
+    key:         "abastecimiento",
+    titleKey:    "procurement",
+    subtitleKey: "inventory",
+    roles:       ["admin", "owner", "compras"],
     items: [
-      { name: "Proveedores",      path: "/abastecimiento/proveedores" },
-      { name: "Compras",          path: "/abastecimiento/compras" },
-      { name: "Órdenes de compra", path: "/abastecimiento/ordenes-compra" },
-      { name: "Inventarios",      path: "/abastecimiento/inventarios" },
-      { name: "Recepciones",      path: "/abastecimiento/recepciones" },
-      { name: "Costos",           path: "/abastecimiento/costos" },
+      { nameKey: "suppliers",      path: "/abastecimiento/proveedores" },
+      { nameKey: "purchases",      path: "/abastecimiento/compras" },
+      { nameKey: "purchaseOrders", path: "/abastecimiento/ordenes-compra" },
+      { nameKey: "inventory",      path: "/abastecimiento/inventarios" },
+      { nameKey: "receptions",     path: "/abastecimiento/recepciones" },
+      { nameKey: "costs",          path: "/abastecimiento/costos" },
     ],
   },
   {
-    key: "finanzas",
-    title: "Finanzas",
-    subtitle: "Control económico",
-    roles: ["admin", "owner", "finanzas"],
+    key:         "finanzas",
+    titleKey:    "finance",
+    subtitleKey: "economic",
+    roles:       ["admin", "owner", "finanzas"],
     items: [
-      { name: "Facturación",       path: "/finanzas/facturacion" },
-      { name: "Cuentas por cobrar", path: "/finanzas/cxc" },
-      { name: "Cuentas por pagar", path: "/finanzas/cxp" },
-      { name: "Bancos",            path: "/finanzas/bancos" },
-      { name: "Contabilidad",      path: "/finanzas/contabilidad" },
-      { name: "Impuestos",         path: "/finanzas/impuestos" },
+      { nameKey: "billing",            path: "/finanzas/facturacion" },
+      { nameKey: "accountsReceivable", path: "/finanzas/cxc" },
+      { nameKey: "accountsPayable",    path: "/finanzas/cxp" },
+      { nameKey: "banks",              path: "/finanzas/bancos" },
+      { nameKey: "accounting",         path: "/finanzas/contabilidad" },
+      { nameKey: "taxes",              path: "/finanzas/impuestos" },
     ],
   },
   {
-    key: "administracion",
-    title: "Administración",
-    subtitle: "Plataforma y soporte",
-    roles: ["*"],
+    key:         "administracion",
+    titleKey:    "admin",
+    subtitleKey: "platformSupport",
+    roles:       ["*"],
     items: [
-      { name: "Reportes",      path: "/reports" },
-      { name: "Empresa",       path: "/company" },
-      { name: "Configuración", path: "/settings" },
-      { name: "Ayuda",         path: "/help" },
+      { nameKey: "reports",  path: "/reports" },
+      { nameKey: "company",  path: "/company" },
+      { nameKey: "settings", path: "/settings" },
+      { nameKey: "help",     path: "/help" },
     ],
   },
 ];
 
-// Filtra secciones según el rol del usuario
 export function getNavForRole(role: string | null): NavSection[] {
   return navSections.filter((section) =>
     section.roles.includes("*") || section.roles.includes(role ?? "")
