@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import NotificationsButton from "./NotificationsButton";
+import LanguageSelector from "@/lib/i18n/LanguageSelector";
 
 interface AppHeaderProps {
   section: string;
@@ -75,8 +76,10 @@ export default function AppHeader({ section, title, onOpenHub, onSearch }: AppHe
 
         <NotificationsButton />
 
-        <button
-          onClick={toggleTheme}
+<LanguageSelector />
+
+<button
+  onClick={toggleTheme}
           title={isDark ? "Modo claro" : "Modo oscuro"}
           style={{ width: "34px", height: "34px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
         >
