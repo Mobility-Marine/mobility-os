@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { navSections } from "./navConfig";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface CommandHubProps {
   open: boolean;
@@ -11,22 +12,15 @@ interface CommandHubProps {
   userId: string | null;
 }
 
-export default function CommandHub({
-  open,
-  onClose,
-  companyId,
-  userId,
-}: CommandHubProps) {
+export default function CommandHub({ open, onClose, companyId, userId }: CommandHubProps) {
   const router = useRouter();
-  const [query, setQuery] = useState("");
-  const [result, setResult] = useState<string | null>(null);
+  const { t }  = useTranslation();
+  const [query,   setQuery]   = useState("");
+  const [result,  setResult]  = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (!open) {
-      setQuery("");
-      setResult(null);
-    }
+    if (!open) { setQuery(""); setResult(null); }
   }, [open]);
 
   useEffect(() => {
@@ -38,14 +32,21 @@ export default function CommandHub({
   }, [onClose]);
 
   const allItems = navSections.flatMap((s) =>
-    s.items.map((item) => ({ ...item, section: s.title }))
+    s.items.map((item) => ({
+      path:        item.path,
+      nameKey:     item.nameKey,
+      sectionKey:  s.titleKey,
+      name:        (t.navItems as any)[item.nameKey]  ?? item.nameKey,
+      section:     (t.nav as any)[s.titleKey]         ?? s.titleKey,
+    }))
   );
 
   const filtered = query.trim()
     ? allItems.filter(
         (item) =>
           item.name.toLowerCase().includes(query.toLowerCase()) ||
-          item.path.toLowerCase().includes(query.toLowerCase())
+          item.path.toLowerCase().includes(query.toLowerCase()) ||
+          item.nameKey.toLowerCase().includes(query.toLowerCase())
       )
     : allItems;
 
@@ -55,9 +56,9 @@ export default function CommandHub({
     setResult(null);
     try {
       const res = await fetch("/api/ai/command", {
-        method: "POST",
+        method:  "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: query, companyId, userId }),
+        body:    JSON.stringify({ prompt: query, companyId, userId }),
       });
       const data = await res.json();
       setResult(data.result ?? "Sin respuesta.");
@@ -74,15 +75,11 @@ export default function CommandHub({
     <div
       onClick={onClose}
       style={{
-        position: "fixed",
-        inset: 0,
+        position: "fixed", inset: 0,
         background: "rgba(0,0,0,0.4)",
         backdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "flex-start",
-        justifyContent: "center",
-        paddingTop: "10vh",
-        zIndex: 300,
+        display: "flex", alignItems: "flex-start", justifyContent: "center",
+        paddingTop: "10vh", zIndex: 300,
       }}
     >
       <div
@@ -100,40 +97,33 @@ export default function CommandHub({
         <div style={{
           padding: "12px 16px",
           borderBottom: "1px solid var(--color-border-faint)",
-          display: "flex",
-          gap: "8px",
+          display: "flex", gap: "8px",
         }}>
           <input
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAI()}
-            placeholder="Escribe un módulo, comando o pregunta para la IA…"
+            placeholder={t.general.search}
             style={{
-              flex: 1,
-              height: "40px",
-              border: "none",
-              background: "transparent",
+              flex: 1, height: "40px",
+              border: "none", background: "transparent",
               color: "var(--color-text-primary)",
-              fontSize: "15px",
-              outline: "none",
+              fontSize: "15px", outline: "none",
             }}
           />
           <button
             onClick={handleAI}
             style={{
-              height: "40px",
-              padding: "0 16px",
+              height: "40px", padding: "0 16px",
               borderRadius: "var(--radius-md)",
               background: "var(--color-brand-orange)",
-              color: "#ffffff",
-              border: "none",
-              fontSize: "13px",
-              fontWeight: 600,
+              color: "#ffffff", border: "none",
+              fontSize: "13px", fontWeight: 600,
               cursor: "pointer",
             }}
           >
-            Ejecutar
+            {t.general.confirm}
           </button>
         </div>
 
@@ -146,10 +136,9 @@ export default function CommandHub({
             fontSize: "13px",
             color: loading ? "var(--color-text-muted)" : "var(--color-text-primary)",
             whiteSpace: "pre-wrap",
-            maxHeight: "180px",
-            overflowY: "auto",
+            maxHeight: "180px", overflowY: "auto",
           }}>
-            {loading ? "Consultando IA…" : result}
+            {loading ? t.general.loading : result}
           </div>
         )}
 
@@ -160,24 +149,16 @@ export default function CommandHub({
               key={item.path}
               onClick={() => { router.push(item.path); onClose(); }}
               style={{
-                width: "100%",
-                textAlign: "left",
+                width: "100%", textAlign: "left",
                 padding: "10px 14px",
                 borderRadius: "var(--radius-md)",
-                border: "none",
-                background: "transparent",
+                border: "none", background: "transparent",
                 cursor: "pointer",
-                display: "flex",
-                justifyContent: "space-between",
-                alignItems: "center",
+                display: "flex", justifyContent: "space-between", alignItems: "center",
                 transition: "var(--transition-fast)",
               }}
-              onMouseEnter={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "var(--color-bg-hover)";
-              }}
-              onMouseLeave={(e) => {
-                (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-              }}
+              onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "var(--color-bg-hover)"; }}
+              onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}
             >
               <span style={{ fontSize: "14px", color: "var(--color-text-primary)", fontWeight: 500 }}>
                 {item.name}
@@ -193,13 +174,11 @@ export default function CommandHub({
         <div style={{
           padding: "8px 16px",
           borderTop: "1px solid var(--color-border-faint)",
-          display: "flex",
-          justifyContent: "space-between",
-          fontSize: "11px",
-          color: "var(--color-text-muted)",
+          display: "flex", justifyContent: "space-between",
+          fontSize: "11px", color: "var(--color-text-muted)",
         }}>
-          <span>↵ para ejecutar IA</span>
-          <span>ESC para cerrar</span>
+          <span>↵ {t.general.confirm}</span>
+          <span>ESC {t.general.close}</span>
         </div>
       </div>
     </div>
