@@ -6,6 +6,7 @@ import { useAgenda } from "../hooks/useAgenda";
 import { useTeamAvailability } from "../hooks/useTeamAvailability";
 import { useModuleEvents } from "../hooks/useModuleEvents";
 import { isModuleEvent } from "@/services/agenda/module-events.service";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import AgendaHeader from "./AgendaHeader";
 import WeekView from "./WeekView";
 import DayView from "./DayView";
@@ -28,20 +29,21 @@ function startOfWeek(date: Date) {
 
 export default function AgendaShell() {
   const agenda = useAgenda();
+  const { t }  = useTranslation();
   const {
     user, companyId, selectedDate, setSelectedDate,
     events, members, loading,
     createEvent, updateEvent, deleteEvent, moveEvent,
   } = agenda;
 
-  const [view, setView]                     = useState<CalendarView>("week");
-  const [modalOpen, setModalOpen]           = useState(false);
-  const [editingEvent, setEditingEvent]     = useState<CalendarEvent | null>(null);
-  const [slotDateTime, setSlotDateTime]     = useState<string | undefined>();
+  const [view, setView]                           = useState<CalendarView>("week");
+  const [modalOpen, setModalOpen]                 = useState(false);
+  const [editingEvent, setEditingEvent]           = useState<CalendarEvent | null>(null);
+  const [slotDateTime, setSlotDateTime]           = useState<string | undefined>();
   const [prefilledAttendee, setPrefilledAttendee] = useState<string | undefined>();
 
-  const { availability }        = useTeamAvailability(members, companyId, selectedDate);
-  const { syncing }             = useModuleEvents(companyId);
+  const { availability } = useTeamAvailability(members, companyId, selectedDate);
+  const { syncing }      = useModuleEvents(companyId);
 
   const currentDate = useMemo(() => new Date(selectedDate + "T12:00:00"), [selectedDate]);
 
@@ -104,7 +106,6 @@ export default function AgendaShell() {
   return (
     <div style={{ display: "grid", gap: "16px" }}>
 
-      {/* HEADER + SYNC INDICATOR */}
       <div>
         <AgendaHeader
           view={view}
@@ -121,20 +122,17 @@ export default function AgendaShell() {
           }}>
             <div style={{
               width: "6px", height: "6px", borderRadius: "50%",
-              background: "var(--color-brand-blue)",
-              opacity: 0.7,
+              background: "var(--color-brand-blue)", opacity: 0.7,
             }} />
-            Sincronizando eventos de módulos…
+            {t.agenda.syncingModules}
           </div>
         )}
       </div>
 
-      {/* GRID PRINCIPAL */}
       <div style={{
         display: "grid",
         gridTemplateColumns: "minmax(0, 1fr) 260px",
-        gap: "16px",
-        alignItems: "start",
+        gap: "16px", alignItems: "start",
       }}>
         <div>
           {loading ? (
@@ -142,53 +140,17 @@ export default function AgendaShell() {
               background: "var(--color-bg-base)",
               border: "1px solid var(--color-border-faint)",
               borderRadius: "var(--radius-lg)",
-              padding: "40px",
-              textAlign: "center",
-              color: "var(--color-text-muted)",
-              fontSize: "13px",
+              padding: "40px", textAlign: "center",
+              color: "var(--color-text-muted)", fontSize: "13px",
             }}>
-              Cargando agenda…
+              {t.agenda.loading}
             </div>
           ) : (
             <>
-              {view === "week" && (
-                <WeekView
-                  weekDays={weekDays}
-                  events={events}
-                  selectedDate={selectedDate}
-                  onEventClick={openEditEvent}
-                  onSlotClick={(dt) => openNewEvent(dt)}
-                  onEventDrop={moveEvent}
-                />
-              )}
-              {view === "day" && (
-                <DayView
-                  currentDate={currentDate}
-                  events={events}
-                  onEventClick={openEditEvent}
-                  onSlotClick={(dt) => openNewEvent(dt)}
-                  onEventDrop={moveEvent}
-                />
-              )}
-              {view === "month" && (
-                <MonthView
-                  selectedDate={selectedDate}
-                  events={events}
-                  onEventClick={openEditEvent}
-                  onSlotClick={(dt) => openNewEvent(dt)}
-                  onEventDrop={moveEvent}
-                />
-              )}
-              {view === "year" && (
-                <YearView
-                  selectedDate={selectedDate}
-                  events={events}
-                  onMonthClick={(dateStr) => {
-                    setSelectedDate(dateStr);
-                    setView("month");
-                  }}
-                />
-              )}
+              {view === "week" && <WeekView weekDays={weekDays} events={events} selectedDate={selectedDate} onEventClick={openEditEvent} onSlotClick={(dt) => openNewEvent(dt)} onEventDrop={moveEvent} />}
+              {view === "day"  && <DayView  currentDate={currentDate} events={events} onEventClick={openEditEvent} onSlotClick={(dt) => openNewEvent(dt)} onEventDrop={moveEvent} />}
+              {view === "month" && <MonthView selectedDate={selectedDate} events={events} onEventClick={openEditEvent} onSlotClick={(dt) => openNewEvent(dt)} onEventDrop={moveEvent} />}
+              {view === "year"  && <YearView  selectedDate={selectedDate} events={events} onMonthClick={(dateStr) => { setSelectedDate(dateStr); setView("month"); }} />}
             </>
           )}
         </div>
@@ -200,7 +162,6 @@ export default function AgendaShell() {
         />
       </div>
 
-      {/* MODAL */}
       {modalOpen && companyId && user && (
         <EventModal
           event={editingEvent}
