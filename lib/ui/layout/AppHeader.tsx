@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import NotificationsButton from "./NotificationsButton";
 import LanguageSelector from "@/lib/i18n/LanguageSelector";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface AppHeaderProps {
   section: string;
@@ -32,7 +33,8 @@ function MoonIcon() {
 }
 
 export default function AppHeader({ section, title, onOpenHub, onSearch }: AppHeaderProps) {
-  const [query, setQuery] = useState("");
+  const { t }    = useTranslation();
+  const [query, setQuery]   = useState("");
   const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
@@ -54,9 +56,19 @@ export default function AppHeader({ section, title, onOpenHub, onSearch }: AppHe
   }
 
   return (
-    <header style={{ height: "var(--header-height)", background: "var(--color-bg-base)", borderBottom: "1px solid var(--color-border-faint)", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 24px", gap: "16px", flexShrink: 0 }}>
+    <header style={{
+      height: "var(--header-height)",
+      background: "var(--color-bg-base)",
+      borderBottom: "1px solid var(--color-border-faint)",
+      display: "flex", alignItems: "center", justifyContent: "space-between",
+      padding: "0 24px", gap: "16px", flexShrink: 0,
+    }}>
       <div style={{ flexShrink: 0 }}>
-        <div style={{ fontSize: "10px", fontWeight: 600, letterSpacing: "1px", textTransform: "uppercase", color: "var(--color-text-muted)" }}>
+        <div style={{
+          fontSize: "10px", fontWeight: 600,
+          letterSpacing: "1px", textTransform: "uppercase",
+          color: "var(--color-text-muted)",
+        }}>
           {section}
         </div>
         <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--color-text-primary)", lineHeight: 1.2 }}>
@@ -69,28 +81,51 @@ export default function AppHeader({ section, title, onOpenHub, onSearch }: AppHe
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Buscar o ejecutar…"
-            style={{ width: "100%", height: "34px", padding: "0 12px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-primary)", fontSize: "13px", outline: "none" }}
+            placeholder={t.general.search}
+            style={{
+              width: "100%", height: "34px", padding: "0 12px",
+              borderRadius: "var(--radius-md)",
+              border: "1px solid var(--color-border)",
+              background: "var(--color-bg-subtle)",
+              color: "var(--color-text-primary)",
+              fontSize: "13px", outline: "none",
+            }}
           />
         </form>
 
         <NotificationsButton />
 
-<LanguageSelector />
+        <LanguageSelector />
 
-<button
-  onClick={toggleTheme}
+        <button
+          onClick={toggleTheme}
           title={isDark ? "Modo claro" : "Modo oscuro"}
-          style={{ width: "34px", height: "34px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+          style={{
+            width: "34px", height: "34px",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--color-border)",
+            background: "var(--color-bg-subtle)",
+            color: "var(--color-text-second)",
+            cursor: "pointer",
+            display: "flex", alignItems: "center", justifyContent: "center",
+            flexShrink: 0,
+          }}
         >
           {isDark ? <SunIcon /> : <MoonIcon />}
         </button>
 
         <button
           onClick={onOpenHub}
-          style={{ height: "34px", padding: "0 16px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#ffffff", border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer", flexShrink: 0 }}
+          style={{
+            height: "34px", padding: "0 16px",
+            borderRadius: "var(--radius-md)",
+            background: "var(--color-brand-blue)",
+            color: "#ffffff", border: "none",
+            fontSize: "12px", fontWeight: 600,
+            cursor: "pointer", flexShrink: 0,
+          }}
         >
-          IA
+          {t.dashboard.ia}
         </button>
       </div>
     </header>
