@@ -2,6 +2,7 @@
 
 import React, { useRef } from "react";
 import { CalendarEvent, HOURS_START, HOURS_END, HOUR_HEIGHT } from "../types/agenda.types";
+import { isModuleEvent } from "@/services/agenda/module-events.service";
 
 interface DayViewProps {
   currentDate: Date;
@@ -29,11 +30,8 @@ const HOURS = Array.from({ length: HOURS_END - HOURS_START + 1 }, (_, i) =>
 
 export default function DayView({ currentDate, events, onEventClick, onSlotClick, onEventDrop }: DayViewProps) {
   const draggingId = useRef<string | null>(null);
-  const dayStr = getLocalDateISO(currentDate);
-  const dayEvents = events.filter((ev) => {
-    const s = new Date(ev.start_datetime);
-    return getLocalDateISO(s) === dayStr;
-  });
+  const dayStr     = getLocalDateISO(currentDate);
+  const dayEvents  = events.filter((ev) => getLocalDateISO(new Date(ev.start_datetime)) === dayStr);
 
   return (
     <div style={{
@@ -43,6 +41,7 @@ export default function DayView({ currentDate, events, onEventClick, onSlotClick
       overflow: "hidden",
       boxShadow: "var(--shadow-sm)",
     }}>
+      {/* DÍA HEADER */}
       <div style={{
         padding: "12px 16px",
         borderBottom: "1px solid var(--color-border-faint)",
@@ -50,9 +49,11 @@ export default function DayView({ currentDate, events, onEventClick, onSlotClick
         display: "flex", alignItems: "center", gap: "12px",
       }}>
         <div style={{
-          width: "40px", height: "40px", borderRadius: "var(--radius-md)",
+          width: "40px", height: "40px",
+          borderRadius: "var(--radius-md)",
           background: "var(--color-brand-blue)",
-          color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+          color: "#fff",
+          display: "flex", alignItems: "center", justifyContent: "center",
           fontSize: "18px", fontWeight: 700, flexShrink: 0,
         }}>
           {currentDate.getDate()}
@@ -67,6 +68,7 @@ export default function DayView({ currentDate, events, onEventClick, onSlotClick
         </div>
       </div>
 
+      {/* GRID */}
       <div style={{ position: "relative", overflowY: "auto", maxHeight: "calc(100vh - 320px)" }}>
         {HOURS.map((hour) => (
           <div
@@ -108,44 +110,66 @@ export default function DayView({ currentDate, events, onEventClick, onSlotClick
           </div>
         ))}
 
+        {/* EVENTOS */}
         {dayEvents.map((ev) => {
-          const start = new Date(ev.start_datetime);
-          const end   = new Date(ev.end_datetime ?? ev.start_datetime);
+          const start    = new Date(ev.start_datetime);
+          const end      = new Date(ev.end_datetime ?? ev.start_datetime);
           const startMin = clamp(minutesFromStart(start), 0, (HOURS_END - HOURS_START + 1) * 60);
           const endMin   = clamp(minutesFromStart(end), startMin + 30, (HOURS_END - HOURS_START + 1) * 60);
-          const top    = (startMin / 60) * HOUR_HEIGHT;
-          const height = Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT, 36);
+          const top      = (startMin / 60) * HOUR_HEIGHT;
+          const height   = Math.max(((endMin - startMin) / 60) * HOUR_HEIGHT, 36);
+          const isModule = isModuleEvent(ev.event_type);
 
           return (
             <div
               key={ev.id}
-              draggable
-              onDragStart={(e) => { draggingId.current = ev.id; e.dataTransfer.setData("eventId", ev.id); }}
+              draggable={!isModule}
+              onDragStart={(e) => {
+                if (isModule) { e.preventDefault(); return; }
+                draggingId.current = ev.id;
+                e.dataTransfer.setData("eventId", ev.id);
+              }}
               onDragEnd={() => { draggingId.current = null; }}
               onClick={(e) => { e.stopPropagation(); onEventClick(ev); }}
               style={{
                 position: "absolute",
-                top: `${top}px`,
-                left: "68px",
-                right: "8px",
+                top:    `${top}px`,
+                left:   "68px",
+                right:  "8px",
                 height: `${height}px`,
-                background: ev.color ?? "var(--color-brand-blue)",
+                background:   ev.color ?? "var(--color-brand-blue)",
                 borderRadius: "var(--radius-md)",
-                padding: "6px 10px",
-                cursor: "grab",
-                overflow: "hidden",
-                boxShadow: "var(--shadow-md)",
-                borderLeft: `4px solid rgba(0,0,0,0.2)`,
+                padding:      "6px 10px",
+                cursor:       isModule ? "default" : "grab",
+                overflow:     "hidden",
+                boxShadow:    "var(--shadow-md)",
+                borderLeft:   `4px solid rgba(0,0,0,0.2)`,
                 zIndex: 2,
+                opacity: isModule ? 0.85 : 1,
               }}
             >
-              <div style={{ fontSize: "13px", fontWeight: 700, color: "#fff" }}>{ev.title}</div>
-              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.85)", marginTop: "2px" }}>
-                {start.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
-                {" — "}
-                {end.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "#fff", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {ev.title}
+                </div>
+                {isModule && (
+                  <span style={{
+                    fontSize: "9px", fontWeight: 700,
+                    padding: "1px 5px", borderRadius: "3px",
+                    background: "rgba(255,255,255,0.25)",
+                    color: "#fff", flexShrink: 0,
+                  }}>
+                    AUTO
+                  </span>
+                )}
               </div>
-              {ev.location && (
+              <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.85)", marginTop: "2px" }}>
+                {isModule
+                  ? "Evento automático de módulo"
+                  : `${start.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })} — ${end.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`
+                }
+              </div>
+              {ev.location && !isModule && (
                 <div style={{ fontSize: "11px", color: "rgba(255,255,255,0.7)", marginTop: "2px" }}>
                   {ev.location}
                 </div>
