@@ -14,20 +14,16 @@ interface Member {
 
 function Avatar({ userId, size = 32 }: { userId: string; size?: number }) {
   const initial = userId.charAt(0).toUpperCase();
-  const colors = [
-    "var(--color-brand-blue)",
-    "var(--color-info-text)",
-    "var(--color-success-text)",
-    "var(--color-warning-text)",
+  const colors  = [
+    "var(--color-brand-blue)", "var(--color-info-text)",
+    "var(--color-success-text)", "var(--color-warning-text)",
   ];
   const color = colors[userId.charCodeAt(0) % colors.length];
   return (
     <div style={{
       width: size, height: size, borderRadius: "50%",
-      background: color + "20",
-      border: `1.5px solid ${color}40`,
-      color: color,
-      display: "flex", alignItems: "center", justifyContent: "center",
+      background: color + "20", border: `1.5px solid ${color}40`,
+      color, display: "flex", alignItems: "center", justifyContent: "center",
       fontSize: size * 0.38, fontWeight: 700, flexShrink: 0,
     }}>
       {initial}
@@ -40,20 +36,20 @@ function isOnline(lastActive?: string): boolean {
   return Date.now() - new Date(lastActive).getTime() < 15 * 60 * 1000;
 }
 
-function lastSeen(lastActive?: string): string {
-  if (!lastActive) return "Sin actividad";
+function lastSeen(lastActive: string | undefined, lang: string): string {
+  if (!lastActive) return lang === "en" ? "No activity" : "Sin actividad";
   const diff = Math.floor((Date.now() - new Date(lastActive).getTime()) / 60000);
-  if (diff < 1) return "Activo ahora";
-  if (diff < 60) return `Hace ${diff}m`;
-  if (diff < 1440) return `Hace ${Math.floor(diff / 60)}h`;
-  return `Hace ${Math.floor(diff / 1440)}d`;
+  if (diff < 1)    return lang === "en" ? "Active now"        : "Activo ahora";
+  if (diff < 60)   return lang === "en" ? `${diff}m ago`      : `Hace ${diff}m`;
+  if (diff < 1440) return lang === "en" ? `${Math.floor(diff / 60)}h ago`  : `Hace ${Math.floor(diff / 60)}h`;
+  return           lang === "en" ? `${Math.floor(diff / 1440)}d ago` : `Hace ${Math.floor(diff / 1440)}d`;
 }
 
 export default function TeamActivity() {
-  const { companyId } = useTenant();
-  const { t } = useTranslation();
-  const [members, setMembers] = useState<Member[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { companyId }  = useTenant();
+  const { t, lang }    = useTranslation();
+  const [members, setMembers]   = useState<Member[]>([]);
+  const [loading, setLoading]   = useState(true);
 
   useEffect(() => {
     if (!companyId) return;
@@ -86,23 +82,19 @@ export default function TeamActivity() {
   }
 
   const online = members.filter((m) => isOnline(m.last_active));
-  const offline = members.filter((m) => !isOnline(m.last_active));
 
   return (
     <div style={{
       background: "var(--color-bg-base)",
       border: "1px solid var(--color-border-faint)",
       borderRadius: "var(--radius-lg)",
-      padding: "18px",
-      boxShadow: "var(--shadow-sm)",
-      display: "grid",
-      gap: "14px",
-      height: "100%",
-      alignContent: "start",
+      padding: "18px", boxShadow: "var(--shadow-sm)",
+      display: "grid", gap: "14px",
+      height: "100%", alignContent: "start",
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)" }}>
-          Equipo
+          {t.dashboard.team}
         </div>
         <div style={{ display: "flex", gap: "6px" }}>
           <div style={{
@@ -110,19 +102,18 @@ export default function TeamActivity() {
             background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)",
             fontSize: "11px", fontWeight: 600, color: "var(--color-success-text)",
           }}>
-            {online.length} en línea
+            {online.length} {t.general.online}
           </div>
           <div style={{
             padding: "2px 8px", borderRadius: "var(--radius-full)",
             background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)",
             fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)",
           }}>
-            {members.length} total
+            {members.length} {t.dashboard.totalMembers}
           </div>
         </div>
       </div>
 
-      {/* AVATARES EN LÍNEA */}
       {online.length > 0 && (
         <div style={{ display: "flex", alignItems: "center", gap: "-4px" }}>
           {online.slice(0, 5).map((m, i) => (
@@ -141,7 +132,9 @@ export default function TeamActivity() {
             </div>
           )}
           <div style={{ marginLeft: "12px", fontSize: "12px", color: "var(--color-success-text)", fontWeight: 500 }}>
-            {online.length === 1 ? `1 ${t.dashboard.activePerson}` : `${online.length} ${t.dashboard.activePersons}`}
+            {online.length === 1
+              ? `1 ${t.dashboard.activePerson}`
+              : `${online.length} ${t.dashboard.activePersons}`}
           </div>
         </div>
       )}
@@ -163,7 +156,7 @@ export default function TeamActivity() {
           ))
         ) : members.length === 0 ? (
           <div style={{ fontSize: "12px", color: "var(--color-text-muted)", textAlign: "center", padding: "16px 0" }}>
-            Sin miembros en el equipo
+            {lang === "en" ? "No team members" : "Sin miembros en el equipo"}
           </div>
         ) : (
           members.map((member) => {
@@ -187,16 +180,12 @@ export default function TeamActivity() {
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    fontSize: "12px", fontWeight: 600,
-                    color: "var(--color-text-primary)",
+                    fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)",
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                   }}>
                     {member.user_id.slice(0, 12)}…
                   </div>
-                  <div style={{
-                    fontSize: "10px", color: "var(--color-text-muted)",
-                    textTransform: "capitalize",
-                  }}>
+                  <div style={{ fontSize: "10px", color: "var(--color-text-muted)", textTransform: "capitalize" }}>
                     {member.role}
                   </div>
                 </div>
@@ -205,7 +194,7 @@ export default function TeamActivity() {
                   color: active ? "var(--color-success-text)" : "var(--color-text-muted)",
                   whiteSpace: "nowrap",
                 }}>
-                  {lastSeen(member.last_active)}
+                  {lastSeen(member.last_active, lang)}
                 </div>
               </div>
             );
