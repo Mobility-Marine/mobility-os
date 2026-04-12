@@ -121,7 +121,7 @@ export default function DayView({ currentDate, events, onEventClick, onSlotClick
                 </div>
                 {isModule && (
                   <span style={{ fontSize: "9px", fontWeight: 700, padding: "1px 5px", borderRadius: "3px", background: "rgba(255,255,255,0.25)", color: "#fff", flexShrink: 0 }}>
-                    {t.agenda.auto.toUpperCase()}
+                    {t.agenda.automaticSingle.toUpperCase()}
                   </span>
                 )}
               </div>
