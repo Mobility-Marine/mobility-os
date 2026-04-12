@@ -27,6 +27,7 @@ function ClockIcon() {
 
 export default function UpcomingEvents() {
   const { companyId } = useTenant();
+  const { t } = useTranslation();
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [loading, setLoading] = useState(true);
 
