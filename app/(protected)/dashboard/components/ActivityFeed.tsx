@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface TimelineEvent {
   id: string;
@@ -29,29 +30,39 @@ function getEventBg(type: string): string {
   return "var(--color-bg-subtle)";
 }
 
-function formatTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" });
+function formatTime(iso: string, locale: string): string {
+  return new Date(iso).toLocaleTimeString(
+    locale === "en" ? "en-US" : "es-MX",
+    { hour: "2-digit", minute: "2-digit" }
+  );
 }
 
-function timeAgo(iso: string): string {
+function timeAgo(iso: string, lang: string): string {
   const diff = Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
-  if (diff < 1) return "ahora";
-  if (diff < 60) return `hace ${diff}m`;
+  if (lang === "en") {
+    if (diff < 1)    return "now";
+    if (diff < 60)   return `${diff}m ago`;
+    if (diff < 1440) return `${Math.floor(diff / 60)}h ago`;
+    return `${Math.floor(diff / 1440)}d ago`;
+  }
+  if (diff < 1)    return "ahora";
+  if (diff < 60)   return `hace ${diff}m`;
   if (diff < 1440) return `hace ${Math.floor(diff / 60)}h`;
   return `hace ${Math.floor(diff / 1440)}d`;
 }
 
-const EMPTY_TYPES = [
-  { label: "Prospectos",   hint: "Cuando crees o actualices prospectos",  color: "var(--color-brand-blue)",   bg: "var(--color-brand-blue-light)" },
-  { label: "Cotizaciones", hint: "Al generar o modificar cotizaciones",   color: "var(--color-info-text)",    bg: "var(--color-info-bg)" },
-  { label: "Embarques",    hint: "Con movimientos logísticos activos",    color: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
-  { label: "Facturas",     hint: "Al emitir o registrar pagos",           color: "var(--color-success-text)", bg: "var(--color-success-bg)" },
-];
-
 export default function ActivityFeed() {
   const { companyId } = useTenant();
-  const [events, setEvents] = useState<TimelineEvent[]>([]);
+  const { t, lang }   = useTranslation();
+  const [events, setEvents]   = useState<TimelineEvent[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const EMPTY_TYPES = [
+    { label: t.navItems.prospects,   hint: lang === "en" ? "When you create or update prospects"  : "Cuando crees o actualices prospectos",  color: "var(--color-brand-blue)",   bg: "var(--color-brand-blue-light)" },
+    { label: t.navItems.quotations,  hint: lang === "en" ? "When you generate or modify quotations" : "Al generar o modificar cotizaciones", color: "var(--color-info-text)",    bg: "var(--color-info-bg)" },
+    { label: t.navItems.shipments,   hint: lang === "en" ? "With active logistics movements"      : "Con movimientos logísticos activos",    color: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
+    { label: t.navItems.billing,     hint: lang === "en" ? "When issuing or registering payments" : "Al emitir o registrar pagos",           color: "var(--color-success-text)", bg: "var(--color-success-bg)" },
+  ];
 
   useEffect(() => {
     if (!companyId) return;
@@ -84,11 +95,13 @@ export default function ActivityFeed() {
     <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", boxShadow: "var(--shadow-sm)", display: "flex", flexDirection: "column", gap: "14px", height: "100%" }}>
 
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
-        <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)" }}>Actividad reciente</div>
+        <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)" }}>
+          {t.dashboard.recentActivity}
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: "5px", padding: "2px 8px", borderRadius: "var(--radius-full)", background: isEmpty ? "var(--color-bg-subtle)" : "var(--color-success-bg)", border: `1px solid ${isEmpty ? "var(--color-border-faint)" : "var(--color-success-border)"}` }}>
           <div style={{ width: "5px", height: "5px", borderRadius: "50%", background: isEmpty ? "var(--color-text-muted)" : "var(--color-success-text)" }} />
           <span style={{ fontSize: "10px", fontWeight: 600, color: isEmpty ? "var(--color-text-muted)" : "var(--color-success-text)" }}>
-            {isEmpty ? "En espera" : "En vivo"}
+            {isEmpty ? t.dashboard.waiting : t.dashboard.live}
           </span>
         </div>
       </div>
@@ -120,7 +133,7 @@ export default function ActivityFeed() {
               </div>
             ))}
             <div style={{ textAlign: "center", fontSize: "11px", color: "var(--color-text-muted)", paddingTop: "10px", borderTop: "1px solid var(--color-border-faint)", marginTop: "auto" }}>
-              La actividad aparecerá aquí en tiempo real
+              {t.dashboard.eventsWillAppear}
             </div>
           </div>
         ) : (
@@ -145,17 +158,17 @@ export default function ActivityFeed() {
                         {event.event_type?.replace(/_/g, " ") || "evento"}
                       </span>
                       <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>·</span>
-                      <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{timeAgo(event.created_at)}</span>
+                      <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{timeAgo(event.created_at, lang)}</span>
                     </div>
                   </div>
                   <div style={{ fontSize: "10px", color: "var(--color-text-muted)", flexShrink: 0, paddingTop: "4px" }}>
-                    {formatTime(event.created_at)}
+                    {formatTime(event.created_at, lang)}
                   </div>
                 </div>
               ))}
             </div>
             <div style={{ textAlign: "center", fontSize: "11px", color: "var(--color-brand-blue)", cursor: "pointer", fontWeight: 500, borderTop: "1px solid var(--color-border-faint)", paddingTop: "10px", marginTop: "10px" }}>
-              Ver historial completo
+              {t.dashboard.viewFullHistory}
             </div>
           </div>
         )}
