@@ -2,6 +2,7 @@
 
 import React from "react";
 import { CalendarEvent } from "../types/agenda.types";
+import { isModuleEvent } from "@/services/agenda/module-events.service";
 
 interface MonthViewProps {
   selectedDate: string;
@@ -41,7 +42,7 @@ const DAY_LABELS = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"];
 
 export default function MonthView({ selectedDate, events, onEventClick, onSlotClick, onEventDrop }: MonthViewProps) {
   const todayStr = getLocalDateISO(new Date());
-  const grid = getMonthGrid(selectedDate);
+  const grid     = getMonthGrid(selectedDate);
 
   function getDayEvents(day: Date) {
     return events.filter((ev) => getLocalDateISO(new Date(ev.start_datetime)) === getLocalDateISO(day));
@@ -55,6 +56,7 @@ export default function MonthView({ selectedDate, events, onEventClick, onSlotCl
       overflow: "hidden",
       boxShadow: "var(--shadow-sm)",
     }}>
+      {/* HEADER DÍAS */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))", borderBottom: "1px solid var(--color-border-faint)" }}>
         {DAY_LABELS.map((d) => (
           <div key={d} style={{
@@ -70,12 +72,15 @@ export default function MonthView({ selectedDate, events, onEventClick, onSlotCl
         ))}
       </div>
 
+      {/* GRID DÍAS */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(7, minmax(0, 1fr))" }}>
         {grid.map((day, i) => {
-          const dayStr   = getLocalDateISO(day.date);
-          const isToday  = dayStr === todayStr;
+          const dayStr     = getLocalDateISO(day.date);
+          const isToday    = dayStr === todayStr;
           const isSelected = dayStr === selectedDate;
-          const dayEvs   = getDayEvents(day.date);
+          const dayEvs     = getDayEvents(day.date);
+          const moduleEvs  = dayEvs.filter((ev) => isModuleEvent(ev.event_type));
+          const normalEvs  = dayEvs.filter((ev) => !isModuleEvent(ev.event_type));
 
           return (
             <div
@@ -89,11 +94,7 @@ export default function MonthView({ selectedDate, events, onEventClick, onSlotCl
                 d.setHours(9, 0, 0, 0);
                 onEventDrop(id, d);
               }}
-              onClick={() => {
-                const d = new Date(day.date);
-                d.setHours(9, 0, 0, 0);
-                onSlotClick(`${dayStr}T09:00`);
-              }}
+              onClick={() => onSlotClick(`${dayStr}T09:00`)}
               style={{
                 minHeight: "120px",
                 padding: "6px",
@@ -107,6 +108,7 @@ export default function MonthView({ selectedDate, events, onEventClick, onSlotCl
               onMouseEnter={(e) => { if (!isSelected) (e.currentTarget as HTMLDivElement).style.background = "var(--color-bg-hover)"; }}
               onMouseLeave={(e) => { (e.currentTarget as HTMLDivElement).style.background = isSelected ? "var(--color-bg-active)" : "transparent"; }}
             >
+              {/* NÚMERO DEL DÍA */}
               <div style={{
                 width: "26px", height: "26px", borderRadius: "50%",
                 background: isToday ? "var(--color-brand-blue)" : "transparent",
@@ -118,7 +120,8 @@ export default function MonthView({ selectedDate, events, onEventClick, onSlotCl
                 {day.date.getDate()}
               </div>
 
-              {dayEvs.slice(0, 3).map((ev) => (
+              {/* EVENTOS NORMALES */}
+              {normalEvs.slice(0, 2).map((ev) => (
                 <div
                   key={ev.id}
                   draggable
@@ -142,9 +145,49 @@ export default function MonthView({ selectedDate, events, onEventClick, onSlotCl
                 </div>
               ))}
 
-              {dayEvs.length > 3 && (
+              {/* EVENTOS DE MÓDULO — estilo diferente */}
+              {moduleEvs.slice(0, 2).map((ev) => (
+                <div
+                  key={ev.id}
+                  onClick={(e) => { e.stopPropagation(); }}
+                  style={{
+                    background: (ev.color ?? "#274B97") + "20",
+                    color: ev.color ?? "#274B97",
+                    border: `1px solid ${(ev.color ?? "#274B97")}40`,
+                    borderRadius: "3px",
+                    padding: "2px 5px",
+                    marginBottom: "2px",
+                    fontSize: "10px",
+                    fontWeight: 600,
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    whiteSpace: "nowrap",
+                    cursor: "default",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "3px",
+                  }}
+                >
+                  <div style={{
+                    width: "4px", height: "4px", borderRadius: "50%",
+                    background: ev.color ?? "#274B97",
+                    flexShrink: 0,
+                  }} />
+                  {ev.title}
+                </div>
+              ))}
+
+              {/* MÁS */}
+              {dayEvs.length > 4 && (
                 <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontWeight: 500, paddingLeft: "2px" }}>
-                  +{dayEvs.length - 3} más
+                  +{dayEvs.length - 4} más
+                </div>
+              )}
+
+              {/* INDICADOR DE MÓDULOS */}
+              {moduleEvs.length > 0 && normalEvs.length === 0 && dayEvs.length <= 2 && (
+                <div style={{ fontSize: "9px", color: "var(--color-text-muted)", marginTop: "2px" }}>
+                  {moduleEvs.length} automático{moduleEvs.length > 1 ? "s" : ""}
                 </div>
               )}
             </div>
