@@ -1,10 +1,8 @@
 "use client";
 
 import React from "react";
-import {
-  ReminderConfig, ReminderUnit,
-  REMINDER_PRESETS,
-} from "../types/recurrence.types";
+import { ReminderConfig, ReminderUnit } from "../types/recurrence.types";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface ReminderPickerProps {
   reminders: ReminderConfig[];
@@ -28,20 +26,35 @@ function XIcon() {
 }
 
 const INPUT_STYLE: React.CSSProperties = {
-  height: "30px",
-  padding: "0 8px",
+  height: "30px", padding: "0 8px",
   borderRadius: "var(--radius-sm)",
   border: "1px solid var(--color-border)",
   background: "var(--color-bg-subtle)",
   color: "var(--color-text-primary)",
-  fontSize: "12px",
-  outline: "none",
+  fontSize: "12px", outline: "none",
 };
 
 export default function ReminderPicker({ reminders, onChange }: ReminderPickerProps) {
+  const { t, lang } = useTranslation();
+
+  const PRESETS = [
+    { label: lang === "en" ? "5 min before"  : "5 min antes",   value: 5,  unit: "minutes" as ReminderUnit },
+    { label: lang === "en" ? "15 min before" : "15 min antes",  value: 15, unit: "minutes" as ReminderUnit },
+    { label: lang === "en" ? "30 min before" : "30 min antes",  value: 30, unit: "minutes" as ReminderUnit },
+    { label: lang === "en" ? "1 hour before" : "1 hora antes",  value: 1,  unit: "hours"   as ReminderUnit },
+    { label: lang === "en" ? "2 hours before": "2 horas antes", value: 2,  unit: "hours"   as ReminderUnit },
+    { label: lang === "en" ? "1 day before"  : "1 día antes",   value: 1,  unit: "days"    as ReminderUnit },
+    { label: lang === "en" ? "2 days before" : "2 días antes",  value: 2,  unit: "days"    as ReminderUnit },
+  ];
+
+  const unitLabels: Record<ReminderUnit, string> = {
+    minutes: lang === "en" ? "minutes before" : "minutos antes",
+    hours:   lang === "en" ? "hours before"   : "horas antes",
+    days:    lang === "en" ? "days before"    : "días antes",
+  };
+
   function addPreset(value: number, unit: ReminderUnit) {
-    const already = reminders.some((r) => r.value === value && r.unit === unit);
-    if (already) return;
+    if (reminders.some((r) => r.value === value && r.unit === unit)) return;
     onChange([...reminders, { value, unit }]);
   }
 
@@ -60,9 +73,8 @@ export default function ReminderPicker({ reminders, onChange }: ReminderPickerPr
   return (
     <div style={{ display: "grid", gap: "10px" }}>
 
-      {/* PRESETS */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: "6px" }}>
-        {REMINDER_PRESETS.map((preset) => {
+        {PRESETS.map((preset) => {
           const active = reminders.some((r) => r.value === preset.value && r.unit === preset.unit);
           return (
             <button
@@ -72,15 +84,12 @@ export default function ReminderPicker({ reminders, onChange }: ReminderPickerPr
                 : addPreset(preset.value, preset.unit)
               }
               style={{
-                padding: "4px 10px",
-                borderRadius: "var(--radius-full)",
+                padding: "4px 10px", borderRadius: "var(--radius-full)",
                 border: `1px solid ${active ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
                 background: active ? "var(--color-brand-blue-light)" : "var(--color-bg-subtle)",
                 color: active ? "var(--color-brand-blue)" : "var(--color-text-muted)",
-                fontSize: "11px",
-                fontWeight: active ? 600 : 400,
-                cursor: "pointer",
-                transition: "var(--transition-fast)",
+                fontSize: "11px", fontWeight: active ? 600 : 400,
+                cursor: "pointer", transition: "var(--transition-fast)",
               }}
             >
               {preset.label}
@@ -89,46 +98,18 @@ export default function ReminderPicker({ reminders, onChange }: ReminderPickerPr
         })}
       </div>
 
-      {/* RECORDATORIOS ACTIVOS */}
       {reminders.length > 0 && (
         <div style={{ display: "grid", gap: "6px" }}>
           {reminders.map((r, i) => (
-            <div key={i} style={{
-              display: "flex", alignItems: "center", gap: "8px",
-              padding: "6px 10px",
-              borderRadius: "var(--radius-md)",
-              background: "var(--color-bg-subtle)",
-              border: "1px solid var(--color-border-faint)",
-            }}>
-              <div style={{
-                width: "6px", height: "6px", borderRadius: "50%",
-                background: "var(--color-brand-blue)", flexShrink: 0,
-              }} />
-              <input
-                type="number"
-                min={1}
-                value={r.value}
-                onChange={(e) => update(i, "value", Number(e.target.value))}
-                style={{ ...INPUT_STYLE, width: "60px" }}
-              />
-              <select
-                value={r.unit}
-                onChange={(e) => update(i, "unit", e.target.value as ReminderUnit)}
-                style={{ ...INPUT_STYLE, flex: 1 }}
-              >
-                <option value="minutes">minutos antes</option>
-                <option value="hours">horas antes</option>
-                <option value="days">días antes</option>
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: "8px", padding: "6px 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)" }}>
+              <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "var(--color-brand-blue)", flexShrink: 0 }} />
+              <input type="number" min={1} value={r.value} onChange={(e) => update(i, "value", Number(e.target.value))} style={{ ...INPUT_STYLE, width: "60px" }} />
+              <select value={r.unit} onChange={(e) => update(i, "unit", e.target.value as ReminderUnit)} style={{ ...INPUT_STYLE, flex: 1 }}>
+                {(["minutes", "hours", "days"] as ReminderUnit[]).map((unit) => (
+                  <option key={unit} value={unit}>{unitLabels[unit]}</option>
+                ))}
               </select>
-              <button
-                onClick={() => remove(i)}
-                style={{
-                  background: "none", border: "none",
-                  color: "var(--color-text-muted)",
-                  cursor: "pointer", padding: "2px",
-                  display: "flex", alignItems: "center",
-                }}
-              >
+              <button onClick={() => remove(i)} style={{ background: "none", border: "none", color: "var(--color-text-muted)", cursor: "pointer", padding: "2px", display: "flex", alignItems: "center" }}>
                 <XIcon />
               </button>
             </div>
@@ -136,19 +117,14 @@ export default function ReminderPicker({ reminders, onChange }: ReminderPickerPr
         </div>
       )}
 
-      {/* AGREGAR PERSONALIZADO */}
       <button
         onClick={addCustom}
         style={{
           display: "flex", alignItems: "center", gap: "6px",
-          padding: "6px 12px",
-          borderRadius: "var(--radius-md)",
+          padding: "6px 12px", borderRadius: "var(--radius-md)",
           border: "1px dashed var(--color-border)",
-          background: "transparent",
-          color: "var(--color-text-muted)",
-          fontSize: "12px",
-          cursor: "pointer",
-          width: "fit-content",
+          background: "transparent", color: "var(--color-text-muted)",
+          fontSize: "12px", cursor: "pointer", width: "fit-content",
           transition: "var(--transition-fast)",
         }}
         onMouseEnter={(e) => {
@@ -160,7 +136,8 @@ export default function ReminderPicker({ reminders, onChange }: ReminderPickerPr
           (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-muted)";
         }}
       >
-        <PlusIcon /> Agregar recordatorio personalizado
+        <PlusIcon />
+        {lang === "en" ? "Add custom reminder" : "Agregar recordatorio personalizado"}
       </button>
     </div>
   );
