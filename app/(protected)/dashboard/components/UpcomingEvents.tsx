@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface CalEvent {
   id: string;
@@ -119,8 +120,8 @@ export default function UpcomingEvents() {
             </div>
           ))}
           <div style={{ textAlign: "center", fontSize: "11px", color: "var(--color-text-muted)", paddingTop: "4px" }}>
-            Sin eventos programados para hoy
-          </div>
+  {t.dashboard.noEvents}
+</div>
         </div>
       ) : (
         <div style={{ display: "grid", gap: "8px" }}>
