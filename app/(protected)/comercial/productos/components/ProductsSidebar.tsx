@@ -15,25 +15,26 @@ type Props = {
   onExport:     () => void;
 };
 
-const STATUS_OPTS = [
-  { value: "all",        label: "Todos"         },
-  { value: "active",     label: "Activos"       },
-  { value: "inactive",   label: "Inactivos"     },
-  { value: "low_stock",  label: "Bajo mínimo"   },
-  { value: "no_stock",   label: "Sin stock"     },
-];
-
 export default function ProductsSidebar({
   products, selected, setSelected, filters, setFilters,
   categories, onNew, onImport, onExport,
 }: Props) {
-  const { lang } = useTranslation();
-  const locale   = lang === "en" ? "en-US" : "es-MX";
+  const { t, lang } = useTranslation();
+  const locale      = lang === "en" ? "en-US" : "es-MX";
+  const tp          = (t.products as any) ?? {};
+
+  const STATUS_OPTS = [
+    { value: "all",       label: tp.filterAll      ?? "Todos"       },
+    { value: "active",    label: tp.filterActive   ?? "Activos"     },
+    { value: "inactive",  label: tp.filterInactive ?? "Inactivos"   },
+    { value: "low_stock", label: tp.filterLowStock ?? "Bajo mínimo" },
+    { value: "no_stock",  label: tp.filterNoStock  ?? "Sin stock"   },
+  ];
 
   function getStockColor(p: Product) {
-    if (!p.is_active)              return "var(--color-text-muted)";
-    if (p.stock <= 0)              return "var(--color-danger-text)";
-    if (p.stock <= p.stock_min)    return "var(--color-warning-text)";
+    if (!p.is_active)           return "var(--color-text-muted)";
+    if (p.stock <= 0)           return "var(--color-danger-text)";
+    if (p.stock <= p.stock_min) return "var(--color-warning-text)";
     return "var(--color-success-text)";
   }
 
@@ -49,7 +50,7 @@ export default function ProductsSidebar({
       <div style={{ flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
           <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "1px" }}>
-            Productos
+            {tp.title ?? "Productos"}
           </span>
           <span style={{ fontSize: "11px", fontWeight: 700, padding: "1px 7px", borderRadius: "var(--radius-full)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", color: "var(--color-text-muted)" }}>
             {products.length}
@@ -67,9 +68,9 @@ export default function ProductsSidebar({
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
-            Nuevo
+            {tp.newProduct ?? "Nuevo"}
           </button>
-          <button onClick={onImport} title="Importar CSV" style={{
+          <button onClick={onImport} title={tp.importTitle ?? "Importar CSV"} style={{
             width: "34px", height: "34px", borderRadius: "var(--radius-md)",
             background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)",
             color: "var(--color-text-second)", cursor: "pointer",
@@ -80,7 +81,7 @@ export default function ProductsSidebar({
               <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
             </svg>
           </button>
-          <button onClick={onExport} title="Exportar CSV" style={{
+          <button onClick={onExport} title={tp.exportBtn ?? "Exportar CSV"} style={{
             width: "34px", height: "34px", borderRadius: "var(--radius-md)",
             background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)",
             color: "var(--color-text-second)", cursor: "pointer",
@@ -100,7 +101,7 @@ export default function ProductsSidebar({
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
           </svg>
           <input
-            placeholder="SKU, nombre o categoría…"
+            placeholder={tp.search ?? "SKU, nombre o categoría…"}
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
             style={{
@@ -114,7 +115,6 @@ export default function ProductsSidebar({
 
         {/* FILTROS */}
         <div style={{ display: "grid", gap: "5px" }}>
-          {/* Status */}
           <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
             {STATUS_OPTS.map((s) => (
               <button key={s.value} onClick={() => setFilters({ ...filters, status: s.value as any })} style={{
@@ -129,7 +129,6 @@ export default function ProductsSidebar({
               </button>
             ))}
           </div>
-          {/* Categoría */}
           {categories.length > 0 && (
             <select
               value={filters.category}
@@ -140,7 +139,7 @@ export default function ProductsSidebar({
                 color: "var(--color-text-second)", fontSize: "11px", cursor: "pointer",
               }}
             >
-              <option value="">Todas las categorías</option>
+              <option value="">{tp.allCategories ?? "Todas las categorías"}</option>
               {categories.map((c) => <option key={c} value={c}>{c}</option>)}
             </select>
           )}
@@ -151,12 +150,12 @@ export default function ProductsSidebar({
       <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "grid", gap: "4px", alignContent: "start" }}>
         {products.length === 0 ? (
           <div style={{ padding: "28px 12px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
-            Sin productos
+            {tp.noProducts ?? "Sin productos"}
           </div>
         ) : products.map((p) => {
-          const isSelected   = selected?.id === p.id;
-          const stockColor   = getStockColor(p);
-          const margin       = p.unit_price > 0 ? ((p.unit_price - p.cost) / p.unit_price) * 100 : 0;
+          const isSelected = selected?.id === p.id;
+          const stockColor = getStockColor(p);
+          const margin     = p.unit_price > 0 ? ((p.unit_price - p.cost) / p.unit_price) * 100 : 0;
 
           return (
             <div
@@ -172,7 +171,6 @@ export default function ProductsSidebar({
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                {/* SKU badge */}
                 <span style={{
                   fontSize: "9px", fontWeight: 800, padding: "1px 5px", borderRadius: "var(--radius-sm)",
                   background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)",
@@ -192,7 +190,7 @@ export default function ProductsSidebar({
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px" }}>
                 <div style={{ display: "flex", gap: "8px" }}>
                   <span style={{ color: stockColor, fontWeight: 600 }}>
-                    Stock: {p.stock} {p.unit}
+                    {tp.stock ?? "Stock"}: {p.stock} {p.unit}
                   </span>
                   {p.category && (
                     <span style={{ color: "var(--color-text-muted)" }}>{p.category}</span>
