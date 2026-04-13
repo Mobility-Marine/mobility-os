@@ -1200,6 +1200,107 @@ logistics: {
   workspaceEmpty:     "Selecciona un proveedor",
   workspaceEmptyDesc: "Aquí verás información, documentos legales y facturas.",
 },
+
+// ── Embarques ──────────────────────────────────────────────
+shipments:              "Embarques",
+shipmentsDesc:          "Gestión de operaciones logísticas completas.",
+newShipment:            "Nuevo embarque",
+noShipments:            "Sin embarques",
+searchShipment:         "Buscar por referencia, cliente, origen…",
+loadingShipments:       "Cargando embarques…",
+
+// Status
+statusDraft:            "Borrador",
+statusCoordinating:     "Coordinando",
+statusPickupScheduled:  "Recolección programada",
+statusInTransit:        "En tránsito",
+statusAtDestination:    "En destino",
+statusDelivered:        "Entregado",
+statusInvoiced:         "Facturado",
+statusCancelled:        "Cancelado",
+
+// Tipos de servicio
+serviceTerrestre:       "Terrestre MX",
+serviceTerrestreUsa:    "Terrestre USA",
+serviceMaritimo:        "Marítimo",
+serviceAereo:           "Aéreo",
+serviceMultimodal:      "Multimodal",
+serviceAlmacenaje:      "Almacenaje",
+serviceAduanal:         "Aduanal",
+serviceOtro:            "Otro",
+
+// Crear embarque
+createFromQuotation:    "Desde cotización aceptada",
+createDirect:           "Embarque directo",
+selectQuotation:        "Seleccionar cotización",
+noAcceptedQuotations:   "Sin cotizaciones de servicios aceptadas",
+suggestedPrice:         "Precio sugerido (promedio histórico)",
+avgFromHistory:         "Basado en",
+avgShipments:           "embarques anteriores",
+
+// Campos generales
+reference:              "Referencia",
+serviceType:            "Tipo de servicio",
+origin:                 "Origen",
+destination:            "Destino",
+originCountry:          "País origen",
+destinationCountry:     "País destino",
+incoterm:               "Incoterm",
+provider:               "Proveedor asignado",
+transportUnit:          "Unidad de transporte",
+pickupDate:             "Fecha de recolección",
+estimatedDelivery:      "Entrega estimada",
+actualDelivery:         "Entrega real",
+trackingNumber:         "No. de rastreo",
+trackingType:           "Tipo de rastreo",
+
+// Financiero
+revenue:                "Ingreso (venta)",
+cost:                   "Costo (proveedor)",
+profit:                 "Ganancia",
+margin:                 "Margen",
+currency:               "Moneda",
+
+// Servicios del embarque
+shipmentServices:       "Servicios del embarque",
+addService:             "Agregar servicio",
+serviceDesc:            "Descripción del servicio",
+servicePrice:           "Precio de venta",
+serviceCost:            "Costo proveedor",
+transitTime:            "Tiempo de tránsito",
+noServices:             "Sin servicios capturados",
+
+// Tabs workspace
+tabDetail:              "Detalle",
+tabServices:            "Servicios",
+tabDocuments:           "Documentos",
+tabServiceOrders:       "Órdenes de servicio",
+tabTimeline:            "Historial",
+
+// Acciones
+advanceStatus:          "Avanzar estatus",
+confirmCoordinating:    "Confirmar coordinación",
+confirmPickup:          "Confirmar recolección",
+confirmInTransit:       "Confirmar en tránsito",
+confirmAtDest:          "Confirmar en destino",
+confirmDelivered:       "Confirmar entrega",
+cancelShipment:         "Cancelar embarque",
+createServiceOrder:     "Crear orden de servicio",
+generateInvoice:        "Generar factura",
+viewQuotation:          "Ver cotización origen",
+
+// Copilot
+copilotEmpty:           "Selecciona un embarque para ver análisis.",
+profitAnalysis:         "Análisis de rentabilidad",
+noProviderAlert:        "Sin proveedor asignado",
+noPickupDate:           "Sin fecha de recolección",
+readyToInvoice:         "Listo para facturar",
+overdueDelivery:        "Entrega vencida",
+daysLate:               "días de retraso",
+
+// Empty state
+workspaceEmpty:         "Selecciona un embarque",
+workspaceEmptyDesc:     "Aquí verás el detalle del embarque, servicios, documentos y órdenes de servicio.",
   
 };
 
