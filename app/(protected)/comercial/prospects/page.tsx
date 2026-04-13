@@ -17,6 +17,19 @@ import ProspectDailyActionPanel from "./components/ProspectDailyActionPanel";
 import ProspectAutomationPanel  from "./components/ProspectAutomationPanel";
 import ProspectCreateDrawer     from "./components/ProspectCreateDrawer";
 
+// ─── LAYOUT SYSTEM ─────────────────────────────────────────
+// STRIP: métricas compactas        → altura natural
+// ROW_S: paneles de soporte        → 260px
+// ROW_M: área operativa principal  → 560px
+// ROW_L: vistas de datos amplias   → 360px
+// ───────────────────────────────────────────────────────────
+
+const ROW_S = 260;
+const ROW_M = 560;
+const ROW_L = 360;
+
+const GAP = 16;
+
 export default function ProspectsPage() {
   const { t } = useTranslation();
 
@@ -28,7 +41,7 @@ export default function ProspectsPage() {
     updateStage, addActivity,
   } = ctrl;
 
-  const [filters, setFilters]               = useState<ProspectFilters>(DEFAULT_FILTERS);
+  const [filters, setFilters] = useState<ProspectFilters>(DEFAULT_FILTERS);
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const filteredProspects = useMemo(
@@ -42,7 +55,7 @@ export default function ProspectsPage() {
 
   if (loading) {
     return (
-      <div style={{ display: "grid", placeItems: "center", height: "400px" }}>
+      <div style={{ display: "grid", placeItems: "center", minHeight: "300px" }}>
         <div style={{
           background: "var(--color-bg-base)",
           border: "1px solid var(--color-border-faint)",
@@ -50,6 +63,7 @@ export default function ProspectsPage() {
           padding: "20px 32px",
           fontSize: "14px", fontWeight: 700,
           color: "var(--color-text-primary)",
+          display: "flex", alignItems: "center", gap: "10px",
         }}>
           {t.prospects.loading}
         </div>
@@ -58,33 +72,55 @@ export default function ProspectsPage() {
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px", paddingBottom: "32px" }}>
+    <div style={{
+      display: "flex",
+      flexDirection: "column",
+      gap: `${GAP}px`,
+      paddingBottom: "32px",
+    }}>
 
-      {/* ── CAPA 1: COMMAND CENTER ── */}
+      {/* ══════════════════════════════════════════════════════
+          STRIP — Command Center (altura natural)
+      ══════════════════════════════════════════════════════ */}
       <ProspectCommandCenter
         prospects={prospects}
         onSelect={setSelected}
       />
 
-      {/* ── CAPA 2: INTELIGENCIA (3 columnas) ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: "16px", alignItems: "start" }}>
-        <ProspectRevenueInsights prospects={prospects} />
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          <ProspectDailyActionPanel prospects={prospects} onSelect={setSelected} />
-          <ProspectAutomationPanel  prospects={prospects} onSelect={setSelected} />
-        </div>
-      </div>
-
-      {/* ── CAPA 3: OPERATIVA ── */}
+      {/* ══════════════════════════════════════════════════════
+          ROW_S — Inteligencia (3 columnas, 260px)
+          Pipeline 2fr | Acciones 1fr | Automatización 1fr
+      ══════════════════════════════════════════════════════ */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "300px minmax(0, 1fr) 300px",
-        gap: "16px",
-        height: "600px",
+        gridTemplateColumns: "2fr 1fr 1fr",
+        gap: `${GAP}px`,
+        height: `${ROW_S}px`,
         minHeight: 0,
       }}>
-        {/* SIDEBAR */}
-        <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", overflow: "hidden" }}>
+        <Cell>
+          <ProspectRevenueInsights prospects={prospects} />
+        </Cell>
+        <Cell>
+          <ProspectDailyActionPanel prospects={prospects} onSelect={setSelected} />
+        </Cell>
+        <Cell>
+          <ProspectAutomationPanel prospects={prospects} onSelect={setSelected} />
+        </Cell>
+      </div>
+
+      {/* ══════════════════════════════════════════════════════
+          ROW_M — Operativa (3 columnas, 560px)
+          Sidebar 280px | Workspace 1fr | Copilot 280px
+      ══════════════════════════════════════════════════════ */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "280px minmax(0, 1fr) 280px",
+        gap: `${GAP}px`,
+        height: `${ROW_M}px`,
+        minHeight: 0,
+      }}>
+        <Cell>
           <ProspectsSidebar
             search={filters.search}
             setSearch={(v) => setFilters((f) => ({ ...f, search: v }))}
@@ -93,10 +129,8 @@ export default function ProspectsPage() {
             setSelected={setSelected}
             onOpenCreate={() => setShowCreateDrawer(true)}
           />
-        </div>
-
-        {/* WORKSPACE */}
-        <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", overflow: "hidden" }}>
+        </Cell>
+        <Cell>
           <ProspectWorkspace
             prospect={selected}
             createProspect={createProspect}
@@ -105,27 +139,30 @@ export default function ProspectsPage() {
             onStageChange={(id, stage) => updateStage(id, stage as any)}
             onAddActivity={addActivity}
           />
-        </div>
-
-        {/* COPILOT */}
-        <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", overflow: "hidden" }}>
+        </Cell>
+        <Cell>
           <ProspectCopilot prospect={selected} />
-        </div>
+        </Cell>
       </div>
 
-      {/* ── CAPA 4: PIPELINE BOARD ── */}
+      {/* ══════════════════════════════════════════════════════
+          ROW_L — Pipeline Board (360px, scroll horizontal)
+      ══════════════════════════════════════════════════════ */}
       <div>
         <div style={{
-          fontSize: "12px", fontWeight: 700,
+          fontSize: "11px", fontWeight: 700,
           color: "var(--color-text-muted)",
           textTransform: "uppercase",
           letterSpacing: "1px",
           marginBottom: "10px",
-          paddingLeft: "2px",
         }}>
           {t.prospects.pipelineTitle}
         </div>
-        <div style={{ overflowX: "auto", paddingBottom: "8px" }}>
+        <div style={{
+          height: `${ROW_L}px`,
+          overflowX: "auto",
+          overflowY: "hidden",
+        }}>
           <ProspectPipelineBoard
             prospects={prospects}
             onSelect={setSelected}
@@ -134,7 +171,9 @@ export default function ProspectsPage() {
         </div>
       </div>
 
-      {/* ── DRAWER ── */}
+      {/* ══════════════════════════════════════════════════════
+          DRAWER
+      ══════════════════════════════════════════════════════ */}
       <ProspectCreateDrawer
         open={showCreateDrawer}
         onClose={() => setShowCreateDrawer(false)}
@@ -144,6 +183,21 @@ export default function ProspectsPage() {
           setShowCreateDrawer(false);
         }}
       />
+    </div>
+  );
+}
+
+// ─── CELL: contenedor que fuerza height 100% ─────────────
+function Cell({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      minWidth: 0,
+      minHeight: 0,
+      height: "100%",
+      display: "flex",
+      overflow: "hidden",
+    }}>
+      {children}
     </div>
   );
 }
