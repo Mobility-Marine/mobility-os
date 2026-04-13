@@ -67,7 +67,7 @@ export default function ProspectsPage() {
       />
 
       {/* ── CAPA 2: INTELIGENCIA (3 columnas) ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "16px", alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "3fr 2fr", gap: "16px", alignItems: "start" }}>
         <ProspectRevenueInsights prospects={prospects} />
         <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           <ProspectDailyActionPanel prospects={prospects} onSelect={setSelected} />
@@ -78,9 +78,9 @@ export default function ProspectsPage() {
       {/* ── CAPA 3: OPERATIVA ── */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "280px minmax(0, 1fr) 280px",
+        gridTemplateColumns: "300px minmax(0, 1fr) 300px",
         gap: "16px",
-        height: "560px",
+        height: "600px",
         minHeight: 0,
       }}>
         {/* SIDEBAR */}
