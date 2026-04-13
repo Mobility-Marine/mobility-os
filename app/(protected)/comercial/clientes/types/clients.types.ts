@@ -1,6 +1,7 @@
 // ============================================================
 // CLIENTS TYPES v2 — GOD LEVEL
 // Entidad maestra · Múltiples roles · Contactos · Facturación
+// Direcciones estructuradas · CFDI 4.0 completo
 // ============================================================
 
 export type ClientStatus = "active" | "inactive" | "blocked";
@@ -17,15 +18,15 @@ export type ClientContactRole =
   | "other";
 
 export const CONTACT_ROLE_CONFIG: Record<ClientContactRole, { labelKey: string; color: string }> = {
-  general_manager:   { labelKey: "clients.roleGeneralManager",  color: "var(--color-brand-blue)"   },
-  accounts_payable:  { labelKey: "clients.roleAccountsPayable", color: "#a78bfa"                   },
-  invoice_reception: { labelKey: "clients.roleInvoiceReception",color: "var(--color-warning-text)" },
-  purchasing:        { labelKey: "clients.rolePurchasing",      color: "var(--color-success-text)" },
-  commercial:        { labelKey: "clients.roleCommercial",      color: "var(--color-info-text)"    },
-  operations:        { labelKey: "clients.roleOperations",      color: "#f59e0b"                   },
-  legal:             { labelKey: "clients.roleLegal",           color: "var(--color-danger-text)"  },
-  general:           { labelKey: "clients.roleGeneral",         color: "var(--color-text-muted)"   },
-  other:             { labelKey: "clients.roleOther",           color: "var(--color-text-muted)"   },
+  general_manager:   { labelKey: "clients.roleGeneralManager",   color: "var(--color-brand-blue)"   },
+  accounts_payable:  { labelKey: "clients.roleAccountsPayable",  color: "#a78bfa"                   },
+  invoice_reception: { labelKey: "clients.roleInvoiceReception", color: "var(--color-warning-text)" },
+  purchasing:        { labelKey: "clients.rolePurchasing",       color: "var(--color-success-text)" },
+  commercial:        { labelKey: "clients.roleCommercial",       color: "var(--color-info-text)"    },
+  operations:        { labelKey: "clients.roleOperations",       color: "#f59e0b"                   },
+  legal:             { labelKey: "clients.roleLegal",            color: "var(--color-danger-text)"  },
+  general:           { labelKey: "clients.roleGeneral",          color: "var(--color-text-muted)"   },
+  other:             { labelKey: "clients.roleOther",            color: "var(--color-text-muted)"   },
 };
 
 export type ClientContact = {
@@ -74,6 +75,41 @@ export type ClientDocument = {
   created_by?: string;
 };
 
+// ── DIRECCIONES ────────────────────────────────────────────
+
+export type AddressType = "fiscal" | "delivery" | "warehouse" | "pickup" | "other";
+
+export const ADDRESS_TYPE_CONFIG: Record<AddressType, { labelKey: string; color: string }> = {
+  fiscal:    { labelKey: "clients.addrFiscal",    color: "var(--color-brand-blue)"   },
+  delivery:  { labelKey: "clients.addrDelivery",  color: "var(--color-success-text)" },
+  warehouse: { labelKey: "clients.addrWarehouse", color: "var(--color-warning-text)" },
+  pickup:    { labelKey: "clients.addrPickup",    color: "var(--color-info-text)"    },
+  other:     { labelKey: "clients.addrOther",     color: "var(--color-text-muted)"   },
+};
+
+export type ClientAddress = {
+  id:            string;
+  company_id:    string;
+  client_id:     string;
+  type:          AddressType;
+  alias?:        string;
+  street?:       string;
+  ext_number?:   string;
+  int_number?:   string;
+  neighborhood?: string;
+  city?:         string;
+  state?:        string;
+  zip_code:      string;
+  country?:      string;
+  is_default:    boolean;
+  notes?:        string;
+  latitude?:     number;
+  longitude?:    number;
+  created_at:    string;
+};
+
+// ── CLIENT ────────────────────────────────────────────────
+
 export type Client = {
   id:          string;
   company_id:  string;
@@ -83,32 +119,42 @@ export type Client = {
   email?:      string;
   phone?:      string;
   website?:    string;
-  // Dirección
-  address?:     string;
-  city?:        string;
-  zip_code?:    string;
-  country?:     string;
-  // Fiscal / Facturación
-  tax_regime?:      string;
-  cfdi_use?:        string;
-  billing_email?:   string;
-  billing_address?: string;
-  payment_method?:  string;
-  payment_terms?:   string;
-  credit_limit?:    number;
+  notes?:      string;
+  // Dirección general
+  address?:    string;
+  city?:       string;
+  zip_code?:   string;
+  country?:    string;
   // Roles
   is_customer:  boolean;
   is_supplier:  boolean;
   is_active:    boolean;
+  // Fiscal / CFDI 4.0
+  tax_regime?:      string;
+  cfdi_use?:        string;
+  payment_method?:  string;
+  payment_form?:    string;   // PUE o PPD
+  payment_terms?:   string;
+  credit_limit?:    number;
+  billing_email?:   string;
+  // Dirección fiscal estructurada
+  billing_street?:       string;
+  billing_ext_number?:   string;
+  billing_int_number?:   string;
+  billing_neighborhood?: string;
+  billing_city?:         string;
+  billing_state?:        string;
+  billing_country?:      string;
   // Timestamps
   created_at:   string;
   updated_at?:  string;
   // Conexiones
   crm_account_id?: string;
   // Computed
-  stats?:       ClientStats;
-  documents?:   ClientDocument[];
-  contacts?:    ClientContact[];
+  stats?:      ClientStats;
+  documents?:  ClientDocument[];
+  contacts?:   ClientContact[];
+  addresses?:  ClientAddress[];
 };
 
 export type ClientStats = {
@@ -131,26 +177,34 @@ export const DEFAULT_CLIENT_FILTERS: ClientFilters = {
 };
 
 export type CreateClientPayload = {
-  name:             string;
-  legal_name?:      string;
-  rfc?:             string;
-  email?:           string;
-  phone?:           string;
-  website?:         string;
-  address?:         string;
-  city?:            string;
-  zip_code?:        string;
-  country?:         string;
-  tax_regime?:      string;
-  cfdi_use?:        string;
-  billing_email?:   string;
-  billing_address?: string;
-  payment_method?:  string;
-  payment_terms?:   string;
-  credit_limit?:    number;
-  is_customer:      boolean;
-  is_supplier:      boolean;
-  notes?:           string;
+  name:              string;
+  legal_name?:       string;
+  rfc?:              string;
+  email?:            string;
+  phone?:            string;
+  website?:          string;
+  city?:             string;
+  zip_code?:         string;
+  country?:          string;
+  notes?:            string;
+  is_customer:       boolean;
+  is_supplier:       boolean;
+  // Fiscal
+  tax_regime?:       string;
+  cfdi_use?:         string;
+  payment_method?:   string;
+  payment_form?:     string;
+  payment_terms?:    string;
+  credit_limit?:     number;
+  billing_email?:    string;
+  // Dirección fiscal
+  billing_street?:       string;
+  billing_ext_number?:   string;
+  billing_int_number?:   string;
+  billing_neighborhood?: string;
+  billing_city?:         string;
+  billing_state?:        string;
+  billing_country?:      string;
 };
 
 export type ClientConnection = {
@@ -162,7 +216,8 @@ export type ClientConnection = {
   date?:   string;
 };
 
-// Catálogos fiscales México
+// ── CATÁLOGOS FISCALES MÉXICO (SAT) ───────────────────────
+
 export const TAX_REGIMES = [
   { value: "601", label: "General de Ley Personas Morales" },
   { value: "603", label: "Personas Morales con Fines no Lucrativos" },
@@ -178,19 +233,19 @@ export const TAX_REGIMES = [
 ];
 
 export const CFDI_USES = [
-  { value: "G01", label: "Adquisición de mercancias" },
-  { value: "G02", label: "Devoluciones, descuentos o bonificaciones" },
-  { value: "G03", label: "Gastos en general" },
-  { value: "I01", label: "Construcciones" },
-  { value: "I02", label: "Mobilario y equipo de oficina" },
-  { value: "I03", label: "Equipo de transporte" },
-  { value: "I04", label: "Equipo de computo y accesorios" },
-  { value: "I06", label: "Comunicaciones telefónicas" },
-  { value: "I08", label: "Otra maquinaria y equipo" },
-  { value: "S01", label: "Sin efectos fiscales" },
+  { value: "G01",  label: "Adquisición de mercancias" },
+  { value: "G02",  label: "Devoluciones, descuentos o bonificaciones" },
+  { value: "G03",  label: "Gastos en general" },
+  { value: "I01",  label: "Construcciones" },
+  { value: "I02",  label: "Mobiliario y equipo de oficina" },
+  { value: "I03",  label: "Equipo de transporte" },
+  { value: "I04",  label: "Equipo de cómputo y accesorios" },
+  { value: "I06",  label: "Comunicaciones telefónicas" },
+  { value: "I08",  label: "Otra maquinaria y equipo" },
+  { value: "S01",  label: "Sin efectos fiscales" },
   { value: "CP01", label: "Pagos" },
-  { value: "D01", label: "Honorarios médicos, dentales y gastos hospitalarios" },
-  { value: "D10", label: "Pagos por servicios educativos" },
+  { value: "D01",  label: "Honorarios médicos, dentales y gastos hospitalarios" },
+  { value: "D10",  label: "Pagos por servicios educativos" },
 ];
 
 export const PAYMENT_METHODS = [
@@ -200,4 +255,10 @@ export const PAYMENT_METHODS = [
   { value: "04", label: "Tarjeta de crédito" },
   { value: "28", label: "Tarjeta de débito" },
   { value: "99", label: "Por definir" },
+];
+
+// PUE / PPD — obligatorio CFDI 4.0
+export const PAYMENT_FORMS = [
+  { value: "PUE", label: "PUE — Pago en Una sola Exhibición" },
+  { value: "PPD", label: "PPD — Pago en Parcialidades o Diferido" },
 ];
