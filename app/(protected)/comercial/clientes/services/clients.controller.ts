@@ -1,6 +1,7 @@
 "use client";
 // ============================================================
 // CLIENTS CONTROLLER v2 — GOD LEVEL
+// Auto-crea crm_account + identity bridge al crear cliente
 // ============================================================
 
 import { useCallback, useEffect, useState } from "react";
@@ -23,15 +24,15 @@ export function useClientsController() {
   const { companyId } = useTenant();
   const { user }      = useAuth();
 
-  const [clients,      setClients]      = useState<Client[]>([]);
-  const [selected,     setSelected]     = useState<Client | null>(null);
-  const [loading,      setLoading]      = useState(true);
-  const [saving,       setSaving]       = useState(false);
-  const [error,        setError]        = useState<string | null>(null);
-  const [documents,    setDocuments]    = useState<ClientDocument[]>([]);
-  const [contacts,     setContacts]     = useState<ClientContact[]>([]);
-  const [connections,  setConnections]  = useState<ClientConnection[]>([]);
-  const [detailLoading,setDetailLoading]= useState(false);
+  const [clients,       setClients]       = useState<Client[]>([]);
+  const [selected,      setSelected]      = useState<Client | null>(null);
+  const [loading,       setLoading]       = useState(true);
+  const [saving,        setSaving]        = useState(false);
+  const [error,         setError]         = useState<string | null>(null);
+  const [documents,     setDocuments]     = useState<ClientDocument[]>([]);
+  const [contacts,      setContacts]      = useState<ClientContact[]>([]);
+  const [connections,   setConnections]   = useState<ClientConnection[]>([]);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -47,7 +48,10 @@ export function useClientsController() {
     void load();
     const channel = supabase
       .channel(`clients-${companyId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "clients", filter: `company_id=eq.${companyId}` }, () => void load())
+      .on("postgres_changes", {
+        event: "*", schema: "public", table: "clients",
+        filter: `company_id=eq.${companyId}`,
+      }, () => void load())
       .subscribe();
     return () => { void supabase.removeChannel(channel); };
   }, [companyId, load]);
@@ -81,18 +85,21 @@ export function useClientsController() {
     setSaving(true);
     try {
       const client = await createSvc(companyId, payload);
-      // Create contacts in parallel
-      if (initialContacts?.length) {
-        await Promise.all(
-          initialContacts.map((c) => createClientContact(companyId, client.id, user.id, c))
-        );
-      }
-      // Create documents in parallel
-      if (initialDocuments?.length) {
-        await Promise.all(
-          initialDocuments.map((d) => createClientDocument(companyId, client.id, user.id, d))
-        );
-      }
+
+      // ── PARALELO: contactos + documentos + CRM ──────────
+      await Promise.all([
+        // Contactos iniciales
+        ...(initialContacts?.length ? initialContacts.map((c) =>
+          createClientContact(companyId, client.id, user.id, c)
+        ) : []),
+        // Documentos iniciales
+        ...(initialDocuments?.length ? initialDocuments.map((d) =>
+          createClientDocument(companyId, client.id, user.id, d)
+        ) : []),
+        // Auto-crear cuenta CRM
+        autoCreateCRMAccount(companyId, client.id, payload),
+      ]);
+
       await load();
       return client;
     } catch (e: any) { setError(e.message); }
@@ -117,7 +124,10 @@ export function useClientsController() {
 
   // ── CONTACT ACTIONS ─────────────────────────────────────
 
-  async function addContact(payload: { name: string; role: ClientContactRole; title?: string; email?: string; phone?: string; is_primary?: boolean; notes?: string }) {
+  async function addContact(payload: {
+    name: string; role: ClientContactRole; title?: string;
+    email?: string; phone?: string; is_primary?: boolean; notes?: string;
+  }) {
     if (!companyId || !selected || !user) return;
     const contact = await createClientContact(companyId, selected.id, user.id, payload);
     setContacts((prev) => [...prev, contact]);
@@ -137,13 +147,18 @@ export function useClientsController() {
 
   // ── DOCUMENT ACTIONS ─────────────────────────────────────
 
-  async function addDocument(payload: { name: string; type: ClientDocumentType; url?: string; notes?: string; expires_at?: string }) {
+  async function addDocument(payload: {
+    name: string; type: ClientDocumentType;
+    url?: string; notes?: string; expires_at?: string;
+  }) {
     if (!companyId || !selected || !user) return;
     const doc = await createClientDocument(companyId, selected.id, user.id, payload);
     setDocuments((prev) => [doc, ...prev]);
   }
 
-  async function editDocument(id: string, updates: { name?: string; url?: string; notes?: string; expires_at?: string }) {
+  async function editDocument(id: string, updates: {
+    name?: string; url?: string; notes?: string; expires_at?: string;
+  }) {
     if (!companyId) return;
     await updateClientDocument(companyId, id, updates);
     setDocuments((prev) => prev.map((d) => d.id === id ? { ...d, ...updates } : d));
@@ -164,4 +179,76 @@ export function useClientsController() {
     addDocument, editDocument, removeDocument,
     reload: load,
   };
+}
+
+// ============================================================
+// AUTO-CREAR CUENTA CRM — se llama al crear un cliente
+// No bloquea si falla — el cliente ya fue creado
+// ============================================================
+
+async function autoCreateCRMAccount(
+  companyId: string,
+  clientId:  string,
+  payload:   CreateClientPayload
+): Promise<void> {
+  try {
+    // 1. Verificar que no exista ya una cuenta CRM para este cliente
+    const { data: existing } = await supabase
+      .from("crm_accounts")
+      .select("id")
+      .eq("company_id", companyId)
+      .eq("client_id", clientId)
+      .maybeSingle();
+
+    if (existing) return; // Ya existe, no duplicar
+
+    // 2. Crear cuenta CRM
+    const { data: account, error } = await supabase
+      .from("crm_accounts")
+      .insert({
+        company_id:      companyId,
+        client_id:       clientId,
+        name:            payload.name,
+        legal_name:      payload.legal_name     ?? null,
+        city:            payload.city           ?? null,
+        country:         payload.country        ?? "México",
+        status:          "active",
+        is_customer:     payload.is_customer,
+        lifecycle_stage: payload.is_customer ? "customer" : "lead",
+        archived:        false,
+      })
+      .select("id")
+      .single();
+
+    if (error || !account) return;
+
+    // 3. Identity bridge — conecta client ↔ crm_account
+    await supabase.from("customer_identity_bridge").insert({
+      company_id:       companyId,
+      crm_account_id:   account.id,
+      client_id:        clientId,
+      bridge_status:    "linked",
+      source_of_truth:  "clients",
+      conversion_type:  "direct_client_creation",
+      conversion_source:"clients_module",
+      is_primary:       true,
+    });
+
+    // 4. Evento global en timeline
+    await supabase.from("entity_timeline_events").insert({
+      company_id:         companyId,
+      entity_type:        "crm_account",
+      entity_id:          account.id,
+      related_account_id: account.id,
+      related_client_id:  clientId,
+      module_key:         "clients",
+      event_type:         "created",
+      event_category:     "commercial",
+      title:              "Cuenta CRM creada automáticamente",
+      description:        payload.name,
+    });
+
+  } catch {
+    // Silencioso — no bloqueamos la creación del cliente
+  }
 }
