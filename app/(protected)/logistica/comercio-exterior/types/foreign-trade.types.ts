@@ -13,7 +13,7 @@ export const TRADE_STATUS_CONFIG: Record<TradeStatus, { labelKey: string; color:
   at_customs:  { labelKey: "logistics.statusAtCustoms",   color: "#d97706",                   bg: "#fef3c7",                 border: "#fcd34d"                     },
   released:    { labelKey: "logistics.statusReleased",    color: "var(--color-success-text)", bg: "var(--color-success-bg)", border: "var(--color-success-border)"  },
   closed:      { labelKey: "logistics.statusClosed",      color: "#475569",                   bg: "#f1f5f9",                 border: "#cbd5e1"                      },
-  cancelled:   { labelKey: "logistics.statusCancelled",   color: "var(--color-danger-text)",  bg: "var(--color-danger-bg)",  border: "var(--color-danger-border)"   },
+  cancelled:   { labelKey: "logistics.ftStatusCancelled",   color: "var(--color-danger-text)",  bg: "var(--color-danger-bg)",  border: "var(--color-danger-border)"   },
 };
 
 export const REGIME_LABELS: Record<TradeRegime, string> = {
