@@ -942,6 +942,7 @@ products: {
   gainPerUnit:        "Profit per unit",
   back:               "Back",
   next:               "Next",
+  selectProduct:      "Select a product",
 },
   
 };
