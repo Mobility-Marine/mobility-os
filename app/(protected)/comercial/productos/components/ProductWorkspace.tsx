@@ -45,8 +45,8 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
           <line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
         </svg>
         <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-text-primary)" }}>
-          {tp.title ? `${tp.selectProduct ?? "Selecciona un producto"}` : "Selecciona un producto"}
-        </div>
+  {tp.selectProduct ?? "Selecciona un producto"}
+</div>
         <div style={{ fontSize: "13px", color: "var(--color-text-muted)", textAlign: "center", maxWidth: "280px", lineHeight: 1.6 }}>
           {tp.connectionsDesc ?? "Aquí verás el detalle, información fiscal, stock y conexiones con otros módulos."}
         </div>
