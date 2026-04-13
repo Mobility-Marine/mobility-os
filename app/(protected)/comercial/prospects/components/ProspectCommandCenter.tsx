@@ -134,3 +134,4 @@ export default function ProspectCommandCenter({ prospects, onSelect }: Props) {
     ))}
   </>
 );
+}
