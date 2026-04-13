@@ -959,6 +959,7 @@ products: {
   gainPerUnit:        "Ganancia por unidad",
   back:               "Atrás",
   next:               "Siguiente",
+  selectProduct:      "Selecciona un producto",
 },
   
 };
