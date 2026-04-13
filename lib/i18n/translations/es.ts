@@ -416,6 +416,8 @@ inactiveProspectsHint:     "Riesgo de abandono",
 convertibleProspects:      "Convertibles",
 convertibleProspectsHint:  "Listos para avanzar",
 dailyActions: "Acciones prioritarias hoy",
+weightedForecast:       "Forecast ponderado",
+distributionByStage:    "Distribución por etapa",
 },
 
 };
