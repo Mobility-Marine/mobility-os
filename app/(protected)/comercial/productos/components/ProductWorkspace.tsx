@@ -8,11 +8,11 @@ import { useTranslation } from "@/lib/i18n/useTranslation";
 type Tab = "info" | "fiscal" | "stock" | "connections";
 
 type Props = {
-  product:      Product | null;
-  onUpdate:     (id: string, updates: Partial<Product>) => Promise<void>;
-  onDelete:     (id: string) => Promise<void>;
-  onToggle:     (id: string, active: boolean) => Promise<void>;
-  saving:       boolean;
+  product:  Product | null;
+  onUpdate: (id: string, updates: Partial<Product>) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
+  onToggle: (id: string, active: boolean) => Promise<void>;
+  saving:   boolean;
 };
 
 const INPUT: React.CSSProperties = {
@@ -23,12 +23,14 @@ const INPUT: React.CSSProperties = {
 };
 
 export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle, saving }: Props) {
-  const { lang } = useTranslation();
-  const locale   = lang === "en" ? "en-US" : "es-MX";
-  const [tab, setTab] = useState<Tab>("info");
-  const [editing,   setEditing]   = useState(false);
-  const [form,      setForm]      = useState<Partial<Product>>({});
-  const [confirm,   setConfirm]   = useState(false);
+  const { t, lang } = useTranslation();
+  const locale      = lang === "en" ? "en-US" : "es-MX";
+  const tp          = (t.products as any) ?? {};
+
+  const [tab,     setTab]     = useState<Tab>("info");
+  const [editing, setEditing] = useState(false);
+  const [form,    setForm]    = useState<Partial<Product>>({});
+  const [confirm, setConfirm] = useState(false);
 
   if (!product) {
     return (
@@ -42,9 +44,11 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
           <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
           <line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
         </svg>
-        <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-text-primary)" }}>Selecciona un producto</div>
+        <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-text-primary)" }}>
+          {tp.title ? `${tp.selectProduct ?? "Selecciona un producto"}` : "Selecciona un producto"}
+        </div>
         <div style={{ fontSize: "13px", color: "var(--color-text-muted)", textAlign: "center", maxWidth: "280px", lineHeight: 1.6 }}>
-          Aquí verás el detalle, información fiscal, stock y conexiones con otros módulos.
+          {tp.connectionsDesc ?? "Aquí verás el detalle, información fiscal, stock y conexiones con otros módulos."}
         </div>
       </div>
     );
@@ -55,16 +59,13 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
     : 0;
 
   const TABS: { key: Tab; label: string }[] = [
-    { key: "info",        label: "Información"   },
-    { key: "fiscal",      label: "Fiscal / SAT"  },
-    { key: "stock",       label: "Stock"         },
-    { key: "connections", label: "Conexiones"    },
+    { key: "info",        label: tp.tabInfo        ?? "Información"  },
+    { key: "fiscal",      label: tp.tabFiscal      ?? "Fiscal / SAT" },
+    { key: "stock",       label: tp.tabStock       ?? "Stock"        },
+    { key: "connections", label: tp.tabConnections ?? "Conexiones"   },
   ];
 
-  function startEdit() {
-    setForm({ ...product });
-    setEditing(true);
-  }
+  function startEdit() { setForm({ ...product }); setEditing(true); }
 
   async function saveEdit() {
     await onUpdate(product.id, form);
@@ -74,10 +75,55 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
 
   function set(k: keyof Product, v: any) { setForm((p) => ({ ...p, [k]: v })); }
 
-  const stockColor = !product.is_active ? "var(--color-text-muted)"
-    : product.stock <= 0              ? "var(--color-danger-text)"
-    : product.stock <= product.stock_min ? "var(--color-warning-text)"
+  const stockColor = !product.is_active        ? "var(--color-text-muted)"
+    : product.stock <= 0                        ? "var(--color-danger-text)"
+    : product.stock <= product.stock_min        ? "var(--color-warning-text)"
     : "var(--color-success-text)";
+
+  // Field labels para el form de edición
+  const infoFields = [
+    { k: "sku",        label: tp.sku       ?? "SKU",      type: "text"   },
+    { k: "name",       label: tp.name      ?? "Nombre",   type: "text"   },
+    { k: "category",   label: tp.category  ?? "Categoría",type: "text"   },
+    { k: "unit",       label: tp.unit      ?? "Unidad",   type: "text"   },
+    { k: "unit_price", label: tp.unitPrice ?? "Precio",   type: "number" },
+    { k: "cost",       label: tp.cost      ?? "Costo",    type: "number" },
+    { k: "currency",   label: tp.currency  ?? "Moneda",   type: "text"   },
+    { k: "tax_rate",   label: tp.taxRate   ?? "IVA %",    type: "number" },
+  ];
+
+  const infoRows = [
+    { label: tp.sku       ?? "SKU",      value: product.sku },
+    { label: tp.unit      ?? "Unidad",   value: product.unit },
+    { label: tp.category  ?? "Categoría",value: product.category },
+    { label: tp.currency  ?? "Moneda",   value: product.currency },
+    { label: tp.unitPrice ?? "Precio",   value: `${product.currency} $${Number(product.unit_price).toLocaleString(locale, { minimumFractionDigits: 2 })}` },
+    { label: tp.cost      ?? "Costo",    value: `${product.currency} $${Number(product.cost).toLocaleString(locale, { minimumFractionDigits: 2 })}` },
+    { label: tp.taxRate   ?? "IVA",      value: `${product.tax_rate}%` },
+    { label: tp.margin    ?? "Margen",   value: `${margin.toFixed(1)}%` },
+  ];
+
+  const fiscalFields = [
+    { k: "sat_product_code",   label: tp.satProductCode   ?? "Clave de producto SAT",      placeholder: "ej: 14111500" },
+    { k: "sat_unit_code",      label: tp.satUnitCode      ?? "Clave de unidad SAT",         placeholder: "ej: H87 (Pieza)" },
+    { k: "tariff_code",        label: tp.tariffCode       ?? "Fracción arancelaria",        placeholder: "ej: 4819.10.01" },
+    { k: "tariff_description", label: tp.tariffDescription?? "Descripción de la fracción",  placeholder: "ej: Cajas de cartón corrugado" },
+    { k: "country_of_origin",  label: tp.countryOfOrigin  ?? "País de origen",              placeholder: "México" },
+  ];
+
+  const fiscalRows = [
+    { label: tp.satProductCode    ?? "Clave de producto SAT",     value: product.sat_product_code,    required: true,  module: "Facturación CFDI" },
+    { label: tp.satUnitCode       ?? "Clave de unidad SAT",       value: product.sat_unit_code,       required: true,  module: "Facturación CFDI" },
+    { label: tp.tariffCode        ?? "Fracción arancelaria",      value: product.tariff_code,         required: false, module: "Carta Porte / Comercio Exterior" },
+    { label: tp.tariffDescription ?? "Descripción de la fracción",value: product.tariff_description,  required: false, module: "Carta Porte / Comercio Exterior" },
+    { label: tp.countryOfOrigin   ?? "País de origen",            value: product.country_of_origin,   required: false, module: "Comercio Exterior" },
+  ];
+
+  const stockKpis = [
+    { label: tp.stockCurrent   ?? "Stock actual",    value: `${product.stock} ${product.unit}`,     color: stockColor },
+    { label: tp.stockMinLabel  ?? "Stock mínimo",    value: `${product.stock_min} ${product.unit}`, color: "var(--color-text-muted)" },
+    { label: tp.warehouseValue ?? "Valor en bodega", value: `$${(product.stock * product.unit_price).toLocaleString(locale, { maximumFractionDigits: 0 })}`, color: "var(--color-success-text)" },
+  ];
 
   return (
     <div style={{
@@ -103,7 +149,7 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                 </span>
               )}
               <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "var(--radius-full)", background: product.is_active ? "var(--color-success-bg)" : "var(--color-bg-subtle)", border: `1px solid ${product.is_active ? "var(--color-success-border)" : "var(--color-border-faint)"}`, color: product.is_active ? "var(--color-success-text)" : "var(--color-text-muted)", fontWeight: 700, textTransform: "uppercase" }}>
-                {product.is_active ? "Activo" : "Inactivo"}
+                {product.is_active ? (tp.active ?? "Activo") : (tp.inactive ?? "Inactivo")}
               </span>
             </div>
             {product.description && (
@@ -113,13 +159,12 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
             )}
           </div>
 
-          {/* PRICE + MARGIN */}
           <div style={{ textAlign: "right", flexShrink: 0 }}>
             <div style={{ fontSize: "20px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
               {product.currency} ${Number(product.unit_price).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
             <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
-              Costo: ${Number(product.cost).toLocaleString(locale, { minimumFractionDigits: 2 })} · Margen: <span style={{ color: margin >= 30 ? "var(--color-success-text)" : margin >= 15 ? "var(--color-warning-text)" : "var(--color-danger-text)", fontWeight: 700 }}>{margin.toFixed(1)}%</span>
+              {tp.cost ?? "Costo"}: ${Number(product.cost).toLocaleString(locale, { minimumFractionDigits: 2 })} · {tp.margin ?? "Margen"}: <span style={{ color: margin >= 30 ? "var(--color-success-text)" : margin >= 15 ? "var(--color-warning-text)" : "var(--color-danger-text)", fontWeight: 700 }}>{margin.toFixed(1)}%</span>
             </div>
           </div>
         </div>
@@ -137,7 +182,7 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                 <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
                 <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
               </svg>
-              Editar
+              {tp.edit ?? "Editar"}
             </button>
           ) : (
             <>
@@ -146,14 +191,14 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                 background: "var(--color-success-text)", color: "#fff", border: "none",
                 fontSize: "11px", fontWeight: 700, cursor: "pointer",
               }}>
-                {saving ? "Guardando…" : "✓ Guardar"}
+                {saving ? t.general.loading : `✓ ${tp.save ?? "Guardar"}`}
               </button>
               <button onClick={() => { setEditing(false); setForm({}); }} style={{
                 height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)",
                 background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)",
                 color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer",
               }}>
-                Cancelar
+                {tp.cancel ?? "Cancelar"}
               </button>
             </>
           )}
@@ -164,7 +209,7 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
             color: product.is_active ? "var(--color-warning-text)" : "var(--color-success-text)",
             fontSize: "11px", fontWeight: 600, cursor: "pointer",
           }}>
-            {product.is_active ? "Desactivar" : "Activar"}
+            {product.is_active ? (tp.deactivate ?? "Desactivar") : (tp.activate ?? "Activar")}
           </button>
           {!confirm ? (
             <button onClick={() => setConfirm(true)} style={{
@@ -172,7 +217,7 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
               background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)",
               color: "var(--color-danger-text)", fontSize: "11px", fontWeight: 600, cursor: "pointer",
             }}>
-              Eliminar
+              {tp.delete ?? "Eliminar"}
             </button>
           ) : (
             <>
@@ -181,14 +226,14 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                 background: "var(--color-danger-text)", color: "#fff", border: "none",
                 fontSize: "11px", fontWeight: 700, cursor: "pointer",
               }}>
-                ¿Confirmar?
+                {tp.confirmDelete ?? "¿Confirmar?"}
               </button>
               <button onClick={() => setConfirm(false)} style={{
                 height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)",
                 background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)",
                 color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer",
               }}>
-                No
+                {t.general.no ?? "No"}
               </button>
             </>
           )}
@@ -218,43 +263,25 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
           <div style={{ display: "grid", gap: "12px" }}>
             {editing ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                {[
-                  { k: "sku",         label: "SKU",         type: "text"   },
-                  { k: "name",        label: "Nombre",      type: "text"   },
-                  { k: "category",    label: "Categoría",   type: "text"   },
-                  { k: "unit",        label: "Unidad",      type: "text"   },
-                  { k: "unit_price",  label: "Precio",      type: "number" },
-                  { k: "cost",        label: "Costo",       type: "number" },
-                  { k: "currency",    label: "Moneda",      type: "text"   },
-                  { k: "tax_rate",    label: "IVA %",       type: "number" },
-                ].map((f) => (
+                {infoFields.map((f) => (
                   <div key={f.k}>
                     <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{f.label}</div>
                     <input type={f.type} value={(form as any)[f.k] ?? ""} onChange={(e) => set(f.k as keyof Product, f.type === "number" ? Number(e.target.value) : e.target.value)} style={INPUT} />
                   </div>
                 ))}
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Descripción</div>
+                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{tp.description ?? "Descripción"}</div>
                   <textarea value={(form as any).description ?? ""} onChange={(e) => set("description", e.target.value)} rows={2} style={{ ...INPUT, height: "auto", padding: "8px 10px", resize: "vertical" }} />
                 </div>
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Notas</div>
+                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{tp.notes ?? "Notas"}</div>
                   <textarea value={(form as any).notes ?? ""} onChange={(e) => set("notes", e.target.value)} rows={2} style={{ ...INPUT, height: "auto", padding: "8px 10px", resize: "vertical" }} />
                 </div>
               </div>
             ) : (
               <>
                 <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "12px", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  {[
-                    { label: "SKU",        value: product.sku },
-                    { label: "Unidad",     value: product.unit },
-                    { label: "Categoría",  value: product.category },
-                    { label: "Moneda",     value: product.currency },
-                    { label: "Precio",     value: `${product.currency} $${Number(product.unit_price).toLocaleString(locale, { minimumFractionDigits: 2 })}` },
-                    { label: "Costo",      value: `${product.currency} $${Number(product.cost).toLocaleString(locale, { minimumFractionDigits: 2 })}` },
-                    { label: "IVA",        value: `${product.tax_rate}%` },
-                    { label: "Margen",     value: `${margin.toFixed(1)}%` },
-                  ].map((r) => r.value ? (
+                  {infoRows.map((r) => r.value ? (
                     <div key={r.label}>
                       <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "2px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{r.label}</div>
                       <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)" }}>{r.value}</div>
@@ -280,17 +307,11 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
         {tab === "fiscal" && (
           <div style={{ display: "grid", gap: "10px" }}>
             <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.6 }}>
-              Estos datos son <strong>obligatorios</strong> para generar CFDI 4.0 con el SAT. La clave de producto y unidad se usan en Facturación. La fracción arancelaria se usa en Carta Porte y Comercio Exterior.
+              {tp.fiscalInfo ?? "Estos datos son obligatorios para generar CFDI 4.0. La clave de producto y unidad se usan en Facturación. La fracción arancelaria se usa en Carta Porte y Comercio Exterior."}
             </div>
             {editing ? (
               <div style={{ display: "grid", gap: "10px" }}>
-                {[
-                  { k: "sat_product_code",    label: "Clave de producto SAT",       placeholder: "ej: 14111500" },
-                  { k: "sat_unit_code",        label: "Clave de unidad SAT",         placeholder: "ej: H87 (Pieza)" },
-                  { k: "tariff_code",          label: "Fracción arancelaria",        placeholder: "ej: 4819.10.01" },
-                  { k: "tariff_description",   label: "Descripción de la fracción",  placeholder: "ej: Cajas de cartón corrugado" },
-                  { k: "country_of_origin",    label: "País de origen",              placeholder: "México" },
-                ].map((f) => (
+                {fiscalFields.map((f) => (
                   <div key={f.k}>
                     <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{f.label}</div>
                     <input value={(form as any)[f.k] ?? ""} onChange={(e) => set(f.k as keyof Product, e.target.value)} placeholder={f.placeholder} style={INPUT} />
@@ -299,13 +320,7 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
               </div>
             ) : (
               <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "14px", display: "grid", gap: "10px" }}>
-                {[
-                  { label: "Clave de producto SAT",     value: product.sat_product_code,   required: true,  module: "Facturación CFDI" },
-                  { label: "Clave de unidad SAT",       value: product.sat_unit_code,      required: true,  module: "Facturación CFDI" },
-                  { label: "Fracción arancelaria",      value: product.tariff_code,        required: false, module: "Carta Porte / Comercio Exterior" },
-                  { label: "Descripción de la fracción",value: product.tariff_description, required: false, module: "Carta Porte / Comercio Exterior" },
-                  { label: "País de origen",            value: product.country_of_origin,  required: false, module: "Comercio Exterior" },
-                ].map((r) => (
+                {fiscalRows.map((r) => (
                   <div key={r.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "12px" }}>
                     <div>
                       <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-primary)" }}>{r.label}</div>
@@ -313,7 +328,7 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                     </div>
                     <div style={{ textAlign: "right" }}>
                       {r.value ? (
-                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-success-text)", fontFamily: r.label.includes("Clave") || r.label.includes("Fracción") ? "monospace" : "inherit" }}>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-success-text)", fontFamily: "monospace" }}>
                           {r.value}
                         </span>
                       ) : (
@@ -324,7 +339,7 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                           color: r.required ? "var(--color-danger-text)" : "var(--color-text-muted)",
                           fontWeight: r.required ? 700 : 400,
                         }}>
-                          {r.required ? "Requerido" : "No configurado"}
+                          {r.required ? (lang === "en" ? "Required" : "Requerido") : (lang === "en" ? "Not set" : "No configurado")}
                         </span>
                       )}
                     </div>
@@ -341,23 +356,18 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
             {editing ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <div>
-                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Stock actual</div>
+                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{tp.stockCurrent ?? "Stock actual"}</div>
                   <input type="number" value={(form as any).stock ?? 0} onChange={(e) => set("stock", Number(e.target.value))} min="0" style={INPUT} />
                 </div>
                 <div>
-                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Stock mínimo</div>
+                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{tp.stockMinLabel ?? "Stock mínimo"}</div>
                   <input type="number" value={(form as any).stock_min ?? 0} onChange={(e) => set("stock_min", Number(e.target.value))} min="0" style={INPUT} />
                 </div>
               </div>
             ) : (
               <>
-                {/* Stock KPIs */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-                  {[
-                    { label: "Stock actual",   value: `${product.stock} ${product.unit}`, color: stockColor },
-                    { label: "Stock mínimo",   value: `${product.stock_min} ${product.unit}`, color: "var(--color-text-muted)" },
-                    { label: "Valor en bodega",value: `$${(product.stock * product.unit_price).toLocaleString(locale, { maximumFractionDigits: 0 })}`, color: "var(--color-success-text)" },
-                  ].map((k) => (
+                  {stockKpis.map((k) => (
                     <div key={k.label} style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "10px", textAlign: "center" }}>
                       <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "4px" }}>{k.label}</div>
                       <div style={{ fontSize: "16px", fontWeight: 800, color: k.color }}>{k.value}</div>
@@ -365,15 +375,13 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                   ))}
                 </div>
 
-                {/* Stock bar */}
                 <div style={{ padding: "12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "8px" }}>
                     <span>0</span>
-                    <span>Mínimo: {product.stock_min}</span>
-                    <span>Actual: {product.stock}</span>
+                    <span>{tp.stockMinLabel ?? "Mínimo"}: {product.stock_min}</span>
+                    <span>{tp.stockCurrent ?? "Actual"}: {product.stock}</span>
                   </div>
                   <div style={{ height: "8px", background: "var(--color-border-faint)", borderRadius: "var(--radius-full)", overflow: "hidden", position: "relative" }}>
-                    {/* Min line */}
                     {product.stock_min > 0 && (
                       <div style={{
                         position: "absolute", left: `${Math.min((product.stock_min / Math.max(product.stock, product.stock_min * 1.5)) * 100, 90)}%`,
@@ -388,18 +396,18 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                   </div>
                   {product.stock <= 0 && (
                     <div style={{ marginTop: "8px", fontSize: "12px", fontWeight: 700, color: "var(--color-danger-text)" }}>
-                      Sin stock — actualiza desde Inventario o Recepciones
+                      {tp.outOfStock ?? "Sin stock — actualiza desde Inventario o Recepciones"}
                     </div>
                   )}
                   {product.stock > 0 && product.stock <= product.stock_min && (
                     <div style={{ marginTop: "8px", fontSize: "12px", fontWeight: 700, color: "var(--color-warning-text)" }}>
-                      Bajo mínimo — considera reabastecer
+                      {tp.belowMin ?? "Bajo mínimo — considera reabastecer"}
                     </div>
                   )}
                 </div>
 
                 <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.5 }}>
-                  El stock se actualiza automáticamente desde los módulos de <strong>Recepciones</strong> (aumenta) y <strong>Pedidos</strong> (disminuye) en Abastecimiento.
+                  {tp.stockInfo ?? "El stock se actualiza automáticamente desde Recepciones (aumenta) y Pedidos (disminuye)."}
                 </div>
               </>
             )}
@@ -410,7 +418,7 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
         {tab === "connections" && (
           <div style={{ display: "grid", gap: "8px" }}>
             <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginBottom: "4px", lineHeight: 1.6 }}>
-              Este producto está conectado con los siguientes módulos del sistema. Los campos marcados son los que se leen o escriben desde cada módulo.
+              {tp.connectionsDesc ?? "Este producto está conectado con los siguientes módulos del sistema."}
             </div>
             {PRODUCT_MODULE_LINKS.map((link) => {
               const moduleColor: Record<string, string> = {
