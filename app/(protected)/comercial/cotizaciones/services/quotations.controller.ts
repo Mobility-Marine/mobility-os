@@ -170,6 +170,21 @@ export function useQuotationsController() {
     await load();
   }
 
+async function handleUpdateFields(id: string, updates: Partial<Quotation>) {
+  await updateQuotation(companyId!, id, updates);
+  await reload();
+}
+
+async function handleUpdateItem(id: string, updates: Partial<QuotationItem>, quotationId: string) {
+  await updateItem(companyId!, id, updates);
+  await reloadDetail(quotationId);
+}
+
+async function handleUpdateService(id: string, updates: Partial<QuotationService>, quotationId: string) {
+  await updateService(companyId!, id, updates);
+  await reloadDetail(quotationId);
+}
+  
   // Filtered
   const filtered = quotations.filter((q) => {
     const mq = filters.search.trim().toLowerCase();
