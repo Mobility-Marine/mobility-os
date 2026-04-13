@@ -79,7 +79,7 @@ export default function ProductosPage() {
       <ProductCreateDrawer
         open={showCreate}
         onClose={() => setShowCreate(false)}
-        onCreate={handleCreate}
+        onCreate={async (payload) => { await handleCreate(payload); }}
       />
       <ProductImportExport
         open={showImport}
