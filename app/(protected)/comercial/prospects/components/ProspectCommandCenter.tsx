@@ -1,186 +1,144 @@
 "use client";
 
 import type { Prospect } from "../types/prospects.types";
+import { useTranslation } from "@/lib/i18n/useTranslation";
+import {
+  getProspectStage, isProspectActive, isHighValue, isOverdue, daysSince,
+} from "../services/prospects.normalization";
 
 type Props = {
   prospects: Prospect[];
   onSelect: (p: Prospect) => void;
 };
 
-export default function ProspectCommandCenter({
-  prospects,
-  onSelect,
-}: Props) {
-  const now = new Date();
-
-  // ==========================================================
-  // 🔥 HOT — alto valor + activos + no perdidos
-  // ==========================================================
+export default function ProspectCommandCenter({ prospects, onSelect }: Props) {
+  const { t } = useTranslation();
+  const now   = new Date();
 
   const hot = prospects
-    .filter(
-      (p) =>
-        (p.estimated_value || 0) >= 50000 &&
-        p.is_active &&
-        p.stage !== "lost"
-    )
-    .sort(
-      (a, b) =>
-        (b.estimated_value || 0) - (a.estimated_value || 0)
-    );
-
-  // ==========================================================
-  // ⏰ OVERDUE — seguimiento vencido
-  // ==========================================================
+    .filter((p) => isHighValue(p, 50_000) && isProspectActive(p))
+    .sort((a, b) => (b.estimated_value ?? 0) - (a.estimated_value ?? 0));
 
   const overdue = prospects
-    .filter((p) => {
-      if (!p.next_follow_up) return false;
-      return new Date(p.next_follow_up) < now;
-    })
-    .sort(
-      (a, b) =>
-        new Date(a.next_follow_up || "").getTime() -
-        new Date(b.next_follow_up || "").getTime()
+    .filter((p) => isOverdue(p) && isProspectActive(p))
+    .sort((a, b) =>
+      new Date(a.next_follow_up ?? a.next_contact_date ?? "").getTime() -
+      new Date(b.next_follow_up ?? b.next_contact_date ?? "").getTime()
     );
-
-  // ==========================================================
-  // 💤 INACTIVE — sin seguimiento en 30 días
-  // ==========================================================
 
   const inactive = prospects.filter((p) => {
-    const refDate =
-      p.next_follow_up || p.created_at;
-
-    if (!refDate) return false;
-
-    const days =
-      (Date.now() - new Date(refDate).getTime()) /
-      (1000 * 60 * 60 * 24);
-
-    return days > 30 && p.stage !== "lost";
+    const days = daysSince(p.next_follow_up ?? p.created_at);
+    return days !== null && days > 30 && isProspectActive(p);
   });
 
-  // ==========================================================
-  // 🎯 CONVERTIBLE — etapas finales
-  // ==========================================================
-
   const convertible = prospects
-    .filter((p) =>
-      ["qualified", "proposal", "negotiation"].includes(
-        (p.stage || p.status || "").toLowerCase()
-      )
-    )
-    .sort(
-      (a, b) =>
-        (b.estimated_value || 0) - (a.estimated_value || 0)
-    );
+    .filter((p) => {
+      const s = getProspectStage(p);
+      return ["qualified", "proposal", "negotiation"].includes(s) && isProspectActive(p);
+    })
+    .sort((a, b) => (b.estimated_value ?? 0) - (a.estimated_value ?? 0));
 
-  // ==========================================================
-  // UI
-  // ==========================================================
+  const cards = [
+    {
+      key:      "hot",
+      labelKey: t.prospects.hotProspects ?? "Calientes",
+      hint:     t.prospects.hotProspectsHint ?? "Alto valor y activos",
+      count:    hot.length,
+      color:    "var(--color-danger-text)",
+      bg:       "var(--color-danger-bg)",
+      border:   "var(--color-danger-border)",
+      icon:     "🔥",
+      first:    hot[0],
+    },
+    {
+      key:      "overdue",
+      labelKey: t.prospects.overdueProspects ?? "Vencidos",
+      hint:     t.prospects.overdueProspectsHint ?? "Seguimientos atrasados",
+      count:    overdue.length,
+      color:    "var(--color-warning-text)",
+      bg:       "var(--color-warning-bg)",
+      border:   "var(--color-warning-border)",
+      icon:     "⏰",
+      first:    overdue[0],
+    },
+    {
+      key:      "inactive",
+      labelKey: t.prospects.inactiveProspects ?? "Sin actividad",
+      hint:     t.prospects.inactiveProspectsHint ?? "Riesgo de abandono",
+      count:    inactive.length,
+      color:    "var(--color-info-text)",
+      bg:       "var(--color-info-bg)",
+      border:   "var(--color-info-border)",
+      icon:     "💤",
+      first:    inactive[0],
+    },
+    {
+      key:      "convertible",
+      labelKey: t.prospects.convertibleProspects ?? "Convertibles",
+      hint:     t.prospects.convertibleProspectsHint ?? "Listos para avanzar",
+      count:    convertible.length,
+      color:    "var(--color-success-text)",
+      bg:       "var(--color-success-bg)",
+      border:   "var(--color-success-border)",
+      icon:     "🎯",
+      first:    convertible[0],
+    },
+  ];
 
   return (
-    <div style={container}>
-      <Card
-        title="🔥 Calientes"
-        value={hot.length}
-        hint="Alto valor y activos"
-        onClick={() => hot[0] && onSelect(hot[0])}
-      />
-
-      <Card
-        title="⏰ Vencidos"
-        value={overdue.length}
-        hint="Seguimientos atrasados"
-        onClick={() => overdue[0] && onSelect(overdue[0])}
-      />
-
-      <Card
-        title="💤 Sin actividad"
-        value={inactive.length}
-        hint="Riesgo de abandono"
-        onClick={() => inactive[0] && onSelect(inactive[0])}
-      />
-
-      <Card
-        title="🎯 Convertibles"
-        value={convertible.length}
-        hint="Listos para avanzar"
-        onClick={() =>
-          convertible[0] && onSelect(convertible[0])
-        }
-      />
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "14px" }}>
+      {cards.map((card) => (
+        <div
+          key={card.key}
+          onClick={() => card.first && onSelect(card.first)}
+          style={{
+            background: card.count > 0 ? card.bg : "var(--color-bg-base)",
+            border: `1px solid ${card.count > 0 ? card.border : "var(--color-border-faint)"}`,
+            borderRadius: "var(--radius-lg)",
+            padding: "16px",
+            cursor: card.first ? "pointer" : "default",
+            transition: "var(--transition-fast)",
+            display: "grid", gap: "8px",
+          }}
+          onMouseEnter={(e) => {
+            if (card.first) (e.currentTarget as HTMLDivElement).style.opacity = "0.85";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLDivElement).style.opacity = "1";
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "18px" }}>{card.icon}</span>
+              <span style={{ fontSize: "13px", fontWeight: 600, color: card.count > 0 ? card.color : "var(--color-text-muted)" }}>
+                {card.labelKey}
+              </span>
+            </div>
+            <div style={{
+              fontSize: "26px", fontWeight: 800,
+              color: card.count > 0 ? card.color : "var(--color-text-muted)",
+              fontVariantNumeric: "tabular-nums",
+            }}>
+              {card.count}
+            </div>
+          </div>
+          <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
+            {card.hint}
+          </div>
+          {card.first && (
+            <div style={{
+              fontSize: "11px", fontWeight: 600,
+              color: card.color,
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }}>
+              {card.first.company_name ?? card.first.name ?? "—"}
+              <svg style={{ marginLeft: "4px" }} width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" display="inline">
+                <path d="M9 18l6-6-6-6"/>
+              </svg>
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
-
-// ============================================================
-// CARD — ENTERPRISE UI
-// ============================================================
-
-function Card({
-  title,
-  value,
-  hint,
-  onClick,
-}: {
-  title: string;
-  value: number;
-  hint: string;
-  onClick: () => void;
-}) {
-  return (
-    <div style={card} onClick={onClick}>
-      <div style={cardHeader}>
-        <div style={cardTitle}>{title}</div>
-        <div style={badge}>{value}</div>
-      </div>
-
-      <div style={cardHint}>{hint}</div>
-    </div>
-  );
-}
-
-// ============================================================
-// ESTILOS
-// ============================================================
-
-const container: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(4, 1fr)",
-  gap: 14,
-};
-
-const card: React.CSSProperties = {
-  background: "#020617",
-  border: "1px solid #1f2937",
-  borderRadius: 14,
-  padding: 16,
-  cursor: "pointer",
-  transition: "all .15s ease",
-};
-
-const cardHeader: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-};
-
-const cardTitle: React.CSSProperties = {
-  fontSize: 13,
-  color: "#cbd5f5",
-  fontWeight: 600,
-};
-
-const badge: React.CSSProperties = {
-  fontSize: 22,
-  fontWeight: 800,
-  color: "#fff",
-};
-
-const cardHint: React.CSSProperties = {
-  fontSize: 12,
-  color: "#94a3b8",
-  marginTop: 8,
-};
