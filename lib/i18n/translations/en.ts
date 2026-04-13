@@ -411,5 +411,6 @@ convertibleProspectsHint:  "Ready to advance",
 dailyActions:           "Priority actions today",
 distributionByStage:    "Distribution by stage",
 weightedForecast:       "Weighted forecast",
+dailyActions: "Priority actions today",
   },
 };
