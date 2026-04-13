@@ -415,6 +415,7 @@ inactiveProspects:         "Sin actividad",
 inactiveProspectsHint:     "Riesgo de abandono",
 convertibleProspects:      "Convertibles",
 convertibleProspectsHint:  "Listos para avanzar",
+dailyActions: "Acciones prioritarias hoy",
 },
 
 };
