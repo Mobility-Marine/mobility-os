@@ -29,6 +29,7 @@ export default function ProspectAutomationPanel({ prospects, onSelect }: Props) 
       borderRadius: "var(--radius-lg)",
       padding: "18px",
       display: "grid", gap: "14px",
+      height: "100%", overflowY: "auto",
     }}>
       {/* HEADER */}
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
