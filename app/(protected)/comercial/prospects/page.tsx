@@ -68,7 +68,7 @@ export default function ProspectsPage() {
     <div style={{
       display: "grid",
       gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-      gridTemplateRows: "auto 260px 560px 380px",
+      gridTemplateRows: "auto 400px 560px 380px",
       gap: "16px",
       paddingBottom: "32px",
     }}>
