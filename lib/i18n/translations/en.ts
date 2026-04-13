@@ -704,6 +704,16 @@ crm: {
   actNote:              "Note",
   actWhatsapp:          "WhatsApp",
   actVisit:             "Visit",
+  accountsFromClients:     "Go to Clients",
+accountsFromClientsDesc: "accounts are created automatically when a client is added.",
+filterAll:               "All",
+filterCustomer:          "Clients",
+filterStrategic:         "Strategic",
+filterLead:              "Leads",
+goToOpportunities:       "Opportunities",
+goToFinance:             "Finance",
+goToLogistics:           "Logistics",
+goToClient:              "Edit client",
 },
   
 };
