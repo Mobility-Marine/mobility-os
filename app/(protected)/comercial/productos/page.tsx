@@ -4,26 +4,28 @@ import { useState } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useProductsController } from "./services/products.controller";
 
-import ProductCommandCenter from "./components/ProductCommandCenter";
-import ProductsSidebar      from "./components/ProductsSidebar";
-import ProductWorkspace     from "./components/ProductWorkspace";
-import ProductCreateDrawer  from "./components/ProductCreateDrawer";
-import ProductImportExport  from "./components/ProductImportExport";
+import ProductCommandCenter  from "./components/ProductCommandCenter";
+import ProductsSidebar       from "./components/ProductsSidebar";
+import ProductWorkspace      from "./components/ProductWorkspace";
+import ProductCreateDrawer   from "./components/ProductCreateDrawer";
+import ProductImportExport   from "./components/ProductImportExport";
+import ProductPriceListModal from "./components/ProductPriceListModal";
 
 export default function ProductosPage() {
   const { t } = useTranslation();
   const tp    = (t.products as any) ?? {};
   const ctrl  = useProductsController();
   const {
-    filtered, categories, selected, setSelected,
+    products, filtered, categories, selected, setSelected,
     kpis, loading, saving,
     filters, setFilters,
     handleCreate, handleUpdate, handleDelete, handleToggle,
     handleBulkImport, handleExport,
   } = ctrl;
 
-  const [showCreate, setShowCreate] = useState(false);
-  const [showImport, setShowImport] = useState(false);
+  const [showCreate,    setShowCreate]    = useState(false);
+  const [showImport,    setShowImport]    = useState(false);
+  const [showPriceList, setShowPriceList] = useState(false);
 
   if (loading) return (
     <div style={{ display: "grid", placeItems: "center", minHeight: "300px" }}>
@@ -61,6 +63,7 @@ export default function ProductosPage() {
           onNew={() => setShowCreate(true)}
           onImport={() => setShowImport(true)}
           onExport={handleExport}
+          onPriceList={() => setShowPriceList(true)}
         />
       </div>
 
@@ -75,7 +78,7 @@ export default function ProductosPage() {
         />
       </div>
 
-      {/* DRAWERS */}
+      {/* DRAWERS / MODALS */}
       <ProductCreateDrawer
         open={showCreate}
         onClose={() => setShowCreate(false)}
@@ -85,6 +88,12 @@ export default function ProductosPage() {
         open={showImport}
         onClose={() => setShowImport(false)}
         onBulkImport={handleBulkImport}
+      />
+      <ProductPriceListModal
+        open={showPriceList}
+        onClose={() => setShowPriceList(false)}
+        products={products}
+        categories={categories}
       />
     </div>
   );
