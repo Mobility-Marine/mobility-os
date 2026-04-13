@@ -13,25 +13,22 @@ type Props = {
 type ImportStep = "upload" | "preview" | "result";
 
 export default function ProductImportExport({ open, onClose, onBulkImport }: Props) {
-  const { t }       = useTranslation();
+  const { t, lang } = useTranslation();
+  const tp          = (t.products as any) ?? {};
   const fileRef     = useRef<HTMLInputElement>(null);
+
   const [step,      setStep]      = useState<ImportStep>("upload");
   const [parsed,    setParsed]    = useState<{ valid: any[]; errors: any[] } | null>(null);
   const [result,    setResult]    = useState<{ inserted: number; updated: number; errors: string[] } | null>(null);
   const [importing, setImporting] = useState(false);
   const [dragOver,  setDragOver]  = useState(false);
 
-  function handleClose() {
-    setStep("upload");
-    setParsed(null);
-    setResult(null);
-    onClose();
-  }
+  function handleClose() { setStep("upload"); setParsed(null); setResult(null); onClose(); }
 
   function processFile(file: File) {
     const reader = new FileReader();
     reader.onload = (e) => {
-      const text = e.target?.result as string;
+      const text   = e.target?.result as string;
       const parsed = parseProductsCSV(text);
       setParsed(parsed);
       setStep("preview");
@@ -63,6 +60,12 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
 
   if (!open) return null;
 
+  const stepSubtitle = step === "upload"
+    ? (tp.importUpload  ?? "Sube tu archivo CSV")
+    : step === "preview"
+    ? (tp.importPreview ?? "Revisión antes de importar")
+    : (tp.importResult  ?? "Resultado de la importación");
+
   return (
     <>
       <div onClick={handleClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", zIndex: 400 }} />
@@ -81,10 +84,10 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
           <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
             <div>
               <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-text-primary)" }}>
-                Importar productos — CSV
+                {tp.importTitle ?? "Importar productos — CSV"}
               </div>
               <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "2px" }}>
-                {step === "upload" ? "Sube tu archivo CSV" : step === "preview" ? "Revisión antes de importar" : "Resultado de la importación"}
+                {stepSubtitle}
               </div>
             </div>
             <button onClick={handleClose} style={{ width: "30px", height: "30px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -97,14 +100,13 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
             {/* ── STEP 1: UPLOAD ── */}
             {step === "upload" && (
               <>
-                {/* DOWNLOAD TEMPLATE */}
                 <div style={{ padding: "14px 16px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
                     <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-info-text)", marginBottom: "3px" }}>
-                      ¿Primera vez importando?
+                      {tp.firstTime ?? "¿Primera vez importando?"}
                     </div>
                     <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-                      Descarga la plantilla CSV con el formato correcto y todos los campos.
+                      {tp.firstTimeDesc ?? "Descarga la plantilla CSV con el formato correcto y todos los campos."}
                     </div>
                   </div>
                   <button onClick={downloadProductTemplate} style={{
@@ -112,11 +114,10 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
                     background: "var(--color-brand-blue)", color: "#fff", border: "none",
                     fontSize: "12px", fontWeight: 600, cursor: "pointer", flexShrink: 0,
                   }}>
-                    Descargar plantilla
+                    {tp.downloadTemplate ?? "Descargar plantilla"}
                   </button>
                 </div>
 
-                {/* DROP ZONE */}
                 <div
                   onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                   onDragLeave={() => setDragOver(false)}
@@ -134,18 +135,17 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
                     <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
                   </svg>
                   <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "6px" }}>
-                    Arrastra tu archivo CSV aquí
+                    {tp.dropzone ?? "Arrastra tu archivo CSV aquí"}
                   </div>
                   <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-                    o haz clic para seleccionar — solo archivos .csv
+                    {tp.dropzoneHint ?? "o haz clic para seleccionar — solo archivos .csv"}
                   </div>
                   <input ref={fileRef} type="file" accept=".csv" style={{ display: "none" }} onChange={handleFileChange} />
                 </div>
 
-                {/* FORMATO */}
                 <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)" }}>
                   <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "8px" }}>
-                    Campos del CSV (primera fila = encabezados)
+                    {tp.requiredFields ?? "Campos del CSV (primera fila = encabezados)"}
                   </div>
                   <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                     {["sku *", "name *", "description", "category", "unit", "unit_price", "cost", "currency", "tax_rate", "stock", "stock_min", "is_active", "sat_product_code", "sat_unit_code", "tariff_code", "tariff_description", "country_of_origin", "notes"].map((f) => (
@@ -161,7 +161,7 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
                     ))}
                   </div>
                   <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "6px" }}>
-                    * Campos obligatorios. Si el SKU ya existe, se actualiza. Si no existe, se crea.
+                    {tp.csvFormatInfo ?? "* Campos obligatorios. Si el SKU ya existe se actualiza. Si no existe se crea."}
                   </div>
                 </div>
               </>
@@ -173,41 +173,48 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                   <div style={{ padding: "12px 16px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", textAlign: "center" }}>
                     <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--color-success-text)" }}>{parsed.valid.length}</div>
-                    <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Filas válidas para importar</div>
+                    <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>{tp.validRows ?? "Filas válidas para importar"}</div>
                   </div>
                   <div style={{ padding: "12px 16px", borderRadius: "var(--radius-md)", background: parsed.errors.length > 0 ? "var(--color-danger-bg)" : "var(--color-bg-subtle)", border: `1px solid ${parsed.errors.length > 0 ? "var(--color-danger-border)" : "var(--color-border-faint)"}`, textAlign: "center" }}>
                     <div style={{ fontSize: "24px", fontWeight: 800, color: parsed.errors.length > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)" }}>{parsed.errors.length}</div>
-                    <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Filas con error (no se importarán)</div>
+                    <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>{tp.errorRows ?? "Filas con error (no se importarán)"}</div>
                   </div>
                 </div>
 
-                {/* ERROR LIST */}
                 {parsed.errors.length > 0 && (
                   <div style={{ background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", borderRadius: "var(--radius-md)", padding: "12px 14px" }}>
-                    <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-danger-text)", marginBottom: "6px", textTransform: "uppercase" }}>Errores encontrados</div>
+                    <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-danger-text)", marginBottom: "6px", textTransform: "uppercase" }}>
+                      {tp.importErrors ?? "Errores encontrados"}
+                    </div>
                     {parsed.errors.slice(0, 5).map((err, i) => (
                       <div key={i} style={{ fontSize: "11px", color: "var(--color-danger-text)", marginBottom: "3px" }}>
-                        Fila {err._row}: {err._error} {err.sku ? `(SKU: ${err.sku})` : ""}
+                        {lang === "en" ? "Row" : "Fila"} {err._row}: {err._error} {err.sku ? `(SKU: ${err.sku})` : ""}
                       </div>
                     ))}
                     {parsed.errors.length > 5 && (
                       <div style={{ fontSize: "11px", color: "var(--color-danger-text)", marginTop: "4px" }}>
-                        +{parsed.errors.length - 5} errores más…
+                        +{parsed.errors.length - 5} {lang === "en" ? "more errors…" : "errores más…"}
                       </div>
                     )}
                   </div>
                 )}
 
-                {/* PREVIEW TABLE */}
                 {parsed.valid.length > 0 && (
                   <div style={{ overflowX: "auto" }}>
                     <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                      Vista previa — primeros {Math.min(parsed.valid.length, 5)} de {parsed.valid.length} productos
+                      {lang === "en" ? "Preview" : "Vista previa"} — {lang === "en" ? "first" : "primeros"} {Math.min(parsed.valid.length, 5)} {lang === "en" ? "of" : "de"} {parsed.valid.length} {tp.title ?? "productos"}
                     </div>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: "11px" }}>
                       <thead>
                         <tr style={{ background: "var(--color-bg-subtle)" }}>
-                          {["SKU", "Nombre", "Categoría", "Precio", "Costo", "Stock"].map((h) => (
+                          {[
+                            tp.sku       ?? "SKU",
+                            tp.name      ?? "Nombre",
+                            tp.category  ?? "Categoría",
+                            tp.unitPrice ?? "Precio",
+                            tp.cost      ?? "Costo",
+                            tp.stock     ?? "Stock",
+                          ].map((h) => (
                             <th key={h} style={{ padding: "6px 8px", textAlign: "left", fontWeight: 700, color: "var(--color-text-muted)", borderBottom: "1px solid var(--color-border-faint)", whiteSpace: "nowrap" }}>{h}</th>
                           ))}
                         </tr>
@@ -236,14 +243,14 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
                 <div style={{ padding: "20px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", textAlign: "center" }}>
                   <div style={{ fontSize: "32px", marginBottom: "8px" }}>✓</div>
                   <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-success-text)", marginBottom: "4px" }}>
-                    Importación completada
+                    {tp.importSuccess ?? "Importación completada"}
                   </div>
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
                   {[
-                    { label: "Nuevos",         value: result.inserted, color: "var(--color-success-text)" },
-                    { label: "Actualizados",   value: result.updated,  color: "var(--color-brand-blue)"   },
-                    { label: "Con error",      value: result.errors.length, color: result.errors.length > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)" },
+                    { label: tp.inserted  ?? "Nuevos",       value: result.inserted,       color: "var(--color-success-text)" },
+                    { label: tp.updated   ?? "Actualizados", value: result.updated,         color: "var(--color-brand-blue)"   },
+                    { label: tp.withError ?? "Con error",    value: result.errors.length,   color: result.errors.length > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)" },
                   ].map((k) => (
                     <div key={k.label} style={{ padding: "12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", textAlign: "center" }}>
                       <div style={{ fontSize: "22px", fontWeight: 800, color: k.color }}>{k.value}</div>
@@ -253,7 +260,9 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
                 </div>
                 {result.errors.length > 0 && (
                   <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)" }}>
-                    <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-danger-text)", marginBottom: "6px" }}>Errores durante la importación</div>
+                    <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-danger-text)", marginBottom: "6px" }}>
+                      {tp.importErrors ?? "Errores durante la importación"}
+                    </div>
                     {result.errors.map((e, i) => (
                       <div key={i} style={{ fontSize: "11px", color: "var(--color-danger-text)", marginBottom: "3px" }}>{e}</div>
                     ))}
@@ -267,13 +276,13 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
           <div style={{ padding: "14px 24px", borderTop: "1px solid var(--color-border-faint)", display: "flex", gap: "10px", flexShrink: 0 }}>
             {step === "upload" && (
               <button onClick={handleClose} style={{ height: "40px", padding: "0 20px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", fontSize: "13px", cursor: "pointer" }}>
-                Cancelar
+                {t.general.cancel}
               </button>
             )}
             {step === "preview" && (
               <>
                 <button onClick={() => setStep("upload")} style={{ height: "40px", padding: "0 16px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", fontSize: "13px", cursor: "pointer" }}>
-                  ← Volver
+                  ← {t.general.back ?? "Volver"}
                 </button>
                 <button onClick={handleImport} disabled={importing || !parsed?.valid.length} style={{
                   flex: 1, height: "40px", borderRadius: "var(--radius-md)",
@@ -281,7 +290,7 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
                   fontSize: "13px", fontWeight: 700, cursor: importing ? "not-allowed" : "pointer",
                   opacity: importing ? 0.7 : 1,
                 }}>
-                  {importing ? t.general.loading : `Importar ${parsed?.valid.length ?? 0} productos`}
+                  {importing ? t.general.loading : `${tp.importBtn ?? "Importar"} ${parsed?.valid.length ?? 0} ${tp.title ?? "productos"}`}
                 </button>
               </>
             )}
@@ -291,7 +300,7 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
                 background: "var(--color-brand-blue)", color: "#fff", border: "none",
                 fontSize: "13px", fontWeight: 700, cursor: "pointer",
               }}>
-                Listo
+                {t.general.confirm ?? "Listo"}
               </button>
             )}
           </div>
