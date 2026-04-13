@@ -1,261 +1,121 @@
 "use client";
 
 import type { Prospect } from "../types/prospects.types";
+import { STAGE_ORDER, STAGE_CONFIG } from "../types/prospects.types";
+import { useTranslation } from "@/lib/i18n/useTranslation";
+import {
+  getProspectStage, isProspectActive,
+  getPipelineValue, getConversionRate, isOverdue,
+} from "../services/prospects.normalization";
 
-type Props = {
-  prospects: Prospect[];
+type Props = { prospects: Prospect[] };
+
+const PROBABILITY: Record<string, number> = {
+  new: 0.05, contacted: 0.15, qualified: 0.40,
+  proposal: 0.60, negotiation: 0.80, converted: 1, lost: 0,
 };
 
-export default function ProspectRevenueInsights({
-  prospects,
-}: Props) {
-  const active = prospects.filter(
-    (p) => p.is_active && p.stage !== "lost"
-  );
+export default function ProspectRevenueInsights({ prospects }: Props) {
+  const { t, lang } = useTranslation();
 
-  // ==========================================================
-  // 📊 FUNNEL POR ETAPA
-  // ==========================================================
+  const active = prospects.filter(isProspectActive);
 
-  const stages = [
-    "new",
-    "contacted",
-    "qualified",
-    "proposal",
-    "negotiation",
-  ];
-
-  const funnel = stages.map((stage) => ({
-    stage,
-    count: active.filter(
-      (p) => (p.stage || p.status) === stage
-    ).length,
-  }));
-
-  // ==========================================================
-  // 💰 FORECAST
-  // ==========================================================
-
-  const totalValue = active.reduce(
-    (sum, p) => sum + (p.estimated_value || 0),
-    0
-  );
-
-  const probabilityMap: Record<string, number> = {
-    new: 0.1,
-    contacted: 0.2,
-    qualified: 0.4,
-    proposal: 0.6,
-    negotiation: 0.8,
-  };
-
+  const totalValue    = getPipelineValue(active);
+  const convRate      = getConversionRate(prospects);
+  const overdueCount  = active.filter(isOverdue).length;
   const weightedValue = active.reduce((sum, p) => {
-    const prob =
-      probabilityMap[
-        (p.stage || p.status || "new").toLowerCase()
-      ] || 0.1;
-
-    return sum + (p.estimated_value || 0) * prob;
+    const stage = getProspectStage(p);
+    return sum + (p.estimated_value ?? 0) * (PROBABILITY[stage] ?? 0.05);
   }, 0);
 
-  // ==========================================================
-  // ⚡ VELOCIDAD — días promedio
-  // ==========================================================
+  const avgDays = active.length === 0 ? 0 : Math.round(
+    active.reduce((sum, p) => {
+      if (!p.created_at) return sum;
+      return sum + (Date.now() - new Date(p.created_at).getTime()) / 86_400_000;
+    }, 0) / active.length
+  );
 
-  const avgDays =
-    active.length === 0
-      ? 0
-      : active.reduce((sum, p) => {
-          if (!p.created_at) return sum;
-          const days =
-            (Date.now() -
-              new Date(p.created_at).getTime()) /
-            (1000 * 60 * 60 * 24);
-          return sum + days;
-        }, 0) / active.length;
+  const fmt = (n: number) => n.toLocaleString(lang === "en" ? "en-US" : "es-MX");
 
-  // ==========================================================
-  // ⏰ SLA — seguimientos vencidos
-  // ==========================================================
-
-  const overdue = active.filter((p) => {
-    if (!p.next_follow_up) return false;
-    return new Date(p.next_follow_up) < new Date();
-  });
-
-  // ==========================================================
-  // UI
-  // ==========================================================
+  const metrics = [
+    { label: t.prospects.pipelineValue ?? "Valor potencial",       value: `$${fmt(totalValue)}`,         color: "var(--color-brand-blue)"   },
+    { label: t.prospects.weightedForecast ?? "Forecast ponderado", value: `$${fmt(weightedValue)}`,      color: "var(--color-success-text)" },
+    { label: t.prospects.conversionRate ?? "Tasa de conversión",   value: `${convRate}%`,                color: "var(--color-info-text)"    },
+    { label: t.prospects.alertOverdue ?? "Vencidos",               value: String(overdueCount),          color: overdueCount > 0 ? "var(--color-danger-text)" : "var(--color-success-text)" },
+  ];
 
   return (
-    <div style={container}>
-      <div style={title}>Pipeline Insights</div>
+    <div style={{
+      background: "var(--color-bg-base)",
+      border: "1px solid var(--color-border-faint)",
+      borderRadius: "var(--radius-lg)",
+      padding: "18px",
+      display: "grid", gap: "16px",
+    }}>
+      <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--color-text-primary)" }}>
+        {t.prospects.pipelineTitle ?? "Pipeline Insights"}
+      </div>
 
-      {/* FORECAST */}
-      <div style={grid}>
-        <Metric
-          label="Valor potencial"
-          value={`$${format(totalValue)}`}
-        />
-
-        <Metric
-          label="Forecast ponderado"
-          value={`$${format(weightedValue)}`}
-        />
-
-        <Metric
-          label="Días promedio"
-          value={`${avgDays.toFixed(1)} días`}
-        />
-
-        <Metric
-          label="Seguimientos vencidos"
-          value={`${overdue.length}`}
-        />
+      {/* KPIs */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px" }}>
+        {metrics.map((m) => (
+          <div key={m.label} style={{
+            background: "var(--color-bg-subtle)",
+            border: "1px solid var(--color-border-faint)",
+            borderRadius: "var(--radius-md)",
+            padding: "14px",
+          }}>
+            <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "4px" }}>
+              {m.label}
+            </div>
+            <div style={{ fontSize: "20px", fontWeight: 800, color: m.color, fontVariantNumeric: "tabular-nums" }}>
+              {m.value}
+            </div>
+          </div>
+        ))}
       </div>
 
       {/* FUNNEL */}
-      <div style={funnelBox}>
-        <div style={subtitle}>Distribución por etapa</div>
+      <div style={{
+        background: "var(--color-bg-subtle)",
+        border: "1px solid var(--color-border-faint)",
+        borderRadius: "var(--radius-md)",
+        padding: "14px",
+        display: "grid", gap: "8px",
+      }}>
+        <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>
+          {t.prospects.distributionByStage ?? "Distribución por etapa"}
+        </div>
+        {STAGE_ORDER.filter((s) => s !== "converted" && s !== "lost").map((stage) => {
+          const cfg   = STAGE_CONFIG[stage];
+          const count = active.filter((p) => getProspectStage(p) === stage).length;
+          const pct   = active.length ? (count / active.length) * 100 : 0;
+          const label = (t.prospects as any)[cfg.labelKey.replace("prospects.", "")] ?? stage;
+          const val   = getPipelineValue(active.filter((p) => getProspectStage(p) === stage));
 
-        {funnel.map((f) => (
-          <FunnelRow
-            key={f.stage}
-            label={f.stage.toUpperCase()}
-            value={f.count}
-            max={active.length}
-          />
-        ))}
+          return (
+            <div key={stage} style={{ display: "grid", gridTemplateColumns: "90px 1fr 36px 100px", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "11px", fontWeight: 600, color: cfg.color }}>{label}</span>
+              <div style={{ height: "8px", background: "var(--color-border-faint)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
+                <div style={{
+                  width: `${pct}%`, height: "100%",
+                  background: cfg.color,
+                  borderRadius: "var(--radius-full)",
+                  transition: "width 0.5s ease",
+                }} />
+              </div>
+              <span style={{ fontSize: "11px", color: "var(--color-text-muted)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
+                {count}
+              </span>
+              {val > 0 && (
+                <span style={{ fontSize: "10px", color: "var(--color-text-muted)", textAlign: "right" }}>
+                  ${fmt(val)}
+                </span>
+              )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
-
-function Metric({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div style={metricCard}>
-      <div style={metricLabel}>{label}</div>
-      <div style={metricValue}>{value}</div>
-    </div>
-  );
-}
-
-function FunnelRow({
-  label,
-  value,
-  max,
-}: {
-  label: string;
-  value: number;
-  max: number;
-}) {
-  const pct = max ? (value / max) * 100 : 0;
-
-  return (
-    <div style={funnelRow}>
-      <div style={funnelLabel}>{label}</div>
-
-      <div style={barTrack}>
-        <div
-          style={{
-            ...barFill,
-            width: `${pct}%`,
-          }}
-        />
-      </div>
-
-      <div style={funnelValue}>{value}</div>
-    </div>
-  );
-}
-
-function format(n: number) {
-  return n.toLocaleString("es-MX");
-}
-
-const container: React.CSSProperties = {
-  background: "#020617",
-  border: "1px solid #1f2937",
-  borderRadius: 14,
-  padding: 18,
-  display: "grid",
-  gap: 16,
-};
-
-const title: React.CSSProperties = {
-  fontWeight: 800,
-  fontSize: 16,
-};
-
-const subtitle: React.CSSProperties = {
-  fontSize: 13,
-  color: "#94a3b8",
-  marginBottom: 8,
-};
-
-const grid: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(4, 1fr)",
-  gap: 12,
-};
-
-const metricCard: React.CSSProperties = {
-  background: "#0b1220",
-  border: "1px solid #1f2937",
-  borderRadius: 12,
-  padding: 14,
-};
-
-const metricLabel: React.CSSProperties = {
-  fontSize: 12,
-  color: "#94a3b8",
-};
-
-const metricValue: React.CSSProperties = {
-  fontSize: 20,
-  fontWeight: 800,
-  marginTop: 4,
-};
-
-const funnelBox: React.CSSProperties = {
-  background: "#0b1220",
-  border: "1px solid #1f2937",
-  borderRadius: 12,
-  padding: 14,
-};
-
-const funnelRow: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "110px 1fr 40px",
-  alignItems: "center",
-  gap: 8,
-  marginBottom: 8,
-};
-
-const funnelLabel: React.CSSProperties = {
-  fontSize: 12,
-  color: "#cbd5f5",
-};
-
-const funnelValue: React.CSSProperties = {
-  fontSize: 12,
-  textAlign: "right",
-};
-
-const barTrack: React.CSSProperties = {
-  height: 8,
-  background: "#020617",
-  borderRadius: 6,
-};
-
-const barFill: React.CSSProperties = {
-  height: 8,
-  background: "#3b82f6",
-  borderRadius: 6,
-};
