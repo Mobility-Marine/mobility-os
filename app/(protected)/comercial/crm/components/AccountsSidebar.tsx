@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { CrmAccount } from "../types/crm.types";
 import { LIFECYCLE_CONFIG } from "../types/crm.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
@@ -10,32 +12,51 @@ type Props = {
   accounts:    CrmAccount[];
   selected:    CrmAccount | null;
   setSelected: (a: CrmAccount) => void;
-  onNewAccount:() => void;
 };
 
-export default function AccountsSidebar({
-  search, setSearch, accounts, selected, setSelected, onNewAccount,
-}: Props) {
-  const { t } = useTranslation();
+type Filter = "all" | "customer" | "strategic" | "lead";
 
-  const customers  = accounts.filter((a) => a.lifecycle_stage === "customer" || a.is_customer);
-  const strategic  = accounts.filter((a) => a.strategic_account);
-  const leads      = accounts.filter((a) => a.lifecycle_stage === "lead" || a.lifecycle_stage === "opportunity");
+export default function AccountsSidebar({
+  search, setSearch, accounts, selected, setSelected,
+}: Props) {
+  const { t }  = useTranslation();
+  const router = useRouter();
+  const [filter, setFilter] = useState<Filter>("all");
+
+  const customers = accounts.filter((a) => a.lifecycle_stage === "customer" || a.is_customer);
+  const strategic = accounts.filter((a) => a.strategic_account);
+  const leads     = accounts.filter((a) => a.lifecycle_stage === "lead" || a.lifecycle_stage === "opportunity");
 
   const kpis = [
-    { label: (t.crm as any)?.totalAccounts   ?? "Total",        value: accounts.length,  color: "var(--color-brand-blue)"   },
-    { label: (t.crm as any)?.customers       ?? "Clientes",     value: customers.length, color: "var(--color-success-text)" },
-    { label: (t.crm as any)?.strategicShort  ?? "Estratégicas", value: strategic.length, color: "#a78bfa"                   },
-    { label: (t.crm as any)?.leadsShort      ?? "Leads",        value: leads.length,     color: "var(--color-warning-text)" },
+    { label: (t.crm as any)?.totalAccounts  ?? "Total",        value: accounts.length,  color: "var(--color-brand-blue)"   },
+    { label: (t.crm as any)?.customers      ?? "Clientes",     value: customers.length, color: "var(--color-success-text)" },
+    { label: (t.crm as any)?.strategicShort ?? "Estratégicas", value: strategic.length, color: "#a78bfa"                   },
+    { label: (t.crm as any)?.leadsShort     ?? "Leads",        value: leads.length,     color: "var(--color-warning-text)" },
   ];
+
+  const filteredByStage = accounts.filter((a) => {
+    if (filter === "all")       return true;
+    if (filter === "strategic") return !!a.strategic_account;
+    if (filter === "customer")  return a.lifecycle_stage === "customer" || !!a.is_customer;
+    if (filter === "lead")      return a.lifecycle_stage === "lead" || a.lifecycle_stage === "opportunity";
+    return true;
+  });
+
+  const FILTER_LABELS: Record<Filter, string> = {
+    all:       (t.crm as any)?.filterAll       ?? "Todos",
+    customer:  (t.crm as any)?.filterCustomer  ?? "Clientes",
+    strategic: (t.crm as any)?.filterStrategic ?? "Estratégicos",
+    lead:      (t.crm as any)?.filterLead      ?? "Leads",
+  };
 
   return (
     <div style={{
       background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)",
       borderRadius: "var(--radius-lg)", padding: "14px",
-      display: "flex", flexDirection: "column", gap: "12px",
+      display: "flex", flexDirection: "column", gap: "10px",
       height: "100%", minHeight: 0, overflow: "hidden",
     }}>
+
       {/* HEADER */}
       <div style={{ flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
@@ -46,19 +67,33 @@ export default function AccountsSidebar({
             {accounts.length}
           </span>
         </div>
-        <button onClick={onNewAccount} style={{
-          width: "100%", height: "36px", borderRadius: "var(--radius-md)",
-          background: "var(--color-brand-blue)", color: "#fff", border: "none",
-          fontSize: "13px", fontWeight: 700, cursor: "pointer",
-          display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-          marginBottom: "10px",
-        }}>
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+
+        {/* INFO — ir a Clientes */}
+        <div
+          onClick={() => router.push("/comercial/clientes")}
+          style={{
+            width: "100%", padding: "8px 10px", borderRadius: "var(--radius-md)",
+            background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)",
+            fontSize: "11px", color: "var(--color-info-text)", lineHeight: 1.5,
+            marginBottom: "10px", cursor: "pointer",
+            display: "flex", alignItems: "center", gap: "8px",
+            boxSizing: "border-box",
+          }}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0 }}>
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <line x1="19" y1="8" x2="19" y2="14"/>
+            <line x1="22" y1="11" x2="16" y2="11"/>
           </svg>
-          {(t.crm as any)?.newAccount ?? "Nueva cuenta"}
-        </button>
-        <div style={{ position: "relative" }}>
+          <span>
+            <strong>{(t.crm as any)?.accountsFromClients ?? "Ir a Clientes"}</strong>
+            {" — "}{(t.crm as any)?.accountsFromClientsDesc ?? "las cuentas se generan al crear un cliente."}
+          </span>
+        </div>
+
+        {/* SEARCH */}
+        <div style={{ position: "relative", marginBottom: "8px" }}>
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2"
             style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }}>
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
@@ -90,13 +125,29 @@ export default function AccountsSidebar({
         ))}
       </div>
 
+      {/* FILTROS */}
+      <div style={{ display: "flex", gap: "4px", flexShrink: 0, flexWrap: "wrap" }}>
+        {(["all", "customer", "strategic", "lead"] as Filter[]).map((f) => (
+          <button key={f} onClick={() => setFilter(f)} style={{
+            height: "24px", padding: "0 8px", borderRadius: "var(--radius-full)",
+            background: filter === f ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
+            border: `1px solid ${filter === f ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
+            color: filter === f ? "#fff" : "var(--color-text-muted)",
+            fontSize: "10px", fontWeight: filter === f ? 700 : 500,
+            cursor: "pointer", transition: "var(--transition-fast)",
+          }}>
+            {FILTER_LABELS[f]}
+          </button>
+        ))}
+      </div>
+
       {/* LIST */}
       <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "grid", gap: "6px", alignContent: "start" }}>
-        {accounts.length === 0 ? (
+        {filteredByStage.length === 0 ? (
           <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
             {(t.crm as any)?.noAccounts ?? "Sin cuentas registradas"}
           </div>
-        ) : accounts.map((a) => {
+        ) : filteredByStage.map((a) => {
           const isSelected = selected?.id === a.id;
           const stage      = (a.lifecycle_stage ?? "customer") as any;
           const cfg        = LIFECYCLE_CONFIG[stage] ?? LIFECYCLE_CONFIG.customer;
@@ -108,7 +159,7 @@ export default function AccountsSidebar({
               key={a.id}
               onClick={() => setSelected(a)}
               style={{
-                padding: "11px 12px", borderRadius: "var(--radius-md)",
+                padding: "10px 12px", borderRadius: "var(--radius-md)",
                 background: isSelected ? "var(--color-bg-active)" : "var(--color-bg-subtle)",
                 border: isSelected ? "1px solid var(--color-brand-blue)" : "1px solid var(--color-border-faint)",
                 cursor: "pointer", display: "grid", gap: "5px",
@@ -132,16 +183,29 @@ export default function AccountsSidebar({
                     {a.industry ?? a.city ?? "—"}
                   </div>
                 </div>
-                <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 5px", borderRadius: "var(--radius-full)", background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`, flexShrink: 0, textTransform: "uppercase" }}>
+                <span style={{
+                  fontSize: "9px", fontWeight: 700, padding: "2px 5px",
+                  borderRadius: "var(--radius-full)", background: cfg.bg,
+                  color: cfg.color, border: `1px solid ${cfg.border}`,
+                  flexShrink: 0, textTransform: "uppercase",
+                }}>
                   {stageLabel}
                 </span>
               </div>
-              {a.strategic_account && (
-                <div style={{ fontSize: "9px", fontWeight: 700, color: "#a78bfa", display: "flex", alignItems: "center", gap: "4px" }}>
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                  {(t.crm as any)?.strategic ?? "Estratégica"}
-                </div>
-              )}
+
+              {/* BADGES */}
+              <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
+                {a.strategic_account && (
+                  <span style={{ fontSize: "9px", fontWeight: 700, padding: "1px 5px", borderRadius: "var(--radius-full)", background: "rgba(167,139,250,0.15)", color: "#a78bfa", border: "1px solid rgba(167,139,250,0.3)" }}>
+                    ★ {(t.crm as any)?.strategic ?? "Estratégica"}
+                  </span>
+                )}
+                {a.client?.rfc && (
+                  <span style={{ fontSize: "9px", color: "var(--color-text-muted)", padding: "1px 5px", borderRadius: "var(--radius-full)", background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)" }}>
+                    {a.client.rfc}
+                  </span>
+                )}
+              </div>
             </div>
           );
         })}
