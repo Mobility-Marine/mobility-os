@@ -1,430 +1,217 @@
 "use client";
 
-// ============================================================
-// 📡 PROSPECTS SIDEBAR — ELITE RADAR PANEL
-// Unicorn Revenue OS Grade
-// Inteligencia + navegación + creación
-// ============================================================
-
 import type { Prospect } from "../types/prospects.types";
+import { STAGE_CONFIG } from "../types/prospects.types";
+import { useTranslation } from "@/lib/i18n/useTranslation";
+import {
+  getProspectStage, isProspectActive, isHighValue, hasContact,
+} from "../services/prospects.normalization";
 
 type Props = {
-  search: string;
-  setSearch: (value: string) => void;
-
-  prospects: Prospect[];
-
-  selected: Prospect | null;
-  setSelected: (prospect: Prospect) => void;
-
-  // ⭐ ELITE — abre drawer/modal externo
+  search:       string;
+  setSearch:    (v: string) => void;
+  prospects:    Prospect[];
+  selected:     Prospect | null;
+  setSelected:  (p: Prospect) => void;
   onOpenCreate: () => void;
 };
 
 export default function ProspectsSidebar({
-  search,
-  setSearch,
-  prospects,
-  selected,
-  setSelected,
-  onOpenCreate,
+  search, setSearch, prospects, selected, setSelected, onOpenCreate,
 }: Props) {
-  // ==========================================================
-  // CREACIÓN — ELITE
-  // ==========================================================
+  const { t } = useTranslation();
 
-  function handleCreate() {
-    onOpenCreate();
-  }
+  const active    = prospects.filter(isProspectActive);
+  const hot       = prospects.filter((p) => isHighValue(p, 50_000));
+  const noContact = prospects.filter((p) => !hasContact(p) && (p.is_active ?? true));
+  const qualified = prospects.filter((p) => getProspectStage(p) === "qualified");
 
-  // ==========================================================
-  // FILTRADO LOCAL
-  // ==========================================================
-
-  const filtered = prospects.filter((p) => {
-    const q = search.toLowerCase();
-
-    return (
-      !q ||
-      p.name?.toLowerCase().includes(q) ||
-      p.company_name?.toLowerCase().includes(q) ||
-      p.email?.toLowerCase().includes(q)
-    );
-  });
-
-  // ==========================================================
-  // MÉTRICAS RADAR
-  // ==========================================================
-
-  const active = filtered.filter(
-    (p) => !["converted", "lost"].includes(p.stage || p.status || "")
-  );
-
-  const hot = filtered.filter(
-    (p) => (p.estimated_value || 0) >= 50000
-  );
-
-  const noContact = filtered.filter(
-    (p) => !p.email && !p.phone
-  );
-
-  const qualified = filtered.filter(
-    (p) => p.stage === "qualified" || p.status === "qualified"
-  );
-
-  // ==========================================================
-  // UI
-  // ==========================================================
+  const kpis = [
+    { label: t.prospects.active,    value: active.length,    color: "var(--color-brand-blue)"   },
+    { label: t.prospects.highValue, value: hot.length,       color: "var(--color-success-text)" },
+    { label: t.prospects.noContact, value: noContact.length, color: noContact.length > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)" },
+    { label: t.prospects.qualified, value: qualified.length, color: "var(--color-info-text)"    },
+  ];
 
   return (
-    <div style={container}>
+    <div style={{
+      background: "var(--color-bg-base)",
+      border: "1px solid var(--color-border-faint)",
+      borderRadius: "var(--radius-lg)",
+      padding: "14px",
+      display: "flex", flexDirection: "column", gap: "12px",
+      height: "100%", minHeight: 0, overflow: "hidden",
+    }}>
       {/* HEADER */}
-      <div style={headerRow}>
-        <div style={title}>Prospectos</div>
-
-       <button style={addButton} onClick={handleCreate}>
-  <span style={{ fontSize: 16 }}>＋</span>
-  Nuevo
-</button>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
+        <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          {t.prospects.title}
+        </div>
+        <button
+          onClick={onOpenCreate}
+          style={{
+            height: "30px", padding: "0 12px",
+            borderRadius: "var(--radius-md)",
+            background: "var(--color-brand-blue)",
+            color: "#fff", border: "none",
+            fontSize: "12px", fontWeight: 700,
+            cursor: "pointer",
+            display: "flex", alignItems: "center", gap: "5px",
+          }}
+        >
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          {t.prospects.newProspect}
+        </button>
       </div>
 
-      {/* BUSCADOR */}
-      <input
-        placeholder="Buscar prospecto..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        style={searchInput}
-      />
-
-      {/* KPIs RADAR */}
-      <div style={kpiBox}>
-        <MiniKpi label="Activos" value={active.length} />
-        <MiniKpi label="Alto valor" value={hot.length} />
-        <MiniKpi label="Sin contacto" value={noContact.length} />
-        <MiniKpi label="Calificados" value={qualified.length} />
+      {/* SEARCH */}
+      <div style={{ position: "relative", flexShrink: 0 }}>
+        <svg
+          width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2"
+          style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }}
+        >
+          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
+        </svg>
+        <input
+          placeholder={t.prospects.search}
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          style={{
+            width: "100%", height: "34px",
+            paddingLeft: "30px", paddingRight: "12px",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--color-border)",
+            background: "var(--color-bg-subtle)",
+            color: "var(--color-text-primary)",
+            fontSize: "13px", outline: "none", boxSizing: "border-box",
+          }}
+        />
       </div>
 
-      {/* LISTA */}
-      <div style={listWrap}>
-        {filtered.length === 0 ? (
-          <div style={emptyState}>No hay prospectos</div>
-        ) : (
-          <div style={listGrid}>
-            {filtered.map((p) => {
-              const isSelected = selected?.id === p.id;
-              const hasValue = (p.estimated_value || 0) > 0;
-              const hasContact = !!(p.email || p.phone);
-              const stage = (p.stage || p.status || "new").toLowerCase();
-
-              return (
-                <div
-                  key={p.id}
-                  onClick={() => setSelected(p)}
-                  style={{
-                    ...card,
-                    ...(isSelected ? selectedCard : {}),
-                  }}
-                >
-                  {/* FILA SUPERIOR */}
-                  <div style={cardTopRow}>
-                    <div style={name}>
-                      {p.company_name || p.name || "Sin nombre"}
-                    </div>
-
-                    <span
-                      style={{
-                        ...stageBadge,
-                        ...getStageBadgeStyle(stage),
-                      }}
-                    >
-                      {stage.toUpperCase()}
-                    </span>
-                  </div>
-
-                  {/* META */}
-                  <div style={metaRow}>
-                    {p.email || "Sin email"} · {p.phone || "Sin teléfono"}
-                  </div>
-
-                  {/* BADGES */}
-                  <div style={badges}>
-                    {hasValue && (
-                      <span style={valueBadge}>
-                        $
-                        {Number(p.estimated_value).toLocaleString("es-MX")}
-                      </span>
-                    )}
-
-                    {!hasContact && (
-                      <span style={riskBadge}>
-                        ⚠ Sin contacto
-                      </span>
-                    )}
-
-                    {(stage === "proposal" ||
-                      stage === "negotiation") && (
-                      <span style={readyBadge}>
-                        🚀 Revenue ready
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+      {/* KPIs */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "6px", flexShrink: 0 }}>
+        {kpis.map((k) => (
+          <div key={k.label} style={{
+            background: "var(--color-bg-subtle)",
+            border: "1px solid var(--color-border-faint)",
+            borderRadius: "var(--radius-md)",
+            padding: "8px 10px",
+            textAlign: "center",
+          }}>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "2px" }}>{k.label}</div>
+            <div style={{ fontSize: "18px", fontWeight: 800, color: k.color, fontVariantNumeric: "tabular-nums" }}>{k.value}</div>
           </div>
-        )}
+        ))}
+      </div>
+
+      {/* LIST */}
+      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "grid", gap: "6px", alignContent: "start" }}>
+        {prospects.length === 0 ? (
+          <div style={{
+            padding: "32px 16px", textAlign: "center",
+            color: "var(--color-text-muted)", fontSize: "13px",
+          }}>
+            {t.prospects.noProspects}
+          </div>
+        ) : prospects.map((p) => {
+          const isSelected = selected?.id === p.id;
+          const stage      = getProspectStage(p);
+          const cfg        = STAGE_CONFIG[stage];
+          const stageLabel = (t.prospects as any)[cfg.labelKey.replace("prospects.", "")] ?? stage;
+
+          return (
+            <div
+              key={p.id}
+              onClick={() => setSelected(p)}
+              style={{
+                padding: "12px",
+                borderRadius: "var(--radius-md)",
+                background: isSelected ? "var(--color-bg-active)" : "var(--color-bg-subtle)",
+                border: isSelected
+                  ? "1px solid var(--color-brand-blue)"
+                  : "1px solid var(--color-border-faint)",
+                cursor: "pointer",
+                display: "grid", gap: "6px",
+                transition: "var(--transition-fast)",
+                boxShadow: isSelected ? "0 0 0 1px var(--color-brand-blue)20 inset" : "none",
+              }}
+              onMouseEnter={(e) => {
+                if (!isSelected) (e.currentTarget as HTMLDivElement).style.borderColor = "var(--color-border)";
+              }}
+              onMouseLeave={(e) => {
+                if (!isSelected) (e.currentTarget as HTMLDivElement).style.borderColor = "var(--color-border-faint)";
+              }}
+            >
+              {/* TOP ROW */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                <div style={{
+                  fontSize: "13px", fontWeight: 700,
+                  color: "var(--color-text-primary)",
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
+                }}>
+                  {p.company_name ?? p.name ?? t.prospects.noName}
+                </div>
+                <span style={{
+                  fontSize: "9px", fontWeight: 700,
+                  padding: "2px 6px", borderRadius: "var(--radius-full)",
+                  background: cfg.bg, color: cfg.color,
+                  border: `1px solid ${cfg.border}`,
+                  flexShrink: 0, textTransform: "uppercase", letterSpacing: "0.3px",
+                }}>
+                  {stageLabel}
+                </span>
+              </div>
+
+              {/* META */}
+              <div style={{ fontSize: "11px", color: "var(--color-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {p.email ?? t.prospects.noEmail} · {p.phone ?? t.prospects.noPhone}
+              </div>
+
+              {/* BADGES */}
+              <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
+                {p.estimated_value && (
+                  <span style={{
+                    fontSize: "10px", fontWeight: 700,
+                    padding: "2px 7px", borderRadius: "var(--radius-full)",
+                    background: "var(--color-success-bg)", color: "var(--color-success-text)",
+                    border: "1px solid var(--color-success-border)",
+                  }}>
+                    ${Number(p.estimated_value).toLocaleString()}
+                  </span>
+                )}
+                {!hasContact(p) && (
+                  <span style={{
+                    fontSize: "10px", fontWeight: 700,
+                    padding: "2px 7px", borderRadius: "var(--radius-full)",
+                    background: "var(--color-danger-bg)", color: "var(--color-danger-text)",
+                    border: "1px solid var(--color-danger-border)",
+                  }}>
+                    {t.prospects.noContact}
+                  </span>
+                )}
+                {(stage === "proposal" || stage === "negotiation") && (
+                  <span style={{
+                    fontSize: "10px", fontWeight: 700,
+                    padding: "2px 7px", borderRadius: "var(--radius-full)",
+                    background: "var(--color-brand-blue-light)", color: "var(--color-brand-blue)",
+                  }}>
+                    {t.prospects.revenueReady}
+                  </span>
+                )}
+                {p.health && (
+                  <span style={{
+                    fontSize: "10px", color: "var(--color-text-muted)",
+                  }}>
+                    {p.health.score}/100
+                  </span>
+                )}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
-
-// ============================================================
-// SUBCOMPONENTES
-// ============================================================
-
-function MiniKpi({
-  label,
-  value,
-}: {
-  label: string;
-  value: number;
-}) {
-  return (
-    <div style={kpiCard}>
-      <div style={kpiLabel}>{label}</div>
-      <div style={kpiValue}>{value}</div>
-    </div>
-  );
-}
-
-// ============================================================
-// HELPERS
-// ============================================================
-
-function getStageBadgeStyle(stage: string): React.CSSProperties {
-  switch (stage) {
-    case "new":
-      return {
-        background: "#172554",
-        color: "#bfdbfe",
-        border: "1px solid #1d4ed8",
-      };
-    case "contacted":
-      return {
-        background: "#1e293b",
-        color: "#cbd5e1",
-        border: "1px solid #475569",
-      };
-    case "qualified":
-      return {
-        background: "#052e16",
-        color: "#86efac",
-        border: "1px solid #166534",
-      };
-    case "proposal":
-      return {
-        background: "#3b0764",
-        color: "#e9d5ff",
-        border: "1px solid #9333ea",
-      };
-    case "negotiation":
-      return {
-        background: "#422006",
-        color: "#fdba74",
-        border: "1px solid #ea580c",
-      };
-    case "converted":
-      return {
-        background: "#064e3b",
-        color: "#a7f3d0",
-        border: "1px solid #10b981",
-      };
-    case "lost":
-      return {
-        background: "#3f1d1d",
-        color: "#fca5a5",
-        border: "1px solid #7f1d1d",
-      };
-    default:
-      return {
-        background: "#1e293b",
-        color: "#cbd5e1",
-        border: "1px solid #334155",
-      };
-  }
-}
-
-// ============================================================
-// ESTILOS
-// ============================================================
-
-const container: React.CSSProperties = {
-  background: "#020617",
-  border: "1px solid #1f2937",
-  borderRadius: 16,
-  padding: 14,
-  display: "flex",
-  flexDirection: "column",
-  overflow: "hidden",
-  minHeight: 560,
-};
-
-const headerRow: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "center",
-  marginBottom: 12,
-  gap: 10,
-};
-
-const title: React.CSSProperties = {
-  fontWeight: 800,
-  fontSize: 13,
-  letterSpacing: 0.6,
-  textTransform: "uppercase",
-  color: "#e5e7eb",
-};
-
-const addButton: React.CSSProperties = {
-  height: 32,
-  padding: "0 12px",
-  borderRadius: 10,
-  background: "#0f141b",
-  border: "1px solid #1b222c",
-  color: "#c5cfdb",
-  fontSize: 12,
-  fontWeight: 700,
-  cursor: "pointer",
-  display: "inline-flex",
-  alignItems: "center",
-  justifyContent: "center",
-  lineHeight: 1,
-  whiteSpace: "nowrap",
-};
-
-const searchInput: React.CSSProperties = {
-  padding: 10,
-  borderRadius: 10,
-  border: "1px solid #1f2937",
-  background: "#0b1220",
-  color: "#fff",
-  marginBottom: 12,
-  outline: "none",
-};
-
-const kpiBox: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "repeat(2, 1fr)",
-  gap: 8,
-  marginBottom: 12,
-};
-
-const kpiCard: React.CSSProperties = {
-  background: "#0b1220",
-  border: "1px solid #1f2937",
-  borderRadius: 10,
-  padding: 8,
-  textAlign: "center",
-};
-
-const kpiLabel: React.CSSProperties = {
-  fontSize: 11,
-  color: "#94a3b8",
-};
-
-const kpiValue: React.CSSProperties = {
-  fontWeight: 900,
-  marginTop: 2,
-};
-
-const listWrap: React.CSSProperties = {
-  overflowY: "auto",
-  flex: 1,
-};
-
-const emptyState: React.CSSProperties = {
-  color: "#94a3b8",
-  textAlign: "center",
-  marginTop: 56,
-};
-
-const listGrid: React.CSSProperties = {
-  display: "grid",
-  gap: 10,
-};
-
-const card: React.CSSProperties = {
-  padding: 14,
-  borderRadius: 14,
-  background: "#0b1220",
-  border: "1px solid #1f2937",
-  cursor: "pointer",
-  display: "grid",
-  gap: 10,
-};
-
-const selectedCard: React.CSSProperties = {
-  background: "#111827",
-  border: "1px solid #3b82f6",
-  boxShadow: "0 0 0 1px rgba(59,130,246,0.20) inset",
-};
-
-const cardTopRow: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "space-between",
-  alignItems: "flex-start",
-  gap: 8,
-};
-
-const name: React.CSSProperties = {
-  fontWeight: 800,
-  lineHeight: 1.25,
-};
-
-const metaRow: React.CSSProperties = {
-  fontSize: 12,
-  color: "#94a3b8",
-};
-
-const badges: React.CSSProperties = {
-  display: "flex",
-  gap: 6,
-  flexWrap: "wrap",
-};
-
-const stageBadge: React.CSSProperties = {
-  fontSize: 10,
-  padding: "4px 8px",
-  borderRadius: 999,
-  fontWeight: 800,
-};
-
-const valueBadge: React.CSSProperties = {
-  fontSize: 11,
-  padding: "4px 8px",
-  borderRadius: 999,
-  background: "#052e16",
-  color: "#86efac",
-  border: "1px solid #166534",
-  fontWeight: 700,
-};
-
-const riskBadge: React.CSSProperties = {
-  fontSize: 11,
-  padding: "4px 8px",
-  borderRadius: 999,
-  background: "#3f1d1d",
-  color: "#fca5a5",
-  border: "1px solid #7f1d1d",
-  fontWeight: 700,
-};
-
-const readyBadge: React.CSSProperties = {
-  fontSize: 11,
-  padding: "4px 8px",
-  borderRadius: 999,
-  background: "#1d4ed8",
-  color: "#dbeafe",
-  border: "1px solid #2563eb",
-  fontWeight: 700,
-};
