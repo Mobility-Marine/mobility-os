@@ -133,7 +133,8 @@ export type CompanySettings = {
   quote_number_counter: number;
   quote_validity_days:  number;
   quote_footer?:        string | null;
-  quote_terms?:         string | null;
+  quote_terms_services?: string | null;
+  quote_terms_products?: string | null;
   margin_minimum_pct:   number;
   monthly_goal:         number;
   goal_currency:        string;
