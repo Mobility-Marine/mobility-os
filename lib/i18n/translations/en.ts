@@ -348,7 +348,6 @@ export const en: TranslationKeys = {
   activities:       "Activities",
   noActivities:     "No activities recorded",
   addActivity:      "Add activity",
-},
   actionGetContact:       "Get contact information",
 actionFirstContact:     "First commercial outreach",
 actionQualify:          "Qualify need and budget",
@@ -390,4 +389,5 @@ executiveSummary:    "Executive summary",
 overdueWarning:      "Overdue follow-up — contact today",
 activityToday:       "Activity today",
 sinceLastActivity:   "since last activity",
+  },
 };
