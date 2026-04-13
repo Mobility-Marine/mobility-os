@@ -51,6 +51,7 @@ export default function ProspectRevenueInsights({ prospects }: Props) {
       borderRadius: "var(--radius-lg)",
       padding: "18px",
       display: "grid", gap: "16px",
+      height: "100%", overflowY: "auto",
     }}>
       <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--color-text-primary)" }}>
         {t.prospects.pipelineTitle ?? "Pipeline Insights"}
