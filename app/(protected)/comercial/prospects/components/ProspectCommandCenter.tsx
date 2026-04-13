@@ -86,59 +86,51 @@ export default function ProspectCommandCenter({ prospects, onSelect }: Props) {
   ];
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "14px" }}>
-      {cards.map((card) => (
-        <div
-          key={card.key}
-          onClick={() => card.first && onSelect(card.first)}
-          style={{
-            background: card.count > 0 ? card.bg : "var(--color-bg-base)",
-            border: `1px solid ${card.count > 0 ? card.border : "var(--color-border-faint)"}`,
-            borderRadius: "var(--radius-lg)",
-            padding: "16px",
-            cursor: card.first ? "pointer" : "default",
-            transition: "var(--transition-fast)",
-            display: "grid", gap: "8px",
-          }}
-          onMouseEnter={(e) => {
-            if (card.first) (e.currentTarget as HTMLDivElement).style.opacity = "0.85";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLDivElement).style.opacity = "1";
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontSize: "18px" }}>{card.icon}</span>
-              <span style={{ fontSize: "13px", fontWeight: 600, color: card.count > 0 ? card.color : "var(--color-text-muted)" }}>
-                {card.labelKey}
-              </span>
-            </div>
-            <div style={{
-              fontSize: "26px", fontWeight: 800,
-              color: card.count > 0 ? card.color : "var(--color-text-muted)",
-              fontVariantNumeric: "tabular-nums",
-            }}>
-              {card.count}
-            </div>
+  <>
+    {cards.map((card) => (
+      <div
+        key={card.key}
+        onClick={() => card.first && onSelect(card.first)}
+        style={{
+          background: card.count > 0 ? card.bg : "var(--color-bg-base)",
+          border: `1px solid ${card.count > 0 ? card.border : "var(--color-border-faint)"}`,
+          borderRadius: "var(--radius-lg)",
+          padding: "16px",
+          cursor: card.first ? "pointer" : "default",
+          transition: "var(--transition-fast)",
+          display: "grid", gap: "8px",
+        }}
+        onMouseEnter={(e) => {
+          if (card.first) (e.currentTarget as HTMLDivElement).style.opacity = "0.85";
+        }}
+        onMouseLeave={(e) => {
+          (e.currentTarget as HTMLDivElement).style.opacity = "1";
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <span style={{ fontSize: "18px" }}>{card.icon}</span>
+            <span style={{ fontSize: "13px", fontWeight: 600, color: card.count > 0 ? card.color : "var(--color-text-muted)" }}>
+              {card.labelKey}
+            </span>
           </div>
-          <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-            {card.hint}
+          <div style={{
+            fontSize: "26px", fontWeight: 800,
+            color: card.count > 0 ? card.color : "var(--color-text-muted)",
+            fontVariantNumeric: "tabular-nums",
+          }}>
+            {card.count}
           </div>
-          {card.first && (
-            <div style={{
-              fontSize: "11px", fontWeight: 600,
-              color: card.color,
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }}>
-              {card.first.company_name ?? card.first.name ?? "—"}
-              <svg style={{ marginLeft: "4px" }} width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" display="inline">
-                <path d="M9 18l6-6-6-6"/>
-              </svg>
-            </div>
-          )}
         </div>
-      ))}
-    </div>
-  );
-}
+        <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
+          {card.hint}
+        </div>
+        {card.first && (
+          <div style={{ fontSize: "11px", fontWeight: 600, color: card.color, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {card.first.company_name ?? card.first.name ?? "—"}
+          </div>
+        )}
+      </div>
+    ))}
+  </>
+);
