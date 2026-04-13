@@ -7,30 +7,28 @@ import { filterProspects } from "./services/prospects.normalization";
 import type { Prospect, ProspectFilters } from "./types/prospects.types";
 import { DEFAULT_FILTERS } from "./types/prospects.types";
 
-import ProspectsSidebar        from "./components/ProspectsSidebar";
-import ProspectWorkspace       from "./components/ProspectWorkspace";
-import ProspectCopilot         from "./components/ProspectCopilot";
-import ProspectPipelineBoard   from "./components/ProspectPipelineBoard";
-import ProspectCommandCenter   from "./components/ProspectCommandCenter";
-import ProspectRevenueInsights from "./components/ProspectRevenueInsights";
+import ProspectsSidebar         from "./components/ProspectsSidebar";
+import ProspectWorkspace        from "./components/ProspectWorkspace";
+import ProspectCopilot          from "./components/ProspectCopilot";
+import ProspectPipelineBoard    from "./components/ProspectPipelineBoard";
+import ProspectCommandCenter    from "./components/ProspectCommandCenter";
+import ProspectRevenueInsights  from "./components/ProspectRevenueInsights";
 import ProspectDailyActionPanel from "./components/ProspectDailyActionPanel";
-import ProspectAutomationPanel from "./components/ProspectAutomationPanel";
-import ProspectCreateDrawer    from "./components/ProspectCreateDrawer";
+import ProspectAutomationPanel  from "./components/ProspectAutomationPanel";
+import ProspectCreateDrawer     from "./components/ProspectCreateDrawer";
 
 export default function ProspectsPage() {
   const { t } = useTranslation();
 
   const ctrl = useProspectsController();
   const {
-    loading, saving,
+    loading,
     prospects, selected, setSelected,
-    activities, notes, tasks, snapshotLoading,
     createProspect, updateProspect, archiveProspect,
-    updateStage, convertProspect,
-    addActivity, addNote, addTask,
+    updateStage, addActivity,
   } = ctrl;
 
-  const [filters, setFilters]         = useState<ProspectFilters>(DEFAULT_FILTERS);
+  const [filters, setFilters]               = useState<ProspectFilters>(DEFAULT_FILTERS);
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
   const filteredProspects = useMemo(
@@ -42,14 +40,9 @@ export default function ProspectsPage() {
     [prospects, filters]
   );
 
-  // ── LOADING ──
   if (loading) {
     return (
-      <div style={{
-        height: "100%", minHeight: 0,
-        display: "grid", placeItems: "center",
-        background: "var(--color-bg-page)",
-      }}>
+      <div style={{ display: "grid", placeItems: "center", height: "400px" }}>
         <div style={{
           background: "var(--color-bg-base)",
           border: "1px solid var(--color-border-faint)",
@@ -57,14 +50,7 @@ export default function ProspectsPage() {
           padding: "20px 32px",
           fontSize: "14px", fontWeight: 700,
           color: "var(--color-text-primary)",
-          display: "flex", alignItems: "center", gap: "10px",
         }}>
-          <div style={{
-            width: "16px", height: "16px", borderRadius: "50%",
-            border: "2px solid var(--color-brand-blue)",
-            borderTopColor: "transparent",
-            animation: "spin 0.8s linear infinite",
-          }} />
           {t.prospects.loading}
         </div>
       </div>
@@ -72,41 +58,33 @@ export default function ProspectsPage() {
   }
 
   return (
-    <div style={pageWrap}>
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px", paddingBottom: "32px" }}>
 
-      {/* ════════════════════════════════════════════════════
-          CAPA 1 — INTELIGENCIA EJECUTIVA
-      ════════════════════════════════════════════════════ */}
-      <div style={{ display: "grid", gap: "14px" }}>
-        <ProspectCommandCenter
-          prospects={prospects}
-          onSelect={setSelected}
-        />
-      </div>
+      {/* ── CAPA 1: COMMAND CENTER ── */}
+      <ProspectCommandCenter
+        prospects={prospects}
+        onSelect={setSelected}
+      />
 
-      {/* ════════════════════════════════════════════════════
-          CAPA 2 — INSIGHTS + ACCIONES
-      ════════════════════════════════════════════════════ */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+      {/* ── CAPA 2: INTELIGENCIA (3 columnas) ── */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: "16px", alignItems: "start" }}>
         <ProspectRevenueInsights prospects={prospects} />
-        <div style={{ display: "grid", gap: "14px", alignContent: "start" }}>
-          <ProspectDailyActionPanel
-            prospects={prospects}
-            onSelect={setSelected}
-          />
-          <ProspectAutomationPanel
-            prospects={prospects}
-            onSelect={setSelected}
-          />
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+          <ProspectDailyActionPanel prospects={prospects} onSelect={setSelected} />
+          <ProspectAutomationPanel  prospects={prospects} onSelect={setSelected} />
         </div>
       </div>
 
-      {/* ════════════════════════════════════════════════════
-          CAPA 3 — OPERATIVA (SIDEBAR + WORKSPACE + COPILOT)
-      ════════════════════════════════════════════════════ */}
-      <div style={workRow}>
+      {/* ── CAPA 3: OPERATIVA ── */}
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "280px minmax(0, 1fr) 280px",
+        gap: "16px",
+        height: "560px",
+        minHeight: 0,
+      }}>
         {/* SIDEBAR */}
-        <div style={panelShell}>
+        <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", overflow: "hidden" }}>
           <ProspectsSidebar
             search={filters.search}
             setSearch={(v) => setFilters((f) => ({ ...f, search: v }))}
@@ -118,7 +96,7 @@ export default function ProspectsPage() {
         </div>
 
         {/* WORKSPACE */}
-        <div style={panelShell}>
+        <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", overflow: "hidden" }}>
           <ProspectWorkspace
             prospect={selected}
             createProspect={createProspect}
@@ -130,25 +108,33 @@ export default function ProspectsPage() {
         </div>
 
         {/* COPILOT */}
-        <div style={panelShell}>
+        <div style={{ minWidth: 0, minHeight: 0, height: "100%", display: "flex", overflow: "hidden" }}>
           <ProspectCopilot prospect={selected} />
         </div>
       </div>
 
-      {/* ════════════════════════════════════════════════════
-          CAPA 4 — PIPELINE BOARD
-      ════════════════════════════════════════════════════ */}
-      <div style={pipelineArea}>
-        <ProspectPipelineBoard
-          prospects={prospects}
-          onSelect={setSelected}
-          onStageChange={(id, stage) => updateStage(id, stage as any)}
-        />
+      {/* ── CAPA 4: PIPELINE BOARD ── */}
+      <div>
+        <div style={{
+          fontSize: "12px", fontWeight: 700,
+          color: "var(--color-text-muted)",
+          textTransform: "uppercase",
+          letterSpacing: "1px",
+          marginBottom: "10px",
+          paddingLeft: "2px",
+        }}>
+          {t.prospects.pipelineTitle}
+        </div>
+        <div style={{ overflowX: "auto", paddingBottom: "8px" }}>
+          <ProspectPipelineBoard
+            prospects={prospects}
+            onSelect={setSelected}
+            onStageChange={(id, stage) => updateStage(id, stage as any)}
+          />
+        </div>
       </div>
 
-      {/* ════════════════════════════════════════════════════
-          DRAWER GLOBAL
-      ════════════════════════════════════════════════════ */}
+      {/* ── DRAWER ── */}
       <ProspectCreateDrawer
         open={showCreateDrawer}
         onClose={() => setShowCreateDrawer(false)}
@@ -161,36 +147,3 @@ export default function ProspectsPage() {
     </div>
   );
 }
-
-// ─── STYLES ─────────────────────────────────────────────────
-
-const pageWrap: React.CSSProperties = {
-  width: "100%",
-  display: "flex", flexDirection: "column",
-  gap: "16px",
-  paddingBottom: "24px",
-};
-
-const workRow: React.CSSProperties = {
-  display: "grid",
-  gridTemplateColumns: "300px minmax(0, 1fr) 300px",
-  gap: "14px",
-  alignItems: "stretch",
-  minHeight: 0,
-  height: "clamp(480px, 48vh, 580px)",
-};
-
-const panelShell: React.CSSProperties = {
-  minWidth: 0, minHeight: 0,
-  height: "100%",
-  display: "flex",
-  overflow: "hidden",
-};
-
-const pipelineArea: React.CSSProperties = {
-  minHeight: 0,
-  overflow: "auto",
-  display: "flex",
-  borderRadius: "var(--radius-lg)",
-  paddingBottom: "4px",
-};
