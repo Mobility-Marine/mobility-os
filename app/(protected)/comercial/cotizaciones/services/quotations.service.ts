@@ -97,7 +97,10 @@ export async function createQuotation(
     "elegante";
   const validity    = settings?.quote_validity_days ?? 15;
   const validUntil  = payload.valid_until ?? new Date(Date.now() + validity * 86400000).toISOString().slice(0, 10);
-  const terms       = payload.terms ?? settings?.quote_terms ?? null;
+  const terms = payload.terms ??
+  (payload.type === "services"
+    ? (settings as any)?.quote_terms_services
+    : (settings as any)?.quote_terms_products) ?? null;
   const quoteNumber = await generateQuoteNumber(companyId, clientName ?? payload.client_name, payload.type);
 
   const { data, error } = await supabase
