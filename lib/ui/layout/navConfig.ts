@@ -30,8 +30,8 @@ export const navSections: NavSection[] = [
     items: [
       { nameKey: "prospects",     path: "/comercial/prospects" },
       { nameKey: "opportunities", path: "/comercial/opportunities" },
-      { nameKey: "crm",           path: "/comercial/crm" },
       { nameKey: "clients",       path: "/comercial/clientes" },
+      { nameKey: "crm",           path: "/comercial/crm" },
       { nameKey: "quotations",    path: "/comercial/cotizaciones" },
       { nameKey: "products",      path: "/comercial/productos" },
       { nameKey: "orders",        path: "/comercial/pedidos" },
