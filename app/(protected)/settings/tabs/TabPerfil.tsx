@@ -32,7 +32,7 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 }
 
 export default function TabPerfil() {
-  const { t, lang, setLang } = useTranslation();
+  const { t, lang, changeLanguage } = useTranslation();
   const { user }             = useAuth();
   const { companyId }        = useTenant();
   const fileRef              = useRef<HTMLInputElement>(null);
@@ -175,7 +175,7 @@ export default function TabPerfil() {
         <Field label={(t.settings as any)?.language ?? "Idioma del sistema"}>
           <div style={{ display: "flex", gap: "8px" }}>
             {(["es", "en"] as const).map((l) => (
-              <button key={l} onClick={() => setLang(l)} style={{
+              <button key={l} onClick={() => changeLanguage(l)} style={{
                 height: "36px", padding: "0 20px", borderRadius: "var(--radius-md)",
                 background: lang === l ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
                 border: `1px solid ${lang === l ? "var(--color-brand-blue)" : "var(--color-border)"}`,
