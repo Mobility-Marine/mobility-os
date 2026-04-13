@@ -1064,6 +1064,17 @@ orders: {
   fromQuotation:      "Created from quotation",
   stockDeducted:      "Stock deducted upon confirmation",
   invoiceReady:       "Available to invoice upon delivery",
+  clientPO:           "Client PO number",
+clientPOHint:       "Purchase order number sent by the client",
+selectClient:       "Select client",
+clientPrices:       "Negotiated prices",
+noPriceProgram:     "This client has no active negotiated prices",
+fromNRA:            "Fixed contract price",
+weeklyOrder:        "Weekly order",
+monthlyOrder:       "Monthly order",
+quickOrder:         "New order",
+quantityThisOrder:  "Quantity this order",
+priceFixed:         "Fixed price",
 },
   
 };
