@@ -1,12 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useOrdersController } from "./services/orders.controller";
+import type { Order } from "./types/orders.types";
 
 import OrderCommandCenter from "./components/OrderCommandCenter";
 import OrdersSidebar      from "./components/OrdersSidebar";
 import OrderWorkspace     from "./components/OrderWorkspace";
 import OrderCopilot       from "./components/OrderCopilot";
+import OrderCreateDrawer  from "./components/OrderCreateDrawer";
 
 export default function PedidosPage() {
   const { t } = useTranslation();
@@ -17,7 +20,10 @@ export default function PedidosPage() {
     kpis, loading, saving,
     filters, setFilters,
     handleStatusChange, handleUpdate,
+    reload,
   } = ctrl;
+
+  const [showCreate, setShowCreate] = useState(false);
 
   if (loading) return (
     <div style={{ display: "grid", placeItems: "center", minHeight: "300px" }}>
@@ -51,7 +57,7 @@ export default function PedidosPage() {
           setSelected={setSelected}
           filters={filters}
           setFilters={setFilters}
-          onNew={() => {}}
+          onNew={() => setShowCreate(true)}
         />
       </div>
 
@@ -69,6 +75,17 @@ export default function PedidosPage() {
       <div style={{ gridColumn: "4 / 5", minHeight: 0, overflow: "hidden" }}>
         <OrderCopilot order={selected} />
       </div>
+
+      {/* DRAWER — Nueva orden */}
+      <OrderCreateDrawer
+        open={showCreate}
+        onClose={() => setShowCreate(false)}
+        onCreated={(order: Order) => {
+          setShowCreate(false);
+          reload();
+          setSelected(order);
+        }}
+      />
     </div>
   );
 }
