@@ -639,6 +639,9 @@ records:               "registros",
 importedSuccessfully:  "clientes importados exitosamente",
 failedImport:          "fallaron",
 importAnother:         "Importar otro archivo",
+importFormatLabel: "Formato aceptado",
+importFormatDesc:  "CSV con encabezados en español. Descarga la plantilla para ver el formato exacto.",
+importRequired:    "Columnas requeridas",
 },
   
 };
