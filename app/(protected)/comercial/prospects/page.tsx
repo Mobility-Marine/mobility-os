@@ -1,96 +1,115 @@
 "use client";
 
-// ============================================================
-// 👤 PROSPECTS PAGE — SaaS Product Layout
-// Revenue OS / Enterprise CRM / Stable viewport composition
-// ============================================================
-
 import { useMemo, useState } from "react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
+import { useProspectsController } from "./services/prospects.controller";
+import { filterProspects } from "./services/prospects.normalization";
+import type { Prospect, ProspectFilters } from "./types/prospects.types";
+import { DEFAULT_FILTERS } from "./types/prospects.types";
 
-import ProspectsSidebar from "./components/ProspectsSidebar";
-import ProspectWorkspace from "./components/ProspectWorkspace";
-import ProspectCopilot from "./components/ProspectCopilot";
-
-import ProspectPipelineBoard from "./components/ProspectPipelineBoard";
-import ProspectCommandCenter from "./components/ProspectCommandCenter";
+import ProspectsSidebar        from "./components/ProspectsSidebar";
+import ProspectWorkspace       from "./components/ProspectWorkspace";
+import ProspectCopilot         from "./components/ProspectCopilot";
+import ProspectPipelineBoard   from "./components/ProspectPipelineBoard";
+import ProspectCommandCenter   from "./components/ProspectCommandCenter";
 import ProspectRevenueInsights from "./components/ProspectRevenueInsights";
 import ProspectDailyActionPanel from "./components/ProspectDailyActionPanel";
 import ProspectAutomationPanel from "./components/ProspectAutomationPanel";
-import ProspectCreateDrawer from "./components/ProspectCreateDrawer";
-
-import { useProspectsController } from "./services/prospects.controller";
-import type { Prospect } from "./types/prospects.types";
+import ProspectCreateDrawer    from "./components/ProspectCreateDrawer";
 
 export default function ProspectsPage() {
-  const prospectsCtrl = useProspectsController();
+  const { t } = useTranslation();
 
+  const ctrl = useProspectsController();
   const {
-    loading,
-    prospects,
-    selected,
-    setSelected,
-    createProspect,
-    updateProspect,
-    archiveProspect,
-  } = prospectsCtrl;
+    loading, saving,
+    prospects, selected, setSelected,
+    activities, notes, tasks, snapshotLoading,
+    createProspect, updateProspect, archiveProspect,
+    updateStage, convertProspect,
+    addActivity, addNote, addTask,
+  } = ctrl;
 
-  const [search, setSearch] = useState("");
+  const [filters, setFilters]         = useState<ProspectFilters>(DEFAULT_FILTERS);
   const [showCreateDrawer, setShowCreateDrawer] = useState(false);
 
-  const filteredProspects = useMemo(() => {
-    const q = search.trim().toLowerCase();
+  const filteredProspects = useMemo(
+    () => filterProspects(prospects, {
+      search:     filters.search,
+      stage:      filters.stage === "all" ? undefined : filters.stage,
+      onlyActive: filters.onlyActive,
+    }),
+    [prospects, filters]
+  );
 
-    if (!q) return prospects;
-
-    return prospects.filter((p) =>
-      p.name?.toLowerCase().includes(q) ||
-      p.company_name?.toLowerCase().includes(q) ||
-      p.email?.toLowerCase().includes(q)
-    );
-  }, [prospects, search]);
-
+  // ── LOADING ──
   if (loading) {
     return (
-      <div style={loadingWrap}>
-        <div style={loadingCard}>Cargando prospectos...</div>
+      <div style={{
+        height: "100%", minHeight: 0,
+        display: "grid", placeItems: "center",
+        background: "var(--color-bg-page)",
+      }}>
+        <div style={{
+          background: "var(--color-bg-base)",
+          border: "1px solid var(--color-border-faint)",
+          borderRadius: "var(--radius-lg)",
+          padding: "20px 32px",
+          fontSize: "14px", fontWeight: 700,
+          color: "var(--color-text-primary)",
+          display: "flex", alignItems: "center", gap: "10px",
+        }}>
+          <div style={{
+            width: "16px", height: "16px", borderRadius: "50%",
+            border: "2px solid var(--color-brand-blue)",
+            borderTopColor: "transparent",
+            animation: "spin 0.8s linear infinite",
+          }} />
+          {t.prospects.loading}
+        </div>
       </div>
     );
   }
 
   return (
     <div style={pageWrap}>
-      {/* ===================================================== */}
-      {/* CAPA 1 — EJECUTIVA / INTELIGENCIA */}
-      {/* ===================================================== */}
 
-      <div style={topBlocks}>
+      {/* ════════════════════════════════════════════════════
+          CAPA 1 — INTELIGENCIA EJECUTIVA
+      ════════════════════════════════════════════════════ */}
+      <div style={{ display: "grid", gap: "14px" }}>
         <ProspectCommandCenter
-          prospects={prospects}
-          onSelect={setSelected}
-        />
-
-        <ProspectRevenueInsights prospects={prospects} />
-
-        <ProspectDailyActionPanel
-          prospects={prospects}
-          onSelect={setSelected}
-        />
-
-        <ProspectAutomationPanel
           prospects={prospects}
           onSelect={setSelected}
         />
       </div>
 
-      {/* ===================================================== */}
-      {/* CAPA 2 — OPERATIVA */}
-      {/* ===================================================== */}
+      {/* ════════════════════════════════════════════════════
+          CAPA 2 — INSIGHTS + ACCIONES
+      ════════════════════════════════════════════════════ */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "14px" }}>
+        <ProspectRevenueInsights prospects={prospects} />
+        <div style={{ display: "grid", gap: "14px", alignContent: "start" }}>
+          <ProspectDailyActionPanel
+            prospects={prospects}
+            onSelect={setSelected}
+          />
+          <ProspectAutomationPanel
+            prospects={prospects}
+            onSelect={setSelected}
+          />
+        </div>
+      </div>
 
+      {/* ════════════════════════════════════════════════════
+          CAPA 3 — OPERATIVA (SIDEBAR + WORKSPACE + COPILOT)
+      ════════════════════════════════════════════════════ */}
       <div style={workRow}>
+        {/* SIDEBAR */}
         <div style={panelShell}>
           <ProspectsSidebar
-            search={search}
-            setSearch={setSearch}
+            search={filters.search}
+            setSearch={(v) => setFilters((f) => ({ ...f, search: v }))}
             prospects={filteredProspects}
             selected={selected}
             setSelected={setSelected}
@@ -98,35 +117,38 @@ export default function ProspectsPage() {
           />
         </div>
 
+        {/* WORKSPACE */}
         <div style={panelShell}>
           <ProspectWorkspace
             prospect={selected}
             createProspect={createProspect}
             updateProspect={updateProspect}
             archiveProspect={archiveProspect}
+            onStageChange={(id, stage) => updateStage(id, stage as any)}
+            onAddActivity={addActivity}
           />
         </div>
 
+        {/* COPILOT */}
         <div style={panelShell}>
           <ProspectCopilot prospect={selected} />
         </div>
       </div>
 
-      {/* ===================================================== */}
-      {/* CAPA 3 — PIPELINE */}
-      {/* ===================================================== */}
-
+      {/* ════════════════════════════════════════════════════
+          CAPA 4 — PIPELINE BOARD
+      ════════════════════════════════════════════════════ */}
       <div style={pipelineArea}>
         <ProspectPipelineBoard
           prospects={prospects}
           onSelect={setSelected}
+          onStageChange={(id, stage) => updateStage(id, stage as any)}
         />
       </div>
 
-      {/* ===================================================== */}
-      {/* DRAWER GLOBAL */}
-      {/* ===================================================== */}
-
+      {/* ════════════════════════════════════════════════════
+          DRAWER GLOBAL
+      ════════════════════════════════════════════════════ */}
       <ProspectCreateDrawer
         open={showCreateDrawer}
         onClose={() => setShowCreateDrawer(false)}
@@ -140,66 +162,37 @@ export default function ProspectsPage() {
   );
 }
 
-// ============================================================
-// STYLES
-// ============================================================
-
-const loadingWrap: React.CSSProperties = {
-  height: "100%",
-  minHeight: 0,
-  display: "grid",
-  placeItems: "center",
-  background: "#020617",
-};
-
-const loadingCard: React.CSSProperties = {
-  background: "#0b1220",
-  border: "1px solid #1f2937",
-  color: "#e5e7eb",
-  borderRadius: 14,
-  padding: "16px 20px",
-  fontWeight: 700,
-};
+// ─── STYLES ─────────────────────────────────────────────────
 
 const pageWrap: React.CSSProperties = {
-  height: "100%",
-  minHeight: 0,
-  width: "100%",        // 🔥 CLAVE
-  maxWidth: "100%",     // 🔥 CLAVE
-  overflow: "hidden",
-  display: "grid",
-  gridTemplateRows: "auto auto minmax(0, 1fr)",
-  gap: 16,
-};
-
-const topBlocks: React.CSSProperties = {
-  display: "grid",
-  gap: 16,
-  alignContent: "start",
+  height: "100%", minHeight: 0,
+  width: "100%", maxWidth: "100%",
+  overflow: "auto",
+  display: "flex", flexDirection: "column",
+  gap: "16px",
+  paddingBottom: "16px",
 };
 
 const workRow: React.CSSProperties = {
   display: "grid",
-  gridTemplateColumns: "320px minmax(0, 1fr) 320px",
-  gap: 16,
+  gridTemplateColumns: "300px minmax(0, 1fr) 300px",
+  gap: "14px",
   alignItems: "stretch",
   minHeight: 0,
-  height: "clamp(420px, 44vh, 540px)",
+  height: "clamp(480px, 48vh, 580px)",
 };
 
 const panelShell: React.CSSProperties = {
-  minWidth: 0,
-  minHeight: 0,
+  minWidth: 0, minHeight: 0,
   height: "100%",
-
   display: "flex",
-  overflow: "hidden", // contenedor limpio
+  overflow: "hidden",
 };
 
 const pipelineArea: React.CSSProperties = {
   minHeight: 0,
   overflow: "auto",
   display: "flex",
-  borderRadius: 16,
-  paddingBottom: 4,
+  borderRadius: "var(--radius-lg)",
+  paddingBottom: "4px",
 };
