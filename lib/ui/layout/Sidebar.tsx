@@ -1,39 +1,39 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { getNavForRole } from "./navConfig";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface SidebarProps {
-  userEmail: string | null;
-  userRole: string | null;
-  companyName: string;
-  memberships: { company_id: string; company_name?: string | null }[];
+  userEmail:       string | null;
+  userRole:        string | null;
+  companyName:     string;
+  memberships:     { company_id: string; company_name?: string | null }[];
   activeCompanyId: string | null;
   onChangeCompany: (id: string) => void;
-  onSignOut: () => void;
+  onSignOut:       () => void;
 }
 
 export default function Sidebar({
   userEmail, userRole, companyName,
-  memberships, activeCompanyId,
-  onChangeCompany, onSignOut,
+  memberships, activeCompanyId, onChangeCompany, onSignOut,
 }: SidebarProps) {
   const router   = useRouter();
   const pathname = usePathname();
-  const { t }    = useTranslation();
-  const [openSections, setOpenSections] = useState<string[]>(["general"]);
+  const { t }   = useTranslation();
 
   const visibleSections = useMemo(() => getNavForRole(userRole), [userRole]);
 
-  useMemo(() => {
-    visibleSections.forEach((section) => {
-      const isActive = section.items.some((item) => pathname.startsWith(item.path));
-      if (isActive && !openSections.includes(section.key)) {
-        setOpenSections((prev) => [...prev, section.key]);
-      }
-    });
+  // ── AUTO-COLLAPSE: solo mantiene abierta la sección activa ──
+  const getActiveSection = (path: string) =>
+    visibleSections.find((s) => s.items.some((i) => path.startsWith(i.path)))?.key ?? "general";
+
+  const [openSections, setOpenSections] = useState<string[]>(() => [getActiveSection(pathname)]);
+
+  useEffect(() => {
+    const active = getActiveSection(pathname);
+    setOpenSections([active]);
   }, [pathname]);
 
   function toggleSection(key: string) {
@@ -50,10 +50,8 @@ export default function Sidebar({
       height: "100vh",
       background: "var(--color-sidebar-bg)",
       borderRight: "1px solid var(--color-sidebar-border)",
-      display: "flex",
-      flexDirection: "column",
-      overflow: "hidden",
-      flexShrink: 0,
+      display: "flex", flexDirection: "column",
+      overflow: "hidden", flexShrink: 0,
     }}>
 
       {/* LOGO + EMPRESA */}
@@ -62,10 +60,17 @@ export default function Sidebar({
         borderBottom: "1px solid var(--color-sidebar-border)",
         flexShrink: 0,
       }}>
+        {/* FIX: display block + margin auto para centrar */}
         <img
           src="/logo.png"
           alt="Mobility OS"
-          style={{ width: "100%", maxWidth: "160px", height: "auto", marginBottom: "12px" }}
+          style={{
+            display: "block",
+            width: "auto",
+            maxWidth: "160px",
+            height: "auto",
+            margin: "0 auto 12px",
+          }}
         />
         {memberships.length > 1 ? (
           <select
@@ -87,7 +92,7 @@ export default function Sidebar({
             ))}
           </select>
         ) : (
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-text-primary)" }}>
+          <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-text-primary)", textAlign: "center" }}>
             {companyName}
           </div>
         )}
@@ -98,13 +103,13 @@ export default function Sidebar({
         {visibleSections.map((section) => {
           const isOpen    = openSections.includes(section.key);
           const hasActive = section.items.some((item) => pathname.startsWith(item.path));
-          const title     = (t.nav as any)[section.titleKey]    ?? section.titleKey;
-          const subtitle  = (t.nav as any)[section.subtitleKey] ?? section.subtitleKey;
+          const title    = (t.nav as any)[section.titleKey]    ?? section.titleKey;
+          const subtitle = (t.nav as any)[section.subtitleKey] ?? section.subtitleKey;
 
           return (
             <div key={section.key} style={{ marginBottom: "2px" }}>
 
-              {/* CABECERA DE SECCIÓN */}
+              {/* CABECERA */}
               <button
                 onClick={() => toggleSection(section.key)}
                 style={{
@@ -119,28 +124,17 @@ export default function Sidebar({
               >
                 <div>
                   <div style={{
-                    fontSize: "11px", fontWeight: 600,
-                    letterSpacing: "0.5px",
-                    color: hasActive
-                      ? "var(--color-sidebar-active-text)"
-                      : "var(--color-text-muted)",
+                    fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px",
+                    color: hasActive ? "var(--color-sidebar-active-text)" : "var(--color-text-muted)",
                     textTransform: "uppercase",
                   }}>
                     {title}
                   </div>
-                  <div style={{
-                    fontSize: "11px",
-                    color: "var(--color-text-muted)",
-                    marginTop: "1px",
-                  }}>
+                  <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "1px" }}>
                     {subtitle}
                   </div>
                 </div>
-                <span style={{
-                  fontSize: "12px",
-                  color: "var(--color-text-muted)",
-                  fontWeight: 600,
-                }}>
+                <span style={{ fontSize: "12px", color: "var(--color-text-muted)", fontWeight: 600 }}>
                   {isOpen ? "−" : "+"}
                 </span>
               </button>
@@ -151,6 +145,7 @@ export default function Sidebar({
                   {section.items.map((item) => {
                     const active   = pathname === item.path || pathname.startsWith(item.path + "/");
                     const itemName = (t.navItems as any)[item.nameKey] ?? item.nameKey;
+
                     return (
                       <button
                         key={item.path}
@@ -161,14 +156,9 @@ export default function Sidebar({
                           borderLeft: active
                             ? "3px solid var(--color-brand-blue)"
                             : "3px solid transparent",
-                          background: active
-                            ? "var(--color-sidebar-active-bg)"
-                            : "transparent",
-                          color: active
-                            ? "var(--color-sidebar-active-text)"
-                            : "var(--color-sidebar-text)",
-                          fontSize: "13px",
-                          fontWeight: active ? 600 : 400,
+                          background: active ? "var(--color-sidebar-active-bg)" : "transparent",
+                          color:      active ? "var(--color-sidebar-active-text)" : "var(--color-sidebar-text)",
+                          fontSize: "13px", fontWeight: active ? 600 : 400,
                           cursor: "pointer",
                           transition: "var(--transition-fast)",
                           marginBottom: "1px",
@@ -186,7 +176,7 @@ export default function Sidebar({
         })}
       </nav>
 
-      {/* USUARIO + SALIR */}
+      {/* USUARIO */}
       <div style={{
         padding: "12px",
         borderTop: "1px solid var(--color-sidebar-border)",
@@ -194,15 +184,12 @@ export default function Sidebar({
       }}>
         <div style={{
           display: "flex", alignItems: "center", gap: "10px",
-          padding: "8px 10px",
-          borderRadius: "var(--radius-md)",
+          padding: "8px 10px", borderRadius: "var(--radius-md)",
           background: "var(--color-bg-subtle)",
         }}>
           <div style={{
-            width: "32px", height: "32px",
-            borderRadius: "var(--radius-full)",
-            background: "var(--color-brand-blue)",
-            color: "#ffffff",
+            width: "32px", height: "32px", borderRadius: "var(--radius-full)",
+            background: "var(--color-brand-blue)", color: "#ffffff",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "13px", fontWeight: 700, flexShrink: 0,
           }}>
@@ -210,17 +197,12 @@ export default function Sidebar({
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontSize: "12px", fontWeight: 500,
-              color: "var(--color-text-primary)",
+              fontSize: "12px", fontWeight: 500, color: "var(--color-text-primary)",
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
               {userEmail}
             </div>
-            <div style={{
-              fontSize: "11px",
-              color: "var(--color-text-muted)",
-              textTransform: "capitalize",
-            }}>
+            <div style={{ fontSize: "11px", color: "var(--color-text-muted)", textTransform: "capitalize" }}>
               {userRole ?? t.navItems.user}
             </div>
           </div>
@@ -229,11 +211,9 @@ export default function Sidebar({
             title={t.navItems.signOut}
             style={{
               background: "transparent", border: "none",
-              color: "var(--color-text-muted)",
-              cursor: "pointer", fontSize: "16px",
-              padding: "4px",
-              borderRadius: "var(--radius-sm)",
-              flexShrink: 0,
+              color: "var(--color-text-muted)", cursor: "pointer",
+              fontSize: "16px", padding: "4px",
+              borderRadius: "var(--radius-sm)", flexShrink: 0,
             }}
           >
             ↪
