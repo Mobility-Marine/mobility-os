@@ -1,9 +1,3 @@
-"use client";
-
-// ============================================================
-// 👁️ GLOBAL COMMAND CENTER
-// Vista ejecutiva unificada de TODA la plataforma
-// ============================================================
 
 import { getCustomer360 } from "./customer360.service";
 import { analyzeCustomerBrain } from "./customerBrain.service";
