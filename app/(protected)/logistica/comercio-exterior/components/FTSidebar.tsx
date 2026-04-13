@@ -62,7 +62,8 @@ export default function FTSidebar({ ops, selected, setSelected, filters, setFilt
         ) : ops.map((o) => {
           const isSelected = selected?.id === o.id;
           const stCfg      = TRADE_STATUS_CONFIG[o.status];
-          const stLabel    = tl[`status${o.status.charAt(0).toUpperCase()}${o.status.slice(1).replace(/_([a-z])/g, (_: string, l: string) => l.toUpperCase())}`] ?? o.status;
+          const STATUS_LABEL_MAP: Record<string,string> = { open: tl.statusOpen ?? "Abierta", in_process: tl.statusInProcess ?? "En proceso", at_customs: tl.statusAtCustoms ?? "En aduana", released: tl.statusReleased ?? "Liberada", closed: tl.statusClosed ?? "Cerrada", cancelled: tl.ftStatusCancelled ?? "Cancelada" };
+const stLabel = STATUS_LABEL_MAP[o.status] ?? o.status;
 
           return (
             <div key={o.id} onClick={() => setSelected(o)} style={{ padding: "10px 12px", borderRadius: "var(--radius-md)", background: isSelected ? "var(--color-bg-active)" : "var(--color-bg-subtle)", border: isSelected ? "1px solid var(--color-brand-blue)" : "1px solid var(--color-border-faint)", cursor: "pointer", display: "grid", gap: "4px", transition: "var(--transition-fast)" }}>
