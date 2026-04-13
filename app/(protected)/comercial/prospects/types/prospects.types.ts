@@ -316,8 +316,7 @@ export const STAGE_ORDER: ProspectStage[] = [
   "lost",
 ];
 
-export const STAGE_CONFIG: Record
-  ProspectStage,
+export const STAGE_CONFIG: Record<ProspectStage,
   { labelKey: string; color: string; bg: string; border: string; weight: number }
 > = {
   new:         { labelKey: "prospects.stageNew",         color: "var(--color-brand-blue)",   bg: "var(--color-brand-blue-light)", border: "var(--color-brand-blue)",   weight: 1 },
@@ -329,8 +328,7 @@ export const STAGE_CONFIG: Record
   lost:        { labelKey: "prospects.stageLost",        color: "var(--color-danger-text)",  bg: "var(--color-danger-bg)",        border: "var(--color-danger-border)", weight: 7 },
 };
 
-export const ACTIVITY_CONFIG: Record
-  string,
+export const ACTIVITY_CONFIG: Record<string,
   { icon: string; labelKey: string; color: string }
 > = {
   call:          { icon: "📞", labelKey: "prospects.actCall",         color: "var(--color-brand-blue)"   },
