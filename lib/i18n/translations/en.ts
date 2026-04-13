@@ -940,6 +940,8 @@ products: {
   firstTimeDesc:      "Download the CSV template with the correct format and all fields.",
   marginGain:         "Profit margin",
   gainPerUnit:        "Profit per unit",
+  back:               "Back",
+  next:               "Next",
 },
   
 };
