@@ -1095,6 +1095,17 @@ orders: {
   fromQuotation:      "Creado desde cotización",
   stockDeducted:      "Stock descontado al confirmar",
   invoiceReady:       "Disponible para facturar al entregar",
+  clientPO:           "No. OC del cliente",
+clientPOHint:       "Número de orden de compra que envió el cliente",
+selectClient:       "Seleccionar cliente",
+clientPrices:       "Precios negociados",
+noPriceProgram:     "Este cliente no tiene precios negociados activos",
+fromNRA:            "Precio fijo de contrato",
+weeklyOrder:        "Orden semanal",
+monthlyOrder:       "Orden mensual",
+quickOrder:         "Nueva orden",
+quantityThisOrder:  "Cantidad esta orden",
+priceFixed:         "Precio fijo",
 },
   
 };
