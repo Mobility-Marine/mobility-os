@@ -399,5 +399,6 @@ alertReadyToConvert:        "Ready to advance",
 alertReadyToConvertDesc:    "In the final stage of the commercial funnel.",
 alertIdle:                  "Idle prospect",
 alertIdleDesc:              "New prospect with no activity for 3+ days.",
+    automationTitle: "Commercial automation",
   },
 };
