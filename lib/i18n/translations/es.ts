@@ -406,6 +406,7 @@ alertReadyToConvert:        "Listo para avanzar",
 alertReadyToConvertDesc:    "En etapa final del funnel comercial.",
 alertIdle:                  "Prospecto inactivo",
 alertIdleDesc:              "Nuevo sin actividad por más de 3 días.",
+automationTitle: "Automatización comercial",
 },
 
 };
