@@ -26,13 +26,11 @@ export default function ProspectPipelineBoard({ prospects, onSelect, onStageChan
 
   return (
     <div style={{
-      display: "grid",
-      gridTemplateColumns: `repeat(${STAGE_ORDER.length}, 240px)`,
-      gap: "10px",
-      overflowX: "auto",
-      paddingBottom: "8px",
-      minHeight: "340px",
-    }}>
+  display: "grid",
+  gridTemplateColumns: `repeat(${STAGE_ORDER.length}, minmax(0, 1fr))`,
+  gap: "10px",
+  height: "100%",
+}}>
       {STAGE_ORDER.map((stage) => {
         const cfg   = STAGE_CONFIG[stage];
         const items = prospects.filter((p) => getProspectStage(p) === stage);
