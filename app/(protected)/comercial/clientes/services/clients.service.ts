@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type {
   Client, CreateClientPayload, ClientDocument, ClientDocumentType,
   ClientContact, ClientContactRole, ClientConnection,
+  ClientAddress, AddressType,
 } from "../types/clients.types";
 
 // ── CLIENTS ────────────────────────────────────────────────
