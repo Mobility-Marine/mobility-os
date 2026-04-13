@@ -91,7 +91,7 @@ export default function ProspectActivityTimeline({ activities = [], onAdd, loadi
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
             <div>
               <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "4px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                {t.prospects.type ?? "Tipo"}
+                {t.agenda.type}
               </div>
               <select
                 value={form.activity_type}
