@@ -300,7 +300,7 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
                 background: "var(--color-brand-blue)", color: "#fff", border: "none",
                 fontSize: "13px", fontWeight: 700, cursor: "pointer",
               }}>
-                {t.general.confirm ?? "Listo"}
+                {(t.general as any).confirm ?? "Listo"}
               </button>
             )}
           </div>
