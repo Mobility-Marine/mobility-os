@@ -58,6 +58,18 @@ export default function OrdersSidebar({ orders, selected, setSelected, filters, 
           </span>
         </div>
 
+<button onClick={onNew} style={{
+  width: "100%", height: "34px", borderRadius: "var(--radius-md)",
+  background: "var(--color-brand-blue)", color: "#fff", border: "none",
+  fontSize: "12px", fontWeight: 700, cursor: "pointer", marginBottom: "8px",
+  display: "flex", alignItems: "center", justifyContent: "center", gap: "5px",
+}}>
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+  </svg>
+  {to.quickOrder ?? "Nueva orden"}
+</button>
+        
         {/* SEARCH */}
         <div style={{ position: "relative", marginBottom: "8px" }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2"
