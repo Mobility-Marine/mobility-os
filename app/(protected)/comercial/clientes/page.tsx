@@ -7,18 +7,18 @@ import { filterClients } from "./services/clients.normalization";
 import type { ClientFilters } from "./types/clients.types";
 import { DEFAULT_CLIENT_FILTERS } from "./types/clients.types";
 
-import ClientCommandCenter from "./components/ClientCommandCenter";
-import ClientSidebar       from "./components/ClientSidebar";
-import ClientWorkspace     from "./components/ClientWorkspace";
-import ClientDocuments     from "./components/ClientDocuments";
-import ClientContacts      from "./components/ClientContacts";
-import ClientConnections   from "./components/ClientConnections";
-import ClientCreateDrawer  from "./components/ClientCreateDrawer";
-import ClientImportExport from "./components/ClientImportExport";
+import ClientCommandCenter  from "./components/ClientCommandCenter";
+import ClientSidebar        from "./components/ClientSidebar";
+import ClientWorkspace      from "./components/ClientWorkspace";
+import ClientDocuments      from "./components/ClientDocuments";
+import ClientContacts       from "./components/ClientContacts";
+import ClientConnections    from "./components/ClientConnections";
+import ClientCreateDrawer   from "./components/ClientCreateDrawer";
+import ClientImportExport   from "./components/ClientImportExport";
 
 export default function ClientsPage() {
-  const { t } = useTranslation();
-  const ctrl  = useClientsController();
+  const { t }  = useTranslation();
+  const ctrl   = useClientsController();
   const {
     clients, selected, setSelected,
     loading, detailLoading,
@@ -43,7 +43,11 @@ export default function ClientsPage() {
 
   if (loading) return (
     <div style={{ display: "grid", placeItems: "center", minHeight: "300px" }}>
-      <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "20px 32px", fontSize: "14px", fontWeight: 700, color: "var(--color-text-primary)" }}>
+      <div style={{
+        background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)",
+        borderRadius: "var(--radius-lg)", padding: "20px 32px",
+        fontSize: "14px", fontWeight: 700, color: "var(--color-text-primary)",
+      }}>
         {(t.clients as any)?.loading ?? "Cargando clientes…"}
       </div>
     </div>
@@ -57,7 +61,8 @@ export default function ClientsPage() {
       gap: "16px",
       paddingBottom: "32px",
     }}>
-      {/* STRIP */}
+
+      {/* STRIP — Command Center */}
       <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "repeat(4, minmax(0, 1fr))", gap: "16px" }}>
         <ClientCommandCenter clients={clients} onSelect={setSelected} />
       </div>
@@ -84,8 +89,7 @@ export default function ClientsPage() {
       </div>
 
       {/* Contacts / Documents tab panel */}
-      <div style={{ gridColumn: "4 / 5", minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column", gap: "0" }}>
-        {/* TABS */}
+      <div style={{ gridColumn: "4 / 5", minHeight: 0, overflow: "hidden", display: "flex", flexDirection: "column" }}>
         <div style={{ display: "flex", borderRadius: "var(--radius-lg) var(--radius-lg) 0 0", overflow: "hidden", flexShrink: 0 }}>
           {[
             { key: "contacts",  label: (t.clients as any)?.contacts  ?? "Contactos"  },
@@ -96,9 +100,9 @@ export default function ClientsPage() {
               onClick={() => setTab(tb.key as any)}
               style={{
                 flex: 1, height: "36px", border: "none",
-                background: tab === tb.key ? "var(--color-bg-base)" : "var(--color-bg-subtle)",
+                background:   tab === tb.key ? "var(--color-bg-base)"       : "var(--color-bg-subtle)",
                 borderBottom: tab === tb.key ? "2px solid var(--color-brand-blue)" : "2px solid var(--color-border-faint)",
-                color: tab === tb.key ? "var(--color-brand-blue)" : "var(--color-text-muted)",
+                color:        tab === tb.key ? "var(--color-brand-blue)"    : "var(--color-text-muted)",
                 fontSize: "12px", fontWeight: 700, cursor: "pointer",
                 transition: "var(--transition-fast)",
               }}
@@ -135,19 +139,27 @@ export default function ClientsPage() {
       </div>
 
       {/* ROW_L — Customer 360 + Import/Export */}
-<div style={{ gridColumn: "1 / 3", minHeight: 0, overflow: "hidden" }}>
-  <ClientConnections
-    connections={connections}
-    stats={selected?.stats}
-    clientName={selected?.name}
-    loading={detailLoading}
-  />
-</div>
-<div style={{ gridColumn: "3 / 5", minHeight: 0, overflow: "auto" }}>
-  <ClientImportExport
-    clients={clients}
-    onImported={ctrl.reload}
-  />
-</div>
+      <div style={{ gridColumn: "1 / 3", minHeight: 0, overflow: "hidden" }}>
+        <ClientConnections
+          connections={connections}
+          stats={selected?.stats}
+          clientName={selected?.name}
+          loading={detailLoading}
+        />
+      </div>
+      <div style={{ gridColumn: "3 / 5", minHeight: 0, overflow: "auto" }}>
+        <ClientImportExport
+          clients={clients}
+          onImported={ctrl.reload}
+        />
+      </div>
+
+      {/* DRAWER */}
+      <ClientCreateDrawer
+        open={showCreate}
+        onClose={() => setCreate(false)}
+        onCreate={createClient as any}
+      />
+    </div>
   );
 }
