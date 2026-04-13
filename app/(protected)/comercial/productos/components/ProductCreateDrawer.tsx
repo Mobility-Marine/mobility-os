@@ -279,7 +279,7 @@ export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) 
         <div style={{ padding: "14px 24px", borderTop: "1px solid var(--color-border-faint)", display: "flex", gap: "10px", flexShrink: 0 }}>
           {step !== "basic" && (
             <button onClick={prev} style={{ height: "40px", padding: "0 18px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", fontSize: "13px", cursor: "pointer" }}>
-              ← {t.general.back ?? "Atrás"}
+              ← {(t.general as any).back ?? "Atrás"}
             </button>
           )}
           {step !== "fiscal" ? (
