@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useProductsController } from "./services/products.controller";
 
 import ProductCommandCenter from "./components/ProductCommandCenter";
@@ -10,7 +11,9 @@ import ProductCreateDrawer  from "./components/ProductCreateDrawer";
 import ProductImportExport  from "./components/ProductImportExport";
 
 export default function ProductosPage() {
-  const ctrl = useProductsController();
+  const { t } = useTranslation();
+  const tp    = (t.products as any) ?? {};
+  const ctrl  = useProductsController();
   const {
     filtered, categories, selected, setSelected,
     kpis, loading, saving,
@@ -29,7 +32,7 @@ export default function ProductosPage() {
         borderRadius: "var(--radius-lg)", padding: "20px 32px",
         fontSize: "14px", fontWeight: 700, color: "var(--color-text-primary)",
       }}>
-        Cargando productos…
+        {tp.loading ?? "Cargando productos…"}
       </div>
     </div>
   );
