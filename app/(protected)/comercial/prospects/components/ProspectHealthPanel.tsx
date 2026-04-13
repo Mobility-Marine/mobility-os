@@ -6,7 +6,7 @@ import type {
   ProspectTask,
   ProspectFollowup,
 } from "../types/prospects.types";
-import { buildProspectHealth } from "./prospects.intelligence";
+import { buildProspectHealth } from '../services/prospects.intelligence'
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type Props = {
