@@ -9,8 +9,10 @@ type Props = {
   documents:  ClientDocument[];
   clientId:   string | null;
   onAdd:      (payload: { name: string; type: ClientDocumentType; url?: string; notes?: string; expires_at?: string }) => Promise<void>;
+  onEdit:     (id: string, updates: { name?: string; url?: string; notes?: string; expires_at?: string }) => Promise<void>;
   onRemove:   (id: string) => Promise<void>;
   loading?:   boolean;
+  compact?:   boolean;
 };
 
 const DOC_TYPES: ClientDocumentType[] = [
