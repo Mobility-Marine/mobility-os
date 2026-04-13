@@ -282,7 +282,7 @@ export default function ProductImportExport({ open, onClose, onBulkImport }: Pro
             {step === "preview" && (
               <>
                 <button onClick={() => setStep("upload")} style={{ height: "40px", padding: "0 16px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", fontSize: "13px", cursor: "pointer" }}>
-                  ← {t.general.back ?? "Volver"}
+                  ← {(t.general as any).back ?? "Volver"}
                 </button>
                 <button onClick={handleImport} disabled={importing || !parsed?.valid.length} style={{
                   flex: 1, height: "40px", borderRadius: "var(--radius-md)",
