@@ -271,3 +271,97 @@ export async function fetchClientStats(
     riskLevel:     "LOW" as const,
   };
 }
+
+// ── ADDRESSES ──────────────────────────────────────────────
+
+export async function fetchClientAddresses(
+  companyId: string, clientId: string
+): Promise<ClientAddress[]> {
+  const { data } = await supabase
+    .from("client_addresses")
+    .select("*")
+    .eq("company_id", companyId)
+    .eq("client_id", clientId)
+    .order("is_default", { ascending: false })
+    .order("created_at", { ascending: true });
+  return (data ?? []) as ClientAddress[];
+}
+
+export async function createClientAddress(
+  companyId: string, clientId: string, userId: string,
+  payload: {
+    type:          AddressType;
+    alias?:        string;
+    street?:       string;
+    ext_number?:   string;
+    int_number?:   string;
+    neighborhood?: string;
+    city?:         string;
+    state?:        string;
+    zip_code:      string;
+    country?:      string;
+    is_default?:   boolean;
+    notes?:        string;
+  }
+): Promise<ClientAddress> {
+  const { data, error } = await supabase
+    .from("client_addresses")
+    .insert({
+      company_id:   companyId,
+      client_id:    clientId,
+      created_by:   userId,
+      type:         payload.type,
+      alias:        payload.alias        ?? null,
+      street:       payload.street       ?? null,
+      ext_number:   payload.ext_number   ?? null,
+      int_number:   payload.int_number   ?? null,
+      neighborhood: payload.neighborhood ?? null,
+      city:         payload.city         ?? null,
+      state:        payload.state        ?? null,
+      zip_code:     payload.zip_code,
+      country:      payload.country      ?? "México",
+      is_default:   payload.is_default   ?? false,
+      notes:        payload.notes        ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as ClientAddress;
+}
+
+export async function updateClientAddress(
+  companyId: string, id: string, updates: Partial<ClientAddress>
+): Promise<void> {
+  await supabase
+    .from("client_addresses")
+    .update(updates)
+    .eq("id", id)
+    .eq("company_id", companyId);
+}
+
+export async function deleteClientAddress(
+  companyId: string, id: string
+): Promise<void> {
+  await supabase
+    .from("client_addresses")
+    .delete()
+    .eq("id", id)
+    .eq("company_id", companyId);
+}
+
+export async function setDefaultAddress(
+  companyId: string, clientId: string, addressId: string
+): Promise<void> {
+  // Quitar default de todas
+  await supabase
+    .from("client_addresses")
+    .update({ is_default: false })
+    .eq("company_id", companyId)
+    .eq("client_id", clientId);
+  // Poner default en la seleccionada
+  await supabase
+    .from("client_addresses")
+    .update({ is_default: true })
+    .eq("id", addressId)
+    .eq("company_id", companyId);
+}
