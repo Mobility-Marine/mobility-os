@@ -165,12 +165,10 @@ export default function ProspectsPage() {
 // ─── STYLES ─────────────────────────────────────────────────
 
 const pageWrap: React.CSSProperties = {
-  height: "100%", minHeight: 0,
-  width: "100%", maxWidth: "100%",
-  overflow: "auto",
+  width: "100%",
   display: "flex", flexDirection: "column",
   gap: "16px",
-  paddingBottom: "16px",
+  paddingBottom: "24px",
 };
 
 const workRow: React.CSSProperties = {
