@@ -33,10 +33,9 @@ export default function ProspectAutomationPanel({ prospects, onSelect }: Props) 
       display: "grid", gap: "14px",
     }}>
       {/* HEADER */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-        <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
-          {lang => t.prospects.automationTitle ?? "Automatización comercial"}
-        </div>
+      <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
+  {t.prospects.automationTitle ?? "Automatización comercial"}
+</div>
         <div style={{ display: "flex", gap: "6px" }}>
           {criticals > 0 && (
             <span style={{
