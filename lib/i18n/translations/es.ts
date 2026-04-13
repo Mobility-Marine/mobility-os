@@ -1301,7 +1301,100 @@ daysLate:               "días de retraso",
 // Empty state
 workspaceEmpty:         "Selecciona un embarque",
 workspaceEmptyDesc:     "Aquí verás el detalle del embarque, servicios, documentos y órdenes de servicio.",
-  
+},
+
+// ── Órdenes de Servicio ───────────────────────────────────
+serviceOrders:           "Órdenes de servicio",
+serviceOrdersDesc:       "CCP + Carta instrucciones, BOL USA, Carta Agente Aduanal.",
+newServiceOrder:         "Nueva orden",
+noServiceOrders:         "Sin órdenes de servicio",
+searchServiceOrder:      "Buscar por referencia o embarque…",
+
+// Tipos
+typeCcpCarta:            "CCP + Carta instrucciones",
+typeBolUsa:              "BOL Terrestre USA",
+typeCartaAduanal:        "Carta Agente Aduanal",
+
+// Status
+statusDraftSO:           "Borrador",
+statusSentSO:            "Enviada",
+statusConfirmedSO:       "Confirmada",
+
+// Secciones del formulario
+sectionShipper:          "Remitente",
+sectionConsignee:        "Destinatario",
+sectionCarrier:          "Transportista",
+sectionVehicle:          "Vehículo (CCP)",
+sectionCargo:            "Mercancía",
+sectionLogistics:        "Logística",
+sectionInstructions:     "Instrucciones especiales",
+
+// Campos
+shipperName:             "Nombre del remitente",
+shipperAddress:          "Dirección",
+shipperCity:             "Ciudad",
+shipperState:            "Estado",
+shipperCountry:          "País",
+shipperContact:          "Contacto",
+shipperPhone:            "Teléfono",
+consigneeName:           "Nombre del destinatario",
+consigneeAddress:        "Dirección",
+consigneeCity:           "Ciudad",
+consigneeState:          "Estado",
+consigneeCountry:        "País",
+consigneeContact:        "Contacto",
+consigneePhone:          "Teléfono",
+carrierName:             "Nombre del transportista",
+carrierContact:          "Contacto",
+carrierPhone:            "Teléfono",
+carrierScac:             "Código SCAC (USA)",
+driverName:              "Nombre del operador",
+driverLicense:           "Licencia del operador",
+vehicleType:             "Tipo de vehículo",
+vehiclePlates:           "Placas del vehículo",
+trailerPlates:           "Placas del remolque",
+pickupDate:              "Fecha de recolección",
+pickupAddress:           "Dirección de recolección",
+deliveryDate:            "Fecha de entrega",
+deliveryAddress:         "Dirección de entrega",
+proNumber:               "PRO Number (carrier USA)",
+referenceNumber:         "Número de referencia",
+specialInstructions:     "Instrucciones especiales",
+linkedShipment:          "Embarque vinculado",
+
+// Mercancía
+cargoDescription:        "Descripción de la mercancía",
+satProductCode:          "Clave SAT (c_ClaveProdServCP)",
+packagingType:           "Tipo de embalaje",
+packagingDesc:           "Descripción del embalaje",
+hazmatKey:               "Material peligroso (SAT)",
+quantity:                "Cantidad",
+unit:                    "Unidad",
+satUnitCode:             "Clave unidad SAT",
+weightKg:                "Peso (kg)",
+weightLbs:               "Peso (lbs)",
+commercialValue:         "Valor comercial",
+tariffCode:              "Fracción arancelaria",
+tariffDescription:       "Descripción arancelaria",
+countryOfOrigin:         "País de origen",
+addItem:                 "Agregar mercancía",
+noItems:                 "Sin mercancías capturadas",
+
+// Acciones
+generatePDF:             "Generar PDF",
+generatingPDF:           "Generando PDF…",
+markAsSent:              "Marcar como enviada",
+template:                "Plantilla",
+templateElegante:        "Elegante",
+templateModerna:         "Moderna",
+templateCorporativa:     "Corporativa",
+
+// Conexión
+soLinkedTo:              "Vinculada al embarque",
+workspaceEmpty:          "Selecciona una orden de servicio",
+workspaceEmptyDesc:      "Aquí verás el detalle y podrás generar el PDF para enviar al transportista o agente aduanal.",
+},
+
 };
 
 export type TranslationKeys = typeof es;
