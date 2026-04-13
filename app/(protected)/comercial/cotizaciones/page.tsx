@@ -22,14 +22,15 @@ export default function CotizacionesPage() {
   const { companyId } = useTenant();
   const ctrl          = useQuotationsController();
   const {
-    filtered, selected, setSelected,
-    settings, loading, saving, detailLoading,
-    filters, setFilters,
-    createQuotation, updateStatus, acceptQuotation,
-    createItem, removeItem,
-    createService, removeService,
-    reload, reloadDetail,
-  } = ctrl;
+  filtered, selected, setSelected,
+  settings, loading, saving, detailLoading,
+  filters, setFilters,
+  createQuotation, updateStatus, acceptQuotation,
+  updateFields,
+  createItem, updateItem: updateItemFn, removeItem,
+  createService, updateService: updateServiceFn, removeService,
+  reload, reloadDetail,
+} = ctrl;
 
   const [showCreate,    setShowCreate]    = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
@@ -60,37 +61,6 @@ export default function CotizacionesPage() {
     } finally {
       setGeneratingPDF(false);
     }
-  }
-
-  // ── NUEVAS FUNCIONES DE EDICIÓN ─────────────────────────────
-
-  async function handleUpdateFields(id: string, updates: Partial<Quotation>) {
-    if (!companyId) return;
-    await updateQuotation(companyId, id, updates);
-    await reload();
-    await reloadDetail(id);
-  }
-
-  async function handleUpdateItem(
-    itemId: string,
-    updates: Partial<QuotationItem>,
-    quotationId: string,
-  ) {
-    if (!companyId) return;
-    await updateItem(companyId, itemId, { ...updates, quotation_id: quotationId });
-    await reloadDetail(quotationId);
-    await reload();
-  }
-
-  async function handleUpdateService(
-    serviceId: string,
-    updates: Partial<QuotationService>,
-    quotationId: string,
-  ) {
-    if (!companyId) return;
-    await updateService(companyId, serviceId, { ...updates, quotation_id: quotationId });
-    await reloadDetail(quotationId);
-    await reload();
   }
 
   // ───────────────────────────────────────────────────────────
@@ -141,9 +111,9 @@ export default function CotizacionesPage() {
           quotation={selected}
           detailLoading={detailLoading}
           onUpdateStatus={updateStatus}
-          onUpdateFields={handleUpdateFields}
-          onUpdateItem={handleUpdateItem}
-          onUpdateService={handleUpdateService}
+          onUpdateFields={updateFields}
+onUpdateItem={updateItemFn}
+onUpdateService={updateServiceFn}
           onAccept={acceptQuotation}
           onRemoveItem={removeItem}
           onRemoveService={removeService}
