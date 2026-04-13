@@ -2,12 +2,11 @@
 
 import type { Prospect } from "../types/prospects.types";
 import { buildProspectAutomationAlerts } from "../services/prospects.automation";
-import type { ProspectAutomationAlert } from "../services/prospects.automation";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type Props = {
   prospects: Prospect[];
-  onSelect: (p: Prospect) => void;
+  onSelect:  (p: Prospect) => void;
 };
 
 const SEVERITY_STYLE: Record<string, { color: string; bg: string; border: string }> = {
@@ -19,8 +18,7 @@ const SEVERITY_STYLE: Record<string, { color: string; bg: string; border: string
 
 export default function ProspectAutomationPanel({ prospects, onSelect }: Props) {
   const { t } = useTranslation();
-  const alerts = buildProspectAutomationAlerts(prospects);
-
+  const alerts    = buildProspectAutomationAlerts(prospects);
   const criticals = alerts.filter((a) => a.severity === "CRITICAL").length;
   const highs     = alerts.filter((a) => a.severity === "HIGH").length;
 
@@ -33,9 +31,10 @@ export default function ProspectAutomationPanel({ prospects, onSelect }: Props) 
       display: "grid", gap: "14px",
     }}>
       {/* HEADER */}
-      <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
-  {t.prospects.automationTitle ?? "Automatización comercial"}
-</div>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
+          {t.prospects.automationTitle ?? "Automatización comercial"}
+        </div>
         <div style={{ display: "flex", gap: "6px" }}>
           {criticals > 0 && (
             <span style={{
@@ -63,8 +62,8 @@ export default function ProspectAutomationPanel({ prospects, onSelect }: Props) 
         <div style={{
           padding: "20px", borderRadius: "var(--radius-md)",
           background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)",
-          textAlign: "center",
-          fontSize: "13px", fontWeight: 500, color: "var(--color-success-text)",
+          textAlign: "center", fontSize: "13px",
+          fontWeight: 500, color: "var(--color-success-text)",
         }}>
           {t.dashboard.allNormal}
         </div>
@@ -82,11 +81,9 @@ export default function ProspectAutomationPanel({ prospects, onSelect }: Props) 
                 key={alert.id}
                 onClick={() => onSelect(prospect)}
                 style={{
-                  padding: "12px",
-                  borderRadius: "var(--radius-md)",
+                  padding: "12px", borderRadius: "var(--radius-md)",
                   border: `1px solid ${sev.border}`,
-                  background: sev.bg,
-                  cursor: "pointer",
+                  background: sev.bg, cursor: "pointer",
                   display: "grid", gap: "6px",
                   transition: "var(--transition-fast)",
                 }}
@@ -110,8 +107,7 @@ export default function ProspectAutomationPanel({ prospects, onSelect }: Props) 
                   {desc}
                 </div>
                 <div style={{
-                  fontSize: "11px", fontWeight: 600,
-                  color: "var(--color-text-muted)",
+                  fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)",
                   display: "flex", alignItems: "center", gap: "4px",
                 }}>
                   <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
