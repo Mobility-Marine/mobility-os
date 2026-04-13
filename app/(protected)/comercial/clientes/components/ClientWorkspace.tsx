@@ -2,13 +2,14 @@
 
 import { useEffect, useState } from "react";
 import type { Client } from "../types/clients.types";
+import { TAX_REGIMES, CFDI_USES, PAYMENT_METHODS, PAYMENT_FORMS } from "../types/clients.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { getClientRole, getClientInitials, hasCompleteProfile } from "../services/clients.normalization";
 
 type Props = {
-  client:       Client | null;
-  onUpdate:     (id: string, updates: Partial<Client>) => Promise<void>;
-  onToggle:     (id: string, is_active: boolean) => Promise<void>;
+  client:        Client | null;
+  onUpdate:      (id: string, updates: Partial<Client>) => Promise<void>;
+  onToggle:      (id: string, is_active: boolean) => Promise<void>;
   detailLoading: boolean;
 };
 
@@ -19,7 +20,22 @@ const INPUT: React.CSSProperties = {
   fontSize: "13px", outline: "none", boxSizing: "border-box",
 };
 
-function Field({ label, children, half }: { label: string; children: React.ReactNode; half?: boolean }) {
+const SELECT: React.CSSProperties = { ...INPUT, cursor: "pointer" };
+
+function SectionTitle({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)",
+      textTransform: "uppercase", letterSpacing: "0.5px",
+      paddingBottom: "6px", borderBottom: "1px solid var(--color-border-faint)",
+      marginTop: "4px",
+    }}>
+      {children}
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
       <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
@@ -34,7 +50,7 @@ export default function ClientWorkspace({ client, onUpdate, onToggle, detailLoad
   const { t }               = useTranslation();
   const [form, setForm]     = useState<any>({});
   const [saving, setSaving] = useState(false);
-  const [saved, setSaved]   = useState(false);
+  const [saved,  setSaved]  = useState(false);
 
   useEffect(() => {
     if (client) setForm({ ...client });
@@ -94,16 +110,16 @@ export default function ClientWorkspace({ client, onUpdate, onToggle, detailLoad
     <div style={{
       background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)",
       borderRadius: "var(--radius-lg)", padding: "20px",
-      display: "flex", flexDirection: "column", gap: "16px",
+      display: "flex", flexDirection: "column", gap: "14px",
       height: "100%", minHeight: 0, overflow: "hidden",
     }}>
+
       {/* HEADER */}
       <div style={{ flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "14px" }}>
           <div style={{
             width: "48px", height: "48px", borderRadius: "50%", flexShrink: 0,
-            background: ROLE_COLOR[role] + "20",
-            border: `2px solid ${ROLE_COLOR[role]}40`,
+            background: ROLE_COLOR[role] + "20", border: `2px solid ${ROLE_COLOR[role]}40`,
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "16px", fontWeight: 800, color: ROLE_COLOR[role],
           }}>
@@ -117,9 +133,7 @@ export default function ClientWorkspace({ client, onUpdate, onToggle, detailLoad
               <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "var(--radius-full)", background: ROLE_COLOR[role] + "20", color: ROLE_COLOR[role] }}>
                 {(t.clients as any)?.[role] ?? role}
               </span>
-              {client.rfc && (
-                <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>RFC: {client.rfc}</span>
-              )}
+              {client.rfc && <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>RFC: {client.rfc}</span>}
               {!client.is_active && (
                 <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-danger-text)", padding: "2px 8px", background: "var(--color-danger-bg)", borderRadius: "var(--radius-full)" }}>
                   {t.general.inactive}
@@ -127,37 +141,26 @@ export default function ClientWorkspace({ client, onUpdate, onToggle, detailLoad
               )}
             </div>
           </div>
-          {/* ROLE TOGGLES */}
           <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
             {[
-              { key: "is_customer", label: (t.clients as any)?.customer ?? "Cliente" },
-              { key: "is_supplier", label: (t.clients as any)?.supplier ?? "Proveedor" },
+              { key: "is_customer", label: (t.clients as any)?.customer ?? "Cliente"    },
+              { key: "is_supplier", label: (t.clients as any)?.supplier ?? "Proveedor"  },
             ].map((r) => (
-              <button
-                key={r.key}
-                onClick={() => set(r.key, !form[r.key])}
-                style={{
-                  height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", cursor: "pointer",
-                  fontSize: "11px", fontWeight: 600,
-                  background: form[r.key] ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
-                  color:      form[r.key] ? "#fff" : "var(--color-text-muted)",
-                  border: `1px solid ${form[r.key] ? "var(--color-brand-blue)" : "var(--color-border)"}`,
-                  transition: "var(--transition-fast)",
-                }}
-              >
+              <button key={r.key} onClick={() => set(r.key, !form[r.key])} style={{
+                height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", cursor: "pointer",
+                fontSize: "11px", fontWeight: 600,
+                background: form[r.key] ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
+                color:      form[r.key] ? "#fff" : "var(--color-text-muted)",
+                border: `1px solid ${form[r.key] ? "var(--color-brand-blue)" : "var(--color-border)"}`,
+              }}>
                 {r.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* PROFILE COMPLETENESS */}
         {!complete && (
-          <div style={{
-            marginTop: "12px", padding: "8px 12px", borderRadius: "var(--radius-md)",
-            background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)",
-            fontSize: "12px", color: "var(--color-warning-text)", display: "flex", gap: "6px",
-          }}>
+          <div style={{ marginTop: "12px", padding: "8px 12px", borderRadius: "var(--radius-md)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", fontSize: "12px", color: "var(--color-warning-text)", display: "flex", gap: "6px" }}>
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ flexShrink: 0, marginTop: "1px" }}>
               <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
             </svg>
@@ -167,26 +170,20 @@ export default function ClientWorkspace({ client, onUpdate, onToggle, detailLoad
       </div>
 
       {/* FORM SCROLLABLE */}
-      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "12px", paddingRight: "4px" }}>
+      <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column", gap: "14px", paddingRight: "4px" }}>
 
-        {/* DATOS FISCALES */}
-        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-          {(t.clients as any)?.fiscalData ?? "Datos fiscales"}
-        </div>
+        {/* ── DATOS GENERALES ── */}
+        <SectionTitle>{(t.clients as any)?.generalData ?? "Datos generales"}</SectionTitle>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+          <Field label={(t.clients as any)?.name ?? "Nombre comercial"}>
+            <input value={form.name ?? ""} onChange={(e) => set("name", e.target.value)} placeholder="Empresa S.A." style={INPUT} />
+          </Field>
           <Field label={(t.clients as any)?.legalName ?? "Razón social"}>
             <input value={form.legal_name ?? ""} onChange={(e) => set("legal_name", e.target.value)} placeholder="Empresa S.A. de C.V." style={INPUT} />
           </Field>
           <Field label="RFC">
             <input value={form.rfc ?? ""} onChange={(e) => set("rfc", e.target.value.toUpperCase())} placeholder="EMP123456ABC" style={INPUT} />
           </Field>
-        </div>
-
-        {/* CONTACTO */}
-        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-          {(t.clients as any)?.contactData ?? "Contacto"}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
           <Field label={(t.clients as any)?.email ?? "Email"}>
             <input type="email" value={form.email ?? ""} onChange={(e) => set("email", e.target.value)} placeholder="contacto@empresa.com" style={INPUT} />
           </Field>
@@ -197,20 +194,88 @@ export default function ClientWorkspace({ client, onUpdate, onToggle, detailLoad
             <input value={form.website ?? ""} onChange={(e) => set("website", e.target.value)} placeholder="www.empresa.com" style={INPUT} />
           </Field>
           <Field label={(t.clients as any)?.city ?? "Ciudad"}>
-            <input value={form.city ?? ""} onChange={(e) => set("city", e.target.value)} placeholder="Guadalajara" style={INPUT} />
+            <input value={form.city ?? ""} onChange={(e) => set("city", e.target.value)} placeholder="Aguascalientes" style={INPUT} />
+          </Field>
+          <Field label={(t.clients as any)?.zipCode ?? "Código postal"}>
+            <input value={form.zip_code ?? ""} onChange={(e) => set("zip_code", e.target.value)} placeholder="20000" style={INPUT} />
           </Field>
         </div>
 
-        {/* COMERCIAL */}
-        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-          {(t.clients as any)?.commercialData ?? "Comercial"}
+        {/* ── INFORMACIÓN FISCAL ── */}
+        <SectionTitle>{(t.clients as any)?.taxInfo ?? "Información fiscal"}</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+          <Field label={(t.clients as any)?.taxRegime ?? "Régimen fiscal"}>
+            <select value={form.tax_regime ?? ""} onChange={(e) => set("tax_regime", e.target.value)} style={SELECT}>
+              <option value="">Seleccionar…</option>
+              {TAX_REGIMES.map((r) => <option key={r.value} value={r.value}>{r.value} — {r.label}</option>)}
+            </select>
+          </Field>
+          <Field label={(t.clients as any)?.cfdiUse ?? "Uso de CFDI"}>
+            <select value={form.cfdi_use ?? ""} onChange={(e) => set("cfdi_use", e.target.value)} style={SELECT}>
+              <option value="">Seleccionar…</option>
+              {CFDI_USES.map((u) => <option key={u.value} value={u.value}>{u.value} — {u.label}</option>)}
+            </select>
+          </Field>
+          <Field label={(t.clients as any)?.billingEmail ?? "Email de facturación"}>
+            <input type="email" value={form.billing_email ?? ""} onChange={(e) => set("billing_email", e.target.value)} placeholder="facturas@empresa.com" style={INPUT} />
+          </Field>
+          <Field label={(t.clients as any)?.paymentMethod ?? "Forma de pago (SAT)"}>
+            <select value={form.payment_method ?? ""} onChange={(e) => set("payment_method", e.target.value)} style={SELECT}>
+              <option value="">Seleccionar…</option>
+              {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.value} — {m.label}</option>)}
+            </select>
+          </Field>
+          <Field label="PUE / PPD">
+            <select value={form.payment_form ?? "PPD"} onChange={(e) => set("payment_form", e.target.value)} style={SELECT}>
+              {PAYMENT_FORMS.map((p) => <option key={p.value} value={p.value}>{p.value} — {p.label.split(" — ")[1] ?? p.label}</option>)}
+            </select>
+          </Field>
         </div>
+
+        {/* ── DIRECCIÓN FISCAL ── */}
+        <SectionTitle>{(t.clients as any)?.fiscalAddress ?? "Dirección fiscal"}</SectionTitle>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "10px" }}>
+          <Field label="Calle">
+            <input value={form.billing_street ?? ""} onChange={(e) => set("billing_street", e.target.value)} placeholder="Av. Principal" style={INPUT} />
+          </Field>
+          <Field label="No. Exterior">
+            <input value={form.billing_ext_number ?? ""} onChange={(e) => set("billing_ext_number", e.target.value)} placeholder="123" style={INPUT} />
+          </Field>
+          <Field label="No. Interior">
+            <input value={form.billing_int_number ?? ""} onChange={(e) => set("billing_int_number", e.target.value)} placeholder="A" style={INPUT} />
+          </Field>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "10px" }}>
+          <Field label="Colonia">
+            <input value={form.billing_neighborhood ?? ""} onChange={(e) => set("billing_neighborhood", e.target.value)} placeholder="Col. Centro" style={INPUT} />
+          </Field>
+          <Field label="C.P.">
+            <input value={form.billing_zip_code ?? form.zip_code ?? ""} onChange={(e) => set("billing_zip_code", e.target.value)} placeholder="20000" style={INPUT} />
+          </Field>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+          <Field label="Ciudad">
+            <input value={form.billing_city ?? ""} onChange={(e) => set("billing_city", e.target.value)} placeholder="Aguascalientes" style={INPUT} />
+          </Field>
+          <Field label="Estado">
+            <input value={form.billing_state ?? ""} onChange={(e) => set("billing_state", e.target.value)} placeholder="Aguascalientes" style={INPUT} />
+          </Field>
+          <Field label="País">
+            <input value={form.billing_country ?? "México"} onChange={(e) => set("billing_country", e.target.value)} placeholder="México" style={INPUT} />
+          </Field>
+        </div>
+
+        {/* ── COMERCIAL ── */}
+        <SectionTitle>{(t.clients as any)?.commercialData ?? "Comercial"}</SectionTitle>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
           <Field label={(t.clients as any)?.creditLimit ?? "Límite de crédito"}>
             <input type="number" value={form.credit_limit ?? ""} onChange={(e) => set("credit_limit", Number(e.target.value))} placeholder="50000" style={INPUT} />
           </Field>
           <Field label={(t.clients as any)?.paymentTerms ?? "Términos de pago"}>
-            <input value={form.payment_terms ?? ""} onChange={(e) => set("payment_terms", e.target.value)} placeholder="30 días neto" style={INPUT} />
+            <select value={form.payment_terms ?? ""} onChange={(e) => set("payment_terms", e.target.value)} style={SELECT}>
+              <option value="">— Seleccionar —</option>
+              {["Contado","7 días","15 días","30 días","45 días","60 días","90 días"].map((p) => <option key={p} value={p}>{p}</option>)}
+            </select>
           </Field>
         </div>
 
@@ -223,27 +288,24 @@ export default function ClientWorkspace({ client, onUpdate, onToggle, detailLoad
           />
         </Field>
 
-        {/* ACTIONS */}
+        {/* ── ACTIONS ── */}
         <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", paddingBottom: "8px" }}>
           <button onClick={handleSave} disabled={saving} style={{
             height: "36px", padding: "0 20px", borderRadius: "var(--radius-md)",
             background: saved ? "var(--color-success-text)" : "var(--color-brand-blue)",
             color: "#fff", border: "none", fontSize: "13px", fontWeight: 700,
-            cursor: saving ? "not-allowed" : "pointer", transition: "var(--transition-fast)",
+            cursor: saving ? "not-allowed" : "pointer",
           }}>
-            {saving ? t.general.loading : saved ? (t.clients as any)?.saved ?? "Guardado" : t.general.save}
+            {saving ? t.general.loading : saved ? ((t.clients as any)?.saved ?? "Guardado ✓") : t.general.save}
           </button>
-          <button
-            onClick={() => onToggle(client.id, !client.is_active)}
-            style={{
-              height: "36px", padding: "0 14px", borderRadius: "var(--radius-md)",
-              background: client.is_active ? "var(--color-danger-bg)" : "var(--color-success-bg)",
-              border: `1px solid ${client.is_active ? "var(--color-danger-border)" : "var(--color-success-border)"}`,
-              color: client.is_active ? "var(--color-danger-text)" : "var(--color-success-text)",
-              fontSize: "13px", fontWeight: 600, cursor: "pointer",
-            }}
-          >
-            {client.is_active ? (t.clients as any)?.deactivate ?? "Desactivar" : (t.clients as any)?.activate ?? "Activar"}
+          <button onClick={() => onToggle(client.id, !client.is_active)} style={{
+            height: "36px", padding: "0 14px", borderRadius: "var(--radius-md)",
+            background: client.is_active ? "var(--color-danger-bg)" : "var(--color-success-bg)",
+            border: `1px solid ${client.is_active ? "var(--color-danger-border)" : "var(--color-success-border)"}`,
+            color: client.is_active ? "var(--color-danger-text)" : "var(--color-success-text)",
+            fontSize: "13px", fontWeight: 600, cursor: "pointer",
+          }}>
+            {client.is_active ? ((t.clients as any)?.deactivate ?? "Desactivar") : ((t.clients as any)?.activate ?? "Activar")}
           </button>
         </div>
       </div>
