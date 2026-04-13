@@ -43,28 +43,42 @@ export default function ProspectsSidebar({
       height: "100%", minHeight: 0, overflow: "hidden",
     }}>
       {/* HEADER */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
-        <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-          {t.prospects.title}
-        </div>
-        <button
-          onClick={onOpenCreate}
-          style={{
-            height: "30px", padding: "0 12px",
-            borderRadius: "var(--radius-md)",
-            background: "var(--color-brand-blue)",
-            color: "#fff", border: "none",
-            fontSize: "12px", fontWeight: 700,
-            cursor: "pointer",
-            display: "flex", alignItems: "center", gap: "5px",
-          }}
-        >
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          {t.prospects.newProspect}
-        </button>
-      </div>
+<div style={{ flexShrink: 0, marginBottom: "4px" }}>
+  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "1px" }}>
+        {t.prospects.title}
+      </span>
+      <span style={{
+        fontSize: "11px", fontWeight: 700,
+        padding: "1px 7px", borderRadius: "var(--radius-full)",
+        background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)",
+        color: "var(--color-text-muted)",
+      }}>
+        {prospects.length}
+      </span>
+    </div>
+  </div>
+  <button
+    onClick={onOpenCreate}
+    style={{
+      width: "100%", height: "36px",
+      borderRadius: "var(--radius-md)",
+      background: "var(--color-brand-blue)",
+      color: "#fff", border: "none",
+      fontSize: "13px", fontWeight: 700,
+      cursor: "pointer",
+      display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+      boxShadow: "var(--shadow-brand-blue)",
+      marginBottom: "10px",
+    }}
+  >
+    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+    </svg>
+    {t.prospects.newProspect}
+  </button>
+</div>
 
       {/* SEARCH */}
       <div style={{ position: "relative", flexShrink: 0 }}>
