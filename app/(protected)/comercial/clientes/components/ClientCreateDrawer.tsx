@@ -407,7 +407,7 @@ export default function ClientCreateDrawer({ open, onClose, onCreate }: Props) {
               )}
 
               {/* DOCUMENTS */}
-              <SectionTitle style={{ marginTop: "8px" }}>{(t.clients as any)?.documents ?? "Documentos legales"}</SectionTitle>
+              <SectionTitle>{(t.clients as any)?.documents ?? "Documentos legales"}</SectionTitle>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <Field label={(t.clients as any)?.docName ?? "Nombre"}>
                   <input value={docForm.name} onChange={(e) => setDF("name", e.target.value)} placeholder="Contrato marco 2024" style={INPUT} />
