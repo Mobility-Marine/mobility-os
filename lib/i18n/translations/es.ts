@@ -711,7 +711,6 @@ crm: {
   actNote:              "Nota",
   actWhatsapp:          "WhatsApp",
   actVisit:             "Visita",
-  strategic:            "Estratégica",
 },
   
 };
