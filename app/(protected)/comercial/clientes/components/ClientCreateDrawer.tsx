@@ -180,7 +180,7 @@ export default function ClientCreateDrawer({ open, onClose, onCreate }: Props) {
   function handleClose() {
     setStep("basic");
     setBasic({ name: "", legal_name: "", rfc: "", email: "", phone: "", website: "", city: "", zip_code: "", country: "México", is_customer: true, is_supplier: false, notes: "" });
-    setFiscal({ tax_regime: "", cfdi_use: "", billing_email: "", billing_address: "", payment_method: "", payment_terms: "", credit_limit: "" });
+    setFiscal({ tax_regime: "", cfdi_use: "", billing_email: "", payment_method: "", payment_form: "PPD", payment_terms: "", credit_limit: "", billing_street: "", billing_ext_number: "", billing_int_number: "", billing_neighborhood: "", zip_code: "", billing_city: "", billing_state: "", billing_country: "México" });
     setContacts([]); setDocuments([]);
     setContactForm({ name: "", role: "general", title: "", email: "", phone: "", is_primary: false });
     setDocForm({ name: "", type: "contract", url: "", notes: "" });
