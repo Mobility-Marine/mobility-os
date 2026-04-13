@@ -66,7 +66,15 @@ export default function FTWorkspace({ op, onUpdate, onDelete, onReload, saving }
 
   const stCfg   = TRADE_STATUS_CONFIG[op.status];
   const items   = op.items ?? [];
-  const stLabel = tl[`status${op.status.charAt(0).toUpperCase()}${op.status.slice(1).replace(/_([a-z])/g, (_: string, l: string) => l.toUpperCase())}`] ?? op.status;
+  const STATUS_LABEL_MAP: Record<string, string> = {
+  open:        tl.statusOpen        ?? "Abierta",
+  in_process:  tl.statusInProcess   ?? "En proceso",
+  at_customs:  tl.statusAtCustoms   ?? "En aduana",
+  released:    tl.statusReleased    ?? "Liberada",
+  closed:      tl.statusClosed      ?? "Cerrada",
+  cancelled:   tl.ftStatusCancelled ?? "Cancelada",
+};
+const stLabel = STATUS_LABEL_MAP[op.status] ?? op.status;
 
   function set(k: keyof ForeignTradeOperation, v: any) { setForm((p) => ({ ...p, [k]: v })); }
 
