@@ -64,6 +64,7 @@ export default function ProspectDailyActionPanel({ prospects, onSelect }: Props)
       borderRadius: "var(--radius-lg)",
       padding: "18px",
       display: "grid", gap: "14px",
+      height: "100%", overflowY: "auto",
     }}>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
