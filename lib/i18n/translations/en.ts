@@ -1234,7 +1234,6 @@ overdueDelivery:        "Delivery overdue",
 daysLate:               "days late",
 workspaceEmpty:         "Select a shipment",
 workspaceEmptyDesc:     "Here you'll see shipment detail, services, documents and service orders.",
-},
 
 serviceOrders:           "Service orders",
 serviceOrdersDesc:       "CCP + Instructions, BOL USA, Customs agent letter.",
