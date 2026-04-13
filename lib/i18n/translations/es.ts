@@ -957,6 +957,8 @@ products: {
   // Margin
   marginGain:         "Margen de ganancia",
   gainPerUnit:        "Ganancia por unidad",
+  back:               "Atrás",
+  next:               "Siguiente",
 },
   
 };
