@@ -160,7 +160,10 @@ export default function ClientImportExport({ clients, onImported }: Props) {
             background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)",
             fontSize: "11px", color: "var(--color-info-text)", lineHeight: 1.6,
           }}>
-            <strong>Formato aceptado:</strong> CSV con encabezados en español. Descarga la plantilla para ver el formato exacto. Columnas requeridas: <strong>nombre_comercial</strong>.
+            <strong>{(t.clients as any)?.importFormatLabel ?? "Formato aceptado"}:</strong>{" "}
+{(t.clients as any)?.importFormatDesc ?? "CSV con encabezados en español. Descarga la plantilla para ver el formato exacto."}{" "}
+{(t.clients as any)?.importRequired ?? "Columnas requeridas:"}{" "}
+<strong>nombre_comercial</strong>.
           </div>
         </>
       )}
