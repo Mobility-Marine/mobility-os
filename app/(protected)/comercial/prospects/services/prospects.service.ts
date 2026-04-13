@@ -1,64 +1,18 @@
-"use client";
-
 // ============================================================
-// PROSPECTS SERVICE — ENTERPRISE ACQUISITION ENGINE
-// Fuente única de datos para prospectos (NO clientes)
+// PROSPECTS SERVICE v2 — GOD LEVEL
+// Fuente única de datos para prospectos
 // ============================================================
 
 import { supabase } from "@/lib/supabaseClient";
+import type { Prospect, ProspectStage } from "../types/prospects.types";
+import { normalizeStage, normalizeSource } from "./prospects.normalization";
+import { logProspectTimelineEvent } from "./prospects.activities.service";
 
-import type {
-  Prospect,
-  ProspectActivity,
-  ProspectFollowup,
-  ProspectTask,
-  ProspectStage,
-} from "../types/prospects.types";
+// ────────────────────────────────────────────────────────────
+// FETCH LISTA
+// ────────────────────────────────────────────────────────────
 
-// ============================================================
-// 🔁 NORMALIZACIÓN DE ETAPAS
-// Convierte status legacy → etapas enterprise
-// ============================================================
-
-function normalizeStage(status: string | null): ProspectStage {
-  const s = (status || "").toLowerCase();
-
-  if (s.includes("new")) return "new";
-  if (s.includes("contact")) return "contacted";
-  if (s.includes("qual")) return "qualified";
-  if (s.includes("prop")) return "proposal";
-  if (s.includes("nego")) return "negotiation";
-  if (s.includes("convert")) return "converted";
-  if (s.includes("lost")) return "lost";
-
-  return "new";
-}
-
-// ============================================================
-// 🏷️ NORMALIZACIÓN DE SOURCE
-// ============================================================
-
-function normalizeSource(value: string | null) {
-  const s = (value || "").toLowerCase();
-
-  if (s.includes("refer")) return "referral";
-  if (s.includes("web")) return "website";
-  if (s.includes("whats")) return "whatsapp";
-  if (s.includes("call")) return "call";
-  if (s.includes("email")) return "email";
-  if (s.includes("camp")) return "campaign";
-  if (s.includes("manual")) return "manual";
-
-  return "unknown";
-}
-
-// ============================================================
-// 🔥 FETCH PROSPECTOS
-// ============================================================
-
-export async function fetchProspects(
-  companyId: string
-): Promise<Prospect[]> {
+export async function fetchProspects(companyId: string): Promise<Prospect[]> {
   const { data } = await supabase
     .from("prospects")
     .select("*")
@@ -69,180 +23,158 @@ export async function fetchProspects(
 
   return data.map((p) => ({
     ...p,
-    stage: normalizeStage(p.status),
+    stage:            normalizeStage(p.status),
     sourceNormalized: normalizeSource(p.lead_source),
   })) as Prospect[];
 }
 
-// ============================================================
-// 📊 FETCH ACTIVIDADES
-// ============================================================
+// ────────────────────────────────────────────────────────────
+// FETCH INDIVIDUAL
+// ────────────────────────────────────────────────────────────
 
-export async function fetchProspectActivities(
+export async function fetchProspectById(
+  companyId: string,
   prospectId: string
-): Promise<ProspectActivity[]> {
+): Promise<Prospect | null> {
   const { data } = await supabase
-    .from("prospect_activities")
+    .from("prospects")
     .select("*")
-    .eq("prospect_id", prospectId)
-    .order("activity_date", { ascending: false });
+    .eq("id", prospectId)
+    .eq("company_id", companyId)
+    .single();
 
-  return (data || []) as ProspectActivity[];
-}
-
-// ============================================================
-// ⏰ FETCH FOLLOWUPS
-// ============================================================
-
-export async function fetchProspectFollowups(
-  prospectId: string
-): Promise<ProspectFollowup[]> {
-  const { data } = await supabase
-    .from("prospect_followups")
-    .select("*")
-    .eq("prospect_id", prospectId)
-    .order("activity_date", { ascending: false });
-
-  return (data || []) as ProspectFollowup[];
-}
-
-// ============================================================
-// ✅ FETCH TAREAS
-// ============================================================
-
-export async function fetchProspectTasks(
-  prospectId: string
-): Promise<ProspectTask[]> {
-  const { data } = await supabase
-    .from("prospect_tasks")
-    .select("*")
-    .eq("prospect_id", prospectId)
-    .order("due_date", { ascending: true });
-
-  return (data || []) as ProspectTask[];
-}
-
-// ============================================================
-// 🧠 FETCH SNAPSHOT COMPLETO DE PROSPECTO
-// ============================================================
-
-export async function fetchProspectSnapshot(
-  prospectId: string
-) {
-  const [activities, followups, tasks] = await Promise.all([
-    fetchProspectActivities(prospectId),
-    fetchProspectFollowups(prospectId),
-    fetchProspectTasks(prospectId),
-  ]);
+  if (!data) return null;
 
   return {
-    activities,
-    followups,
-    tasks,
-  };
+    ...data,
+    stage:            normalizeStage(data.status),
+    sourceNormalized: normalizeSource(data.lead_source),
+  } as Prospect;
 }
 
-// ============================================================
-// ➕ CREAR PROSPECTO
-// ============================================================
+// ────────────────────────────────────────────────────────────
+// CREAR
+// ────────────────────────────────────────────────────────────
 
 export async function createProspect(
   companyId: string,
   payload: {
-    name?: string;
-    company_name?: string;
-    email?: string;
-    phone?: string;
-    lead_source?: string;
+    name?:               string;
+    company_name?:       string;
+    email?:              string;
+    phone?:              string;
+    lead_source?:        string;
     interested_service?: string;
-    notes?: string;
-    estimated_value?: number;
+    notes?:              string;
+    estimated_value?:    number;
+    assigned_to?:        string;
+    created_by?:         string;
+    tags?:               string[];
   }
-) {
+): Promise<Prospect> {
   const { data, error } = await supabase
     .from("prospects")
     .insert({
-      company_id: companyId,
-      name: payload.name || null,
-      company_name: payload.company_name || null,
-      email: payload.email || null,
-      phone: payload.phone || null,
-      lead_source: payload.lead_source || "manual",
-      interested_service: payload.interested_service || null,
-      notes: payload.notes || null,
-      estimated_value: payload.estimated_value || null,
-      status: "new",
-      is_active: true,
+      company_id:         companyId,
+      name:               payload.name               ?? null,
+      company_name:       payload.company_name       ?? null,
+      email:              payload.email              ?? null,
+      phone:              payload.phone              ?? null,
+      lead_source:        payload.lead_source        ?? "manual",
+      interested_service: payload.interested_service ?? null,
+      notes:              payload.notes              ?? null,
+      estimated_value:    payload.estimated_value    ?? null,
+      assigned_to:        payload.assigned_to        ?? null,
+      created_by:         payload.created_by         ?? null,
+      tags:               payload.tags               ?? null,
+      status:             "new",
+      is_active:          true,
     })
     .select("*")
     .single();
 
   if (error) throw error;
 
-  return data as Prospect;
+  // Log creación en timeline global
+  await logProspectTimelineEvent(companyId, data.id, {
+    event_type:     "created",
+    event_category: "commercial",
+    title:          "Prospecto creado",
+    description:    data.company_name || data.name || "",
+  });
+
+  return {
+    ...data,
+    stage:            normalizeStage(data.status),
+    sourceNormalized: normalizeSource(data.lead_source),
+  } as Prospect;
 }
 
-// ============================================================
-// ✏️ ACTUALIZAR PROSPECTO
-// ============================================================
+// ────────────────────────────────────────────────────────────
+// ACTUALIZAR
+// ────────────────────────────────────────────────────────────
 
 export async function updateProspect(
   prospectId: string,
   updates: Partial<Prospect>
-) {
+): Promise<void> {
+  const { stage, sourceNormalized, health, activities, followups,
+    tasks, notes_list, estimations, timeline, ...dbUpdates } = updates;
+
   const { error } = await supabase
     .from("prospects")
-    .update(updates)
+    .update({ ...dbUpdates, updated_at: new Date().toISOString() })
     .eq("id", prospectId);
 
   if (error) throw error;
 }
 
-// ============================================================
-// ❌ DESACTIVAR PROSPECTO
-// (NO borrar — auditoría)
-// ============================================================
-
-export async function archiveProspect(prospectId: string) {
-  const { error } = await supabase
-    .from("prospects")
-    .update({
-      is_active: false,
-      status: "lost",
-    })
-    .eq("id", prospectId);
-
-  if (error) throw error;
-}
-
-// ============================================================
-// 📌 CAMBIAR ETAPA PIPELINE
-// ============================================================
+// ────────────────────────────────────────────────────────────
+// CAMBIO DE ETAPA (con log en timeline)
+// ────────────────────────────────────────────────────────────
 
 export async function updateProspectStage(
+  companyId: string,
   prospectId: string,
   stage: ProspectStage
-) {
+): Promise<void> {
+  const { error } = await supabase
+    .from("prospects")
+    .update({ status: stage, updated_at: new Date().toISOString() })
+    .eq("id", prospectId);
+
+  if (error) throw error;
+
+  await logProspectTimelineEvent(companyId, prospectId, {
+    event_type:     "stage_change",
+    event_category: "commercial",
+    title:          `Etapa: ${stage}`,
+    description:    `Movido a ${stage}`,
+  });
+}
+
+// ────────────────────────────────────────────────────────────
+// ARCHIVAR / MARCAR COMO PERDIDO
+// ────────────────────────────────────────────────────────────
+
+export async function archiveProspect(
+  companyId: string,
+  prospectId: string
+): Promise<void> {
   const { error } = await supabase
     .from("prospects")
     .update({
-      status: stage,
+      is_active:   false,
+      status:      "lost",
+      updated_at:  new Date().toISOString(),
     })
     .eq("id", prospectId);
 
   if (error) throw error;
-}
 
-// ============================================================
-// 💰 ESTIMACIONES COMERCIALES
-// ============================================================
-
-export async function fetchEstimations(prospectId: string) {
-  const { data } = await supabase
-    .from("prospect_estimations")
-    .select("*")
-    .eq("prospect_id", prospectId)
-    .order("created_at", { ascending: false });
-
-  return data || [];
+  await logProspectTimelineEvent(companyId, prospectId, {
+    event_type:     "lost",
+    event_category: "commercial",
+    title:          "Marcado como perdido",
+  });
 }
