@@ -71,10 +71,13 @@ export default function ClientCreateDrawer({ open, onClose, onCreate }: Props) {
 
   // Step 2 — Fiscal
   const [fiscal, setFiscal] = useState({
-    tax_regime: "", cfdi_use: "", billing_email: "",
-    billing_address: "", payment_method: "",
-    payment_terms: "", credit_limit: "",
-  });
+  tax_regime: "", cfdi_use: "", billing_email: "",
+  payment_method: "", payment_form: "PPD",
+  payment_terms: "", credit_limit: "",
+  billing_street: "", billing_ext_number: "", billing_int_number: "",
+  billing_neighborhood: "", zip_code: "", billing_city: "",
+  billing_state: "", billing_country: "México",
+});
 
   // Step 3 — Contacts
   const [contacts, setContacts] = useState<{
@@ -132,37 +135,47 @@ export default function ClientCreateDrawer({ open, onClose, onCreate }: Props) {
   }
 
   async function handleCreate() {
-    setSaving(true);
-    try {
-      await onCreate(
-        {
-          name:           basic.name,
-          legal_name:     basic.legal_name     || undefined,
-          rfc:            basic.rfc            || undefined,
-          email:          basic.email          || undefined,
-          phone:          basic.phone          || undefined,
-          website:        basic.website        || undefined,
-          city:           basic.city           || undefined,
-          zip_code:       basic.zip_code       || undefined,
-          country:        basic.country        || "México",
-          is_customer:    basic.is_customer,
-          is_supplier:    basic.is_supplier,
-          notes:          basic.notes          || undefined,
-          tax_regime:     fiscal.tax_regime    || undefined,
-          cfdi_use:       fiscal.cfdi_use      || undefined,
-          billing_email:  fiscal.billing_email || undefined,
-          billing_address:fiscal.billing_address || undefined,
-          payment_method: fiscal.payment_method || undefined,
-          payment_terms:  fiscal.payment_terms  || undefined,
-          credit_limit:   fiscal.credit_limit ? Number(fiscal.credit_limit) : undefined,
-        },
-        contacts,
-        documents
-      );
-      handleClose();
-    } catch { setError((t.clients as any)?.createError ?? "Error al crear"); }
-    finally { setSaving(false); }
+  setSaving(true);
+  try {
+    await onCreate(
+      {
+        name:                 basic.name,
+        legal_name:           basic.legal_name            || undefined,
+        rfc:                  basic.rfc                   || undefined,
+        email:                basic.email                 || undefined,
+        phone:                basic.phone                 || undefined,
+        website:              basic.website               || undefined,
+        city:                 basic.city                  || undefined,
+        zip_code:             basic.zip_code              || undefined,
+        country:              basic.country               || "México",
+        is_customer:          basic.is_customer,
+        is_supplier:          basic.is_supplier,
+        notes:                basic.notes                 || undefined,
+        tax_regime:           fiscal.tax_regime           || undefined,
+        cfdi_use:             fiscal.cfdi_use             || undefined,
+        billing_email:        fiscal.billing_email        || undefined,
+        payment_method:       fiscal.payment_method       || undefined,
+        payment_form:         fiscal.payment_form         || "PPD",
+        payment_terms:        fiscal.payment_terms        || undefined,
+        credit_limit:         fiscal.credit_limit ? Number(fiscal.credit_limit) : undefined,
+        billing_street:       fiscal.billing_street       || undefined,
+        billing_ext_number:   fiscal.billing_ext_number   || undefined,
+        billing_int_number:   fiscal.billing_int_number   || undefined,
+        billing_neighborhood: fiscal.billing_neighborhood || undefined,
+        billing_city:         fiscal.billing_city         || undefined,
+        billing_state:        fiscal.billing_state        || undefined,
+        billing_country:      fiscal.billing_country      || "México",
+      },
+      contacts,
+      documents
+    );
+    handleClose();
+  } catch {
+    setError((t.clients as any)?.createError ?? "Error al crear");
+  } finally {
+    setSaving(false);
   }
+}
 
   function handleClose() {
     setStep("basic");
@@ -303,47 +316,81 @@ export default function ClientCreateDrawer({ open, onClose, onCreate }: Props) {
           )}
 
           {/* ── STEP 2: FISCAL ── */}
-          {step === "fiscal" && (
-            <>
-              <SectionTitle>{(t.clients as any)?.taxInfo ?? "Información fiscal"}</SectionTitle>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <Field label={(t.clients as any)?.taxRegime ?? "Régimen fiscal"}>
-                  <select value={fiscal.tax_regime} onChange={(e) => setF("tax_regime", e.target.value)} style={SELECT}>
-                    <option value="">Seleccionar…</option>
-                    {TAX_REGIMES.map((r) => <option key={r.value} value={r.value}>{r.value} — {r.label}</option>)}
-                  </select>
-                </Field>
-                <Field label={(t.clients as any)?.cfdiUse ?? "Uso de CFDI"}>
-                  <select value={fiscal.cfdi_use} onChange={(e) => setF("cfdi_use", e.target.value)} style={SELECT}>
-                    <option value="">Seleccionar…</option>
-                    {CFDI_USES.map((u) => <option key={u.value} value={u.value}>{u.value} — {u.label}</option>)}
-                  </select>
-                </Field>
-              </div>
+{step === "fiscal" && (
+  <>
+    <SectionTitle>{(t.clients as any)?.taxInfo ?? "Información fiscal"}</SectionTitle>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+      <Field label={(t.clients as any)?.taxRegime ?? "Régimen fiscal"}>
+        <select value={fiscal.tax_regime} onChange={(e) => setF("tax_regime", e.target.value)} style={SELECT}>
+          <option value="">Seleccionar…</option>
+          {TAX_REGIMES.map((r) => <option key={r.value} value={r.value}>{r.value} — {r.label}</option>)}
+        </select>
+      </Field>
+      <Field label={(t.clients as any)?.cfdiUse ?? "Uso de CFDI"}>
+        <select value={fiscal.cfdi_use} onChange={(e) => setF("cfdi_use", e.target.value)} style={SELECT}>
+          <option value="">Seleccionar…</option>
+          {CFDI_USES.map((u) => <option key={u.value} value={u.value}>{u.value} — {u.label}</option>)}
+        </select>
+      </Field>
+    </div>
 
-              <SectionTitle>{(t.clients as any)?.billingData ?? "Datos de facturación"}</SectionTitle>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <Field label={(t.clients as any)?.billingEmail ?? "Email de facturación"}>
-                  <input type="email" value={fiscal.billing_email} onChange={(e) => setF("billing_email", e.target.value)} placeholder="facturas@empresa.com" style={INPUT} />
-                </Field>
-                <Field label={(t.clients as any)?.paymentMethod ?? "Forma de pago (SAT)"}>
-                  <select value={fiscal.payment_method} onChange={(e) => setF("payment_method", e.target.value)} style={SELECT}>
-                    <option value="">Seleccionar…</option>
-                    {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.value} — {m.label}</option>)}
-                  </select>
-                </Field>
-                <Field label={(t.clients as any)?.billingAddress ?? "Dirección fiscal"}>
-                  <input value={fiscal.billing_address} onChange={(e) => setF("billing_address", e.target.value)} placeholder="Av. Principal 123, Colonia…" style={INPUT} />
-                </Field>
-                <Field label={(t.clients as any)?.paymentTerms ?? "Condiciones de pago"}>
-                  <input value={fiscal.payment_terms} onChange={(e) => setF("payment_terms", e.target.value)} placeholder="30 días neto" style={INPUT} />
-                </Field>
-                <Field label={(t.clients as any)?.creditLimit ?? "Límite de crédito"}>
-                  <input type="number" value={fiscal.credit_limit} onChange={(e) => setF("credit_limit", e.target.value)} placeholder="50000" style={INPUT} />
-                </Field>
-              </div>
-            </>
-          )}
+    <SectionTitle>{(t.clients as any)?.billingData ?? "Datos de facturación"}</SectionTitle>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+      <Field label={(t.clients as any)?.billingEmail ?? "Email de facturación"}>
+        <input type="email" value={fiscal.billing_email} onChange={(e) => setF("billing_email", e.target.value)} placeholder="facturas@empresa.com" style={INPUT} />
+      </Field>
+      <Field label={(t.clients as any)?.paymentMethod ?? "Forma de pago (SAT)"}>
+        <select value={fiscal.payment_method} onChange={(e) => setF("payment_method", e.target.value)} style={SELECT}>
+          <option value="">Seleccionar…</option>
+          {PAYMENT_METHODS.map((m) => <option key={m.value} value={m.value}>{m.value} — {m.label}</option>)}
+        </select>
+      </Field>
+      <Field label="PUE / PPD *">
+        <select value={fiscal.payment_form} onChange={(e) => setF("payment_form", e.target.value)} style={SELECT}>
+          {PAYMENT_FORMS.map((p) => <option key={p.value} value={p.value}>{p.value} — {p.label.split(" — ")[1]}</option>)}
+        </select>
+      </Field>
+      <Field label={(t.clients as any)?.paymentTerms ?? "Condiciones de pago"}>
+        <input value={fiscal.payment_terms} onChange={(e) => setF("payment_terms", e.target.value)} placeholder="30 días neto" style={INPUT} />
+      </Field>
+      <Field label={(t.clients as any)?.creditLimit ?? "Límite de crédito"}>
+        <input type="number" value={fiscal.credit_limit} onChange={(e) => setF("credit_limit", e.target.value)} placeholder="50000" style={INPUT} />
+      </Field>
+    </div>
+
+    <SectionTitle>{(t.clients as any)?.fiscalAddress ?? "Dirección fiscal"}</SectionTitle>
+    <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: "10px" }}>
+      <Field label="Calle">
+        <input value={fiscal.billing_street} onChange={(e) => setF("billing_street", e.target.value)} placeholder="Av. Principal" style={INPUT} />
+      </Field>
+      <Field label="No. Exterior">
+        <input value={fiscal.billing_ext_number} onChange={(e) => setF("billing_ext_number", e.target.value)} placeholder="123" style={INPUT} />
+      </Field>
+      <Field label="No. Interior">
+        <input value={fiscal.billing_int_number} onChange={(e) => setF("billing_int_number", e.target.value)} placeholder="A" style={INPUT} />
+      </Field>
+    </div>
+    <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "10px" }}>
+      <Field label="Colonia">
+        <input value={fiscal.billing_neighborhood} onChange={(e) => setF("billing_neighborhood", e.target.value)} placeholder="Col. Centro" style={INPUT} />
+      </Field>
+      <Field label="C.P. *" required>
+        <input value={fiscal.zip_code} onChange={(e) => setF("zip_code", e.target.value)} placeholder="44100" style={INPUT} />
+      </Field>
+    </div>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
+      <Field label="Ciudad">
+        <input value={fiscal.billing_city} onChange={(e) => setF("billing_city", e.target.value)} placeholder="Guadalajara" style={INPUT} />
+      </Field>
+      <Field label="Estado">
+        <input value={fiscal.billing_state} onChange={(e) => setF("billing_state", e.target.value)} placeholder="Jalisco" style={INPUT} />
+      </Field>
+      <Field label="País">
+        <input value={fiscal.billing_country} onChange={(e) => setF("billing_country", e.target.value)} placeholder="México" style={INPUT} />
+      </Field>
+    </div>
+  </>
+)}
 
           {/* ── STEP 3: CONTACTS + DOCS ── */}
           {step === "contacts" && (
