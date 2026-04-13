@@ -1,137 +1,98 @@
-"use client";
-
 // ============================================================
-// CUSTOMER GRAPH — Fuente única de datos de clientes
+// CUSTOMER GRAPH — Datos por cuenta CRM
+// Tablas correctas · Sin "use client"
 // ============================================================
 
 import { supabase } from "@/lib/supabaseClient";
 import type {
-  CrmAccount,
-  CrmActivity,
-  CrmContact,
-  CrmOpportunity,
-  CrmQuote,
-  CrmOrder,
+  CrmAccount, CrmActivity, CrmContact,
+  CrmOpportunity, CrmQuote, CrmOrder,
 } from "../types/crm.types";
 
-// ============================================================
-// ACCOUNT MASTER
-// ============================================================
-
 export async function getAccount(accountId: string): Promise<CrmAccount | null> {
-  const { data, error } = await supabase
+  const { data } = await supabase
     .from("crm_accounts")
     .select("*")
     .eq("id", accountId)
     .single();
-
-  if (error) return null;
-  return data as CrmAccount;
+  return (data as CrmAccount) ?? null;
 }
 
-// ============================================================
-// CONTACTS
-// ============================================================
-
-export async function getAccountContacts(
-  accountId: string
-): Promise<CrmContact[]> {
+export async function getAccountContacts(accountId: string): Promise<CrmContact[]> {
   const { data } = await supabase
     .from("crm_contacts")
     .select("*")
-    .eq("account_id", accountId);
-
-  return (data || []) as CrmContact[];
+    .eq("account_id", accountId)
+    .order("created_at", { ascending: false });
+  return (data ?? []) as CrmContact[];
 }
 
-// ============================================================
-// ACTIVITIES
-// ============================================================
-
-export async function getAccountActivities(
-  accountId: string
-): Promise<CrmActivity[]> {
+export async function getAccountActivities(accountId: string): Promise<CrmActivity[]> {
   const { data } = await supabase
     .from("crm_activities")
     .select("*")
     .eq("account_id", accountId)
     .order("created_at", { ascending: false });
-
-  return (data || []) as CrmActivity[];
+  return (data ?? []) as CrmActivity[];
 }
 
-// ============================================================
-// OPPORTUNITIES
-// ============================================================
-
+// Oportunidades conectadas al account (via crm_account_id o account_id)
 export async function getAccountOpportunities(
-  accountId: string
+  companyId: string, accountId: string, clientId?: string | null
 ): Promise<CrmOpportunity[]> {
+  const filter = clientId
+    ? `crm_account_id.eq.${accountId},client_id.eq.${clientId}`
+    : `crm_account_id.eq.${accountId}`;
   const { data } = await supabase
-    .from("crm_opportunities")
-    .select("*")
-    .eq("account_id", accountId);
-
-  return (data || []) as CrmOpportunity[];
+    .from("opportunities")
+    .select("id, name, company_name, stage, value, probability, created_at")
+    .or(filter)
+    .eq("company_id", companyId)
+    .eq("archived", false);
+  return (data ?? []).map((o: any) => ({
+    id: o.id, name: o.company_name ?? o.name, stage: o.stage,
+    estimated_value: o.value ?? null, probability: o.probability,
+    created_at: o.created_at,
+  }));
 }
-
-// ============================================================
-// QUOTES
-// ============================================================
 
 export async function getAccountQuotes(
-  accountId: string
+  companyId: string, clientId?: string | null
 ): Promise<CrmQuote[]> {
+  if (!clientId) return [];
   const { data } = await supabase
-    .from("crm_quotes")
-    .select("*")
-    .eq("account_id", accountId);
-
-  return (data || []) as CrmQuote[];
+    .from("quotations")
+    .select("id, status, total, created_at")
+    .eq("company_id", companyId)
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+  return (data ?? []).map((q: any) => ({
+    id: q.id, quote_number: q.id.slice(0, 8).toUpperCase(),
+    total_amount: q.total ?? null, status: q.status, created_at: q.created_at,
+  }));
 }
-
-// ============================================================
-// ORDERS
-// ============================================================
 
 export async function getAccountOrders(
-  accountId: string
+  companyId: string, clientId?: string | null
 ): Promise<CrmOrder[]> {
+  if (!clientId) return [];
   const { data } = await supabase
-    .from("crm_orders")
-    .select("*")
-    .eq("account_id", accountId);
-
-  return (data || []) as CrmOrder[];
+    .from("shipments")
+    .select("id, status, created_at")
+    .eq("company_id", companyId)
+    .eq("client_id", clientId)
+    .order("created_at", { ascending: false });
+  return (data ?? []).map((o: any) => ({
+    id: o.id, order_number: o.id.slice(0, 8).toUpperCase(),
+    status: o.status, total_amount: null, created_at: o.created_at,
+  }));
 }
 
-// ============================================================
-// FULL CUSTOMER SNAPSHOT
-// ============================================================
-
 export async function getCustomer360(accountId: string) {
-  const [
-    account,
-    contacts,
-    activities,
-    opportunities,
-    quotes,
-    orders,
-  ] = await Promise.all([
+  const [account, contacts, activities] = await Promise.all([
     getAccount(accountId),
     getAccountContacts(accountId),
     getAccountActivities(accountId),
-    getAccountOpportunities(accountId),
-    getAccountQuotes(accountId),
-    getAccountOrders(accountId),
   ]);
-
-  return {
-    account,
-    contacts,
-    activities,
-    opportunities,
-    quotes,
-    orders,
-  };
+  return { account, contacts, activities, opportunities: [], quotes: [], orders: [] };
 }
