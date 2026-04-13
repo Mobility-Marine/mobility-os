@@ -289,7 +289,7 @@ export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) 
               color: canAdvance() ? "#fff" : "var(--color-text-muted)", border: "none",
               fontSize: "13px", fontWeight: 700, cursor: canAdvance() ? "pointer" : "not-allowed",
             }}>
-              {t.general.next ?? "Siguiente"} →
+              {(t.general as any).next ?? "Siguiente"} →
             </button>
           ) : (
             <button onClick={handleCreate} disabled={saving} style={{
