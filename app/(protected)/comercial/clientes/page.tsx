@@ -14,6 +14,7 @@ import ClientDocuments     from "./components/ClientDocuments";
 import ClientContacts      from "./components/ClientContacts";
 import ClientConnections   from "./components/ClientConnections";
 import ClientCreateDrawer  from "./components/ClientCreateDrawer";
+import ClientImportExport from "./components/ClientImportExport";
 
 export default function ClientsPage() {
   const { t } = useTranslation();
@@ -52,7 +53,7 @@ export default function ClientsPage() {
     <div style={{
       display: "grid",
       gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-      gridTemplateRows: "auto 560px 380px",
+      gridTemplateRows: "auto 560px auto",
       gap: "16px",
       paddingBottom: "32px",
     }}>
@@ -133,21 +134,20 @@ export default function ClientsPage() {
         </div>
       </div>
 
-      {/* ROW_L — Customer 360 */}
-      <div style={{ gridColumn: "1 / -1", minHeight: 0, overflow: "hidden" }}>
-        <ClientConnections
-          connections={connections}
-          stats={selected?.stats}
-          clientName={selected?.name}
-          loading={detailLoading}
-        />
-      </div>
-
-      <ClientCreateDrawer
-        open={showCreate}
-        onClose={() => setCreate(false)}
-        onCreate={createClient as any}
-      />
-    </div>
+      {/* ROW_L — Customer 360 + Import/Export */}
+<div style={{ gridColumn: "1 / 3", minHeight: 0, overflow: "hidden" }}>
+  <ClientConnections
+    connections={connections}
+    stats={selected?.stats}
+    clientName={selected?.name}
+    loading={detailLoading}
+  />
+</div>
+<div style={{ gridColumn: "3 / 5", minHeight: 0, overflow: "auto" }}>
+  <ClientImportExport
+    clients={clients}
+    onImported={ctrl.reload}
+  />
+</div>
   );
 }
