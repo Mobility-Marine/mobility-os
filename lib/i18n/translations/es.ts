@@ -1301,7 +1301,6 @@ daysLate:               "días de retraso",
 // Empty state
 workspaceEmpty:         "Selecciona un embarque",
 workspaceEmptyDesc:     "Aquí verás el detalle del embarque, servicios, documentos y órdenes de servicio.",
-},
 
 // ── Órdenes de Servicio ───────────────────────────────────
 serviceOrders:           "Órdenes de servicio",
