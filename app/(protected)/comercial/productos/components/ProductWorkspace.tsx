@@ -233,7 +233,7 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                 background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)",
                 color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer",
               }}>
-                {t.general.no ?? "No"}
+                {(t.general as any).no ?? "No"}
               </button>
             </>
           )}
