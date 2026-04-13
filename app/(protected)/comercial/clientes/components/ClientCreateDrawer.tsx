@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { CreateClientPayload, ClientDocumentType, ClientContactRole } from "../types/clients.types";
-import { TAX_REGIMES, CFDI_USES, PAYMENT_METHODS, CONTACT_ROLE_CONFIG } from "../types/clients.types";
+import { TAX_REGIMES, CFDI_USES, PAYMENT_METHODS, PAYMENT_FORMS, CONTACT_ROLE_CONFIG } from "../types/clients.types";
 
 type Props = {
   open:    boolean;
