@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { useAuth }   from "@/lib/auth/AuthProvider";
 import { supabase }  from "@/lib/supabaseClient";
-import type { TransportUnit, UnitFilters } from "../types/transport.types";
+import type { TransportUnit, UnitFilters, UnitStatus } from "../types/transport.types";
 import { DEFAULT_UNIT_FILTERS }            from "../types/transport.types";
 import {
   fetchUnits, fetchUnit, createUnit, updateUnit,
