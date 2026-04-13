@@ -1,12 +1,12 @@
 // ============================================================
-// CLIENTS SERVICE v1 — GOD LEVEL
-// CRUD + Documents + Connections
+// CLIENTS SERVICE v2 — GOD LEVEL
+// CRUD + Contacts + Documents + Connections + Stats
 // ============================================================
 
 import { supabase } from "@/lib/supabaseClient";
 import type {
-  Client, CreateClientPayload, ClientDocument,
-  ClientDocumentType, ClientConnection,
+  Client, CreateClientPayload, ClientDocument, ClientDocumentType,
+  ClientContact, ClientContactRole, ClientConnection,
 } from "../types/clients.types";
 
 // ── CLIENTS ────────────────────────────────────────────────
@@ -33,28 +33,33 @@ export async function fetchClientById(
 }
 
 export async function createClient(
-  companyId: string,
-  payload: CreateClientPayload
+  companyId: string, payload: CreateClientPayload
 ): Promise<Client> {
   const { data, error } = await supabase
     .from("clients")
     .insert({
-      company_id:    companyId,
-      name:          payload.name,
-      legal_name:    payload.legal_name    ?? null,
-      rfc:           payload.rfc           ?? null,
-      email:         payload.email         ?? null,
-      phone:         payload.phone         ?? null,
-      address:       payload.address       ?? null,
-      city:          payload.city          ?? null,
-      country:       payload.country       ?? null,
-      notes:         payload.notes         ?? null,
-      website:       payload.website       ?? null,
-      is_customer:   payload.is_customer,
-      is_supplier:   payload.is_supplier,
-      is_active:     true,
-      credit_limit:  payload.credit_limit  ?? null,
-      payment_terms: payload.payment_terms ?? null,
+      company_id:     companyId,
+      name:           payload.name,
+      legal_name:     payload.legal_name     ?? null,
+      rfc:            payload.rfc            ?? null,
+      email:          payload.email          ?? null,
+      phone:          payload.phone          ?? null,
+      website:        payload.website        ?? null,
+      address:        payload.address        ?? null,
+      city:           payload.city           ?? null,
+      zip_code:       payload.zip_code       ?? null,
+      country:        payload.country        ?? "México",
+      tax_regime:     payload.tax_regime     ?? null,
+      cfdi_use:       payload.cfdi_use       ?? null,
+      billing_email:  payload.billing_email  ?? null,
+      billing_address:payload.billing_address?? null,
+      payment_method: payload.payment_method ?? null,
+      payment_terms:  payload.payment_terms  ?? null,
+      credit_limit:   payload.credit_limit   ?? null,
+      is_customer:    payload.is_customer,
+      is_supplier:    payload.is_supplier,
+      is_active:      true,
+      notes:          payload.notes          ?? null,
     })
     .select("*")
     .single();
@@ -63,11 +68,9 @@ export async function createClient(
 }
 
 export async function updateClient(
-  companyId: string,
-  id: string,
-  updates: Partial<Client>
+  companyId: string, id: string, updates: Partial<Client>
 ): Promise<void> {
-  const { stats, documents, ...dbUpdates } = updates as any;
+  const { stats, documents, contacts, ...dbUpdates } = updates as any;
   const { error } = await supabase
     .from("clients")
     .update({ ...dbUpdates, updated_at: new Date().toISOString() })
@@ -82,6 +85,73 @@ export async function toggleClientStatus(
   await supabase
     .from("clients")
     .update({ is_active, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("company_id", companyId);
+}
+
+// ── CONTACTS ───────────────────────────────────────────────
+
+export async function fetchClientContacts(
+  companyId: string, clientId: string
+): Promise<ClientContact[]> {
+  const { data } = await supabase
+    .from("client_contacts")
+    .select("*")
+    .eq("company_id", companyId)
+    .eq("client_id", clientId)
+    .order("is_primary", { ascending: false })
+    .order("created_at", { ascending: true });
+  return (data ?? []) as ClientContact[];
+}
+
+export async function createClientContact(
+  companyId: string, clientId: string, userId: string,
+  payload: {
+    name:       string;
+    role:       ClientContactRole;
+    title?:     string;
+    email?:     string;
+    phone?:     string;
+    is_primary?: boolean;
+    notes?:     string;
+  }
+): Promise<ClientContact> {
+  const { data, error } = await supabase
+    .from("client_contacts")
+    .insert({
+      company_id: companyId,
+      client_id:  clientId,
+      created_by: userId,
+      name:       payload.name,
+      role:       payload.role,
+      title:      payload.title      ?? null,
+      email:      payload.email      ?? null,
+      phone:      payload.phone      ?? null,
+      is_primary: payload.is_primary ?? false,
+      notes:      payload.notes      ?? null,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data as ClientContact;
+}
+
+export async function updateClientContact(
+  companyId: string, id: string, updates: Partial<ClientContact>
+): Promise<void> {
+  await supabase
+    .from("client_contacts")
+    .update(updates)
+    .eq("id", id)
+    .eq("company_id", companyId);
+}
+
+export async function deleteClientContact(
+  companyId: string, id: string
+): Promise<void> {
+  await supabase
+    .from("client_contacts")
+    .delete()
     .eq("id", id)
     .eq("company_id", companyId);
 }
@@ -101,16 +171,8 @@ export async function fetchClientDocuments(
 }
 
 export async function createClientDocument(
-  companyId: string,
-  clientId: string,
-  userId: string,
-  payload: {
-    name:       string;
-    type:       ClientDocumentType;
-    url?:       string;
-    notes?:     string;
-    expires_at?: string;
-  }
+  companyId: string, clientId: string, userId: string,
+  payload: { name: string; type: ClientDocumentType; url?: string; notes?: string; expires_at?: string }
 ): Promise<ClientDocument> {
   const { data, error } = await supabase
     .from("client_documents")
@@ -120,14 +182,25 @@ export async function createClientDocument(
       created_by:  userId,
       name:        payload.name,
       type:        payload.type,
-      url:         payload.url        ?? null,
-      notes:       payload.notes      ?? null,
-      expires_at:  payload.expires_at ?? null,
+      url:         payload.url         ?? null,
+      notes:       payload.notes       ?? null,
+      expires_at:  payload.expires_at  ?? null,
     })
     .select("*")
     .single();
   if (error) throw error;
   return data as ClientDocument;
+}
+
+export async function updateClientDocument(
+  companyId: string, id: string,
+  updates: { name?: string; url?: string; notes?: string; expires_at?: string }
+): Promise<void> {
+  await supabase
+    .from("client_documents")
+    .update(updates)
+    .eq("id", id)
+    .eq("company_id", companyId);
 }
 
 export async function deleteClientDocument(
@@ -140,14 +213,13 @@ export async function deleteClientDocument(
     .eq("company_id", companyId);
 }
 
-// ── CONNECTIONS (Customer 360) ──────────────────────────────
+// ── CONNECTIONS ────────────────────────────────────────────
 
 export async function fetchClientConnections(
   companyId: string, clientId: string
 ): Promise<ClientConnection[]> {
   const connections: ClientConnection[] = [];
 
-  // Oportunidades
   const { data: opps } = await supabase
     .from("opportunities")
     .select("id, name, company_name, stage, value, created_at")
@@ -158,17 +230,9 @@ export async function fetchClientConnections(
     .limit(10);
 
   for (const o of opps ?? []) {
-    connections.push({
-      type:   "opportunity",
-      id:     o.id,
-      label:  o.company_name ?? o.name,
-      status: o.stage,
-      value:  o.value,
-      date:   o.created_at,
-    });
+    connections.push({ type: "opportunity", id: o.id, label: o.company_name ?? o.name, status: o.stage, value: o.value, date: o.created_at });
   }
 
-  // Prospectos de origen
   const { data: prospects } = await supabase
     .from("prospects")
     .select("id, name, company_name, status, created_at")
@@ -177,43 +241,30 @@ export async function fetchClientConnections(
     .limit(5);
 
   for (const p of prospects ?? []) {
-    connections.push({
-      type:   "prospect",
-      id:     p.id,
-      label:  p.company_name ?? p.name ?? "Prospecto",
-      status: p.status,
-      date:   p.created_at,
-    });
+    connections.push({ type: "prospect", id: p.id, label: p.company_name ?? p.name ?? "Prospecto", status: p.status, date: p.created_at });
   }
 
   return connections;
 }
 
-// ── STATS ─────────────────────────────────────────────────
+// ── STATS ──────────────────────────────────────────────────
 
 export async function fetchClientStats(
   companyId: string, clientId: string
 ) {
-  const [opps, prospects] = await Promise.all([
-    supabase
-      .from("opportunities")
-      .select("id, value, stage")
-      .eq("company_id", companyId)
-      .eq("client_id", clientId)
-      .eq("archived", false),
-    supabase
-      .from("prospects")
-      .select("id")
-      .eq("company_id", companyId)
-      .eq("converted_to_client_id", clientId),
-  ]);
+  const { data: opps } = await supabase
+    .from("opportunities")
+    .select("id, value, stage")
+    .eq("company_id", companyId)
+    .eq("client_id", clientId)
+    .eq("archived", false);
 
-  const totalRevenue = (opps.data ?? [])
+  const totalRevenue = (opps ?? [])
     .filter((o) => o.stage === "won")
     .reduce((s, o) => s + (o.value ?? 0), 0);
 
   return {
-    opportunities: (opps.data ?? []).length,
+    opportunities: (opps ?? []).length,
     openOrders:    0,
     totalRevenue,
     openBalance:   0,
