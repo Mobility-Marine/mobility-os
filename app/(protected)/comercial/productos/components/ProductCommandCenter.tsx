@@ -12,32 +12,34 @@ export default function ProductCommandCenter({ kpis }: Props) {
 
   if (!kpis) return null;
 
-  const cards = [
+  const tp = (t.products as any) ?? {};
+
+const cards = [
     {
-      label: "Catálogo",
+      label: tp.catalog           ?? "Catálogo",
       value: kpis.total,
-      sub:   `${kpis.active} activos · ${kpis.inactive} inactivos`,
+      sub:   `${kpis.active} ${tp.active ?? "activos"} · ${kpis.inactive} ${tp.inactive ?? "inactivos"}`,
       color: "var(--color-brand-blue)",
       bar:   kpis.total > 0 ? kpis.active / kpis.total : 0,
     },
     {
-      label: "Valor de inventario",
+      label: tp.inventoryValue    ?? "Valor de inventario",
       value: fmt(kpis.totalValue),
-      sub:   `Costo: ${fmt(kpis.totalCost)}`,
+      sub:   `${tp.cost ?? "Costo"}: ${fmt(kpis.totalCost)}`,
       color: "var(--color-success-text)",
       bar:   kpis.totalValue > 0 ? kpis.totalCost / kpis.totalValue : 0,
     },
     {
-      label: "Margen promedio",
+      label: tp.avgMargin         ?? "Margen promedio",
       value: `${kpis.margin.toFixed(1)}%`,
-      sub:   `${kpis.categories} categorías`,
+      sub:   `${kpis.categories} ${tp.categories ?? "categorías"}`,
       color: kpis.margin >= 30 ? "var(--color-success-text)" : kpis.margin >= 15 ? "var(--color-warning-text)" : "var(--color-danger-text)",
       bar:   Math.min(kpis.margin / 100, 1),
     },
     {
-      label: "Alertas de stock",
+      label: tp.stockAlerts       ?? "Alertas de stock",
       value: kpis.lowStock + kpis.noStock,
-      sub:   `${kpis.noStock} sin stock · ${kpis.lowStock} bajo mínimo`,
+      sub:   `${kpis.noStock} ${tp.noStock ?? "sin stock"} · ${kpis.lowStock} ${tp.lowStock ?? "bajo mínimo"}`,
       color: kpis.noStock > 0 ? "var(--color-danger-text)" : kpis.lowStock > 0 ? "var(--color-warning-text)" : "var(--color-success-text)",
       bar:   kpis.total > 0 ? (kpis.lowStock + kpis.noStock) / kpis.total : 0,
     },
