@@ -1107,6 +1107,99 @@ quickOrder:         "Nueva orden",
 quantityThisOrder:  "Cantidad esta orden",
 priceFixed:         "Precio fijo",
 },
+
+logistics: {
+  // General
+  title:              "Logística",
+  loading:            "Cargando…",
+
+  // Proveedores
+  providers:          "Proveedores logísticos",
+  providersDesc:      "Transportistas, agentes aduanales, navieras y más.",
+  newProvider:        "Nuevo proveedor",
+  noProviders:        "Sin proveedores",
+  searchProvider:     "Buscar por nombre, RFC o servicio…",
+  providerActive:     "Activo",
+  providerInactive:   "Inactivo",
+  allTypes:           "Todos los tipos",
+
+  // Tipos de proveedor
+  typeCarrierMx:      "Transportista México",
+  typeCarrierUsa:     "Transportista USA",
+  typeCustomsBroker:  "Agente aduanal",
+  typeAirline:        "Aerolínea",
+  typeShippingLine:   "Naviera",
+  typeWarehouse:      "Almacén",
+  typeInsurance:      "Aseguradora",
+  typeCourier:        "Courier",
+  typeOther:          "Otro",
+
+  // Tabs workspace
+  tabInfo:            "Información",
+  tabDocuments:       "Documentos legales",
+  tabInvoices:        "Facturas / CxP",
+  tabShipments:       "Embarques",
+
+  // Campos
+  providerName:       "Nombre del proveedor",
+  providerType:       "Tipo de proveedor",
+  rfc:                "RFC",
+  taxId:              "Tax ID (EIN USA)",
+  scacCode:           "Código SCAC",
+  contactName:        "Nombre de contacto",
+  contactEmail:       "Email",
+  contactPhone:       "Teléfono",
+  website:            "Sitio web",
+  coverageRoutes:     "Rutas de cobertura",
+  servicesOffered:    "Servicios que ofrece",
+  paymentTerms:       "Condiciones de pago",
+  rating:             "Calificación",
+  notes:              "Notas",
+
+  // Documentos legales
+  docFiscal:          "Constancia situación fiscal",
+  docActa:            "Acta constitutiva",
+  docId:              "ID representante legal",
+  docCaat:            "CAAT",
+  docLicencia:        "Licencia federal",
+  docPoliza:          "Póliza de seguro",
+  docAlta:            "Alta de proveedor",
+  docContrato:        "Contrato de servicio",
+  docOther:           "Otro documento",
+  docExpiry:          "Fecha de vencimiento",
+  docExpired:         "Vencido",
+  docExpiringSoon:    "Por vencer",
+  uploadDoc:          "Subir documento",
+  noDocuments:        "Sin documentos cargados",
+
+  // Facturas proveedor
+  providerInvoice:    "Factura del proveedor",
+  newInvoice:         "Cargar factura",
+  invoiceNumber:      "No. Factura",
+  invoiceDate:        "Fecha",
+  invoiceTotal:       "Total",
+  invoiceCurrency:    "Moneda",
+  invoiceStatus:      "Estado",
+  invoicePending:     "Pendiente",
+  invoiceApproved:    "Aprobada",
+  invoicePaid:        "Pagada",
+  invoiceDisputed:    "En disputa",
+  invoiceDueDate:     "Fecha de pago",
+  invoiceConcept:     "Concepto",
+  extractedByAI:      "Extraído por IA",
+  profit:             "Ganancia de la operación",
+  revenue:            "Ingreso (venta)",
+  cost:               "Costo (proveedor)",
+  margin:             "Margen",
+
+  // Acciones
+  activate:           "Activar",
+  deactivate:         "Desactivar",
+  delete:             "Eliminar",
+  confirmDelete:      "¿Eliminar este proveedor?",
+  workspaceEmpty:     "Selecciona un proveedor",
+  workspaceEmptyDesc: "Aquí verás información, documentos legales y facturas.",
+},
   
 };
 
