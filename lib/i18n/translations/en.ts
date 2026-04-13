@@ -632,6 +632,9 @@ records:               "records",
 importedSuccessfully:  "clients imported successfully",
 failedImport:          "failed",
 importAnother:         "Import another file",
+  importFormatLabel: "Accepted format",
+importFormatDesc:  "CSV with Spanish headers. Download the template to see the exact format.",
+importRequired:    "Required columns",
 },
   
 };
