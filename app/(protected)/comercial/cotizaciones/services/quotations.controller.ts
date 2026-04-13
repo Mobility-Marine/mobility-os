@@ -1,9 +1,5 @@
 "use client";
 
-// ============================================================
-// QUOTATIONS CONTROLLER v1 — GOD LEVEL
-// ============================================================
-
 import { useCallback, useEffect, useState } from "react";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { useAuth }   from "@/lib/auth/AuthProvider";
@@ -34,7 +30,7 @@ export function useQuotationsController() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [filters,       setFilters]       = useState<QuotationFilters>(DEFAULT_QUOTATION_FILTERS);
 
-  // ── LOAD ──────────────────────────────────────────────────
+  // ── LOAD LIST ─────────────────────────────────────────────
 
   const load = useCallback(async () => {
     if (!companyId) return;
@@ -45,6 +41,19 @@ export function useQuotationsController() {
     setQuotations(quots);
     setSettings(cfg);
     setLoading(false);
+  }, [companyId]);
+
+  // ── LOAD DETAIL ───────────────────────────────────────────
+
+  const loadDetail = useCallback(async (id: string) => {
+    if (!companyId) return;
+    setDetailLoading(true);
+    try {
+      const q = await fetchQuotation(companyId, id);
+      if (q) setSelected(q);
+    } finally {
+      setDetailLoading(false);
+    }
   }, [companyId]);
 
   useEffect(() => {
@@ -58,17 +67,12 @@ export function useQuotationsController() {
     return () => { void supabase.removeChannel(ch); };
   }, [companyId, load]);
 
-  // ── LOAD DETAIL ───────────────────────────────────────────
-
   useEffect(() => {
-    if (!selected || !companyId) return;
-    setDetailLoading(true);
-    fetchQuotation(companyId, selected.id)
-      .then((q) => { if (q) setSelected(q); })
-      .finally(() => setDetailLoading(false));
+    if (!selected?.id) return;
+    void loadDetail(selected.id);
   }, [selected?.id]);
 
-  // ── ACTIONS ───────────────────────────────────────────────
+  // ── QUOTATION ACTIONS ─────────────────────────────────────
 
   async function createQuotation(payload: CreateQuotationPayload): Promise<Quotation | undefined> {
     if (!companyId || !user) return;
@@ -90,107 +94,98 @@ export function useQuotationsController() {
     }
   }
 
+  async function handleUpdateFields(id: string, updates: Partial<Quotation>) {
+    if (!companyId) return;
+    setSaving(true);
+    try {
+      await updateQuotation(companyId, id, updates);
+      await load();
+      await loadDetail(id);
+    } finally { setSaving(false); }
+  }
+
   async function acceptQuotation(quotation: Quotation) {
     if (!companyId || !user) return;
     setSaving(true);
     try {
       const result = await acceptSvc(companyId, quotation, user.id);
       await load();
-      if (selected?.id === quotation.id) {
-        const updated = await fetchQuotation(companyId, quotation.id);
-        if (updated) setSelected(updated);
-      }
+      if (selected?.id === quotation.id) await loadDetail(quotation.id);
       return result;
     } finally { setSaving(false); }
   }
 
-  // Items
+  // ── ITEM ACTIONS ──────────────────────────────────────────
+
   async function createItem(payload: CreateItemPayload): Promise<QuotationItem | undefined> {
     if (!companyId) return;
     const item = await addItem(companyId, payload);
-    if (selected?.id === payload.quotation_id) {
-      const updated = await fetchQuotation(companyId, payload.quotation_id);
-      if (updated) setSelected(updated);
-    }
+    if (selected?.id === payload.quotation_id) await loadDetail(payload.quotation_id);
     await load();
     return item;
   }
 
-  async function editItem(id: string, quotationId: string, updates: Partial<QuotationItem>) {
+  async function handleUpdateItem(
+    id: string,
+    updates: Partial<QuotationItem>,
+    quotationId: string,
+  ) {
     if (!companyId) return;
-    await updateItem(companyId, id, { ...updates, quotation_id: quotationId });
-    if (selected?.id === quotationId) {
-      const updated = await fetchQuotation(companyId, quotationId);
-      if (updated) setSelected(updated);
-    }
-    await load();
+    setSaving(true);
+    try {
+      await updateItem(companyId, id, { ...updates, quotation_id: quotationId });
+      await loadDetail(quotationId);
+      await load();
+    } finally { setSaving(false); }
   }
 
   async function removeItem(id: string, quotationId: string) {
     if (!companyId) return;
     await deleteItem(companyId, id, quotationId);
-    if (selected?.id === quotationId) {
-      setSelected((prev) => prev ? { ...prev, items: prev.items?.filter((i) => i.id !== id) } : prev);
-      const updated = await fetchQuotation(companyId, quotationId);
-      if (updated) setSelected(updated);
-    }
+    if (selected?.id === quotationId) await loadDetail(quotationId);
     await load();
   }
 
-  // Services
+  // ── SERVICE ACTIONS ───────────────────────────────────────
+
   async function createService(payload: CreateServicePayload): Promise<QuotationService | undefined> {
     if (!companyId) return;
     const svc = await addService(companyId, payload);
-    if (selected?.id === payload.quotation_id) {
-      const updated = await fetchQuotation(companyId, payload.quotation_id);
-      if (updated) setSelected(updated);
-    }
+    if (selected?.id === payload.quotation_id) await loadDetail(payload.quotation_id);
     await load();
     return svc;
   }
 
-  async function editService(id: string, quotationId: string, updates: Partial<QuotationService>) {
+  async function handleUpdateService(
+    id: string,
+    updates: Partial<QuotationService>,
+    quotationId: string,
+  ) {
     if (!companyId) return;
-    await updateService(companyId, id, { ...updates, quotation_id: quotationId });
-    if (selected?.id === quotationId) {
-      const updated = await fetchQuotation(companyId, quotationId);
-      if (updated) setSelected(updated);
-    }
-    await load();
+    setSaving(true);
+    try {
+      await updateService(companyId, id, { ...updates, quotation_id: quotationId });
+      await loadDetail(quotationId);
+      await load();
+    } finally { setSaving(false); }
   }
 
   async function removeService(id: string, quotationId: string) {
     if (!companyId) return;
     await deleteService(companyId, id, quotationId);
-    if (selected?.id === quotationId) {
-      setSelected((prev) => prev ? { ...prev, services: prev.services?.filter((s) => s.id !== id) } : prev);
-      const updated = await fetchQuotation(companyId, quotationId);
-      if (updated) setSelected(updated);
-    }
+    if (selected?.id === quotationId) await loadDetail(quotationId);
     await load();
   }
 
-async function handleUpdateFields(id: string, updates: Partial<Quotation>) {
-  await updateQuotation(companyId!, id, updates);
-  await reload();
-}
+  // ── FILTERED ──────────────────────────────────────────────
 
-async function handleUpdateItem(id: string, updates: Partial<QuotationItem>, quotationId: string) {
-  await updateItem(companyId!, id, updates);
-  await reloadDetail(quotationId);
-}
-
-async function handleUpdateService(id: string, updates: Partial<QuotationService>, quotationId: string) {
-  await updateService(companyId!, id, updates);
-  await reloadDetail(quotationId);
-}
-  
-  // Filtered
   const filtered = quotations.filter((q) => {
     const mq = filters.search.trim().toLowerCase();
-    if (mq && !q.quote_number?.toLowerCase().includes(mq) &&
-        !q.client_name?.toLowerCase().includes(mq) &&
-        !q.client?.name?.toLowerCase().includes(mq)) return false;
+    if (mq &&
+      !q.quote_number?.toLowerCase().includes(mq) &&
+      !q.client_name?.toLowerCase().includes(mq) &&
+      !q.client?.name?.toLowerCase().includes(mq)
+    ) return false;
     if (filters.type   !== "all" && q.type   !== filters.type)   return false;
     if (filters.status !== "all" && q.status !== filters.status) return false;
     return true;
@@ -200,9 +195,15 @@ async function handleUpdateService(id: string, updates: Partial<QuotationService
     quotations, filtered, selected, setSelected,
     settings, loading, saving, detailLoading,
     filters, setFilters,
+    // Quotation
     createQuotation, updateStatus, acceptQuotation,
-    createItem, editItem, removeItem,
-    createService, editService, removeService,
-    reload: load,
+    updateFields:    handleUpdateFields,
+    // Items
+    createItem, updateItem: handleUpdateItem, removeItem,
+    // Services
+    createService, updateService: handleUpdateService, removeService,
+    // Utils
+    reload:       load,
+    reloadDetail: loadDetail,
   };
 }
