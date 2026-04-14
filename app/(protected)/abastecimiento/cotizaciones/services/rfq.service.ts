@@ -30,7 +30,7 @@ export async function fetchRFQ(companyId: string, id: string): Promise<RFQ | nul
 
   const { data: responses } = await supabase
     .from("procurement_rfq_responses")
-    .select("*, supplier:clients(name)")
+    .select("*, supplier:suppliers(name)")
     .eq("rfq_id", id)
     .eq("company_id", companyId);
 
@@ -115,7 +115,7 @@ export async function addSupplierToRFQ(
   const { data, error } = await supabase
     .from("procurement_rfq_responses")
     .insert({ company_id: companyId, rfq_id: rfqId, supplier_id: supplierId, status: "pending" })
-    .select("*, supplier:clients(name)").single();
+    .select("*, supplier:suppliers(name)").single();
   if (error) throw error;
   return { ...data, items: [] } as RFQResponse;
 }
