@@ -172,3 +172,17 @@ export async function fetchPOStats(companyId: string): Promise<POStats> {
   if (error || !data) return { total: 0, draft: 0, pending_approval: 0, approved: 0, sent: 0, partial: 0, complete: 0, total_value: 0, pending_value: 0 };
   return data as POStats;
 }
+
+// ── PRODUCTOS DEL CATÁLOGO ────────────────────────────────────
+export async function fetchProductCatalog(companyId: string): Promise<{
+  id: string; sku: string | null; name: string; unit: string;
+  cost: number; unit_price: number; category: string | null;
+}[]> {
+  const { data } = await supabase
+    .from("products")
+    .select("id, sku, name, unit, cost, unit_price, category")
+    .eq("company_id", companyId)
+    .eq("is_active", true)
+    .order("name");
+  return (data ?? []) as any[];
+}
