@@ -621,7 +621,7 @@ export default function QuotationWorkspace({
               Descargar PDF
             </button>
             <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", fontSize: "11px", color: "var(--color-text-muted)", display: "grid", gap: "4px" }}>
-              <div><strong>Plantilla:</strong> {quotation.template}</div>
+              <div><strong>Plantilla:</strong> Mobility OS</div>
               <div><strong>Tipo:</strong> {isServices ? "Servicios logísticos" : "Productos"}</div>
               <div><strong>Items:</strong> {isServices ? services.length : items.length}</div>
             </div>
