@@ -437,3 +437,15 @@ export async function acceptQuotation(
 
   return { type: quotation.type === "products" ? "order" : "shipment", id: "" };
 }
+
+export async function deleteQuotation(
+  companyId: string,
+  id: string,
+): Promise<void> {
+  // Eliminar items y servicios primero
+  await supabase.from("quotation_items").delete().eq("quotation_id", id).eq("company_id", companyId);
+  await supabase.from("quotation_services").delete().eq("quotation_id", id).eq("company_id", companyId);
+  // Eliminar cotización
+  const { error } = await supabase.from("quotations").delete().eq("id", id).eq("company_id", companyId);
+  if (error) throw error;
+}
