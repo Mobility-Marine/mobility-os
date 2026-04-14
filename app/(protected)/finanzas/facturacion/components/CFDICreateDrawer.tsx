@@ -18,7 +18,7 @@ type Props = {
 
 type Step = "receptor" | "conceptos" | "config";
 
-type Client = { id: string; legal_name: string; rfc: string; email?: string; fiscal_regime?: string; address_zip?: string };
+type Client = { id: string; name: string; legal_name?: string; rfc?: string; email?: string; tax_regime?: string; zip_code?: string };
 
 const INPUT: React.CSSProperties = {
   width: "100%", height: "36px", padding: "0 10px",
@@ -47,7 +47,7 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate }: Pr
 
   useEffect(() => {
     if (!open || !companyId) return;
-    supabase.from("clients").select("id, legal_name, rfc, email, fiscal_regime, address_zip").eq("company_id", companyId).order("legal_name").limit(200).then(({ data }) => setClients((data ?? []) as Client[]));
+    supabase.from("clients").select("id, name, legal_name, rfc, email, tax_regime, zip_code").eq("company_id", companyId).order("legal_name").limit(200).then(({ data }) => setClients((data ?? []) as Client[]));
     supabase.from("products").select("id, name, sku, unit, unit_price, cost, tax_rate").eq("company_id", companyId).eq("is_active", true).order("name").limit(200).then(({ data }) => setProducts(data ?? []));
   }, [open, companyId]);
 
@@ -61,10 +61,10 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate }: Pr
       ...p,
       client_id:        c.id,
       receiver_rfc:     c.rfc,
-      receiver_name:    c.legal_name,
+      receiver_name:    c.legal_name ?? c.name,
       receiver_email:   c.email ?? "",
-      receiver_regime:  c.fiscal_regime ?? "601",
-      receiver_zip:     c.address_zip ?? "",
+      receiver_regime:  c.tax_regime ?? "601",
+      receiver_zip:     c.zip_code ?? "",
     }));
   }
 
@@ -165,7 +165,7 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate }: Pr
                 </div>
                 <select value={form.client_id} onChange={(e) => selectClient(e.target.value)} style={SELECT}>
                   <option value="">{es ? "— Buscar en clientes —" : "— Search in clients —"}</option>
-                  {clients.map((c) => <option key={c.id} value={c.id}>{c.legal_name} · {c.rfc}</option>)}
+                  {clients.map((c) => <option key={c.id} value={c.id}>{c.legal_name ?? c.name} · {c.rfc ?? ""}</option>)}
                 </select>
               </div>
 
