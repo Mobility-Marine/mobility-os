@@ -1819,7 +1819,7 @@ procurement: {
   budgetWorkspaceEmpty:"Select a budget",
 
   // ── PURCHASE RECEPTIONS ─────────────────────────────────────
-receptions: {
+
   title:              "Purchase Receptions",
   subtitle:           "Quality control, received items and full traceability of each delivery.",
   newReception:       "New reception",
