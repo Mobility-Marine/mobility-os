@@ -301,6 +301,8 @@ export const en: TranslationKeys = {
     user:              "user",
     requisitions:      "Requisitions",
     rfq:               "Purchase RFQ",
+    cashFlow:  "Cash Flow",
+    employees: "Employees",
   },
 
   prospects: {
