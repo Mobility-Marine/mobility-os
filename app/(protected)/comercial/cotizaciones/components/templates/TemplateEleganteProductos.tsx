@@ -75,7 +75,7 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
     header:       { backgroundColor: HEADER_BG, padding: "24 36", flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
     logoBox:      { width: 110, height: 44, objectFit: "contain" },
     accentLine:   { backgroundColor: ACCENT, height: 3 },
-    body:         { padding: "20 36" },
+    body:         { padding: "20 36", paddingBottom: 40 },
     section:      { marginBottom: 16 },
     sectionTitle: { fontSize: 8, fontWeight: "bold", color: ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 7, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: BRAND_COLOR },
     row2:         { flexDirection: "row", gap: 16 },
@@ -99,7 +99,7 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
     grandLabel:   { fontSize: 13, color: ACCENT, fontWeight: "bold" },
     grandValue:   { fontSize: 13, color: ACCENT, fontWeight: "bold" },
     // Notas / Términos
-    notesBox:     { backgroundColor: "#f1f5f9", borderRadius: 4, padding: "10 12", marginTop: 4, borderLeftWidth: 3, borderLeftColor: BRAND_COLOR },
+    notesBox: { backgroundColor: "#f1f5f9", borderRadius: 4, padding: "12 16", marginTop: 4, borderLeftWidth: 3, borderLeftColor: BRAND_COLOR },
     notesText:    { fontSize: 8, color: TEXT_MEDIUM, lineHeight: 1.7 },
     // Footer — usa BRAND_COLOR
     footer:       { backgroundColor: BRAND_COLOR, padding: "12 36", marginTop: "auto" },
@@ -151,7 +151,7 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
         <View style={s.accentLine} />
 
         {/* ── BODY ── */}
-        <View style={s.body}>
+        <View style={s.body} wrap={true}>
 
           {/* CLIENTE + DATOS COTIZACIÓN */}
           <View style={[s.section, s.row2]}>
@@ -252,16 +252,19 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
           )}
 
           {/* TÉRMINOS */}
-          {termsText && (
-            <View style={[s.section, { marginTop: 4 }]}>
-              <Text style={s.sectionTitle}>Términos y condiciones</Text>
-              <View style={s.notesBox}>
-                <Text style={s.notesText}>{termsText}</Text>
-              </View>
-            </View>
-          )}
-
-        </View>
+{termsText && (
+  <View style={[s.section, { marginTop: 4 }]} wrap={true}>
+    <Text style={s.sectionTitle}>Términos y condiciones</Text>
+    <View style={[s.notesBox, { marginHorizontal: 0 }]}>
+      <Text style={[s.notesText, { 
+        marginLeft: 4,
+        marginRight: 4,
+      }]}>
+        {termsText}
+      </Text>
+    </View>
+  </View>
+)}
 
         {/* ── FOOTER — usa BRAND_COLOR ── */}
         <View style={s.footer}>
