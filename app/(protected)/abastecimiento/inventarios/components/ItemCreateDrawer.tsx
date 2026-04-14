@@ -2,6 +2,7 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant } from "@/lib/tenant/TenantProvider";
+import { supabase } from "@/lib/supabaseClient";
 import { fetchProductCatalog, type CatalogProduct } from "@/lib/services/products.service";
 import type { CreateItemPayload, CostMethod } from "../types/inventarios.types";
 import { UNITS, CATEGORIES } from "../types/inventarios.types";
@@ -30,10 +31,12 @@ export default function ItemCreateDrawer({ open, saving, onClose, onCreate }: Pr
     stock_min: 0, stock_max: 0, reorder_point: 0, reorder_qty: 0, unit_cost: 0,
     track_serial: false, track_lot: false, track_expiry: false,
   });
-  const [error,         setError]         = useState<string | null>(null);
-  const [products,      setProducts]      = useState<CatalogProduct[]>([]);
-  const [productSearch, setProductSearch] = useState("");
-  const [productId,     setProductId]     = useState("");
+  const [error,          setError]          = useState<string | null>(null);
+  const [products,       setProducts]       = useState<CatalogProduct[]>([]);
+  const [productSearch,  setProductSearch]  = useState("");
+  const [productId,      setProductId]      = useState("");
+  const [addToProducts,  setAddToProducts]  = useState(false);
+  const [creatingProduct,setCreatingProduct]= useState(false);
 
   useEffect(() => {
     if (open && companyId && products.length === 0) {
@@ -62,6 +65,7 @@ export default function ItemCreateDrawer({ open, saving, onClose, onCreate }: Pr
       stock_min:   p.stock_min > 0 ? p.stock_min : prev.stock_min,
     }));
     setProductId(p.id);
+    setAddToProducts(false);
     setProductSearch("");
   }
 
@@ -70,26 +74,55 @@ export default function ItemCreateDrawer({ open, saving, onClose, onCreate }: Pr
   async function handleCreate() {
     if (!form.name?.trim()) { setError(es ? "El nombre es requerido" : "Name is required"); return; }
     setError(null);
+    setCreatingProduct(true);
     try {
-      await onCreate({ ...form, product_id: productId || undefined } as CreateItemPayload);
+      let finalProductId = productId;
+
+      // Si no viene del catálogo pero quiere agregarlo
+      if (!productId && addToProducts && companyId) {
+        const { data, error: prodErr } = await supabase
+          .from("products")
+          .insert({
+            company_id:  companyId,
+            name:        form.name.trim(),
+            sku:         form.sku         || null,
+            description: form.description || null,
+            category:    form.category    || null,
+            unit:        form.unit        ?? "pza",
+            cost:        form.unit_cost   ?? 0,
+            unit_price:  0,
+            stock_min:   form.stock_min   ?? 0,
+            is_active:   true,
+          })
+          .select("id")
+          .single();
+        if (prodErr) throw new Error(prodErr.message);
+        finalProductId = data.id;
+      }
+
+      await onCreate({ ...form, product_id: finalProductId || undefined } as CreateItemPayload);
       handleClose();
     } catch (e: any) { setError(e.message); }
+    finally { setCreatingProduct(false); }
   }
 
   function handleClose() {
     setForm({ unit: "pza", cost_method: "average", stock_min: 0, stock_max: 0, reorder_point: 0, reorder_qty: 0, unit_cost: 0 });
-    setProductSearch(""); setProductId("");
+    setProductSearch(""); setProductId(""); setAddToProducts(false);
     setError(null);
     onClose();
   }
 
   if (!open) return null;
 
+  const isBusy = saving || creatingProduct;
+
   return (
     <>
       <div onClick={handleClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", zIndex: 400 }} />
       <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: "min(560px, 96vw)", background: "var(--color-bg-base)", borderLeft: "1px solid var(--color-border)", boxShadow: "var(--shadow-xl)", zIndex: 401, display: "flex", flexDirection: "column" }}>
 
+        {/* HEADER */}
         <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", justifyContent: "space-between", alignItems: "center", flexShrink: 0 }}>
           <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-text-primary)" }}>
             {es ? "Nuevo artículo de inventario" : "New inventory item"}
@@ -126,7 +159,8 @@ export default function ItemCreateDrawer({ open, saving, onClose, onCreate }: Pr
                   </div>
                 ) : (
                   filteredProducts.slice(0, 15).map((p) => (
-                    <div key={p.id} onClick={() => selectProduct(p)} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", cursor: "pointer", borderBottom: "1px solid var(--color-border-faint)" }}
+                    <div key={p.id} onClick={() => selectProduct(p)}
+                      style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 12px", cursor: "pointer", borderBottom: "1px solid var(--color-border-faint)" }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-bg-subtle)")}
                       onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                       <div>
@@ -254,16 +288,38 @@ export default function ItemCreateDrawer({ open, saving, onClose, onCreate }: Pr
             <textarea rows={2} value={form.notes ?? ""} onChange={(e) => set("notes", e.target.value)} style={{ ...INPUT, height: "auto", padding: "8px 10px", resize: "vertical" }} />
           </div>
 
+          {/* CHECKBOX: Agregar al catálogo — solo si no viene del catálogo */}
+          {!productId && (
+            <label onClick={() => setAddToProducts((p) => !p)} style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer", padding: "12px 14px", borderRadius: "var(--radius-md)", background: addToProducts ? "var(--color-info-bg)" : "var(--color-bg-subtle)", border: `1px solid ${addToProducts ? "var(--color-info-border)" : "var(--color-border-faint)"}`, transition: "all 0.15s" }}>
+              <input type="checkbox" checked={addToProducts} onChange={() => {}} style={{ cursor: "pointer", width: "15px", height: "15px", marginTop: "1px", flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: "12px", fontWeight: 700, color: addToProducts ? "var(--color-brand-blue)" : "var(--color-text-primary)" }}>
+                  {es ? "Agregar también al catálogo de Productos" : "Also add to Products catalog"}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "3px", lineHeight: 1.5 }}>
+                  {es
+                    ? "Aparecerá en Comercial → Productos y podrá usarse en cotizaciones, pedidos y órdenes de compra."
+                    : "Will appear in Commercial → Products and can be used in quotes, orders and purchase orders."}
+                </div>
+              </div>
+            </label>
+          )}
+
           {error && (
             <div style={{ padding: "10px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)", fontSize: "12px" }}>{error}</div>
           )}
         </div>
 
+        {/* FOOTER */}
         <div style={{ padding: "14px 24px", borderTop: "1px solid var(--color-border-faint)", display: "flex", gap: "10px", flexShrink: 0 }}>
-          <button onClick={handleCreate} disabled={saving} style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
-            {saving ? (es ? "Guardando…" : "Saving…") : (es ? "Crear artículo" : "Create item")}
+          <button onClick={handleCreate} disabled={isBusy} style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: isBusy ? "not-allowed" : "pointer", opacity: isBusy ? 0.7 : 1 }}>
+            {isBusy
+              ? (es ? "Guardando…" : "Saving…")
+              : addToProducts && !productId
+                ? (es ? "Crear artículo y agregar al catálogo" : "Create item and add to catalog")
+                : (es ? "Crear artículo" : "Create item")}
           </button>
-          <button onClick={handleClose} style={{ height: "40px", padding: "0 16px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-muted)", fontSize: "13px", cursor: "pointer" }}>
+          <button onClick={handleClose} disabled={isBusy} style={{ height: "40px", padding: "0 16px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-muted)", fontSize: "13px", cursor: "pointer" }}>
             {es ? "Cancelar" : "Cancel"}
           </button>
         </div>
