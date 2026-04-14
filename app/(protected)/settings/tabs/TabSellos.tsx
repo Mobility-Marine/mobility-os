@@ -25,22 +25,18 @@ function Section({ title, desc, children }: { title: string; desc?: string; chil
 }
 
 export default function TabSellos() {
-  const { t } = useTranslation();
   const { companyId } = useTenant();
   const cerRef = useRef<HTMLInputElement>(null);
   const keyRef = useRef<HTMLInputElement>(null);
 
-  const [cerUrl,        setCerUrl]        = useState<string | null>(null);
-  const [keyUrl,        setKeyUrl]        = useState<string | null>(null);
-  const [facturApiKey,  setFacturApiKey]  = useState("");
-  const [facturApiEnv,  setFacturApiEnv]  = useState<"test" | "live">("test");
-  const [facturApiOrg,  setFacturApiOrg]  = useState("");
-  const [uploading,     setUploading]     = useState<"cer" | "key" | null>(null);
-  const [saving,        setSaving]        = useState(false);
-  const [registering,   setRegistering]   = useState(false);
-  const [saved,         setSaved]         = useState(false);
-  const [error,         setError]         = useState<string | null>(null);
-  const [showKey,       setShowKey]       = useState(false);
+  const [cerUrl,      setCerUrl]      = useState<string | null>(null);
+  const [keyUrl,      setKeyUrl]      = useState<string | null>(null);
+  const [facturApiOrg,setFacturApiOrg]= useState("");
+  const [uploading,   setUploading]   = useState<"cer" | "key" | null>(null);
+  const [saving,      setSaving]      = useState(false);
+  const [registering, setRegistering] = useState(false);
+  const [saved,       setSaved]       = useState(false);
+  const [error,       setError]       = useState<string | null>(null);
 
   useEffect(() => {
     if (!companyId) return;
@@ -48,9 +44,7 @@ export default function TabSellos() {
       if (!s) return;
       setCerUrl(s.cer_file_url ?? null);
       setKeyUrl(s.key_file_url ?? null);
-      setFacturApiKey(s.facturapi_api_key ?? "");
-      setFacturApiEnv((s.facturapi_env as any) ?? "test");
-      setFacturApiOrg(s.facturapi_org_id ?? "");
+      setFacturApiOrg((s as any).facturapi_org_id ?? "");
     });
   }, [companyId]);
 
@@ -67,44 +61,36 @@ export default function TabSellos() {
     setUploading(null);
   }
 
-  async function handleRegisterOrg() {
-    if (!facturApiKey || !companyId) return;
-    setRegistering(true); setError(null);
-    try {
-      const res = await fetch("/api/facturacion/setup-org", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyId, apiKey: facturApiKey, env: facturApiEnv }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "Error registrando organización");
-      setFacturApiOrg(data.org_id);
-      await upsertCompanySettings(companyId, {
-        facturapi_api_key: facturApiKey,
-        facturapi_org_id:  data.org_id,
-        facturapi_env:     facturApiEnv,
-        pac_provider:      "facturapi",
-      } as any);
-      setSaved(true); setTimeout(() => setSaved(false), 2500);
-    } catch (e: any) { setError(e.message); }
-    finally { setRegistering(false); }
-  }
-
   async function handleSave() {
     if (!companyId) return;
     setSaving(true); setError(null);
     try {
+      // Guardar archivos CSD
       await upsertCompanySettings(companyId, {
-        cer_file_url:      cerUrl ?? undefined,
-        key_file_url:      keyUrl ?? undefined,
-        facturapi_api_key: facturApiKey || undefined,
-        facturapi_org_id:  facturApiOrg || undefined,
-        facturapi_env:     facturApiEnv,
-        pac_provider:      "facturapi",
+        cer_file_url: cerUrl ?? undefined,
+        key_file_url: keyUrl ?? undefined,
+        pac_provider: "facturapi",
       } as any);
-      setSaved(true); setTimeout(() => setSaved(false), 2500);
+
+      // Si aún no tiene org en Facturapi, registrarla automáticamente
+      if (!facturApiOrg) {
+        setRegistering(true);
+        const res = await fetch("/api/facturacion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "setup_org", companyId, payload: {} }),
+        });
+        const data = await res.json();
+        if (res.ok && data.org_id) {
+          setFacturApiOrg(data.org_id);
+        }
+        setRegistering(false);
+      }
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
     } catch (e: any) { setError(e.message); }
-    finally { setSaving(false); }
+    finally { setSaving(false); setRegistering(false); }
   }
 
   function FileUploadRow({ type, url, label, ext }: { type: "cer" | "key"; url: string | null; label: string; ext: string }) {
@@ -147,64 +133,44 @@ export default function TabSellos() {
           Información confidencial
         </div>
         <div style={{ fontSize: "12px", color: "var(--color-warning-text)", lineHeight: 1.6 }}>
-          Los sellos digitales y la API Key son necesarios para timbrar CFDI 4.0 ante el SAT. Se almacenan de forma segura y solo se usan en el servidor, nunca en el navegador.
+          Los sellos digitales son necesarios para timbrar CFDI 4.0 ante el SAT. Se almacenan de forma segura y solo se usan en el servidor, nunca en el navegador.
         </div>
       </div>
 
-      {/* FACTURAPI */}
+      {/* ESTADO FACTURAPI */}
       <Section
-        title="Facturapi — PAC autorizado SAT"
-        desc="Proveedor de timbrado. La API Key es confidencial y solo se usa server-side."
+        title="Sistema de timbrado"
+        desc="Powered by Facturapi — PAC autorizado por el SAT."
       >
-        {/* Ambiente */}
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Ambiente</div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            {([["test", "Sandbox (pruebas)"], ["live", "Producción (real)"]] as const).map(([val, label]) => (
-              <button key={val} onClick={() => setFacturApiEnv(val)}
-                style={{ flex: 1, padding: "10px 14px", borderRadius: "var(--radius-md)", textAlign: "left", cursor: "pointer", background: facturApiEnv === val ? (val === "live" ? "var(--color-success-bg)" : "var(--color-info-bg)") : "var(--color-bg-subtle)", border: `2px solid ${facturApiEnv === val ? (val === "live" ? "var(--color-success-text)" : "var(--color-brand-blue)") : "var(--color-border-faint)"}` }}>
-                <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)" }}>{val === "live" ? "Producción" : "Sandbox"}</div>
-                <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "2px" }}>{label}</div>
-              </button>
-            ))}
-          </div>
-          {facturApiEnv === "live" && (
-            <div style={{ marginTop: "8px", padding: "8px 12px", borderRadius: "var(--radius-md)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", fontSize: "11px", color: "var(--color-warning-text)" }}>
-              En modo Producción los timbres son reales y tienen costo fiscal. Asegúrate de usar tu API Key live de Facturapi.
+        {facturApiOrg ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", padding: "12px 16px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-text)" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+            <div>
+              <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-success-text)" }}>Empresa registrada en el sistema de timbrado</div>
+              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontFamily: "monospace", marginTop: "2px" }}>ID: {facturApiOrg}</div>
             </div>
-          )}
-        </div>
-
-       {/* FACTURAPI — solo estado de la organización */}
-<Section
-  title="Facturapi — PAC autorizado SAT"
-  desc="Tu empresa está conectada al sistema de timbrado. Solo necesitas subir tus certificados CSD."
->
-  {facturApiOrg ? (
-    <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 16px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)" }}>
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-text)" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-      <div>
-        <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-success-text)" }}>Empresa registrada en el sistema de timbrado</div>
-        <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontFamily: "monospace", marginTop: "2px" }}>{facturApiOrg}</div>
-      </div>
-    </div>
-  ) : (
-    <div style={{ padding: "12px 16px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.6 }}>
-      Sube tus certificados CSD abajo y guarda — el sistema registrará tu empresa automáticamente.
-    </div>
-  )}
-</Section>
+          </div>
+        ) : (
+          <div style={{ padding: "12px 16px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.6 }}>
+            {registering
+              ? "Registrando tu empresa en el sistema de timbrado…"
+              : "Sube tus certificados CSD y presiona Guardar — el sistema registrará tu empresa automáticamente."}
+          </div>
+        )}
+      </Section>
 
       {/* CERTIFICADOS CSD */}
       <Section
         title="Certificado de Sello Digital (CSD)"
-        desc="Archivos .cer y .key emitidos por el SAT. Los necesitas para timbrar en producción."
+        desc="Archivos .cer y .key emitidos por el SAT para tu empresa."
       >
         <FileUploadRow type="cer" url={cerUrl} label="Certificado (.cer)" ext="cer" />
         <FileUploadRow type="key" url={keyUrl} label="Clave privada (.key)" ext="key" />
         <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.6 }}>
-          Si aún no tienes CSD, puedes tramitarlos en <a href="https://www.sat.gob.mx" target="_blank" rel="noreferrer" style={{ color: "var(--color-brand-blue)" }}>sat.gob.mx</a> → CIEC → Certificados de Sello Digital.
-          En sandbox de Facturapi no necesitas CSD — se generan automáticamente para pruebas.
+          Si aún no tienes CSD, puedes tramitarlos en{" "}
+          <a href="https://www.sat.gob.mx" target="_blank" rel="noreferrer" style={{ color: "var(--color-brand-blue)" }}>sat.gob.mx</a>
+          {" "}→ CIEC → Certificados de Sello Digital.
+          En sandbox no necesitas CSD — Facturapi genera certificados de prueba automáticamente.
         </div>
       </Section>
 
@@ -217,7 +183,7 @@ export default function TabSellos() {
       <div>
         <button onClick={handleSave} disabled={saving}
           style={{ height: "40px", padding: "0 28px", borderRadius: "var(--radius-md)", background: saved ? "var(--color-success-text)" : "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
-          {saving ? "Guardando…" : saved ? "✓ Guardado" : "Guardar configuración"}
+          {registering ? "Registrando empresa…" : saving ? "Guardando…" : saved ? "✓ Guardado" : "Guardar configuración"}
         </button>
       </div>
     </div>
