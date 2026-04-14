@@ -5,31 +5,42 @@ import type { Quotation, CompanySettings } from "../../types/quotations.types";
 
 type Props = { quotation: Quotation; settings?: CompanySettings | null };
 
+// Detecta si un color hex es claro (luminancia > 0.5)
+function isLightColor(hex: string): boolean {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.substring(0, 2), 16) / 255;
+  const g = parseInt(h.substring(2, 4), 16) / 255;
+  const b = parseInt(h.substring(4, 6), 16) / 255;
+  const luminance = 0.299 * r + 0.587 * g + 0.114 * b;
+  return luminance > 0.5;
+}
+
 export default function TemplateEleganteProductos({ quotation, settings }: Props) {
   const items = quotation.items ?? [];
 
-  // ── Colores de marca ──────────────────────────────────────
-  const HEADER_BG = (settings as any)?.brand_color_dark ?? "#0a1628";
-  const ACCENT    = (settings as any)?.brand_accent      ?? "#c9a227";
+  // ── Colores de marca (configurables desde Settings) ───────
+  const HEADER_BG  = (settings as any)?.brand_color_dark ?? "#0a1628";  // fondo header
+  const BRAND_COLOR = (settings as any)?.brand_color      ?? "#1d4ed8"; // azul → tabla, secciones
+  const ACCENT      = (settings as any)?.brand_accent      ?? "#c9a227"; // acento → totales, vigencia
 
-  // Colores fijos — NO dependen de la marca del usuario
-  const PANEL_BG    = "#0f172a";   // fondo del totalBox y footer — siempre oscuro
-  const PANEL_TEXT  = "#f1f5f9";   // texto normal en paneles oscuros — siempre legible
-  const PANEL_MUTED = "#94a3b8";   // texto secundario en paneles oscuros
+  // ── Header text: claro si fondo oscuro, oscuro si fondo claro
+  const headerIsLight    = isLightColor(HEADER_BG);
+  const HEADER_TEXT      = headerIsLight ? "#1a2332" : "#ffffff";
+  const HEADER_TEXT_SUB  = headerIsLight ? "#334155" : "#e2e8f0";
+  const HEADER_TEXT_MUTED= headerIsLight ? "#64748b" : "#cbd5e1";
+
+  // ── Paneles fijos — siempre oscuros para legibilidad ──────
+  const PANEL_BG    = "#0f172a";
+  const PANEL_TEXT  = "#f1f5f9";
+  const PANEL_MUTED = "#94a3b8";
+
+  // ── Texto sobre fondo blanco (body) ───────────────────────
   const WHITE       = "#ffffff";
   const LIGHT       = "#f8fafc";
-  const BORDER_DARK = "#1e3a5f";   // borde en fondo oscuro
-
-  // Textos sobre fondo blanco (body)
   const TEXT_DARK   = "#1a2332";
   const TEXT_MEDIUM = "#334155";
   const TEXT_MUTED  = "#64748b";
-
-  // Textos sobre header (que puede ser claro o oscuro según marca)
-  // Para garantizar legibilidad, siempre usamos colores claros en header
-  const HEADER_TEXT       = "#ffffff";
-  const HEADER_TEXT_SUB   = "#e2e8f0";
-  const HEADER_TEXT_MUTED = "#cbd5e1";
+  const BORDER_PANEL= "#1e3a5f";
 
   // ── Datos del emisor ──────────────────────────────────────
   const issuerName    = settings?.fiscal_name    ?? "Mi Empresa";
@@ -69,21 +80,22 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
     accentLine:   { backgroundColor: ACCENT, height: 3 },
     body:         { padding: "20 36" },
     section:      { marginBottom: 16 },
-    sectionTitle: { fontSize: 8, fontWeight: "bold", color: ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 7, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: "#1e3a5f" },
+    // sectionTitle usa BRAND_COLOR (el azul configurable)
+    sectionTitle: { fontSize: 8, fontWeight: "bold", color: BRAND_COLOR, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 7, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: BRAND_COLOR },
     row2:         { flexDirection: "row", gap: 16 },
     col:          { flex: 1 },
     label:        { fontSize: 7.5, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
     value:        { fontSize: 9.5, color: TEXT_DARK, fontWeight: "bold" },
     valueSmall:   { fontSize: 8.5, color: TEXT_MEDIUM },
     muted:        { fontSize: 8, color: TEXT_MUTED },
-    // Tabla
-    tableHead:    { flexDirection: "row", backgroundColor: PANEL_BG, padding: "7 10", borderRadius: 3 },
+    // Tabla — usa BRAND_COLOR para el header
+    tableHead:    { flexDirection: "row", backgroundColor: BRAND_COLOR, padding: "7 10", borderRadius: 3 },
     tableHeadTxt: { color: WHITE, fontSize: 7.5, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5 },
     tableRow:     { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", padding: "7 10" },
     tableRowAlt:  { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", padding: "7 10", backgroundColor: LIGHT },
     cell:         { fontSize: 8.5, color: TEXT_MEDIUM },
     cellBold:     { fontSize: 8.5, color: TEXT_DARK, fontWeight: "bold" },
-    // Totales — PANEL_BG fijo, siempre oscuro
+    // Totales — PANEL_BG siempre oscuro fijo
     totalBox:     { backgroundColor: PANEL_BG, borderRadius: 6, padding: "14 18", marginTop: 8, alignSelf: "flex-end", minWidth: 230 },
     totalRow:     { flexDirection: "row", justifyContent: "space-between", marginBottom: 5 },
     totalLabel:   { fontSize: 8.5, color: PANEL_MUTED },
@@ -91,13 +103,13 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
     grandLabel:   { fontSize: 13, color: ACCENT, fontWeight: "bold" },
     grandValue:   { fontSize: 13, color: ACCENT, fontWeight: "bold" },
     // Notas / Términos
-    notesBox:     { backgroundColor: "#f1f5f9", borderRadius: 4, padding: "10 12", marginTop: 4, borderLeftWidth: 3, borderLeftColor: ACCENT },
+    notesBox:     { backgroundColor: "#f1f5f9", borderRadius: 4, padding: "10 12", marginTop: 4, borderLeftWidth: 3, borderLeftColor: BRAND_COLOR },
     notesText:    { fontSize: 8, color: TEXT_MEDIUM, lineHeight: 1.7 },
-    // Footer — PANEL_BG fijo, siempre oscuro
+    // Footer — PANEL_BG siempre oscuro fijo
     footer:       { backgroundColor: PANEL_BG, padding: "12 36", marginTop: "auto" },
     footerMain:   { color: PANEL_TEXT, fontSize: 8, textAlign: "center", marginBottom: 3 },
     footerPowered:{ color: PANEL_MUTED, fontSize: 7, textAlign: "center" },
-    footerDivider:{ height: 1, backgroundColor: BORDER_DARK, marginBottom: 8 },
+    footerDivider:{ height: 1, backgroundColor: BORDER_PANEL, marginBottom: 8 },
   });
 
   return (
@@ -127,6 +139,7 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
             <Text style={{ fontSize: 8, color: ACCENT, textTransform: "uppercase", letterSpacing: 2 }}>
               Cotización de Productos
             </Text>
+            {/* Número de cotización — color adaptivo según fondo */}
             <Text style={{ fontSize: 22, fontWeight: "bold", color: HEADER_TEXT, letterSpacing: 1 }}>
               {quotation.quote_number}
             </Text>
@@ -228,7 +241,7 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
               <Text style={s.totalLabel}>IVA {quotation.tax_rate ?? 16}%</Text>
               <Text style={s.totalValue}>{quotation.currency} ${fmt(quotation.tax_amount)}</Text>
             </View>
-            <View style={[s.totalRow, { borderTopWidth: 1, borderTopColor: BORDER_DARK, paddingTop: 7, marginTop: 4 }]}>
+            <View style={[s.totalRow, { borderTopWidth: 1, borderTopColor: BORDER_PANEL, paddingTop: 7, marginTop: 4 }]}>
               <Text style={s.grandLabel}>TOTAL</Text>
               <Text style={s.grandValue}>{quotation.currency} ${fmt(quotation.total)}</Text>
             </View>
