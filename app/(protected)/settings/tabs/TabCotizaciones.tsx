@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { fetchCompanySettings, upsertCompanySettings } from "@/app/(protected)/comercial/cotizaciones/services/quotations.service";
-import type { CompanySettings, QuotationTemplate } from "@/app/(protected)/comercial/cotizaciones/types/quotations.types";
+import type { CompanySettings } from "@/app/(protected)/comercial/cotizaciones/types/quotations.types";
 
 const INPUT: React.CSSProperties = {
   width: "100%", height: "38px", padding: "0 12px",
@@ -325,43 +325,6 @@ export default function TabCotizaciones() {
             <input type="number" value={form.quote_validity_days ?? 15} onChange={(e) => set("quote_validity_days", Number(e.target.value))} min="1" style={INPUT} />
           </div>
         </div>
-      </Section>
-
-      {/* PLANTILLAS */}
-      <Section
-        title={(t.settings as any)?.templatesTitle ?? "Plantillas por defecto"}
-        desc={(t.settings as any)?.templatesDesc ?? "Plantilla que se pre-selecciona al crear una nueva cotización."}
-      >
-        {(["products", "services"] as const).map((type) => {
-          const key   = type === "products" ? "template_products" : "template_services";
-          const label = type === "products" ? "Cotización de productos" : "Cotización de servicios";
-          return (
-            <div key={type}>
-              <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                {label}
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
-                {(["elegante", "moderna", "corporativa"] as QuotationTemplate[]).map((tpl) => (
-                  <button key={tpl} onClick={() => set(key as keyof CompanySettings, tpl)} style={{
-                    padding: "12px 8px", borderRadius: "var(--radius-md)", cursor: "pointer", textAlign: "center",
-                    background: (form as any)[key] === tpl ? "var(--color-info-bg)" : "var(--color-bg-subtle)",
-                    border: `2px solid ${(form as any)[key] === tpl ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
-                  }}>
-                    <div style={{ fontSize: "20px", marginBottom: "4px" }}>
-                      {tpl === "elegante" ? "✦" : tpl === "moderna" ? "◇" : "▣"}
-                    </div>
-                    <div style={{ fontSize: "11px", fontWeight: 700, color: (form as any)[key] === tpl ? "var(--color-brand-blue)" : "var(--color-text-primary)", textTransform: "capitalize" }}>
-                      {tpl}
-                    </div>
-                    <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "2px" }}>
-                      {tpl === "elegante" ? "Premium oscuro" : tpl === "moderna" ? "Minimalista" : "Formal clásico"}
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          );
-        })}
       </Section>
 
       {/* MARGEN MÍNIMO */}
