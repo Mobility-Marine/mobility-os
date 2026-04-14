@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Cliente con service role — lee datos sensibles sin RLS
+// Cliente admin — bypassa RLS para leer datos sensibles server-side
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -9,29 +9,41 @@ const supabaseAdmin = createClient(
 
 const FACTURAPI_BASE = "https://www.facturapi.io/v2";
 
-// Obtener la API Key de la empresa de forma segura
-async function getApiKey(companyId: string): Promise<{ key: string; env: string } | null> {
-  const { data } = await supabaseAdmin
-    .from("company_settings")
-    .select("facturapi_api_key, facturapi_env")
-    .eq("company_id", companyId)
-    .single();
-  if (!data?.facturapi_api_key) return null;
-  return { key: data.facturapi_api_key, env: data.facturapi_env ?? "test" };
+// ── API KEY MAESTRA — es de Mobility Marine, una sola para todo el SaaS
+function getMasterApiKey(): string {
+  const key = process.env.FACTURAPI_SECRET_KEY;
+  if (!key) throw new Error("FACTURAPI_SECRET_KEY no configurada en el servidor. Agrégala en Vercel → Environment Variables.");
+  return key;
 }
 
+// ── ORG ID de la empresa cliente desde Supabase
+async function getOrgId(companyId: string): Promise<string | null> {
+  const { data } = await supabaseAdmin
+    .from("company_settings")
+    .select("facturapi_org_id")
+    .eq("company_id", companyId)
+    .single();
+  return data?.facturapi_org_id ?? null;
+}
+
+// ── Helper para llamar a Facturapi con org_id cuando se necesita
 async function facturapi(
   apiKey: string,
   path: string,
   method = "GET",
-  body?: object
+  body?: object,
+  orgId?: string
 ) {
+  const headers: Record<string, string> = {
+    "Authorization": `Bearer ${apiKey}`,
+    "Content-Type": "application/json",
+  };
+  // Cuando operamos sobre una organización específica de nuestra cuenta
+  if (orgId) headers["X-Facturapi-Organization"] = orgId;
+
   const res = await fetch(`${FACTURAPI_BASE}${path}`, {
     method,
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
+    headers,
     body: body ? JSON.stringify(body) : undefined,
   });
   const data = await res.json();
@@ -45,25 +57,57 @@ export async function POST(req: NextRequest) {
 
     if (!companyId) return NextResponse.json({ error: "companyId requerido" }, { status: 400 });
 
-    // ── SETUP ORG ──────────────────────────────────────────────
+    const apiKey = getMasterApiKey();
+
+    // ── SETUP ORG ──────────────────────────────────────────────────────────────
+    // Registra la empresa cliente como organización dentro de la cuenta de Mobility Marine
     if (action === "setup_org") {
-      const { apiKey, env } = payload;
-      // Verificar que la key es válida obteniendo el perfil de la organización
-      const org = await facturapi(apiKey, "/organization");
-      // Guardar org_id en la empresa
+      // Leer datos fiscales de la empresa desde Supabase
+      const { data: settings } = await supabaseAdmin
+        .from("company_settings")
+        .select("fiscal_name, fiscal_rfc, fiscal_regime, fiscal_zip, cer_file_url, key_file_url")
+        .eq("company_id", companyId)
+        .single();
+
+      if (!settings?.fiscal_rfc) {
+        return NextResponse.json(
+          { error: "Configura primero los datos fiscales en Settings → Empresa (RFC, razón social y código postal)." },
+          { status: 400 }
+        );
+      }
+
+      // Crear organización en Facturapi bajo la cuenta maestra de Mobility Marine
+      const org = await facturapi(apiKey, "/organizations", "POST", {
+        name: settings.fiscal_name ?? settings.fiscal_rfc,
+        legal: {
+          name:       settings.fiscal_name,
+          tax_id:     settings.fiscal_rfc,
+          tax_system: settings.fiscal_regime ?? "601",
+          address:    { zip: settings.fiscal_zip ?? "00000", country: "MEX" },
+        },
+      });
+
+      // Guardar el org_id en Supabase para esta empresa
       await supabaseAdmin
         .from("company_settings")
-        .update({ facturapi_api_key: apiKey, facturapi_org_id: org.id, facturapi_env: env, pac_provider: "facturapi" })
+        .update({ facturapi_org_id: org.id, pac_provider: "facturapi" })
         .eq("company_id", companyId);
+
       return NextResponse.json({ org_id: org.id, legal_name: org.legal?.name });
     }
 
-    const creds = await getApiKey(companyId);
-    if (!creds) return NextResponse.json({ error: "API Key de Facturapi no configurada. Ve a Configuración → Sellos SAT." }, { status: 400 });
+    // Para todos los demás actions necesitamos el org_id de la empresa
+    const orgId = await getOrgId(companyId);
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "Empresa no registrada en el sistema de timbrado. Ve a Configuración → Sellos SAT y guarda tus certificados." },
+        { status: 400 }
+      );
+    }
 
-    // ── EMITIR CFDI ────────────────────────────────────────────
+    // ── EMITIR CFDI ────────────────────────────────────────────────────────────
     if (action === "emitir") {
-      const invoice = await facturapi(creds.key, "/invoices", "POST", payload.invoice);
+      const invoice = await facturapi(apiKey, "/invoices", "POST", payload.invoice, orgId);
 
       // Guardar en nuestra base de datos
       const { data: saved } = await supabaseAdmin
@@ -125,50 +169,63 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, cfdi: saved, invoice });
     }
 
-    // ── CANCELAR CFDI ──────────────────────────────────────────
+    // ── CANCELAR CFDI ──────────────────────────────────────────────────────────
     if (action === "cancelar") {
       const { cfdi_id, facturapi_id, motive, substitution } = payload;
       const cancelPayload: any = { motive };
       if (substitution) cancelPayload.substitution_id = substitution;
 
-      await facturapi(creds.key, `/invoices/${facturapi_id}/cancel`, "DELETE", cancelPayload);
+      await facturapi(apiKey, `/invoices/${facturapi_id}/cancel`, "DELETE", cancelPayload, orgId);
 
       await supabaseAdmin
         .from("cfdi_documents")
-        .update({ status: "cancelled", cancellation_motive: motive, cancellation_substitution_uuid: substitution ?? null, updated_at: new Date().toISOString() })
-        .eq("id", cfdi_id).eq("company_id", companyId);
+        .update({
+          status:                        "cancelled",
+          cancellation_motive:           motive,
+          cancellation_substitution_uuid:substitution ?? null,
+          updated_at:                    new Date().toISOString(),
+        })
+        .eq("id", cfdi_id)
+        .eq("company_id", companyId);
 
       return NextResponse.json({ success: true });
     }
 
-    // ── DESCARGAR XML ──────────────────────────────────────────
+    // ── DESCARGAR XML ──────────────────────────────────────────────────────────
     if (action === "xml") {
       const { facturapi_id } = payload;
       const xml = await fetch(`${FACTURAPI_BASE}/invoices/${facturapi_id}/xml`, {
-        headers: { Authorization: `Bearer ${creds.key}` },
+        headers: {
+          Authorization:               `Bearer ${apiKey}`,
+          "X-Facturapi-Organization":  orgId,
+        },
       });
       const text = await xml.text();
       return new NextResponse(text, { headers: { "Content-Type": "application/xml" } });
     }
 
-    // ── DESCARGAR PDF ──────────────────────────────────────────
+    // ── DESCARGAR PDF ──────────────────────────────────────────────────────────
     if (action === "pdf") {
       const { facturapi_id } = payload;
       const pdf = await fetch(`${FACTURAPI_BASE}/invoices/${facturapi_id}/pdf`, {
-        headers: { Authorization: `Bearer ${creds.key}` },
+        headers: {
+          Authorization:               `Bearer ${apiKey}`,
+          "X-Facturapi-Organization":  orgId,
+        },
       });
       const buffer = await pdf.arrayBuffer();
       return new NextResponse(buffer, { headers: { "Content-Type": "application/pdf" } });
     }
 
-    // ── ENVIAR EMAIL ───────────────────────────────────────────
+    // ── ENVIAR EMAIL ───────────────────────────────────────────────────────────
     if (action === "send_email") {
       const { facturapi_id, email } = payload;
-      await facturapi(creds.key, `/invoices/${facturapi_id}/email`, "POST", { email });
+      await facturapi(apiKey, `/invoices/${facturapi_id}/email`, "POST", { email }, orgId);
       return NextResponse.json({ success: true });
     }
 
     return NextResponse.json({ error: "Acción no reconocida" }, { status: 400 });
+
   } catch (err: any) {
     return NextResponse.json({ error: err.message }, { status: 500 });
   }
