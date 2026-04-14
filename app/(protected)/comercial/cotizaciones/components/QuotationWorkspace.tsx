@@ -591,7 +591,7 @@ export default function QuotationWorkspace({
           <div style={{ maxWidth: "380px", marginLeft: "auto", display: "grid", gap: "6px" }}>
             {[
               { label: "Subtotal",                                                value: quotation.subtotal,          color: "var(--color-text-primary)" },
-              { label: "Descuento", hide: !(quotation.discount_amount ?? 0) > 0, value: -(quotation.discount_amount ?? 0), color: "var(--color-warning-text)" },
+              { label: "Descuento", hide: !((quotation.discount_amount ?? 0) > 0), value: -(quotation.discount_amount ?? 0), color: "var(--color-warning-text)" },
               { label: `IVA ${quotation.tax_rate ?? 16}%`,                        value: quotation.tax_amount,         color: "var(--color-text-muted)"   },
             ].map((row: any) => row.hide ? null : (
               <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", fontSize: "13px" }}>
