@@ -8,18 +8,22 @@ type Props = { quotation: Quotation; settings?: CompanySettings | null };
 export default function TemplateEleganteProductos({ quotation, settings }: Props) {
   const items = quotation.items ?? [];
 
-  // ── Colores de marca — configurables ──────────────────────
-  const DARK    = (settings as any)?.brand_color_dark ?? "#0a1628";
-  const ACCENT  = (settings as any)?.brand_accent      ?? "#c9a227";
-  const BLUE    = (settings as any)?.brand_color        ?? "#1d4ed8";
-  const LIGHT   = "#f8fafc";
-  const MUTED   = "#94a3b8";
-  const WHITE   = "#ffffff";
-  const BORDER  = "#1e3a5f";
+  // ── Colores de marca ──────────────────────────────────────
+  const DARK   = (settings as any)?.brand_color_dark ?? "#0a1628";
+  const ACCENT = (settings as any)?.brand_accent      ?? "#c9a227";
+  const LIGHT  = "#f8fafc";
+  const WHITE  = "#ffffff";
+  const BORDER = "#1e3a5f";
+  // Textos oscuros legibles
+  const TEXT_DARK   = "#1a2332";   // ← antes era NAVY hardcoded, ahora oscuro real
+  const TEXT_MEDIUM = "#334155";   // ← gris oscuro para valores
+  const TEXT_MUTED  = "#64748b";   // ← gris medio para labels
 
   // ── Datos del emisor ──────────────────────────────────────
   const issuerName    = settings?.fiscal_name    ?? "Mi Empresa";
   const issuerRfc     = settings?.fiscal_rfc     ?? "";
+  const issuerState   = settings?.fiscal_state   ?? "";
+  const issuerCountry = settings?.fiscal_country ?? "";
   const issuerAddress = settings?.fiscal_address ?? "";
   const issuerPhone   = (settings as any)?.fiscal_phone   ?? "";
   const issuerEmail   = (settings as any)?.fiscal_email   ?? "";
@@ -27,52 +31,61 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
   const logoUrl       = settings?.logo_url        ?? "";
   const quoteFooter   = (settings as any)?.quote_footer   ?? "";
 
+  // Dirección del emisor: mostrar Estado/País si existen, sino dirección completa
+  const issuerLocation = issuerState && issuerCountry
+    ? `${issuerState}, ${issuerCountry}`
+    : issuerState || issuerCountry || issuerAddress;
+
+  // Términos: los de la cotización, o los defaults de settings
+  const termsText = quotation.terms
+    ?? (settings as any)?.quote_terms_products
+    ?? null;
+
   // ── Datos del cliente ─────────────────────────────────────
-  const clientName  = quotation.client?.name  ?? quotation.client_name  ?? "—";
-  const clientRfc   = quotation.client?.rfc   ?? quotation.client_rfc   ?? "";
-  const clientEmail = quotation.client?.email ?? quotation.client_email ?? "";
+  const clientName    = quotation.client?.name  ?? quotation.client_name  ?? "—";
+  const clientRfc     = quotation.client?.rfc   ?? quotation.client_rfc   ?? "";
+  const clientEmail   = quotation.client?.email ?? quotation.client_email ?? "";
+  // Contacto principal del cliente (si viene en el join)
+  const clientContact = (quotation as any)?.client_contact_name ?? null;
 
   const locale = "es-MX";
   const fmt = (n: number) => Number(n ?? 0).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const s = StyleSheet.create({
-    page:         { backgroundColor: WHITE, fontSize: 9, color: DARK },
+    page:         { backgroundColor: WHITE, fontSize: 9, color: TEXT_DARK },
     header:       { backgroundColor: DARK, padding: "24 36", flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
-    logoBox:      { width: 110, height: 40, objectFit: "contain" },
+    logoBox:      { width: 110, height: 44, objectFit: "contain" },
     accentLine:   { backgroundColor: ACCENT, height: 3 },
     body:         { padding: "20 36" },
     section:      { marginBottom: 16 },
     sectionTitle: { fontSize: 8, fontWeight: "bold", color: ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 7, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: BORDER },
     row2:         { flexDirection: "row", gap: 16 },
     col:          { flex: 1 },
-    label:        { fontSize: 7.5, color: MUTED, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 1 },
-    value:        { fontSize: 9.5, color: DARK, fontWeight: "bold" },
-    valueSmall:   { fontSize: 8.5, color: DARK },
-    muted:        { fontSize: 8, color: MUTED },
+    label:        { fontSize: 7.5, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+    value:        { fontSize: 9.5, color: TEXT_DARK,   fontWeight: "bold" },
+    valueSmall:   { fontSize: 8.5, color: TEXT_MEDIUM },
+    muted:        { fontSize: 8,   color: TEXT_MUTED   },
     // Tabla
     tableHead:    { flexDirection: "row", backgroundColor: DARK, padding: "7 10", borderRadius: 3 },
     tableHeadTxt: { color: WHITE, fontSize: 7.5, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5 },
     tableRow:     { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", padding: "7 10" },
     tableRowAlt:  { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", padding: "7 10", backgroundColor: LIGHT },
-    cell:         { fontSize: 8.5 },
+    cell:         { fontSize: 8.5, color: TEXT_MEDIUM },
+    cellBold:     { fontSize: 8.5, color: TEXT_DARK, fontWeight: "bold" },
     // Totales
     totalBox:     { backgroundColor: DARK, borderRadius: 6, padding: "14 18", marginTop: 8, alignSelf: "flex-end", minWidth: 230 },
     totalRow:     { flexDirection: "row", justifyContent: "space-between", marginBottom: 5 },
-    totalLabel:   { fontSize: 8.5, color: MUTED },
-    totalValue:   { fontSize: 8.5, color: WHITE },
+    totalLabel:   { fontSize: 8.5, color: "#94a3b8" },
+    totalValue:   { fontSize: 8.5, color: "#e2e8f0" },
     grandLabel:   { fontSize: 13, color: ACCENT, fontWeight: "bold" },
     grandValue:   { fontSize: 13, color: ACCENT, fontWeight: "bold" },
-    // Vigencia
-    validBox:     { backgroundColor: "#1e3a5f", borderRadius: 4, padding: "6 12", flexDirection: "row", justifyContent: "space-between", marginTop: 8 },
-    validLabel:   { color: MUTED, fontSize: 8 },
-    validValue:   { color: ACCENT, fontSize: 8, fontWeight: "bold" },
     // Notas / Términos
-    notesBox:     { backgroundColor: LIGHT, borderRadius: 4, padding: "10 12", marginTop: 4 },
-    notesText:    { fontSize: 8, color: "#475569", lineHeight: 1.6 },
+    notesBox:     { backgroundColor: "#f1f5f9", borderRadius: 4, padding: "10 12", marginTop: 4, borderLeftWidth: 3, borderLeftColor: ACCENT },
+    notesText:    { fontSize: 8, color: TEXT_MEDIUM, lineHeight: 1.7 },
     // Footer
     footer:       { backgroundColor: DARK, padding: "12 36", marginTop: "auto" },
-    footerMain:   { color: WHITE, fontSize: 8, textAlign: "center", marginBottom: 3 },
-    footerPowered:{ color: MUTED, fontSize: 7, textAlign: "center" },
+    footerMain:   { color: "#cbd5e1", fontSize: 8, textAlign: "center", marginBottom: 3 },
+    footerPowered:{ color: "#64748b", fontSize: 7, textAlign: "center" },
     footerDivider:{ height: 1, backgroundColor: BORDER, marginBottom: 8 },
   });
 
@@ -88,25 +101,25 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
               ? <Image src={logoUrl} style={s.logoBox} />
               : <Text style={{ fontSize: 20, fontWeight: "bold", color: WHITE }}>{issuerName}</Text>
             }
-            {logoUrl && <Text style={{ fontSize: 12, fontWeight: "bold", color: WHITE, marginTop: 4 }}>{issuerName}</Text>}
-            {issuerRfc     && <Text style={{ color: MUTED, fontSize: 7.5 }}>RFC: {issuerRfc}</Text>}
-            {issuerAddress && <Text style={{ color: MUTED, fontSize: 7.5 }}>{issuerAddress}</Text>}
-            {issuerPhone   && <Text style={{ color: MUTED, fontSize: 7.5 }}>Tel: {issuerPhone}</Text>}
-            {issuerEmail   && <Text style={{ color: MUTED, fontSize: 7.5 }}>{issuerEmail}</Text>}
-            {issuerWebsite && <Text style={{ color: MUTED, fontSize: 7.5 }}>{issuerWebsite}</Text>}
+            <Text style={{ fontSize: 12, fontWeight: "bold", color: WHITE, marginTop: logoUrl ? 4 : 2 }}>{issuerName}</Text>
+            {issuerRfc      && <Text style={{ color: "#94a3b8", fontSize: 7.5 }}>RFC: {issuerRfc}</Text>}
+            {issuerLocation && <Text style={{ color: "#94a3b8", fontSize: 7.5 }}>{issuerLocation}</Text>}
+            {issuerPhone    && <Text style={{ color: "#94a3b8", fontSize: 7.5 }}>Tel: {issuerPhone}</Text>}
+            {issuerEmail    && <Text style={{ color: "#94a3b8", fontSize: 7.5 }}>{issuerEmail}</Text>}
+            {issuerWebsite  && <Text style={{ color: "#94a3b8", fontSize: 7.5 }}>{issuerWebsite}</Text>}
           </View>
 
           {/* Número y tipo */}
           <View style={{ alignItems: "flex-end", gap: 4 }}>
             <Text style={{ fontSize: 8, color: ACCENT, textTransform: "uppercase", letterSpacing: 2 }}>
-              {quotation.type === "services" ? "Cotización de Servicios" : "Cotización de Productos"}
+              Cotización de Productos
             </Text>
             <Text style={{ fontSize: 22, fontWeight: "bold", color: WHITE, letterSpacing: 1 }}>
               {quotation.quote_number}
             </Text>
             {quotation.valid_until && (
               <View style={{ backgroundColor: "#1e3a5f", borderRadius: 4, padding: "4 10", alignItems: "flex-end" }}>
-                <Text style={{ color: MUTED, fontSize: 7 }}>Válida hasta</Text>
+                <Text style={{ color: "#94a3b8", fontSize: 7 }}>Válida hasta</Text>
                 <Text style={{ color: ACCENT, fontSize: 8, fontWeight: "bold" }}>
                   {new Date(quotation.valid_until).toLocaleDateString(locale)}
                 </Text>
@@ -120,7 +133,7 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
         {/* ── BODY ── */}
         <View style={s.body}>
 
-          {/* CLIENTE + DATOS DE LA COTIZACIÓN */}
+          {/* CLIENTE + DATOS COTIZACIÓN */}
           <View style={[s.section, s.row2]}>
             {/* Cliente */}
             <View style={s.col}>
@@ -128,6 +141,13 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
               <Text style={s.value}>{clientName}</Text>
               {clientRfc   && <Text style={[s.muted, { marginTop: 3 }]}>RFC: {clientRfc}</Text>}
               {clientEmail && <Text style={s.muted}>{clientEmail}</Text>}
+              {/* Atención a — contacto principal */}
+              {clientContact && (
+                <View style={{ marginTop: 6, flexDirection: "row", gap: 3 }}>
+                  <Text style={[s.muted, { fontWeight: "bold" }]}>Atención a:</Text>
+                  <Text style={s.muted}>{clientContact}</Text>
+                </View>
+              )}
             </View>
 
             {/* Info cotización */}
@@ -137,9 +157,9 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
                 {[
                   { l: "Fecha de emisión", v: new Date(quotation.created_at).toLocaleDateString(locale) },
                   { l: "Moneda",           v: quotation.currency },
-                  ...(quotation.incoterm   ? [{ l: "Incoterm",  v: quotation.incoterm   }] : []),
-                  ...(quotation.origin     ? [{ l: "Origen",    v: quotation.origin     }] : []),
-                  ...(quotation.destination? [{ l: "Destino",   v: quotation.destination}] : []),
+                  ...(quotation.incoterm    ? [{ l: "Incoterm",  v: quotation.incoterm    }] : []),
+                  ...(quotation.origin      ? [{ l: "Origen",    v: quotation.origin      }] : []),
+                  ...(quotation.destination ? [{ l: "Destino",   v: quotation.destination }] : []),
                 ].map((r) => (
                   <View key={r.l} style={{ flexDirection: "row", justifyContent: "space-between" }}>
                     <Text style={s.label}>{r.l}</Text>
@@ -150,7 +170,7 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
             </View>
           </View>
 
-          {/* TABLA DE PRODUCTOS */}
+          {/* TABLA PRODUCTOS */}
           <View style={s.section}>
             <Text style={s.sectionTitle}>Descripción de productos</Text>
             <View style={s.tableHead}>
@@ -164,18 +184,18 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
             </View>
             {items.map((item, i) => (
               <View key={item.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
-                <Text style={[s.cell, { width: "8%",  color: MUTED }]}>{item.sku ?? "—"}</Text>
+                <Text style={[s.cell, { width: "8%" }]}>{item.sku ?? "—"}</Text>
                 <View style={{ width: "36%" }}>
-                  <Text style={[s.cell, { fontWeight: "bold" }]}>{item.description}</Text>
-                  {item.details && <Text style={[s.cell, { color: MUTED, fontSize: 7.5 }]}>{item.details}</Text>}
+                  <Text style={s.cellBold}>{item.description}</Text>
+                  {item.details && <Text style={[s.cell, { fontSize: 7.5 }]}>{item.details}</Text>}
                 </View>
                 <Text style={[s.cell, { width: "10%", textAlign: "right" }]}>{item.quantity}</Text>
-                <Text style={[s.cell, { width: "8%",  textAlign: "center", color: MUTED }]}>{item.unit}</Text>
+                <Text style={[s.cell, { width: "8%",  textAlign: "center" }]}>{item.unit}</Text>
                 <Text style={[s.cell, { width: "16%", textAlign: "right" }]}>${fmt(item.unit_price)}</Text>
-                <Text style={[s.cell, { width: "8%",  textAlign: "center", color: item.discount_pct > 0 ? ACCENT : MUTED }]}>
+                <Text style={[s.cell, { width: "8%",  textAlign: "center", color: item.discount_pct > 0 ? ACCENT : TEXT_MUTED }]}>
                   {item.discount_pct > 0 ? `${item.discount_pct}%` : "—"}
                 </Text>
-                <Text style={[s.cell, { width: "14%", textAlign: "right", fontWeight: "bold" }]}>${fmt(item.subtotal)}</Text>
+                <Text style={[s.cellBold, { width: "14%", textAlign: "right" }]}>${fmt(item.subtotal)}</Text>
               </View>
             ))}
           </View>
@@ -212,12 +232,12 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
             </View>
           )}
 
-          {/* TÉRMINOS Y CONDICIONES */}
-          {quotation.terms && (
+          {/* TÉRMINOS — cotización o default de settings */}
+          {termsText && (
             <View style={[s.section, { marginTop: 4 }]}>
               <Text style={s.sectionTitle}>Términos y condiciones</Text>
               <View style={s.notesBox}>
-                <Text style={s.notesText}>{quotation.terms}</Text>
+                <Text style={s.notesText}>{termsText}</Text>
               </View>
             </View>
           )}
@@ -228,16 +248,14 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
           <View style={s.footerDivider} />
           <Text style={s.footerMain}>
             {issuerName}
-            {issuerAddress ? `  ·  ${issuerAddress}` : ""}
-            {issuerRfc     ? `  ·  RFC: ${issuerRfc}` : ""}
-            {issuerPhone   ? `  ·  ${issuerPhone}`    : ""}
+            {issuerLocation ? `  ·  ${issuerLocation}`  : ""}
+            {issuerRfc      ? `  ·  RFC: ${issuerRfc}`  : ""}
+            {issuerPhone    ? `  ·  ${issuerPhone}`      : ""}
           </Text>
           {quoteFooter && (
             <Text style={[s.footerMain, { marginTop: 3 }]}>{quoteFooter}</Text>
           )}
-          <Text style={[s.footerPowered, { marginTop: 5 }]}>
-            Powered by Mobility OS
-          </Text>
+          <Text style={[s.footerPowered, { marginTop: 5 }]}>Powered by Mobility OS</Text>
         </View>
 
       </Page>
