@@ -1,0 +1,190 @@
+"use client";
+import { useTranslation } from "@/lib/i18n/useTranslation";
+import type { CFDIDocument, FacturacionStats } from "../types/facturacion.types";
+
+type Props = {
+  stats:   FacturacionStats;
+  cfdis:   CFDIDocument[];
+  loading: boolean;
+  onSelect:(c: CFDIDocument) => void;
+  onEmitir:() => void;
+};
+
+const fmt  = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export default function FacturacionDashboard({ stats: s, cfdis, loading, onSelect, onEmitir }: Props) {
+  const { lang } = useTranslation();
+  const es = lang !== "en";
+
+  const recent      = cfdis.slice(0, 8);
+  const ppd_pending = cfdis.filter((c) => c.payment_method === "PPD" && c.status === "valid" && c.type === "I");
+  const total_ppd   = ppd_pending.reduce((sum, c) => sum + c.total, 0);
+
+  const cards = [
+    {
+      label: es ? "Facturado este mes"   : "Invoiced this month",
+      value: "$" + fmt(s.total_month),
+      sub:   `${s.count_month} ${es ? "documentos" : "documents"}`,
+      color: "var(--color-brand-blue)", bg: "var(--color-info-bg)",
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+    },
+    {
+      label: es ? "Por cobrar (PPD)"     : "Accounts receivable (PPD)",
+      value: "$" + fmt(total_ppd),
+      sub:   `${ppd_pending.length} ${es ? "facturas pendientes" : "pending invoices"}`,
+      color: "var(--color-warning-text)", bg: "var(--color-warning-bg)",
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+    },
+    {
+      label: es ? "Canceladas"           : "Cancelled",
+      value: String(s.count_cancelled),
+      sub:   es ? "histórico total" : "total history",
+      color: s.count_cancelled > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)",
+      bg:    s.count_cancelled > 0 ? "var(--color-danger-bg)" : "var(--color-bg-base)",
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>,
+    },
+    {
+      label: es ? "Total emitidas"       : "Total issued",
+      value: String(s.count_total),
+      sub:   es ? "todos los CFDIs" : "all CFDIs",
+      color: "var(--color-text-primary)", bg: "var(--color-bg-base)",
+      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
+    },
+  ];
+
+  const TYPE_COLORS: Record<string, { color: string; bg: string }> = {
+    I: { color: "var(--color-success-text)", bg: "var(--color-success-bg)" },
+    E: { color: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
+    P: { color: "var(--color-brand-blue)",   bg: "var(--color-info-bg)"    },
+    T: { color: "var(--color-text-muted)",   bg: "var(--color-bg-subtle)"  },
+    N: { color: "#7c3aed",                   bg: "#ede9fe"                 },
+  };
+
+  const TYPE_LABELS: Record<string, { es: string; en: string }> = {
+    I: { es: "Factura",  en: "Invoice"  },
+    E: { es: "N.Crédito",en: "Credit"   },
+    P: { es: "Pago",     en: "Payment"  },
+    T: { es: "Traslado", en: "Transfer" },
+    N: { es: "Nómina",   en: "Payroll"  },
+  };
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+      {/* KPIs */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px" }}>
+        {cards.map((c) => (
+          <div key={c.label} style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "16px", display: "flex", flexDirection: "column", gap: "10px" }}>
+            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", flex: 1 }}>{c.label}</div>
+              <div style={{ width: "32px", height: "32px", borderRadius: "var(--radius-md)", background: c.bg, color: c.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{c.icon}</div>
+            </div>
+            <div style={{ fontSize: "22px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{c.value}</div>
+            <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{c.sub}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Alerta PPD */}
+      {ppd_pending.length > 0 && (
+        <div style={{ padding: "12px 16px", borderRadius: "var(--radius-md)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-warning-text)" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-warning-text)" }}>
+              {ppd_pending.length} {es ? "factura(s) PPD pendientes de complemento de pago" : "PPD invoice(s) pending payment complement"}
+              {" — "}<strong>${fmt(total_ppd)}</strong> {es ? "por cobrar" : "receivable"}
+            </div>
+          </div>
+          <button onClick={onEmitir} style={{ height: "30px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-warning-text)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
+            {es ? "Emitir REP" : "Issue REP"}
+          </button>
+        </div>
+      )}
+
+      {/* Últimos CFDIs + Acciones rápidas */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "16px" }}>
+
+        {/* Recientes */}
+        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+          <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
+              {es ? "CFDIs recientes" : "Recent CFDIs"}
+            </div>
+          </div>
+          {loading ? (
+            <div style={{ padding: "30px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>{es ? "Cargando…" : "Loading…"}</div>
+          ) : recent.length === 0 ? (
+            <div style={{ padding: "40px", textAlign: "center" }}>
+              <div style={{ fontSize: "32px", marginBottom: "8px" }}>📄</div>
+              <div style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>{es ? "Aún no has emitido ningún CFDI" : "No CFDIs issued yet"}</div>
+            </div>
+          ) : (
+            recent.map((cfdi, i) => {
+              const tc = TYPE_COLORS[cfdi.type] ?? TYPE_COLORS.I;
+              const tl = TYPE_LABELS[cfdi.type] ?? TYPE_LABELS.I;
+              return (
+                <div key={cfdi.id} onClick={() => onSelect(cfdi)}
+                  style={{ display: "flex", alignItems: "center", gap: "12px", padding: "11px 18px", borderBottom: i < recent.length - 1 ? "1px solid var(--color-border-faint)" : "none", cursor: "pointer", transition: "background 0.1s" }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-bg-subtle)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
+                  <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 7px", borderRadius: "var(--radius-full)", background: tc.bg, color: tc.color, flexShrink: 0 }}>
+                    {es ? tl.es : tl.en}
+                  </span>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {cfdi.receiver_name}
+                    </div>
+                    <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "1px" }}>
+                      {cfdi.serie ?? ""}{cfdi.folio ?? "—"} · {new Date(cfdi.cfdi_date).toLocaleDateString(es ? "es-MX" : "en-US", { month: "short", day: "2-digit" })}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right", flexShrink: 0 }}>
+                    <div style={{ fontSize: "13px", fontWeight: 800, color: cfdi.status === "cancelled" ? "var(--color-text-muted)" : "var(--color-text-primary)", fontVariantNumeric: "tabular-nums", textDecoration: cfdi.status === "cancelled" ? "line-through" : "none" }}>
+                      ${fmt(cfdi.total)}
+                    </div>
+                    <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{cfdi.currency}</div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Acciones rápidas */}
+        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}>
+          <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "4px" }}>
+            {es ? "Acciones rápidas" : "Quick actions"}
+          </div>
+          {[
+            { labelEs: "Emitir nueva factura",      labelEn: "Issue new invoice",      action: "factura",   color: "var(--color-brand-blue)" },
+            { labelEs: "Complemento de pago (REP)", labelEn: "Payment complement",     action: "rep",       color: "var(--color-success-text)" },
+            { labelEs: "Nota de crédito",           labelEn: "Credit note",            action: "credito",   color: "var(--color-warning-text)" },
+          ].map((a) => (
+            <button key={a.action} onClick={onEmitir}
+              style={{ height: "38px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", color: "var(--color-text-second)", fontSize: "12px", fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: "8px", transition: "all 0.1s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = a.color; e.currentTarget.style.color = a.color; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border-faint)"; e.currentTarget.style.color = "var(--color-text-second)"; }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              {es ? a.labelEs : a.labelEn}
+            </button>
+          ))}
+          <div style={{ borderTop: "1px solid var(--color-border-faint)", paddingTop: "10px", marginTop: "4px" }}>
+            <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              {es ? "Este mes" : "This month"}
+            </div>
+            {[
+              { l: es ? "Facturas"      : "Invoices",   v: String(s.count_month)    },
+              { l: es ? "Facturado"     : "Billed",     v: "$" + fmt(s.total_month) },
+              { l: es ? "Por cobrar"    : "Receivable", v: "$" + fmt(total_ppd)     },
+            ].map((r) => (
+              <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
+                <span style={{ color: "var(--color-text-muted)" }}>{r.l}</span>
+                <span style={{ fontWeight: 600, color: "var(--color-text-primary)", fontVariantNumeric: "tabular-nums" }}>{r.v}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
