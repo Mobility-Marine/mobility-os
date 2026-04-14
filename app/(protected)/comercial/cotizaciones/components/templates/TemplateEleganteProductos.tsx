@@ -9,18 +9,24 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
   const items = quotation.items ?? [];
 
   // ── Colores de marca ──────────────────────────────────────
-  const DARK   = (settings as any)?.brand_color_dark ?? "#0a1628";
-  const ACCENT = (settings as any)?.brand_accent      ?? "#c9a227";
-  const LIGHT  = "#f8fafc";
-  const WHITE  = "#ffffff";
-  const BORDER = "#1e3a5f";
+  const HEADER_BG = (settings as any)?.brand_color_dark ?? "#0a1628";
+  const ACCENT    = (settings as any)?.brand_accent      ?? "#c9a227";
 
-  // Textos sobre fondo blanco
+  // Colores fijos — NO dependen de la marca del usuario
+  const PANEL_BG    = "#0f172a";   // fondo del totalBox y footer — siempre oscuro
+  const PANEL_TEXT  = "#f1f5f9";   // texto normal en paneles oscuros — siempre legible
+  const PANEL_MUTED = "#94a3b8";   // texto secundario en paneles oscuros
+  const WHITE       = "#ffffff";
+  const LIGHT       = "#f8fafc";
+  const BORDER_DARK = "#1e3a5f";   // borde en fondo oscuro
+
+  // Textos sobre fondo blanco (body)
   const TEXT_DARK   = "#1a2332";
   const TEXT_MEDIUM = "#334155";
   const TEXT_MUTED  = "#64748b";
 
-  // Textos sobre fondo oscuro (header) — siempre claros
+  // Textos sobre header (que puede ser claro o oscuro según marca)
+  // Para garantizar legibilidad, siempre usamos colores claros en header
   const HEADER_TEXT       = "#ffffff";
   const HEADER_TEXT_SUB   = "#e2e8f0";
   const HEADER_TEXT_MUTED = "#cbd5e1";
@@ -37,12 +43,10 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
   const logoUrl       = settings?.logo_url        ?? "";
   const quoteFooter   = (settings as any)?.quote_footer   ?? "";
 
-  // Mostrar Estado, País — si no existen, usar dirección
   const issuerLocation = issuerState && issuerCountry
     ? `${issuerState}, ${issuerCountry}`
     : issuerState || issuerCountry || issuerAddress;
 
-  // Términos: los de la cotización, o el default de settings
   const termsText = quotation.terms
     ?? (settings as any)?.quote_terms_products
     ?? null;
@@ -60,12 +64,12 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
 
   const s = StyleSheet.create({
     page:         { backgroundColor: WHITE, fontSize: 9, color: TEXT_DARK },
-    header:       { backgroundColor: DARK, padding: "24 36", flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+    header:       { backgroundColor: HEADER_BG, padding: "24 36", flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
     logoBox:      { width: 110, height: 44, objectFit: "contain" },
     accentLine:   { backgroundColor: ACCENT, height: 3 },
     body:         { padding: "20 36" },
     section:      { marginBottom: 16 },
-    sectionTitle: { fontSize: 8, fontWeight: "bold", color: ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 7, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: BORDER },
+    sectionTitle: { fontSize: 8, fontWeight: "bold", color: ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 7, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: "#1e3a5f" },
     row2:         { flexDirection: "row", gap: 16 },
     col:          { flex: 1 },
     label:        { fontSize: 7.5, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
@@ -73,27 +77,27 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
     valueSmall:   { fontSize: 8.5, color: TEXT_MEDIUM },
     muted:        { fontSize: 8, color: TEXT_MUTED },
     // Tabla
-    tableHead:    { flexDirection: "row", backgroundColor: DARK, padding: "7 10", borderRadius: 3 },
+    tableHead:    { flexDirection: "row", backgroundColor: PANEL_BG, padding: "7 10", borderRadius: 3 },
     tableHeadTxt: { color: WHITE, fontSize: 7.5, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5 },
     tableRow:     { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", padding: "7 10" },
     tableRowAlt:  { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", padding: "7 10", backgroundColor: LIGHT },
     cell:         { fontSize: 8.5, color: TEXT_MEDIUM },
     cellBold:     { fontSize: 8.5, color: TEXT_DARK, fontWeight: "bold" },
-    // Totales — texto legible en caja oscura
-    totalBox:     { backgroundColor: DARK, borderRadius: 6, padding: "14 18", marginTop: 8, alignSelf: "flex-end", minWidth: 230 },
+    // Totales — PANEL_BG fijo, siempre oscuro
+    totalBox:     { backgroundColor: PANEL_BG, borderRadius: 6, padding: "14 18", marginTop: 8, alignSelf: "flex-end", minWidth: 230 },
     totalRow:     { flexDirection: "row", justifyContent: "space-between", marginBottom: 5 },
-    totalLabel:   { fontSize: 8.5, color: "#cbd5e1" },
-    totalValue:   { fontSize: 8.5, color: "#f1f5f9" },
+    totalLabel:   { fontSize: 8.5, color: PANEL_MUTED },
+    totalValue:   { fontSize: 8.5, color: PANEL_TEXT },
     grandLabel:   { fontSize: 13, color: ACCENT, fontWeight: "bold" },
     grandValue:   { fontSize: 13, color: ACCENT, fontWeight: "bold" },
     // Notas / Términos
     notesBox:     { backgroundColor: "#f1f5f9", borderRadius: 4, padding: "10 12", marginTop: 4, borderLeftWidth: 3, borderLeftColor: ACCENT },
     notesText:    { fontSize: 8, color: TEXT_MEDIUM, lineHeight: 1.7 },
-    // Footer
-    footer:       { backgroundColor: DARK, padding: "12 36", marginTop: "auto" },
-    footerMain:   { color: "#e2e8f0", fontSize: 8, textAlign: "center", marginBottom: 3 },
-    footerPowered:{ color: "#94a3b8", fontSize: 7, textAlign: "center" },
-    footerDivider:{ height: 1, backgroundColor: "#1e3a5f", marginBottom: 8 },
+    // Footer — PANEL_BG fijo, siempre oscuro
+    footer:       { backgroundColor: PANEL_BG, padding: "12 36", marginTop: "auto" },
+    footerMain:   { color: PANEL_TEXT, fontSize: 8, textAlign: "center", marginBottom: 3 },
+    footerPowered:{ color: PANEL_MUTED, fontSize: 7, textAlign: "center" },
+    footerDivider:{ height: 1, backgroundColor: BORDER_DARK, marginBottom: 8 },
   });
 
   return (
@@ -127,8 +131,8 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
               {quotation.quote_number}
             </Text>
             {quotation.valid_until && (
-              <View style={{ backgroundColor: "#1e3a5f", borderRadius: 4, padding: "4 10", alignItems: "flex-end" }}>
-                <Text style={{ color: HEADER_TEXT_MUTED, fontSize: 7 }}>Válida hasta</Text>
+              <View style={{ backgroundColor: PANEL_BG, borderRadius: 4, padding: "4 10", alignItems: "flex-end" }}>
+                <Text style={{ color: PANEL_MUTED, fontSize: 7 }}>Válida hasta</Text>
                 <Text style={{ color: ACCENT, fontSize: 8, fontWeight: "bold" }}>
                   {new Date(quotation.valid_until).toLocaleDateString(locale)}
                 </Text>
@@ -144,7 +148,6 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
 
           {/* CLIENTE + DATOS COTIZACIÓN */}
           <View style={[s.section, s.row2]}>
-            {/* Cliente */}
             <View style={s.col}>
               <Text style={s.sectionTitle}>Cliente</Text>
               <Text style={s.value}>{clientName}</Text>
@@ -158,7 +161,6 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
               )}
             </View>
 
-            {/* Info cotización */}
             <View style={s.col}>
               <Text style={s.sectionTitle}>Datos de la cotización</Text>
               <View style={{ gap: 5 }}>
@@ -226,7 +228,7 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
               <Text style={s.totalLabel}>IVA {quotation.tax_rate ?? 16}%</Text>
               <Text style={s.totalValue}>{quotation.currency} ${fmt(quotation.tax_amount)}</Text>
             </View>
-            <View style={[s.totalRow, { borderTopWidth: 1, borderTopColor: BORDER, paddingTop: 7, marginTop: 4 }]}>
+            <View style={[s.totalRow, { borderTopWidth: 1, borderTopColor: BORDER_DARK, paddingTop: 7, marginTop: 4 }]}>
               <Text style={s.grandLabel}>TOTAL</Text>
               <Text style={s.grandValue}>{quotation.currency} ${fmt(quotation.total)}</Text>
             </View>
@@ -242,7 +244,7 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
             </View>
           )}
 
-          {/* TÉRMINOS Y CONDICIONES — cotización o default de settings */}
+          {/* TÉRMINOS */}
           {termsText && (
             <View style={[s.section, { marginTop: 4 }]}>
               <Text style={s.sectionTitle}>Términos y condiciones</Text>
