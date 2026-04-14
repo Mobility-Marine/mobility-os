@@ -175,50 +175,25 @@ export default function TabSellos() {
           )}
         </div>
 
-        {/* API Key */}
-        <div>
-          <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-            API Key de Facturapi ({facturApiEnv === "test" ? "Test" : "Live"})
-          </div>
-          <div style={{ display: "flex", gap: "8px" }}>
-            <div style={{ position: "relative", flex: 1 }}>
-              <input
-                type={showKey ? "text" : "password"}
-                value={facturApiKey}
-                onChange={(e) => setFacturApiKey(e.target.value)}
-                placeholder="sk_test_... o sk_live_..."
-                style={{ ...INPUT, paddingRight: "40px", fontFamily: facturApiKey && !showKey ? "monospace" : "inherit" }}
-              />
-              <button onClick={() => setShowKey((p) => !p)}
-                style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--color-text-muted)", padding: "2px" }}>
-                {showKey
-                  ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
-                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
-                }
-              </button>
-            </div>
-          </div>
-          <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "4px" }}>
-            Obtén tu API Key en <a href="https://app.facturapi.io" target="_blank" rel="noreferrer" style={{ color: "var(--color-brand-blue)" }}>app.facturapi.io</a> → Configuración → API Keys
-          </div>
-        </div>
-
-        {/* Estado de organización */}
-        {facturApiOrg ? (
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)" }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-text)" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-success-text)" }}>Organización registrada en Facturapi</div>
-              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontFamily: "monospace", marginTop: "1px" }}>{facturApiOrg}</div>
-            </div>
-          </div>
-        ) : (
-          <button onClick={handleRegisterOrg} disabled={!facturApiKey || registering}
-            style={{ height: "36px", padding: "0 18px", borderRadius: "var(--radius-md)", background: facturApiKey ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: facturApiKey ? "#fff" : "var(--color-text-muted)", border: "none", fontSize: "12px", fontWeight: 700, cursor: facturApiKey ? "pointer" : "not-allowed" }}>
-            {registering ? "Registrando organización…" : "Registrar empresa en Facturapi"}
-          </button>
-        )}
-      </Section>
+       {/* FACTURAPI — solo estado de la organización */}
+<Section
+  title="Facturapi — PAC autorizado SAT"
+  desc="Tu empresa está conectada al sistema de timbrado. Solo necesitas subir tus certificados CSD."
+>
+  {facturApiOrg ? (
+    <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "12px 16px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)" }}>
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-text)" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+      <div>
+        <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-success-text)" }}>Empresa registrada en el sistema de timbrado</div>
+        <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontFamily: "monospace", marginTop: "2px" }}>{facturApiOrg}</div>
+      </div>
+    </div>
+  ) : (
+    <div style={{ padding: "12px 16px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.6 }}>
+      Sube tus certificados CSD abajo y guarda — el sistema registrará tu empresa automáticamente.
+    </div>
+  )}
+</Section>
 
       {/* CERTIFICADOS CSD */}
       <Section
