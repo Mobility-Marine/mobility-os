@@ -28,6 +28,7 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
   const brandIsLight = isLightColor(BRAND_COLOR);
   const BRAND_TEXT   = brandIsLight ? "#1a2332" : "#ffffff";
   const BRAND_MUTED  = brandIsLight ? "#475569" : "#cbd5e1";
+  const BORDER_COLOR = brandIsLight ? "#94a3b8" : "#1e3a5f";
 
   const WHITE       = "#ffffff";
   const LIGHT       = "#f8fafc";
@@ -64,7 +65,10 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
     minimumFractionDigits: 2, maximumFractionDigits: 2,
   });
 
-  const borderColor = brandIsLight ? "#94a3b8" : "#1e3a5f";
+  const footerText = issuerName
+    + (issuerLocation ? ("  \u00B7  " + issuerLocation)  : "")
+    + (issuerRfc      ? ("  \u00B7  RFC: " + issuerRfc)  : "")
+    + (issuerPhone    ? ("  \u00B7  " + issuerPhone)     : "");
 
   const s = StyleSheet.create({
     page:         { backgroundColor: WHITE, fontSize: 9, color: TEXT_DARK },
@@ -96,59 +100,71 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
     notesText:    { fontSize: 8, color: TEXT_MEDIUM, lineHeight: 1.7 },
     footer:       { backgroundColor: BRAND_COLOR, padding: "12 36" },
     footerMain:   { color: BRAND_TEXT, fontSize: 8, textAlign: "center", marginBottom: 3 },
-    footerPowered: { color: BRAND_MUTED, fontSize: 7, textAlign: "center" },
-    footerDivider: { height: 1, backgroundColor: borderColor, marginBottom: 8 },
+    footerPowered:{ color: BRAND_MUTED, fontSize: 7, textAlign: "center" },
+    footerDivider:{ height: 1, backgroundColor: BORDER_COLOR, marginBottom: 8 },
+    // Términos en página dedicada
+    termsBody:    { paddingTop: 24, paddingBottom: 20, paddingLeft: 36, paddingRight: 36, flex: 1 },
+    termsTitle:   { fontSize: 11, fontWeight: "bold", color: ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 12, paddingBottom: 6, borderBottomWidth: 2, borderBottomColor: BRAND_COLOR },
+    termsText:    { fontSize: 8, color: TEXT_MEDIUM, lineHeight: 1.8 },
   });
 
-  const footerText = issuerName
-    + (issuerLocation ? ("  \u00B7  " + issuerLocation) : "")
-    + (issuerRfc      ? ("  \u00B7  RFC: " + issuerRfc) : "")
-    + (issuerPhone    ? ("  \u00B7  " + issuerPhone)    : "");
+  // ── Componente reutilizable: Header ───────────────────────
+  const Header = () => (
+    <>
+      <View style={s.header}>
+        <View style={{ flexDirection: "column", gap: 3 }}>
+          {logoUrl
+            ? <Image src={logoUrl} style={s.logoBox} />
+            : <Text style={{ fontSize: 20, fontWeight: "bold", color: HEADER_TEXT }}>{issuerName}</Text>
+          }
+          <Text style={{ fontSize: 12, fontWeight: "bold", color: ACCENT, marginTop: logoUrl ? 4 : 2 }}>
+            {issuerName}
+          </Text>
+          {issuerRfc      ? <Text style={{ color: HEADER_TEXT_SUB,   fontSize: 7.5 }}>{"RFC: " + issuerRfc}</Text>      : null}
+          {issuerLocation ? <Text style={{ color: HEADER_TEXT_MUTED, fontSize: 7.5 }}>{issuerLocation}</Text>           : null}
+          {issuerPhone    ? <Text style={{ color: HEADER_TEXT_MUTED, fontSize: 7.5 }}>{"Tel: " + issuerPhone}</Text>    : null}
+          {issuerEmail    ? <Text style={{ color: HEADER_TEXT_MUTED, fontSize: 7.5 }}>{issuerEmail}</Text>              : null}
+          {issuerWebsite  ? <Text style={{ color: HEADER_TEXT_MUTED, fontSize: 7.5 }}>{issuerWebsite}</Text>            : null}
+        </View>
+        <View style={{ alignItems: "flex-end", gap: 4 }}>
+          <Text style={{ fontSize: 8, color: ACCENT, textTransform: "uppercase", letterSpacing: 2 }}>
+            {"Cotización de Productos"}
+          </Text>
+          <Text style={{ fontSize: 22, fontWeight: "bold", color: HEADER_TEXT, letterSpacing: 1 }}>
+            {quotation.quote_number}
+          </Text>
+          {quotation.valid_until ? (
+            <View style={{ backgroundColor: BRAND_COLOR, borderRadius: 4, padding: "4 10", alignItems: "flex-end" }}>
+              <Text style={{ color: BRAND_MUTED, fontSize: 7 }}>{"Válida hasta"}</Text>
+              <Text style={{ color: BRAND_TEXT, fontSize: 8, fontWeight: "bold" }}>
+                {new Date(quotation.valid_until).toLocaleDateString(locale)}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+      </View>
+      <View style={s.accentLine} />
+    </>
+  );
+
+  // ── Componente reutilizable: Footer ───────────────────────
+  const Footer = () => (
+    <View style={s.footer}>
+      <View style={s.footerDivider} />
+      <Text style={s.footerMain}>{footerText}</Text>
+      {quoteFooter ? <Text style={[s.footerMain, { marginTop: 3 }]}>{quoteFooter}</Text> : null}
+      <Text style={[s.footerPowered, { marginTop: 5 }]}>{"Powered by Mobility OS"}</Text>
+    </View>
+  );
 
   return (
     <Document>
+
+      {/* ── PÁGINA 1+: Contenido principal ── */}
       <Page size="LETTER" style={s.page}>
+        <Header />
 
-        {/* HEADER */}
-        <View style={s.header}>
-          <View style={{ flexDirection: "column", gap: 3 }}>
-            {logoUrl
-              ? <Image src={logoUrl} style={s.logoBox} />
-              : <Text style={{ fontSize: 20, fontWeight: "bold", color: HEADER_TEXT }}>{issuerName}</Text>
-            }
-            <Text style={{ fontSize: 12, fontWeight: "bold", color: ACCENT, marginTop: logoUrl ? 4 : 2 }}>
-              {issuerName}
-            </Text>
-            {issuerRfc      ? <Text style={{ color: HEADER_TEXT_SUB,   fontSize: 7.5 }}>{"RFC: " + issuerRfc}</Text>      : null}
-            {issuerLocation ? <Text style={{ color: HEADER_TEXT_MUTED, fontSize: 7.5 }}>{issuerLocation}</Text>           : null}
-            {issuerPhone    ? <Text style={{ color: HEADER_TEXT_MUTED, fontSize: 7.5 }}>{"Tel: " + issuerPhone}</Text>    : null}
-            {issuerEmail    ? <Text style={{ color: HEADER_TEXT_MUTED, fontSize: 7.5 }}>{issuerEmail}</Text>              : null}
-            {issuerWebsite  ? <Text style={{ color: HEADER_TEXT_MUTED, fontSize: 7.5 }}>{issuerWebsite}</Text>            : null}
-          </View>
-
-          <View style={{ alignItems: "flex-end", gap: 4 }}>
-            <Text style={{ fontSize: 8, color: ACCENT, textTransform: "uppercase", letterSpacing: 2 }}>
-              {"Cotización de Productos"}
-            </Text>
-            <Text style={{ fontSize: 22, fontWeight: "bold", color: HEADER_TEXT, letterSpacing: 1 }}>
-              {quotation.quote_number}
-            </Text>
-            {quotation.valid_until ? (
-              <View style={{ backgroundColor: BRAND_COLOR, borderRadius: 4, padding: "4 10", alignItems: "flex-end" }}>
-                <Text style={{ color: BRAND_MUTED, fontSize: 7 }}>{"Válida hasta"}</Text>
-                <Text style={{ color: BRAND_TEXT, fontSize: 8, fontWeight: "bold" }}>
-                  {new Date(quotation.valid_until).toLocaleDateString(locale)}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-        </View>
-
-        <View style={s.accentLine} />
-
-        {/* BODY */}
         <View style={s.body}>
-
           {/* CLIENTE + DATOS */}
           <View style={[s.section, s.row2]}>
             <View style={s.col}>
@@ -229,7 +245,7 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
               <Text style={s.totalLabel}>{"IVA " + String(quotation.tax_rate ?? 16) + "%"}</Text>
               <Text style={s.totalValue}>{quotation.currency + " $" + fmt(quotation.tax_amount)}</Text>
             </View>
-            <View style={[s.totalRow, { borderTopWidth: 1, borderTopColor: borderColor, paddingTop: 7, marginTop: 4 }]}>
+            <View style={[s.totalRow, { borderTopWidth: 1, borderTopColor: BORDER_COLOR, paddingTop: 7, marginTop: 4 }]}>
               <Text style={s.grandLabel}>{"TOTAL"}</Text>
               <Text style={s.grandValue}>{quotation.currency + " $" + fmt(quotation.total)}</Text>
             </View>
@@ -244,28 +260,25 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
               </View>
             </View>
           ) : null}
-
-          {/* TÉRMINOS */}
-{termsText ? (
-  <View style={[s.section, { marginTop: 4 }]}>
-    <Text style={s.sectionTitle}>{"Términos y condiciones"}</Text>
-    <View style={[s.notesBox, { paddingHorizontal: 16, paddingVertical: 12 }]} wrap={false}>
-      <Text style={s.notesText}>{termsText}</Text>
-    </View>
-  </View>
-) : null}
-
         </View>
 
-        {/* FOOTER — fuera del body para respetar márgenes */}
-        <View style={s.footer}>
-          <View style={s.footerDivider} />
-          <Text style={s.footerMain}>{footerText}</Text>
-          {quoteFooter ? <Text style={[s.footerMain, { marginTop: 3 }]}>{quoteFooter}</Text> : null}
-          <Text style={[s.footerPowered, { marginTop: 5 }]}>{"Powered by Mobility OS"}</Text>
-        </View>
-
+        <Footer />
       </Page>
+
+      {/* ── PÁGINA EXCLUSIVA: Términos y condiciones ── */}
+      {termsText ? (
+        <Page size="LETTER" style={s.page}>
+          <Header />
+
+          <View style={s.termsBody}>
+            <Text style={s.termsTitle}>{"Términos y condiciones"}</Text>
+            <Text style={s.termsText}>{termsText}</Text>
+          </View>
+
+          <Footer />
+        </Page>
+      ) : null}
+
     </Document>
   );
 }
