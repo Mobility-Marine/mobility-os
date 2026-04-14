@@ -4,57 +4,66 @@ import type {
   SupplierContractItem, SupplierFilters,
 } from "../types/supplier.types";
 
-// ── SUPPLIERS (desde tabla clients con rol supplier) ──────────
+// ── SUPPLIERS (tabla suppliers) ───────────────────────────────
 
 export async function fetchSuppliers(companyId: string): Promise<Supplier[]> {
   const { data } = await supabase
-    .from("clients")
-    .select(`
-      id, company_id, name, legal_name, rfc, tax_id,
-      email, phone, website, city, country, notes,
-      credit_limit, payment_terms, is_active, industry
-    `)
+    .from("suppliers")
+    .select("id, company_id, name, type, contact, email, phone, address, city, state, country, website, tax_id, currency, payment_terms, credit_days, is_active, rating, notes, created_at, updated_at")
     .eq("company_id", companyId)
-    .contains("roles", ["supplier"])
+    .eq("is_active", true)
     .order("name");
   return (data ?? []) as Supplier[];
 }
 
 export async function fetchSupplier(companyId: string, id: string): Promise<Supplier | null> {
   const { data } = await supabase
-    .from("clients")
-    .select(`
-      id, company_id, name, legal_name, rfc, tax_id,
-      email, phone, website, city, country, notes,
-      credit_limit, payment_terms, is_active, industry
-    `)
+    .from("suppliers")
+    .select("*")
     .eq("company_id", companyId)
     .eq("id", id)
     .single();
   return data as Supplier | null;
 }
 
+export async function createSupplier(
+  companyId: string,
+  payload: Partial<Supplier>
+): Promise<Supplier> {
+  const { id: _id, company_id: _cid, avg_score: _s, ...safe } = payload as any;
+  const { data, error } = await supabase
+    .from("suppliers")
+    .insert({ ...safe, company_id: companyId })
+    .select("*")
+    .single();
+  if (error) throw new Error(error.message);
+  return data as Supplier;
+}
+
 export async function updateSupplier(
-  companyId: string, id: string, updates: Partial<Supplier>
+  companyId: string,
+  id: string,
+  updates: Partial<Supplier>
 ): Promise<void> {
-  const { id: _id, company_id: _cid, avg_score: _s, active_contracts: _ac, last_po_date: _lpd, total_purchased: _tp, ...safe } = updates as any;
-  await supabase.from("clients")
+  const { id: _id, company_id: _cid, avg_score: _s, ...safe } = updates as any;
+  const { error } = await supabase
+    .from("suppliers")
     .update({ ...safe, updated_at: new Date().toISOString() })
-    .eq("id", id).eq("company_id", companyId);
+    .eq("id", id)
+    .eq("company_id", companyId);
+  if (error) throw new Error(error.message);
 }
 
 export function filterSuppliers(suppliers: Supplier[], f: SupplierFilters): Supplier[] {
   const q = f.search.trim().toLowerCase();
   return suppliers.filter((s) => {
-    if (q &&
-      !s.name.toLowerCase().includes(q) &&
-      !s.rfc?.toLowerCase().includes(q) &&
-      !s.city?.toLowerCase().includes(q) &&
-      !s.email?.toLowerCase().includes(q)
-    ) return false;
+    if (q && !s.name.toLowerCase().includes(q) &&
+        !s.tax_id?.toLowerCase().includes(q) &&
+        !s.city?.toLowerCase().includes(q) &&
+        !s.email?.toLowerCase().includes(q)) return false;
     if (f.status !== "all") {
       if (f.status === "active"   && !s.is_active) return false;
-      if (f.status === "inactive" && s.is_active)  return false;
+      if (f.status === "inactive" &&  s.is_active) return false;
     }
     return true;
   });
@@ -73,8 +82,10 @@ export async function fetchEvaluations(companyId: string, supplierId: string): P
 }
 
 export async function createEvaluation(
-  companyId: string, userId: string,
-  supplierId: string, payload: Partial<SupplierEvaluation>
+  companyId: string,
+  userId: string,
+  supplierId: string,
+  payload: Partial<SupplierEvaluation>
 ): Promise<SupplierEvaluation> {
   const { id: _id, company_id: _cid, score_total: _st, created_at: _ca, ...safe } = payload as any;
   const { data, error } = await supabase
@@ -86,7 +97,11 @@ export async function createEvaluation(
 }
 
 export async function deleteEvaluation(companyId: string, id: string): Promise<void> {
-  await supabase.from("procurement_supplier_evaluations").delete().eq("id", id).eq("company_id", companyId);
+  await supabase
+    .from("procurement_supplier_evaluations")
+    .delete()
+    .eq("id", id)
+    .eq("company_id", companyId);
 }
 
 // ── CONTRATOS MARCO ───────────────────────────────────────────
@@ -98,16 +113,13 @@ export async function fetchContracts(companyId: string, supplierId: string): Pro
     .eq("company_id", companyId)
     .eq("supplier_id", supplierId)
     .order("created_at", { ascending: false });
-
   if (!contracts?.length) return [];
-
   const ids = contracts.map((c: any) => c.id);
   const { data: items } = await supabase
     .from("procurement_contract_items")
     .select("*, product:products(name, sku)")
     .in("contract_id", ids)
     .eq("company_id", companyId);
-
   return contracts.map((c: any) => ({
     ...c,
     items: (items ?? []).filter((i: any) => i.contract_id === c.id),
@@ -115,8 +127,10 @@ export async function fetchContracts(companyId: string, supplierId: string): Pro
 }
 
 export async function createContract(
-  companyId: string, userId: string,
-  supplierId: string, payload: Partial<SupplierContract>
+  companyId: string,
+  userId: string,
+  supplierId: string,
+  payload: Partial<SupplierContract>
 ): Promise<SupplierContract> {
   const { items, id: _id, company_id: _cid, created_at: _ca, ...safe } = payload as any;
   const { data, error } = await supabase
@@ -128,16 +142,22 @@ export async function createContract(
 }
 
 export async function updateContract(
-  companyId: string, id: string, updates: Partial<SupplierContract>
+  companyId: string,
+  id: string,
+  updates: Partial<SupplierContract>
 ): Promise<void> {
   const { items, id: _id, company_id: _cid, created_at: _ca, ...safe } = updates as any;
-  await supabase.from("procurement_contracts")
+  await supabase
+    .from("procurement_contracts")
     .update({ ...safe, updated_at: new Date().toISOString() })
-    .eq("id", id).eq("company_id", companyId);
+    .eq("id", id)
+    .eq("company_id", companyId);
 }
 
 export async function upsertContractItem(
-  companyId: string, contractId: string, item: Partial<SupplierContractItem>
+  companyId: string,
+  contractId: string,
+  item: Partial<SupplierContractItem>
 ): Promise<void> {
   if (item.id) {
     const { id, company_id: _cid, contract_id: _coid, created_at: _ca, product: _p, ...safe } = item as any;
@@ -151,6 +171,8 @@ export async function upsertContractItem(
 export async function deleteContractItem(companyId: string, id: string): Promise<void> {
   await supabase.from("procurement_contract_items").delete().eq("id", id).eq("company_id", companyId);
 }
+
+// ── HELPERS ───────────────────────────────────────────────────
 
 export function calcAvgScore(evals: SupplierEvaluation[]): number | null {
   if (!evals.length) return null;
