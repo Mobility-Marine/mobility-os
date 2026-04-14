@@ -70,7 +70,7 @@ export async function fetchPendingPOs(companyId: string): Promise<POForReception
     .in("status", ["approved", "sent", "partial"])
     .order("created_at", { ascending: false });
   if (error) throw new Error(error.message);
-  return (data ?? []) as POForReception[];
+  return (data ?? []) as unknown as POForReception[];
 }
 
 // ── Crear recepción ───────────────────────────────────────────
