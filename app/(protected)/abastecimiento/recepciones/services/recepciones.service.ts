@@ -14,10 +14,10 @@ export async function fetchReceptions(
   let q = supabase
     .from("purchase_receptions")
     .select(`
-      *,
-      purchase_order:purchase_orders(po_number, expected_date),
-      supplier:suppliers(name, email)
-    `)
+  *,
+  purchase_order:purchase_orders(po_number, expected_date),
+  supplier:suppliers!purchase_receptions_supplier_id_fkey(name, email)
+`)
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
 
@@ -42,11 +42,11 @@ export async function fetchReception(id: string): Promise<Reception | null> {
   const { data, error } = await supabase
     .from("purchase_receptions")
     .select(`
-      *,
-      purchase_order:purchase_orders(po_number, expected_date),
-      supplier:suppliers(name, email),
-      items:purchase_reception_items(*)
-    `)
+  *,
+  purchase_order:purchase_orders(po_number, expected_date),
+  supplier:suppliers!purchase_receptions_supplier_id_fkey(name, email),
+  items:purchase_reception_items(*)
+`)
     .eq("id", id)
     .single();
   if (error) return null;
