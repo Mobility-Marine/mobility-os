@@ -50,7 +50,7 @@ export default function TemplateOrdenCompra({ order, settings }: Props) {
     ? (issuerState + ", " + issuerCountry)
     : (issuerState || issuerCountry || issuerAddress);
 
-  const supplierName = order.supplier?.name  ?? "—";
+  const supplierName = order.supplier?.name   ?? "—";
   const supplierRfc  = order.supplier?.tax_id ?? "";
   const supplierCity = order.supplier?.city   ?? "";
 
@@ -67,15 +67,20 @@ export default function TemplateOrdenCompra({ order, settings }: Props) {
     header:       { backgroundColor: HEADER_BG, padding: "24 36", flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", flexShrink: 0 },
     accentLine:   { backgroundColor: ACCENT, height: 3, flexShrink: 0 },
     logoBox:      { width: 110, height: 44, objectFit: "contain" },
-    body:         { flex: 1, paddingTop: 20, paddingBottom: 16, paddingLeft: 36, paddingRight: 36 },
+    // body usa flex: 1 y flexDirection: column para que las firmas queden al fondo con marginTop: "auto"
+    body:         { flex: 1, paddingTop: 20, paddingBottom: 20, paddingLeft: 36, paddingRight: 36, display: "flex", flexDirection: "column" },
     section:      { marginBottom: 16 },
     sectionTitle: { fontSize: 8, fontWeight: "bold", color: ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 7, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: BRAND_COLOR },
     row2:         { flexDirection: "row", gap: 16 },
     col:          { flex: 1 },
-    label:        { fontSize: 7.5, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+    label:        { fontSize: 7.5, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: 0.5 },
     value:        { fontSize: 9.5, color: TEXT_DARK, fontWeight: "bold" },
     valueSmall:   { fontSize: 8.5, color: TEXT_MEDIUM },
     muted:        { fontSize: 8, color: TEXT_MUTED },
+    // fila de datos de la orden: label a la izq, valor flex:1 para que envuelva
+    dataRow:      { flexDirection: "row", gap: 6, marginBottom: 5 },
+    dataLabel:    { fontSize: 7.5, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: 0.5, width: 62, flexShrink: 0 },
+    dataValue:    { fontSize: 8.5, color: TEXT_MEDIUM, flex: 1 },
     tableHead:    { flexDirection: "row", backgroundColor: BRAND_COLOR, padding: "7 10", borderRadius: 3 },
     tableHeadTxt: { color: BRAND_TEXT, fontSize: 7.5, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5 },
     tableRow:     { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", padding: "7 10" },
@@ -90,6 +95,8 @@ export default function TemplateOrdenCompra({ order, settings }: Props) {
     grandValue:   { fontSize: 13, color: ACCENT, fontWeight: "bold" },
     notesBox:     { backgroundColor: "#f1f5f9", borderRadius: 4, padding: "12 16", marginTop: 4, borderLeftWidth: 3, borderLeftColor: BRAND_COLOR },
     notesText:    { fontSize: 8, color: TEXT_MEDIUM, lineHeight: 1.7 },
+    // Firmas: marginTop: "auto" las empuja al fondo del body
+    signaturesRow:{ marginTop: "auto", paddingTop: 28, flexDirection: "row", gap: 30 },
     footer:       { backgroundColor: BRAND_COLOR, padding: "12 36", flexShrink: 0 },
     footerMain:   { color: BRAND_TEXT, fontSize: 8, textAlign: "center", marginBottom: 3 },
     footerPowered:{ color: BRAND_MUTED, fontSize: 7, textAlign: "center" },
@@ -133,7 +140,7 @@ export default function TemplateOrdenCompra({ order, settings }: Props) {
         </View>
         <View style={s.accentLine} />
 
-        {/* BODY */}
+        {/* BODY — flex column, firmas van al fondo con marginTop: auto */}
         <View style={s.body}>
 
           {/* PROVEEDOR + DATOS OC */}
@@ -141,25 +148,25 @@ export default function TemplateOrdenCompra({ order, settings }: Props) {
             <View style={s.col}>
               <Text style={s.sectionTitle}>{"Proveedor"}</Text>
               <Text style={s.value}>{supplierName}</Text>
-              {supplierRfc  ? <Text style={[s.muted, { marginTop: 3 }]}>{"RFC: " + supplierRfc}</Text>  : null}
-              {supplierCity ? <Text style={s.muted}>{supplierCity}</Text>                                : null}
+              {supplierRfc  ? <Text style={[s.muted, { marginTop: 3 }]}>{"RFC: " + supplierRfc}</Text> : null}
+              {supplierCity ? <Text style={s.muted}>{supplierCity}</Text>                               : null}
             </View>
+
             <View style={s.col}>
               <Text style={s.sectionTitle}>{"Datos de la orden"}</Text>
-              <View style={{ gap: 5 }}>
-                {[
-                  { l: "Fecha de orden",  v: order.order_date    ? new Date(order.order_date).toLocaleDateString(locale)    : "—" },
-                  { l: "Moneda",          v: order.currency                                                                         },
-                  ...(order.payment_terms  ? [{ l: "Cond. pago",  v: order.payment_terms  }] : []),
-                  ...(order.delivery_terms ? [{ l: "Entrega",     v: order.delivery_terms }] : []),
-                  ...(order.ship_to_address? [{ l: "Entregar en", v: order.ship_to_address}] : []),
-                ].map((r) => (
-                  <View key={r.l} style={{ flexDirection: "row", justifyContent: "space-between" }}>
-                    <Text style={s.label}>{r.l}</Text>
-                    <Text style={s.valueSmall}>{r.v}</Text>
-                  </View>
-                ))}
-              </View>
+              {/* Usando dataRow/dataLabel/dataValue para que el texto de dirección envuelva */}
+              {[
+                { l: "Fecha",      v: order.order_date ? new Date(order.order_date).toLocaleDateString(locale) : "—" },
+                { l: "Moneda",     v: order.currency ?? "MXN" },
+                ...(order.payment_terms  ? [{ l: "Pago",       v: order.payment_terms  }] : []),
+                ...(order.delivery_terms ? [{ l: "Incoterm",   v: order.delivery_terms }] : []),
+                ...(order.ship_to_address? [{ l: "Entregar en",v: order.ship_to_address}] : []),
+              ].map((r, i) => (
+                <View key={i} style={s.dataRow}>
+                  <Text style={s.dataLabel}>{r.l}</Text>
+                  <Text style={s.dataValue}>{r.v}</Text>
+                </View>
+              ))}
             </View>
           </View>
 
@@ -212,7 +219,7 @@ export default function TemplateOrdenCompra({ order, settings }: Props) {
 
           {/* NOTAS */}
           {order.notes ? (
-            <View style={[s.section, { marginTop: 16 }]}>
+            <View style={[s.section, { marginTop: 14 }]}>
               <Text style={s.sectionTitle}>{"Notas"}</Text>
               <View style={s.notesBox}>
                 <Text style={s.notesText}>{order.notes}</Text>
@@ -220,19 +227,16 @@ export default function TemplateOrdenCompra({ order, settings }: Props) {
             </View>
           ) : null}
 
-          {/* FIRMA */}
-          <View style={{ marginTop: 24, flexDirection: "row", gap: 30 }}>
-            {[
-  "Elaboró",
-  "Autorizó",
-  "Recibió",
-].map((label) => (
+          {/* FIRMAS — marginTop: "auto" las empuja al fondo de la página */}
+          <View style={s.signaturesRow}>
+            {["Elaboró", "Autorizó", "Recibió"].map((label) => (
               <View key={label} style={{ flex: 1, alignItems: "center" }}>
-                <View style={{ height: 1, backgroundColor: TEXT_MUTED, width: "100%", marginBottom: 4 }} />
+                <View style={{ height: 1, backgroundColor: TEXT_MUTED, width: "100%", marginBottom: 5 }} />
                 <Text style={{ fontSize: 8, color: TEXT_MUTED }}>{label}</Text>
               </View>
             ))}
           </View>
+
         </View>
 
         {/* FOOTER */}
