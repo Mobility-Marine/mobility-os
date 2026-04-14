@@ -300,6 +300,8 @@ export const es = {
     user:               "usuario",
     requisitions:       "Requisiciones",
     rfq:                "Cotizaciones RFQ",
+    cashFlow:  "Flujo de Efectivo",
+    employees: "Empleados",
   },
 
   prospects: {
