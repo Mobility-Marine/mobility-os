@@ -29,6 +29,7 @@ export default function CotizacionesPage() {
   updateFields,
   createItem, updateItem: updateItemFn, removeItem,
   createService, updateService: updateServiceFn, removeService,
+  removeQuotation,       // ← nuevo
   reload, reloadDetail,
 } = ctrl;
 
@@ -53,16 +54,18 @@ export default function CotizacionesPage() {
     setSelected(q);
   }
 
-  async function handleOpenPDF(q: typeof selected) {
-    if (!q) return;
-    setGeneratingPDF(true);
-    try {
-      await generateAndDownloadPDF(q, settings);
-    } finally {
-      setGeneratingPDF(false);
-    }
+ async function handleOpenPDF(q: typeof selected) {
+  if (!q || !companyId) return;
+  setGeneratingPDF(true);
+  try {
+    // Recargar datos frescos para PDF actualizado
+    const { fetchQuotation } = await import("./services/quotations.service");
+    const fresh = await fetchQuotation(companyId, q.id);
+    await generateAndDownloadPDF(fresh ?? q, settings);
+  } finally {
+    setGeneratingPDF(false);
   }
-
+}
   // ───────────────────────────────────────────────────────────
 
   if (loading) return (
@@ -117,6 +120,8 @@ onUpdateService={updateServiceFn}
           onAccept={acceptQuotation}
           onRemoveItem={removeItem}
           onRemoveService={removeService}
+          onRemoveQuotation={removeQuotation}
+          onAddItem={createItem} 
           onOpenPDF={handleOpenPDF}
           saving={saving || generatingPDF}
         />
