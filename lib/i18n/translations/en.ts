@@ -299,6 +299,8 @@ export const en: TranslationKeys = {
     help:              "Help",
     signOut:           "Sign out",
     user:              "user",
+    requisitions:      "Requisitions",
+    rfq:               "Purchase RFQ",
   },
 
   prospects: {
