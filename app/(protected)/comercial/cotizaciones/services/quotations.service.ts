@@ -69,7 +69,13 @@ export async function fetchQuotation(
   companyId: string, id: string
 ): Promise<Quotation | null> {
   const [{ data: quot }, { data: items }, { data: services }] = await Promise.all([
-    supabase.from("quotations").select("*, client:clients(name, email, rfc)")
+    supabase.from("quotations").select(`
+      *,
+      client:clients(
+        name, email, rfc,
+        contacts:client_contacts(name, is_primary)
+      )
+    `)
       .eq("company_id", companyId).eq("id", id).single(),
     supabase.from("quotation_items").select("*")
       .eq("company_id", companyId).eq("quotation_id", id).order("sort_order"),
@@ -77,7 +83,16 @@ export async function fetchQuotation(
       .eq("company_id", companyId).eq("quotation_id", id).order("sort_order"),
   ]);
   if (!quot) return null;
-  return { ...quot, items: items ?? [], services: services ?? [] } as Quotation;
+
+  // Extraer contacto principal para el PDF
+  const contacts = (quot as any)?.client?.contacts ?? [];
+  const primaryContact = contacts.find((c: any) => c.is_primary) ?? contacts[0] ?? null;
+  const enrichedQuot = {
+    ...quot,
+    client_contact_name: primaryContact?.name ?? null,
+  };
+
+  return { ...enrichedQuot, items: items ?? [], services: services ?? [] } as Quotation;
 }
 
 export async function createQuotation(
