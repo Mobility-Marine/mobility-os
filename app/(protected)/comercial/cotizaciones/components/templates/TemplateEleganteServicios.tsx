@@ -54,9 +54,9 @@ export default function TemplateEleganteServicios({ quotation, settings }: Props
     ? (issuerState + ", " + issuerCountry)
     : (issuerState || issuerCountry || issuerAddress);
 
-  const termsText = quotation.terms
-    ?? (settings as any)?.quote_terms_services
-    ?? null;
+  const termsText = (quotation.terms && quotation.terms.trim())
+    ? quotation.terms
+    : ((settings as any)?.quote_terms_services ?? null);
 
   // ── Datos del cliente ─────────────────────────────────────
   const clientName    = quotation.client?.name  ?? quotation.client_name  ?? "—";
