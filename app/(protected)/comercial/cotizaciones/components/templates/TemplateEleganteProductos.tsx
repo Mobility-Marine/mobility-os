@@ -70,12 +70,40 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
     + (issuerRfc      ? ("  \u00B7  RFC: " + issuerRfc)  : "")
     + (issuerPhone    ? ("  \u00B7  " + issuerPhone)     : "");
 
+  // Altura aproximada del footer en puntos para el paddingBottom del body
+  const FOOTER_HEIGHT = 52;
+  // Altura aproximada del header para el paddingTop de páginas siguientes
+  const HEADER_HEIGHT = 110;
+
   const s = StyleSheet.create({
     page:         { backgroundColor: WHITE, fontSize: 9, color: TEXT_DARK },
-    header:       { backgroundColor: HEADER_BG, padding: "24 36", flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
+    // HEADER fijo en la parte superior de CADA página
+    header:       {
+      position: "absolute",
+      top: 0, left: 0, right: 0,
+      backgroundColor: HEADER_BG,
+      padding: "24 36",
+      flexDirection: "row",
+      justifyContent: "space-between",
+      alignItems: "flex-start",
+    },
+    accentLine:   {
+      position: "absolute",
+      top: HEADER_HEIGHT - 3,
+      left: 0, right: 0,
+      backgroundColor: ACCENT,
+      height: 3,
+    },
     logoBox:      { width: 110, height: 44, objectFit: "contain" },
-    accentLine:   { backgroundColor: ACCENT, height: 3 },
-    body:         { paddingTop: 20, paddingBottom: 20, paddingLeft: 36, paddingRight: 36 },
+    // BODY con margen para no solapar con header/footer
+    body:         {
+      marginTop: HEADER_HEIGHT,
+      marginBottom: FOOTER_HEIGHT,
+      paddingTop: 20,
+      paddingBottom: 8,
+      paddingLeft: 36,
+      paddingRight: 36,
+    },
     section:      { marginBottom: 16 },
     sectionTitle: { fontSize: 8, fontWeight: "bold", color: ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 7, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: BRAND_COLOR },
     row2:         { flexDirection: "row", gap: 16 },
@@ -98,20 +126,32 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
     grandValue:   { fontSize: 13, color: ACCENT, fontWeight: "bold" },
     notesBox:     { backgroundColor: "#f1f5f9", borderRadius: 4, padding: "12 16", marginTop: 4, borderLeftWidth: 3, borderLeftColor: BRAND_COLOR },
     notesText:    { fontSize: 8, color: TEXT_MEDIUM, lineHeight: 1.7 },
-    footer:       { backgroundColor: BRAND_COLOR, padding: "12 36" },
+    // FOOTER fijo en la parte inferior de CADA página
+    footer:       {
+      position: "absolute",
+      bottom: 0, left: 0, right: 0,
+      backgroundColor: BRAND_COLOR,
+      padding: "12 36",
+    },
     footerMain:   { color: BRAND_TEXT, fontSize: 8, textAlign: "center", marginBottom: 3 },
     footerPowered:{ color: BRAND_MUTED, fontSize: 7, textAlign: "center" },
     footerDivider:{ height: 1, backgroundColor: BORDER_COLOR, marginBottom: 8 },
-    // Términos en página dedicada
-    termsBody:    { paddingTop: 24, paddingBottom: 20, paddingLeft: 36, paddingRight: 36, flex: 1 },
+    // Términos página dedicada
+    termsBody:    {
+      marginTop: HEADER_HEIGHT,
+      marginBottom: FOOTER_HEIGHT,
+      paddingTop: 20,
+      paddingLeft: 36,
+      paddingRight: 36,
+    },
     termsTitle:   { fontSize: 11, fontWeight: "bold", color: ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 12, paddingBottom: 6, borderBottomWidth: 2, borderBottomColor: BRAND_COLOR },
     termsText:    { fontSize: 8, color: TEXT_MEDIUM, lineHeight: 1.8 },
   });
 
-  // ── Componente reutilizable: Header ───────────────────────
-  const Header = () => (
+  // ── Header reutilizable ───────────────────────────────────
+  const PageHeader = () => (
     <>
-      <View style={s.header}>
+      <View style={s.header} fixed>
         <View style={{ flexDirection: "column", gap: 3 }}>
           {logoUrl
             ? <Image src={logoUrl} style={s.logoBox} />
@@ -143,13 +183,13 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
           ) : null}
         </View>
       </View>
-      <View style={s.accentLine} />
+      <View style={s.accentLine} fixed />
     </>
   );
 
-  // ── Componente reutilizable: Footer ───────────────────────
-  const Footer = () => (
-    <View style={s.footer}>
+  // ── Footer reutilizable ───────────────────────────────────
+  const PageFooter = () => (
+    <View style={s.footer} fixed>
       <View style={s.footerDivider} />
       <Text style={s.footerMain}>{footerText}</Text>
       {quoteFooter ? <Text style={[s.footerMain, { marginTop: 3 }]}>{quoteFooter}</Text> : null}
@@ -160,9 +200,10 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
   return (
     <Document>
 
-      {/* ── PÁGINA 1+: Contenido principal ── */}
+      {/* ── PÁGINA 1+: Contenido ── */}
       <Page size="LETTER" style={s.page}>
-        <Header />
+        <PageHeader />
+        <PageFooter />
 
         <View style={s.body}>
           {/* CLIENTE + DATOS */}
@@ -179,7 +220,6 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
                 </View>
               ) : null}
             </View>
-
             <View style={s.col}>
               <Text style={s.sectionTitle}>{"Datos de la cotización"}</Text>
               <View style={{ gap: 5 }}>
@@ -261,21 +301,17 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
             </View>
           ) : null}
         </View>
-
-        <Footer />
       </Page>
 
-      {/* ── PÁGINA EXCLUSIVA: Términos y condiciones ── */}
+      {/* ── PÁGINA DEDICADA: Términos y condiciones ── */}
       {termsText ? (
         <Page size="LETTER" style={s.page}>
-          <Header />
-
+          <PageHeader />
+          <PageFooter />
           <View style={s.termsBody}>
             <Text style={s.termsTitle}>{"Términos y condiciones"}</Text>
             <Text style={s.termsText}>{termsText}</Text>
           </View>
-
-          <Footer />
         </Page>
       ) : null}
 
