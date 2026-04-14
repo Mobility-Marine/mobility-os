@@ -5,7 +5,7 @@
 
 export type QuotationType   = "products" | "services";
 export type QuotationStatus = "draft" | "sent" | "viewed" | "accepted" | "rejected" | "expired" | "cancelled";
-export type QuotationTemplate = "elegante" | "moderna" | "corporativa";
+export type QuotationTemplate = "elegante";
 
 export const STATUS_CONFIG: Record<QuotationStatus, { labelKey: string; color: string; bg: string; border: string }> = {
   draft:     { labelKey: "quot.statusDraft",     color: "var(--color-text-muted)",   bg: "var(--color-bg-subtle)",  border: "var(--color-border-faint)" },
@@ -136,8 +136,8 @@ export type CompanySettings = {
   fiscal_email?:         string | null;
   fiscal_website?:       string | null;
   // Cotizaciones
-  template_products:     QuotationTemplate;
-  template_services:     QuotationTemplate;
+  template_products?:    QuotationTemplate;
+  template_services?:    QuotationTemplate;
   quote_number_format:   string;
   quote_number_counter:  number;
   quote_validity_days:   number;
