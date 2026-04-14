@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { Supplier, CreatePOPayload, CreatePOItemPayload } from "../types/ordenes-compra.types";
 import { CURRENCIES, UNITS, PAYMENT_TERMS_OPTIONS, DELIVERY_TERMS_OPTIONS } from "../types/ordenes-compra.types";
 import { fetchProductCatalog } from "../services/ordenes-compra.service";
+import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 
 type Props = {
@@ -34,6 +35,8 @@ const fmt = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDi
 export default function OrdenCompraCreateDrawer({ open, suppliers, saving, onClose, onCreate }: Props) {
   const { lang } = useTranslation();
   const { companyId } = useTenant();
+  const [warehouses,     setWarehouses]     = useState<{ id: string; name: string; address?: string | null; city?: string | null }[]>([]);
+  const [customAddress,  setCustomAddress]  = useState(false);
   const es = lang !== "en";
 
   const [step,  setStep]  = useState<Step>("supplier");
@@ -60,10 +63,17 @@ export default function OrdenCompraCreateDrawer({ open, suppliers, saving, onClo
   });
 
   useEffect(() => {
-    if (open && companyId) {
-      fetchProductCatalog(companyId).then(setProducts);
-    }
-  }, [open, companyId]);
+  if (open && companyId) {
+    supabase
+      .from("warehouses")
+      .select("id, name, address, city")
+      .eq("company_id", companyId)
+      .eq("is_active", true)
+      .order("is_default", { ascending: false })
+      .order("name")
+      .then(({ data }) => setWarehouses(data ?? []));
+  }
+}, [open, companyId]);
 
   function setF(k: string, v: any) { setForm((p) => ({ ...p, [k]: v })); }
   function setIF(k: string, v: any) { setItemForm((p) => ({ ...p, [k]: v })); }
@@ -125,6 +135,7 @@ export default function OrdenCompraCreateDrawer({ open, suppliers, saving, onClo
     setProductSearch("");
     setError(null);
     onClose();
+    setCustomAddress(false);
   }
 
   if (!open) return null;
@@ -448,10 +459,55 @@ export default function OrdenCompraCreateDrawer({ open, suppliers, saving, onClo
                   <input type="number" min="0" value={form.discount_amount ?? 0} onChange={(e) => setF("discount_amount", Number(e.target.value))} style={INPUT} />
                 </div>
                 <div>
-                  <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    {es ? "Dirección de entrega" : "Ship to address"}
-                  </div>
-                  <input value={form.ship_to_address ?? ""} onChange={(e) => setF("ship_to_address", e.target.value)} placeholder={es ? "Almacén principal…" : "Main warehouse…"} style={INPUT} />
+                  <div>
+  // DESPUÉS — reemplaza todo ese bloque con:
+<div>
+  <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+    {es ? "Dirección de entrega" : "Delivery address"}
+  </div>
+
+  {/* Selector: almacenes + otra dirección */}
+  <select
+    value={customAddress ? "__custom__" : (form.ship_to_address ?? "")}
+    onChange={(e) => {
+      if (e.target.value === "__custom__") {
+        setCustomAddress(true);
+        setF("ship_to_address", "");
+      } else if (e.target.value === "") {
+        setCustomAddress(false);
+        setF("ship_to_address", "");
+      } else {
+        setCustomAddress(false);
+        // Encontrar el almacén y construir el texto de dirección
+        const wh = warehouses.find((w) => w.id === e.target.value);
+        if (wh) {
+          const addr = [wh.name, wh.address, wh.city].filter(Boolean).join(", ");
+          setF("ship_to_address", addr);
+          setF("ship_to_warehouse_id", wh.id);
+        }
+      }
+    }}
+    style={{ ...SELECT, marginBottom: customAddress ? "6px" : "0" }}
+  >
+    <option value="">{es ? "— Selecciona un almacén —" : "— Select a warehouse —"}</option>
+    {warehouses.map((w) => (
+      <option key={w.id} value={w.id}>
+        {w.name}{w.city ? ` · ${w.city}` : ""}
+      </option>
+    ))}
+    <option value="__custom__">{es ? "Otra dirección…" : "Other address…"}</option>
+  </select>
+
+  {/* Input libre cuando selecciona "Otra dirección" */}
+  {customAddress && (
+    <input
+      value={form.ship_to_address ?? ""}
+      onChange={(e) => setF("ship_to_address", e.target.value)}
+      placeholder={es ? "Calle, colonia, ciudad, estado…" : "Street, city, state…"}
+      style={INPUT}
+    />
+  )}
+</div>
                 </div>
               </div>
               <div>
