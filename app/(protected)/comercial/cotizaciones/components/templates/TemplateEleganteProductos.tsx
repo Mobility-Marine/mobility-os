@@ -51,9 +51,9 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
     ? (issuerState + ", " + issuerCountry)
     : (issuerState || issuerCountry || issuerAddress);
 
-  const termsText = quotation.terms
-    ?? (settings as any)?.quote_terms_products
-    ?? null;
+  const termsText = (quotation.terms && quotation.terms.trim())
+    ? quotation.terms
+    : ((settings as any)?.quote_terms_products ?? null);
 
   const clientName    = quotation.client?.name  ?? quotation.client_name  ?? "—";
   const clientRfc     = quotation.client?.rfc   ?? quotation.client_rfc   ?? "";
