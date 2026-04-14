@@ -1865,7 +1865,7 @@ procurement: {
   budgetWorkspaceEmpty:"Selecciona un presupuesto",
 
   // ── RECEPCIONES DE COMPRAS ──────────────────────────────────
-receptions
+
   title:              "Recepciones de Compras",
   subtitle:           "Control de calidad, ítems recibidos y trazabilidad completa de cada entrega.",
   newReception:       "Nueva recepción",
