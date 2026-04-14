@@ -298,6 +298,8 @@ export const es = {
     help:               "Ayuda",
     signOut:            "Cerrar sesión",
     user:               "usuario",
+    requisitions:       "Requisiciones",
+    rfq:                "Cotizaciones RFQ",
   },
 
   prospects: {
