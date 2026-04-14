@@ -16,6 +16,7 @@ import {
   addItem, updateItem, deleteItem,
   addService, updateService, deleteService,
   fetchCompanySettings, acceptQuotation as acceptSvc,
+  deleteQuotation as deleteSvc,
 } from "./quotations.service";
 
 export function useQuotationsController() {
@@ -74,6 +75,16 @@ export function useQuotationsController() {
 
   // ── QUOTATION ACTIONS ─────────────────────────────────────
 
+async function removeQuotation(id: string) {
+  if (!companyId) return;
+  setSaving(true);
+  try {
+    await deleteSvc(companyId, id);
+    if (selected?.id === id) setSelected(null);
+    await load();
+  } finally { setSaving(false); }
+}
+  
   async function createQuotation(payload: CreateQuotationPayload): Promise<Quotation | undefined> {
     if (!companyId || !user) return;
     setSaving(true);
@@ -205,5 +216,6 @@ export function useQuotationsController() {
     // Utils
     reload:       load,
     reloadDetail: loadDetail,
+    removeQuotation,
   };
 }
