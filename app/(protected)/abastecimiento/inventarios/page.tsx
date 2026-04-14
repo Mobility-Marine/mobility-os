@@ -13,6 +13,7 @@ import InventarioMovimientos from "./components/InventarioMovimientos";
 import InventarioAlmacenes   from "./components/InventarioAlmacenes";
 import MovimientoDrawer      from "./components/MovimientoDrawer";
 import ItemCreateDrawer      from "./components/ItemCreateDrawer";
+import InventarioConteos from "./components/InventarioConteos";
 
 type Tab = "stock" | "movimientos" | "almacenes" | "conteos";
 
@@ -146,16 +147,19 @@ export default function InventariosPage() {
       )}
 
       {tab === "conteos" && (
-        <div style={{ padding: "40px", textAlign: "center", background: "var(--color-bg-base)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border-faint)" }}>
-          <div style={{ fontSize: "32px", marginBottom: "8px" }}>🔢</div>
-          <div style={{ fontSize: "14px", fontWeight: 700, color: "var(--color-text-primary)" }}>
-            {es ? "Conteos físicos" : "Physical counts"}
-          </div>
-          <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "4px" }}>
-            {es ? "Próximamente — ajuste de inventario por conteo físico" : "Coming soon — inventory adjustment by physical count"}
-          </div>
-        </div>
-      )}
+  <InventarioConteos
+    counts={ctrl.counts}
+    warehouses={ctrl.warehouses}
+    loading={ctrl.loading}
+    saving={ctrl.saving}
+    onCreate={ctrl.handleCreateCount}
+    onLoadDetail={ctrl.loadCountDetail}
+    selectedCount={ctrl.selectedCount}
+    onUpdateItem={ctrl.handleUpdateCountItem}
+    onComplete={ctrl.handleCompleteCount}
+    onClose={() => ctrl.setSelectedCount(null)}
+  />
+)}
 
       {/* DRAWERS */}
       <MovimientoDrawer
