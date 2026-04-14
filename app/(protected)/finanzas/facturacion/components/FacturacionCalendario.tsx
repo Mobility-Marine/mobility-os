@@ -111,7 +111,7 @@ export default function FacturacionCalendario({ cfdis, loading }: Props) {
                 style={{ minHeight: "80px", padding: "8px", borderRight: (i + 1) % 7 !== 0 ? "1px solid var(--color-border-faint)" : "none", borderBottom: "1px solid var(--color-border-faint)", display: "flex", flexDirection: "column", gap: "4px", background: isToday ? "var(--color-info-bg)" : "transparent", transition: "background 0.1s" }}>
                 {/* Número del día */}
                 <div style={{ display: "flex", justifyContent: "flex-end" }}>
-                  <span style={{ fontSize: "11px", fontWeight: isToday ? 800 : 400, color: isToday ? "var(--color-brand-blue)" : "var(--color-text-muted)", width: "22px", height: "22px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: isToday ? "var(--color-brand-blue)" : "transparent", color: isToday ? "#fff" : "var(--color-text-muted)" }}>
+                  <span style={{ fontSize: "11px", fontWeight: isToday ? 800 : 400, width: "22px", height: "22px", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", background: isToday ? "var(--color-brand-blue)" : "transparent", color: isToday ? "#fff" : "var(--color-text-muted)" }}>
                     {cell.day}
                   </span>
                 </div>
