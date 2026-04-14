@@ -116,33 +116,45 @@ export type QuotationService = {
 // ── COMPANY SETTINGS ─────────────────────────────────────────
 
 export type CompanySettings = {
-  id?:                  string;
-  company_id:           string;
-  logo_url?:            string | null;
-  fiscal_name?:         string | null;
-  fiscal_rfc?:          string | null;
-  fiscal_address?:      string | null;
-  fiscal_city?:         string | null;
-  fiscal_state?:        string | null;
-  fiscal_zip?:          string | null;
-  fiscal_country?:      string | null;
-  fiscal_regime?:       string | null;
-  template_products:    QuotationTemplate;
-  template_services:    QuotationTemplate;
-  quote_number_format:  string;
-  quote_number_counter: number;
-  quote_validity_days:  number;
-  quote_footer?:        string | null;
+  id?:                   string;
+  company_id:            string;
+  // Identidad visual
+  logo_url?:             string | null;
+  brand_color?:          string | null;
+  brand_color_dark?:     string | null;
+  brand_accent?:         string | null;
+  // Datos fiscales
+  fiscal_name?:          string | null;
+  fiscal_rfc?:           string | null;
+  fiscal_address?:       string | null;
+  fiscal_city?:          string | null;
+  fiscal_state?:         string | null;
+  fiscal_zip?:           string | null;
+  fiscal_country?:       string | null;
+  fiscal_regime?:        string | null;
+  fiscal_phone?:         string | null;
+  fiscal_email?:         string | null;
+  fiscal_website?:       string | null;
+  // Cotizaciones
+  template_products:     QuotationTemplate;
+  template_services:     QuotationTemplate;
+  quote_number_format:   string;
+  quote_number_counter:  number;
+  quote_validity_days:   number;
+  quote_footer?:         string | null;
   quote_terms_services?: string | null;
   quote_terms_products?: string | null;
-  margin_minimum_pct:   number;
-  monthly_goal:         number;
-  goal_currency:        string;
-  cer_file_url?:        string | null;
-  key_file_url?:        string | null;
-  pac_provider?:        string | null;
-  subscription_plan?:   string | null;
-  subscription_status?: string | null;
+  // Comercial
+  margin_minimum_pct:    number;
+  monthly_goal:          number;
+  goal_currency:         string;
+  // SAT / Sellos
+  cer_file_url?:         string | null;
+  key_file_url?:         string | null;
+  pac_provider?:         string | null;
+  // Suscripción
+  subscription_plan?:    string | null;
+  subscription_status?:  string | null;
 };
 
 // ── PAYLOADS ─────────────────────────────────────────────────
