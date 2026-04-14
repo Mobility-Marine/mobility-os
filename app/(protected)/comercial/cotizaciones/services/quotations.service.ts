@@ -380,10 +380,13 @@ export async function upsertCompanySettings(
   companyId: string, updates: Partial<CompanySettings>
 ): Promise<void> {
   const { id, ...rest } = updates as any;
-  await supabase
+  const { error } = await supabase
     .from("company_settings")
-    .upsert({ company_id: companyId, ...rest, updated_at: new Date().toISOString() },
-      { onConflict: "company_id" });
+    .upsert(
+      { company_id: companyId, ...rest, updated_at: new Date().toISOString() },
+      { onConflict: "company_id" }
+    );
+  if (error) throw new Error(error.message);
 }
 
 // ── ACEPTAR COTIZACIÓN ────────────────────────────────────────
