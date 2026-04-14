@@ -148,10 +148,15 @@ export type CompanySettings = {
   margin_minimum_pct:    number;
   monthly_goal:          number;
   goal_currency:         string;
-  // SAT / Sellos
-  cer_file_url?:         string | null;
-  key_file_url?:         string | null;
-  pac_provider?:         string | null;
+  // SAT / Sellos & Facturapi
+  cer_file_url?:        string | null;
+  key_file_url?:        string | null;
+  pac_provider?:        string | null;
+  facturapi_api_key?:   string | null;
+  facturapi_org_id?:    string | null;
+  facturapi_env?:       string | null;
+  invoice_series?:      string | null;
+  invoice_next_folio?:  number | null;
   // Suscripción
   subscription_plan?:    string | null;
   subscription_status?:  string | null;
