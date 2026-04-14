@@ -185,8 +185,8 @@ export default function SupplierWorkspace({
               )}
             </div>
             <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "3px" }}>
-              {supplier.rfc && `RFC: ${supplier.rfc}`}
-              {supplier.rfc && supplier.city && " · "}
+              {(supplier as any).tax_id && `RFC: ${(supplier as any).tax_id}`}
+              {(supplier as any).tax_id && supplier.city && " · "}
               {supplier.city}
               {supplier.payment_terms && ` · ${supplier.payment_terms}`}
             </div>
@@ -241,9 +241,9 @@ export default function SupplierWorkspace({
             </div>
 
             {([
-              { k: "legal_name",    label: "Razón social"   },
-              { k: "rfc",           label: tp.supplierRfc    ?? "RFC"        },
-              { k: "tax_id",        label: tp.supplierTaxId  ?? "Tax ID"     },
+              // DESPUÉS
+              { k: "contact",       label: tp.supplierContact ?? "Contacto principal" },
+              { k: "tax_id",        label: lang === "en" ? "Tax ID" : "RFC / Tax ID" },
               { k: "email",         label: tp.supplierEmail  ?? "Email"      },
               { k: "phone",         label: tp.supplierPhone  ?? "Teléfono"   },
               { k: "website",       label: tp.supplierWebsite ?? "Sitio web" },
