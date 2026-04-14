@@ -134,11 +134,10 @@ onUpdateService={updateServiceFn}
 
       {/* DRAWER */}
       <QuotationCreateDrawer
-        open={showCreate}
-        onClose={() => setShowCreate(false)}
-        onCreate={handleCreate}
-        defaultTemplate={settings?.template_services ?? "elegante"}
-      />
+  open={showCreate}
+  onClose={() => setShowCreate(false)}
+  onCreate={handleCreate}
+/>
     </div>
   );
 }
