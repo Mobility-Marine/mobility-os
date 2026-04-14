@@ -223,10 +223,10 @@ export default function TemplateOrdenCompra({ order, settings }: Props) {
           {/* FIRMA */}
           <View style={{ marginTop: 24, flexDirection: "row", gap: 30 }}>
             {[
-              es ? "Elaboró" : "Prepared by",
-              es ? "Autorizó" : "Authorized by",
-              es ? "Recibió" : "Received by",
-            ].map((label) => (
+  "Elaboró",
+  "Autorizó",
+  "Recibió",
+].map((label) => (
               <View key={label} style={{ flex: 1, alignItems: "center" }}>
                 <View style={{ height: 1, backgroundColor: TEXT_MUTED, width: "100%", marginBottom: 4 }} />
                 <Text style={{ fontSize: 8, color: TEXT_MUTED }}>{label}</Text>
