@@ -5,6 +5,7 @@ import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { fetchCompanySettings, upsertCompanySettings } from "@/app/(protected)/comercial/cotizaciones/services/quotations.service";
 import type { CompanySettings } from "@/app/(protected)/comercial/cotizaciones/types/quotations.types";
+import { supabase } from "@/lib/supabaseClient";
 
 const INPUT: React.CSSProperties = {
   width: "100%", height: "38px", padding: "0 12px",
@@ -217,6 +218,7 @@ export default function TabCotizaciones() {
   const [saved,  setSaved]  = useState(false);
   const [error,  setError]  = useState<string | null>(null);
   const [termsTab, setTermsTab] = useState<"services" | "products">("services");
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -238,6 +240,20 @@ export default function TabCotizaciones() {
     });
   }, [companyId, lang]);
 
+useEffect(() => {
+  if (!companyId) return;
+  supabase.auth.getUser().then(({ data: { user } }) => {
+    if (!user) return;
+    supabase
+      .from("company_users")
+      .select("role")
+      .eq("company_id", companyId)
+      .eq("user_id", user.id)
+      .single()
+      .then(({ data }) => setIsAdmin(data?.role === "admin" || data?.role === "owner"));
+  });
+}, [companyId]);
+  
   function set(k: keyof CompanySettings, v: any) { setForm((p) => ({ ...p, [k]: v })); }
 
   const previewNumber = () => {
@@ -402,6 +418,126 @@ export default function TabCotizaciones() {
         </div>
       </Section>
 
+{/* ── FOLIO POR TIPO DE CFDI ── */}
+<Section
+  title="Numeración de documentos fiscales y no fiscales"
+  desc="Configura la serie y el folio inicial para cada tipo de CFDI. Las facturas estándar, con Carta Porte y Comercio Exterior comparten el mismo folio por ser todas Tipo I."
+>
+  {/* Solo admin */}
+  {!isAdmin && (
+    <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", fontSize: "12px", color: "var(--color-warning-text)" }}>
+      Solo administradores y propietarios pueden modificar la numeración de documentos.
+    </div>
+  )}
+
+  <div style={{ display: "grid", gap: "12px" }}>
+    {([
+      {
+        key: "ingreso",   labelEs: "Facturas de Ingreso (Tipo I)",        labelEn: "Income Invoices (Type I)",
+        desc: "Incluye Facturas estándar, Carta Porte y Comercio Exterior",
+        seriesKey: "invoice_series",   folioKey: "invoice_next_folio",
+        color: "var(--color-success-text)", bg: "var(--color-success-bg)",
+      },
+      {
+        key: "egreso",    labelEs: "Notas de Crédito (Tipo E)",           labelEn: "Credit Notes (Type E)",
+        desc: "Devoluciones, descuentos y bonificaciones",
+        seriesKey: "egreso_series",    folioKey: "egreso_next_folio",
+        color: "var(--color-warning-text)", bg: "var(--color-warning-bg)",
+      },
+      {
+        key: "pago",      labelEs: "Complementos de Pago (Tipo P)",       labelEn: "Payment Complements (Type P)",
+        desc: "Recibos electrónicos de pago (REP)",
+        seriesKey: "pago_series",      folioKey: "pago_next_folio",
+        color: "var(--color-brand-blue)", bg: "var(--color-info-bg)",
+      },
+      {
+        key: "traslado",  labelEs: "Traslados (Tipo T)",                  labelEn: "Transfers (Type T)",
+        desc: "Movimiento de mercancías sin transacción comercial",
+        seriesKey: "traslado_series",  folioKey: "traslado_next_folio",
+        color: "var(--color-text-second)", bg: "var(--color-bg-subtle)",
+      },
+      {
+        key: "nomina",    labelEs: "Nómina (Tipo N)",                     labelEn: "Payroll (Type N)",
+        desc: "Recibos de nómina de empleados",
+        seriesKey: "nomina_series",    folioKey: "nomina_next_folio",
+        color: "#7c3aed", bg: "#ede9fe",
+      },
+      {
+        key: "notas",     labelEs: "Notas sin valor fiscal",              labelEn: "Non-fiscal notes",
+        desc: "Remisiones, recibos de honorarios, presupuestos informales",
+        seriesKey: "note_series",      folioKey: "note_next_folio",
+        color: "var(--color-text-muted)", bg: "var(--color-bg-subtle)",
+      },
+    ] as const).map((item) => (
+      <div key={item.key} style={{ display: "grid", gridTemplateColumns: "1fr 120px 140px 120px", gap: "10px", alignItems: "center", padding: "12px 14px", background: "var(--color-bg-subtle)", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-faint)", opacity: isAdmin ? 1 : 0.6 }}>
+        {/* Label */}
+        <div>
+          <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)" }}>{lang === "en" ? item.labelEn : item.labelEs}</div>
+          <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "2px" }}>{item.desc}</div>
+        </div>
+
+        {/* Tipo badge */}
+        <div>
+          <span style={{ fontSize: "9px", fontWeight: 700, padding: "3px 8px", borderRadius: "var(--radius-full)", background: item.bg, color: item.color }}>
+            {item.key === "ingreso" ? "Tipo I" : item.key === "egreso" ? "Tipo E" : item.key === "pago" ? "Tipo P" : item.key === "traslado" ? "Tipo T" : item.key === "nomina" ? "Tipo N" : "No fiscal"}
+          </span>
+        </div>
+
+        {/* Serie */}
+        <div>
+          <div style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Serie</div>
+          <input
+            disabled={!isAdmin}
+            value={String((form as any)[item.seriesKey] ?? (item.key === "ingreso" ? "A" : item.key === "notas" ? "NR" : item.key.charAt(0).toUpperCase()))}
+            onChange={(e) => isAdmin && set(item.seriesKey as any, e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 10))}
+            maxLength={10}
+            style={{ ...INPUT, height: "32px", fontSize: "12px", fontFamily: "monospace", fontWeight: 700, opacity: isAdmin ? 1 : 0.5 }}
+          />
+        </div>
+
+        {/* Folio */}
+        <div>
+          <div style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Próximo folio</div>
+          <input
+            type="number"
+            min="1"
+            disabled={!isAdmin}
+            value={Number((form as any)[item.folioKey] ?? 1)}
+            onChange={(e) => isAdmin && set(item.folioKey as any, Number(e.target.value))}
+            style={{ ...INPUT, height: "32px", fontSize: "12px", fontVariantNumeric: "tabular-nums", opacity: isAdmin ? 1 : 0.5 }}
+          />
+        </div>
+      </div>
+    ))}
+  </div>
+
+  {/* Preview */}
+  <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)" }}>
+    <div style={{ fontSize: "11px", color: "var(--color-info-text)", marginBottom: "6px" }}>Vista previa del próximo folio por tipo:</div>
+    <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
+      {[
+        { label: "Factura",    s: "invoice_series",  f: "invoice_next_folio",  def: "A"  },
+        { label: "N.Crédito",  s: "egreso_series",   f: "egreso_next_folio",   def: "E"  },
+        { label: "REP",        s: "pago_series",     f: "pago_next_folio",     def: "P"  },
+        { label: "Traslado",   s: "traslado_series", f: "traslado_next_folio", def: "T"  },
+        { label: "Nómina",     s: "nomina_series",   f: "nomina_next_folio",   def: "N"  },
+        { label: "Nota",       s: "note_series",     f: "note_next_folio",     def: "NR" },
+      ].map((p) => (
+        <div key={p.label} style={{ textAlign: "center" }}>
+          <div style={{ fontSize: "9px", color: "var(--color-info-text)", marginBottom: "2px" }}>{p.label}</div>
+          <div style={{ fontSize: "13px", fontWeight: 800, color: "var(--color-brand-blue)", fontFamily: "monospace" }}>
+            {String((form as any)[p.s] ?? p.def)}-{String(Number((form as any)[p.f] ?? 1)).padStart(4, "0")}
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+
+  <div style={{ padding: "8px 12px", borderRadius: "var(--radius-md)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", fontSize: "12px", color: "var(--color-warning-text)", lineHeight: 1.6 }}>
+    El folio se incrementa automáticamente con cada documento timbrado. Si ya tienes documentos previos en otro sistema, ajusta el número para continuar el consecutivo sin duplicados.
+  </div>
+</Section>
+      
       {error && (
         <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)", fontSize: "13px" }}>
           {error}
