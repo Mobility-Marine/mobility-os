@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState, useRef } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant } from "@/lib/tenant/TenantProvider";
@@ -26,77 +25,100 @@ function Section({ title, desc, children }: { title: string; desc?: string; chil
 }
 
 export default function TabSellos() {
-  const { t }         = useTranslation();
+  const { t } = useTranslation();
   const { companyId } = useTenant();
-  const cerRef        = useRef<HTMLInputElement>(null);
-  const keyRef        = useRef<HTMLInputElement>(null);
+  const cerRef = useRef<HTMLInputElement>(null);
+  const keyRef = useRef<HTMLInputElement>(null);
 
-  const [cerUrl,   setCerUrl]   = useState<string | null>(null);
-  const [keyUrl,   setKeyUrl]   = useState<string | null>(null);
-  const [pacProvider, setPacProvider] = useState("facturama");
-  const [uploading, setUploading] = useState<"cer" | "key" | null>(null);
-  const [saving,  setSaving]   = useState(false);
-  const [saved,   setSaved]    = useState(false);
-  const [error,   setError]    = useState<string | null>(null);
+  const [cerUrl,        setCerUrl]        = useState<string | null>(null);
+  const [keyUrl,        setKeyUrl]        = useState<string | null>(null);
+  const [facturApiKey,  setFacturApiKey]  = useState("");
+  const [facturApiEnv,  setFacturApiEnv]  = useState<"test" | "live">("test");
+  const [facturApiOrg,  setFacturApiOrg]  = useState("");
+  const [uploading,     setUploading]     = useState<"cer" | "key" | null>(null);
+  const [saving,        setSaving]        = useState(false);
+  const [registering,   setRegistering]   = useState(false);
+  const [saved,         setSaved]         = useState(false);
+  const [error,         setError]         = useState<string | null>(null);
+  const [showKey,       setShowKey]       = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
     fetchCompanySettings(companyId).then((s) => {
-      if (s) {
-        setCerUrl(s.cer_file_url ?? null);
-        setKeyUrl(s.key_file_url ?? null);
-        setPacProvider(s.pac_provider ?? "facturama");
-      }
+      if (!s) return;
+      setCerUrl(s.cer_file_url ?? null);
+      setKeyUrl(s.key_file_url ?? null);
+      setFacturApiKey(s.facturapi_api_key ?? "");
+      setFacturApiEnv((s.facturapi_env as any) ?? "test");
+      setFacturApiOrg(s.facturapi_org_id ?? "");
     });
   }, [companyId]);
 
   async function uploadFile(type: "cer" | "key", file: File) {
     if (!companyId) return;
     setUploading(type);
-    const path = `sellos/${companyId}/${type}.${file.name.split(".").pop()}`;
+    const ext  = file.name.split(".").pop();
+    const path = `sellos/${companyId}/${type}.${ext}`;
     const { error: upErr } = await supabase.storage.from("company-assets").upload(path, file, { upsert: true });
     if (upErr) { setError(upErr.message); setUploading(null); return; }
     const { data } = supabase.storage.from("company-assets").getPublicUrl(path);
     if (type === "cer") setCerUrl(data.publicUrl);
-    else setKeyUrl(data.publicUrl);
+    else                setKeyUrl(data.publicUrl);
     setUploading(null);
+  }
+
+  async function handleRegisterOrg() {
+    if (!facturApiKey || !companyId) return;
+    setRegistering(true); setError(null);
+    try {
+      const res = await fetch("/api/facturacion/setup-org", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ companyId, apiKey: facturApiKey, env: facturApiEnv }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error ?? "Error registrando organización");
+      setFacturApiOrg(data.org_id);
+      await upsertCompanySettings(companyId, {
+        facturapi_api_key: facturApiKey,
+        facturapi_org_id:  data.org_id,
+        facturapi_env:     facturApiEnv,
+        pac_provider:      "facturapi",
+      } as any);
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
+    } catch (e: any) { setError(e.message); }
+    finally { setRegistering(false); }
   }
 
   async function handleSave() {
     if (!companyId) return;
-    setSaving(true);
+    setSaving(true); setError(null);
     try {
       await upsertCompanySettings(companyId, {
-        cer_file_url:  cerUrl ?? undefined,
-        key_file_url:  keyUrl ?? undefined,
-        pac_provider:  pacProvider,
-      });
-      setSaved(true);
-      setTimeout(() => setSaved(false), 2000);
+        cer_file_url:      cerUrl ?? undefined,
+        key_file_url:      keyUrl ?? undefined,
+        facturapi_api_key: facturApiKey || undefined,
+        facturapi_org_id:  facturApiOrg || undefined,
+        facturapi_env:     facturApiEnv,
+        pac_provider:      "facturapi",
+      } as any);
+      setSaved(true); setTimeout(() => setSaved(false), 2500);
     } catch (e: any) { setError(e.message); }
     finally { setSaving(false); }
   }
 
   function FileUploadRow({ type, url, label, ext }: { type: "cer" | "key"; url: string | null; label: string; ext: string }) {
-    const ref = type === "cer" ? cerRef : keyRef;
+    const ref     = type === "cer" ? cerRef : keyRef;
     const hasFile = !!url;
     return (
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "10px", alignItems: "center" }}>
         <div>
           <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</div>
-          <div style={{
-            height: "38px", padding: "0 12px",
-            borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)",
-            background: "var(--color-bg-subtle)", display: "flex", alignItems: "center", gap: "8px",
-          }}>
+          <div style={{ height: "38px", padding: "0 12px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", display: "flex", alignItems: "center", gap: "8px" }}>
             {hasFile ? (
               <>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-text)" strokeWidth="2">
-                  <polyline points="20 6 9 17 4 12"/>
-                </svg>
-                <span style={{ fontSize: "12px", color: "var(--color-success-text)", fontWeight: 600 }}>
-                  Archivo cargado · .{ext}
-                </span>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-text)" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                <span style={{ fontSize: "12px", color: "var(--color-success-text)", fontWeight: 600 }}>Archivo cargado · .{ext}</span>
               </>
             ) : (
               <span style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>Sin archivo</span>
@@ -104,22 +126,12 @@ export default function TabSellos() {
           </div>
         </div>
         <div style={{ paddingTop: "20px" }}>
-          <button onClick={() => ref.current?.click()} disabled={uploading === type} style={{
-            height: "38px", padding: "0 16px", borderRadius: "var(--radius-md)",
-            background: hasFile ? "var(--color-bg-subtle)" : "var(--color-brand-blue)",
-            border: hasFile ? "1px solid var(--color-border)" : "none",
-            color: hasFile ? "var(--color-text-second)" : "#fff",
-            fontSize: "12px", fontWeight: 600, cursor: "pointer",
-          }}>
-            {uploading === type ? t.general.loading : hasFile ? "Reemplazar" : "Subir"}
+          <button onClick={() => ref.current?.click()} disabled={uploading === type}
+            style={{ height: "38px", padding: "0 16px", borderRadius: "var(--radius-md)", background: hasFile ? "var(--color-bg-subtle)" : "var(--color-brand-blue)", border: hasFile ? "1px solid var(--color-border)" : "none", color: hasFile ? "var(--color-text-second)" : "#fff", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
+            {uploading === type ? "Subiendo…" : hasFile ? "Reemplazar" : "Subir"}
           </button>
-          <input
-            ref={ref}
-            type="file"
-            accept={`.${ext}`}
-            style={{ display: "none" }}
-            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(type, f); }}
-          />
+          <input ref={ref} type="file" accept={`.${ext}`} style={{ display: "none" }}
+            onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadFile(type, f); }} />
         </div>
       </div>
     );
@@ -127,54 +139,97 @@ export default function TabSellos() {
 
   return (
     <div style={{ display: "grid", gap: "20px" }}>
-      <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--color-text-primary)" }}>
-        {(t.settings as any)?.tabSellos ?? "Sellos SAT"}
-      </div>
+      <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--color-text-primary)" }}>Sellos SAT & Facturación</div>
 
-      {/* ALERT */}
+      {/* ALERTA */}
       <div style={{ padding: "12px 16px", borderRadius: "var(--radius-md)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)" }}>
         <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-warning-text)", marginBottom: "4px" }}>
-          🔒 Información confidencial
+          Información confidencial
         </div>
         <div style={{ fontSize: "12px", color: "var(--color-warning-text)", lineHeight: 1.6 }}>
-          Los sellos digitales son necesarios para timbrar facturas CFDI 4.0 ante el SAT.
-          Se almacenan de forma segura y solo se usan para generar timbres.
+          Los sellos digitales y la API Key son necesarios para timbrar CFDI 4.0 ante el SAT. Se almacenan de forma segura y solo se usan en el servidor, nunca en el navegador.
         </div>
       </div>
 
-      {/* CERTIFICADOS */}
+      {/* FACTURAPI */}
       <Section
-        title={(t.settings as any)?.sellsTitle ?? "Certificado de Sello Digital"}
-        desc={(t.settings as any)?.sellsDesc ?? "Archivos CER y KEY emitidos por el SAT para tu empresa."}
+        title="Facturapi — PAC autorizado SAT"
+        desc="Proveedor de timbrado. La API Key es confidencial y solo se usa server-side."
+      >
+        {/* Ambiente */}
+        <div>
+          <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Ambiente</div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            {([["test", "Sandbox (pruebas)"], ["live", "Producción (real)"]] as const).map(([val, label]) => (
+              <button key={val} onClick={() => setFacturApiEnv(val)}
+                style={{ flex: 1, padding: "10px 14px", borderRadius: "var(--radius-md)", textAlign: "left", cursor: "pointer", background: facturApiEnv === val ? (val === "live" ? "var(--color-success-bg)" : "var(--color-info-bg)") : "var(--color-bg-subtle)", border: `2px solid ${facturApiEnv === val ? (val === "live" ? "var(--color-success-text)" : "var(--color-brand-blue)") : "var(--color-border-faint)"}` }}>
+                <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)" }}>{val === "live" ? "Producción" : "Sandbox"}</div>
+                <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "2px" }}>{label}</div>
+              </button>
+            ))}
+          </div>
+          {facturApiEnv === "live" && (
+            <div style={{ marginTop: "8px", padding: "8px 12px", borderRadius: "var(--radius-md)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", fontSize: "11px", color: "var(--color-warning-text)" }}>
+              En modo Producción los timbres son reales y tienen costo fiscal. Asegúrate de usar tu API Key live de Facturapi.
+            </div>
+          )}
+        </div>
+
+        {/* API Key */}
+        <div>
+          <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            API Key de Facturapi ({facturApiEnv === "test" ? "Test" : "Live"})
+          </div>
+          <div style={{ display: "flex", gap: "8px" }}>
+            <div style={{ position: "relative", flex: 1 }}>
+              <input
+                type={showKey ? "text" : "password"}
+                value={facturApiKey}
+                onChange={(e) => setFacturApiKey(e.target.value)}
+                placeholder="sk_test_... o sk_live_..."
+                style={{ ...INPUT, paddingRight: "40px", fontFamily: facturApiKey && !showKey ? "monospace" : "inherit" }}
+              />
+              <button onClick={() => setShowKey((p) => !p)}
+                style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--color-text-muted)", padding: "2px" }}>
+                {showKey
+                  ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                  : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                }
+              </button>
+            </div>
+          </div>
+          <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "4px" }}>
+            Obtén tu API Key en <a href="https://app.facturapi.io" target="_blank" rel="noreferrer" style={{ color: "var(--color-brand-blue)" }}>app.facturapi.io</a> → Configuración → API Keys
+          </div>
+        </div>
+
+        {/* Estado de organización */}
+        {facturApiOrg ? (
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)" }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-text)" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-success-text)" }}>Organización registrada en Facturapi</div>
+              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", fontFamily: "monospace", marginTop: "1px" }}>{facturApiOrg}</div>
+            </div>
+          </div>
+        ) : (
+          <button onClick={handleRegisterOrg} disabled={!facturApiKey || registering}
+            style={{ height: "36px", padding: "0 18px", borderRadius: "var(--radius-md)", background: facturApiKey ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: facturApiKey ? "#fff" : "var(--color-text-muted)", border: "none", fontSize: "12px", fontWeight: 700, cursor: facturApiKey ? "pointer" : "not-allowed" }}>
+            {registering ? "Registrando organización…" : "Registrar empresa en Facturapi"}
+          </button>
+        )}
+      </Section>
+
+      {/* CERTIFICADOS CSD */}
+      <Section
+        title="Certificado de Sello Digital (CSD)"
+        desc="Archivos .cer y .key emitidos por el SAT. Los necesitas para timbrar en producción."
       >
         <FileUploadRow type="cer" url={cerUrl} label="Certificado (.cer)" ext="cer" />
         <FileUploadRow type="key" url={keyUrl} label="Clave privada (.key)" ext="key" />
-      </Section>
-
-      {/* PAC */}
-      <Section
-        title={(t.settings as any)?.pacTitle ?? "Proveedor de timbrado (PAC)"}
-        desc={(t.settings as any)?.pacDesc ?? "El PAC es el intermediario autorizado por el SAT para timbrar CFDI."}
-      >
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "10px" }}>
-          {[
-            { value: "facturama", name: "Facturama", desc: "Recomendado — API REST moderna, sandbox gratuito" },
-            { value: "sw_sapiens",name: "SW Sapiens", desc: "StampDE — amplia compatibilidad" },
-          ].map((pac) => (
-            <button key={pac.value} onClick={() => setPacProvider(pac.value)} style={{
-              padding: "14px", borderRadius: "var(--radius-md)", textAlign: "left", cursor: "pointer",
-              background: pacProvider === pac.value ? "var(--color-info-bg)" : "var(--color-bg-subtle)",
-              border: `2px solid ${pacProvider === pac.value ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
-            }}>
-              <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "4px" }}>{pac.name}</div>
-              <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{pac.desc}</div>
-            </button>
-          ))}
-        </div>
-
         <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.6 }}>
-          La integración completa con el PAC se activa en el módulo <strong>Finanzas → Facturación</strong>.
-          Aquí solo configuras el proveedor y cargas tus sellos.
+          Si aún no tienes CSD, puedes tramitarlos en <a href="https://www.sat.gob.mx" target="_blank" rel="noreferrer" style={{ color: "var(--color-brand-blue)" }}>sat.gob.mx</a> → CIEC → Certificados de Sello Digital.
+          En sandbox de Facturapi no necesitas CSD — se generan automáticamente para pruebas.
         </div>
       </Section>
 
@@ -185,12 +240,9 @@ export default function TabSellos() {
       )}
 
       <div>
-        <button onClick={handleSave} disabled={saving} style={{
-          height: "40px", padding: "0 28px", borderRadius: "var(--radius-md)",
-          background: saved ? "var(--color-success-text)" : "var(--color-brand-blue)",
-          color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: "pointer",
-        }}>
-          {saving ? t.general.loading : saved ? "✓ Guardado" : t.general.save}
+        <button onClick={handleSave} disabled={saving}
+          style={{ height: "40px", padding: "0 28px", borderRadius: "var(--radius-md)", background: saved ? "var(--color-success-text)" : "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+          {saving ? "Guardando…" : saved ? "✓ Guardado" : "Guardar configuración"}
         </button>
       </div>
     </div>
