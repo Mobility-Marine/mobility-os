@@ -290,7 +290,7 @@ export default function QuotationWorkspace({
                 { label: "Email",     value: quotation.client?.email ?? quotation.client_email },
                 { label: "RFC",       value: quotation.client?.rfc   ?? quotation.client_rfc   },
                 { label: "Moneda",    value: quotation.currency },
-                { label: "Plantilla", value: quotation.template },
+                { label: "Plantilla", value: "Mobility OS" },
                 { label: "Vigencia",  value: quotation.valid_until ? new Date(quotation.valid_until).toLocaleDateString(locale) : null },
                 { label: "Descuento", value: (quotation.discount_amount ?? 0) > 0 ? `${quotation.currency} $${quotation.discount_amount}` : null },
                 { label: "IVA",       value: `${quotation.tax_rate ?? 16}%` },
