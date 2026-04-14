@@ -71,7 +71,7 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
     header:       { backgroundColor: HEADER_BG, padding: "24 36", flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" },
     logoBox:      { width: 110, height: 44, objectFit: "contain" },
     accentLine:   { backgroundColor: ACCENT, height: 3 },
-    body:         { padding: "20 36 20 36", flex: 1 },
+    body:         { paddingTop: 20, paddingBottom: 20, paddingLeft: 36, paddingRight: 36 },
     section:      { marginBottom: 16 },
     sectionTitle: { fontSize: 8, fontWeight: "bold", color: ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 7, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: BRAND_COLOR },
     row2:         { flexDirection: "row", gap: 16 },
@@ -246,14 +246,14 @@ export default function TemplateEleganteProductos({ quotation, settings }: Props
           ) : null}
 
           {/* TÉRMINOS */}
-          {termsText ? (
-            <View style={[s.section, { marginTop: 4 }]}>
-              <Text style={s.sectionTitle}>{"Términos y condiciones"}</Text>
-              <View style={s.notesBox}>
-                <Text style={s.notesText}>{termsText}</Text>
-              </View>
-            </View>
-          ) : null}
+{termsText ? (
+  <View style={[s.section, { marginTop: 4 }]}>
+    <Text style={s.sectionTitle}>{"Términos y condiciones"}</Text>
+    <View style={[s.notesBox, { paddingHorizontal: 16, paddingVertical: 12 }]} wrap={false}>
+      <Text style={s.notesText}>{termsText}</Text>
+    </View>
+  </View>
+) : null}
 
         </View>
 
