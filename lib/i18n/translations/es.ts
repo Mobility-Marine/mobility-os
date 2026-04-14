@@ -2523,6 +2523,28 @@ cfdiSelector: {
     otro:         "Otro Documento",
     otroDesc:     "Documento personalizado sin valor fiscal",
   },
+
+folioSettings: {
+    sectionTitle:   "Numeración de documentos fiscales y no fiscales",
+    sectionDesc:    "Configura la serie y el folio inicial para cada tipo de CFDI. Las facturas estándar, Carta Porte y Comercio Exterior comparten folio por ser Tipo I.",
+    adminOnly:      "Solo administradores y propietarios pueden modificar la numeración de documentos.",
+    typeIngreso:    "Facturas de Ingreso (Tipo I)",
+    typeIngresoDesc:"Incluye Facturas estándar, Carta Porte y Comercio Exterior",
+    typeEgreso:     "Notas de Crédito (Tipo E)",
+    typeEgresoDesc: "Devoluciones, descuentos y bonificaciones",
+    typePago:       "Complementos de Pago (Tipo P)",
+    typePagoDesc:   "Recibos electrónicos de pago (REP)",
+    typeTraslado:   "Traslados (Tipo T)",
+    typeTrasladoDesc:"Movimiento de mercancías sin transacción comercial",
+    typeNomina:     "Nómina (Tipo N)",
+    typeNominaDesc: "Recibos de nómina de empleados",
+    typeNotas:      "Notas sin valor fiscal",
+    typeNotasDesc:  "Remisiones, recibos de honorarios, presupuestos informales",
+    series:         "Serie",
+    nextFolio:      "Próximo folio",
+    previewTitle:   "Vista previa del próximo folio por tipo:",
+    warning:        "El folio se incrementa automáticamente con cada documento timbrado. Si ya tienes documentos previos en otro sistema, ajusta el número para continuar el consecutivo sin duplicados.",
+  },
   
 };
 
