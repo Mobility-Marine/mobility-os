@@ -417,125 +417,116 @@ export default function OrdenCompraCreateDrawer({ open, suppliers, saving, onClo
           )}
 
           {/* ── PASO 3: CONFIG ── */}
-          {step === "config" && (
-            <>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-                <div>
-                  <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    {es ? "Moneda" : "Currency"}
-                  </div>
-                  <select value={form.currency ?? "MXN"} onChange={(e) => setF("currency", e.target.value)} style={SELECT}>
-                    {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    {es ? "IVA %" : "Tax %"}
-                  </div>
-                  <input type="number" min="0" max="100" value={form.tax_rate ?? 16} onChange={(e) => setF("tax_rate", Number(e.target.value))} style={INPUT} />
-                </div>
-                <div>
-                  <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    {es ? "Condiciones de pago" : "Payment terms"}
-                  </div>
-                  <select value={form.payment_terms ?? ""} onChange={(e) => setF("payment_terms", e.target.value)} style={SELECT}>
-                    <option value="">—</option>
-                    {PAYMENT_TERMS_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    {es ? "Términos de entrega" : "Delivery terms"}
-                  </div>
-                  <select value={form.delivery_terms ?? ""} onChange={(e) => setF("delivery_terms", e.target.value)} style={SELECT}>
-                    <option value="">—</option>
-                    {DELIVERY_TERMS_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    {es ? "Descuento global ($)" : "Global discount ($)"}
-                  </div>
-                  <input type="number" min="0" value={form.discount_amount ?? 0} onChange={(e) => setF("discount_amount", Number(e.target.value))} style={INPUT} />
-                </div>
-                <div>
-                  <div>
-  // DESPUÉS — reemplaza todo ese bloque con:
-<div>
-  <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-    {es ? "Dirección de entrega" : "Delivery address"}
-  </div>
-
-  {/* Selector: almacenes + otra dirección */}
-  <select
-    value={customAddress ? "__custom__" : (form.ship_to_address ?? "")}
-    onChange={(e) => {
-      if (e.target.value === "__custom__") {
-        setCustomAddress(true);
-        setF("ship_to_address", "");
-      } else if (e.target.value === "") {
-        setCustomAddress(false);
-        setF("ship_to_address", "");
-      } else {
-        setCustomAddress(false);
-        // Encontrar el almacén y construir el texto de dirección
-        const wh = warehouses.find((w) => w.id === e.target.value);
-        if (wh) {
-          const addr = [wh.name, wh.address, wh.city].filter(Boolean).join(", ");
-          setF("ship_to_address", addr);
-          setF("ship_to_warehouse_id", wh.id);
-        }
-      }
-    }}
-    style={{ ...SELECT, marginBottom: customAddress ? "6px" : "0" }}
-  >
-    <option value="">{es ? "— Selecciona un almacén —" : "— Select a warehouse —"}</option>
-    {warehouses.map((w) => (
-      <option key={w.id} value={w.id}>
-        {w.name}{w.city ? ` · ${w.city}` : ""}
-      </option>
-    ))}
-    <option value="__custom__">{es ? "Otra dirección…" : "Other address…"}</option>
-  </select>
-
-  {/* Input libre cuando selecciona "Otra dirección" */}
-  {customAddress && (
-    <input
-      value={form.ship_to_address ?? ""}
-      onChange={(e) => setF("ship_to_address", e.target.value)}
-      placeholder={es ? "Calle, colonia, ciudad, estado…" : "Street, city, state…"}
-      style={INPUT}
-    />
-  )}
-</div>
-                </div>
-              </div>
-              <div>
-                <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                  {es ? "Notas" : "Notes"}
-                </div>
-                <textarea rows={3} value={form.notes ?? ""} onChange={(e) => setF("notes", e.target.value)} placeholder={es ? "Instrucciones especiales…" : "Special instructions…"} style={{ ...INPUT, height: "auto", padding: "8px 10px", resize: "vertical" }} />
-              </div>
-
-              {/* Resumen final */}
-              <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "14px", display: "grid", gap: "5px" }}>
-                <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>
-                  {es ? "Resumen" : "Summary"}
-                </div>
-                {[
-                  { l: es ? "Proveedor" : "Supplier", v: selectedSupplier?.name },
-                  { l: es ? "Ítems"     : "Items",    v: String(items.length)  },
-                  { l: "Total",                        v: `${form.currency} $${fmt(total)}` },
-                ].map((r) => (
-                  <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-                    <span style={{ color: "var(--color-text-muted)" }}>{r.l}</span>
-                    <span style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>{r.v}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
+{step === "config" && (
+  <>
+    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
+      <div>
+        <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          {es ? "Moneda" : "Currency"}
         </div>
+        <select value={form.currency ?? "MXN"} onChange={(e) => setF("currency", e.target.value)} style={SELECT}>
+          {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </div>
+      <div>
+        <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          {es ? "IVA %" : "Tax %"}
+        </div>
+        <input type="number" min="0" max="100" value={form.tax_rate ?? 16} onChange={(e) => setF("tax_rate", Number(e.target.value))} style={INPUT} />
+      </div>
+      <div>
+        <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          {es ? "Condiciones de pago" : "Payment terms"}
+        </div>
+        <select value={form.payment_terms ?? ""} onChange={(e) => setF("payment_terms", e.target.value)} style={SELECT}>
+          <option value="">—</option>
+          {PAYMENT_TERMS_OPTIONS.map((p) => <option key={p} value={p}>{p}</option>)}
+        </select>
+      </div>
+      <div>
+        <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          {es ? "Términos de entrega" : "Delivery terms"}
+        </div>
+        <select value={form.delivery_terms ?? ""} onChange={(e) => setF("delivery_terms", e.target.value)} style={SELECT}>
+          <option value="">—</option>
+          {DELIVERY_TERMS_OPTIONS.map((d) => <option key={d} value={d}>{d}</option>)}
+        </select>
+      </div>
+      <div>
+        <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          {es ? "Descuento global ($)" : "Global discount ($)"}
+        </div>
+        <input type="number" min="0" value={form.discount_amount ?? 0} onChange={(e) => setF("discount_amount", Number(e.target.value))} style={INPUT} />
+      </div>
+      <div>
+        <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+          {es ? "Dirección de entrega" : "Delivery address"}
+        </div>
+        <select
+          value={customAddress ? "__custom__" : (form.ship_to_address ?? "")}
+          onChange={(e) => {
+            if (e.target.value === "__custom__") {
+              setCustomAddress(true);
+              setF("ship_to_address", "");
+            } else if (e.target.value === "") {
+              setCustomAddress(false);
+              setF("ship_to_address", "");
+              setF("ship_to_warehouse_id", "");
+            } else {
+              setCustomAddress(false);
+              const wh = warehouses.find((w) => w.id === e.target.value);
+              if (wh) {
+                const addr = [wh.name, wh.address, wh.city].filter(Boolean).join(", ");
+                setF("ship_to_address", addr);
+                setF("ship_to_warehouse_id", wh.id);
+              }
+            }
+          }}
+          style={{ ...SELECT, marginBottom: customAddress ? "6px" : "0" }}
+        >
+          <option value="">{es ? "— Selecciona un almacén —" : "— Select a warehouse —"}</option>
+          {warehouses.map((w) => (
+            <option key={w.id} value={w.id}>
+              {w.name}{w.city ? ` · ${w.city}` : ""}
+            </option>
+          ))}
+          <option value="__custom__">{es ? "Otra dirección…" : "Other address…"}</option>
+        </select>
+        {customAddress && (
+          <input
+            value={form.ship_to_address ?? ""}
+            onChange={(e) => setF("ship_to_address", e.target.value)}
+            placeholder={es ? "Calle, colonia, ciudad, estado…" : "Street, city, state…"}
+            style={INPUT}
+          />
+        )}
+      </div>
+    </div>
+
+    <div>
+      <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+        {es ? "Notas" : "Notes"}
+      </div>
+      <textarea rows={3} value={form.notes ?? ""} onChange={(e) => setF("notes", e.target.value)} placeholder={es ? "Instrucciones especiales…" : "Special instructions…"} style={{ ...INPUT, height: "auto", padding: "8px 10px", resize: "vertical" }} />
+    </div>
+
+    <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "14px", display: "grid", gap: "5px" }}>
+      <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>
+        {es ? "Resumen" : "Summary"}
+      </div>
+      {[
+        { l: es ? "Proveedor" : "Supplier", v: selectedSupplier?.name },
+        { l: es ? "Ítems"     : "Items",    v: String(items.length)   },
+        { l: "Total",                        v: `${form.currency} $${fmt(total)}` },
+      ].map((r) => (
+        <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+          <span style={{ color: "var(--color-text-muted)" }}>{r.l}</span>
+          <span style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>{r.v}</span>
+        </div>
+      ))}
+    </div>
+  </>
+)}
 
         {/* FOOTER */}
         <div style={{ padding: "14px 24px", borderTop: "1px solid var(--color-border-faint)", display: "flex", gap: "10px", flexShrink: 0 }}>
