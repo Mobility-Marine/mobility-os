@@ -166,3 +166,125 @@ export const DEFAULT_NEW_CFDI: NewCFDIForm = {
   cfdi_date: new Date().toISOString().split("T")[0],
   notes: "", concepts: [],
 };
+
+// ── TIPOS ADICIONALES ────────────────────────────────────────
+
+export type CFDITypeGroup = {
+  group:    string;
+  groupEs:  string;
+  groupEn:  string;
+  items:    CFDITypeOption[];
+};
+
+export type CFDITypeOption = {
+  id:          string;
+  type:        CFDIType;
+  labelEs:     string;
+  labelEn:     string;
+  descEs:      string;
+  descEn:      string;
+  badge?:      string;
+  disabled?:   boolean;
+  disabledMsg?:string;
+  icon:        string; // SVG path d value
+};
+
+export const CFDI_TYPE_GROUPS: CFDITypeGroup[] = [
+  {
+    group: "ingreso", groupEs: "Ingresos", groupEn: "Income",
+    items: [
+      {
+        id: "factura", type: "I", labelEs: "Factura", labelEn: "Invoice",
+        descEs: "Comprobante de ingreso estándar CFDI 4.0", descEn: "Standard income receipt CFDI 4.0",
+        icon: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8",
+      },
+      {
+        id: "comercio_exterior", type: "I", labelEs: "Comercio Exterior", labelEn: "Foreign Trade",
+        descEs: "Factura con complemento de Comercio Exterior", descEn: "Invoice with Foreign Trade complement",
+        badge: "Pronto", disabled: true, disabledMsg: "Disponible próximamente",
+        icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+      },
+      {
+        id: "carta_porte", type: "I", labelEs: "Carta Porte (CCP)", labelEn: "Bill of Lading",
+        descEs: "Factura con Complemento Carta Porte 3.1", descEn: "Invoice with Bill of Lading 3.1",
+        badge: "Pronto", disabled: true, disabledMsg: "Disponible próximamente",
+        icon: "M1 3h15v13H1z M16 8h4l3 3v5h-7V8z M5.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M18.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z",
+      },
+    ],
+  },
+  {
+    group: "egreso", groupEs: "Egresos", groupEn: "Credits",
+    items: [
+      {
+        id: "nota_credito", type: "E", labelEs: "Nota de Crédito", labelEn: "Credit Note",
+        descEs: "Devolución, descuento o bonificación sobre una factura emitida", descEn: "Return, discount or bonus on an issued invoice",
+        icon: "M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
+      },
+    ],
+  },
+  {
+    group: "pago", groupEs: "Complementos de Pago", groupEn: "Payment Complements",
+    items: [
+      {
+        id: "complemento_pago", type: "P", labelEs: "Complemento de Pago (REP)", labelEn: "Payment Complement (REP)",
+        descEs: "Registra el pago de una factura PPD ya emitida", descEn: "Records payment for an already issued PPD invoice",
+        icon: "M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
+      },
+    ],
+  },
+  {
+    group: "traslado", groupEs: "Traslados", groupEn: "Transfers",
+    items: [
+      {
+        id: "traslado", type: "T", labelEs: "CFDI de Traslado", labelEn: "Transfer CFDI",
+        descEs: "Movimiento de mercancías sin transacción comercial", descEn: "Goods movement without commercial transaction",
+        badge: "Pronto", disabled: true, disabledMsg: "Disponible próximamente",
+        icon: "M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3 M12 21l5-5-5-5 M7 16h10",
+      },
+    ],
+  },
+  {
+    group: "nomina", groupEs: "Nómina", groupEn: "Payroll",
+    items: [
+      {
+        id: "nomina", type: "N", labelEs: "Recibo de Nómina", labelEn: "Payroll Receipt",
+        descEs: "Requiere configurar el módulo de Empleados primero", descEn: "Requires the Employees module to be configured first",
+        disabled: true, disabledMsg: "Configura el módulo de Empleados para habilitar esta opción",
+        icon: "M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z M12 12h.01",
+      },
+    ],
+  },
+];
+
+// Tipos para Notas sin valor fiscal
+export type BusinessNoteType = "remision" | "honorarios" | "presupuesto" | "recibo" | "otro";
+export type BusinessNoteStatus = "draft" | "sent" | "voided";
+
+export type BusinessNote = {
+  id:             string;
+  company_id:     string;
+  note_number:    string | null;
+  type:           BusinessNoteType;
+  status:         BusinessNoteStatus;
+  date:           string;
+  client_id:      string | null;
+  receiver_name:  string;
+  receiver_rfc:   string | null;
+  receiver_email: string | null;
+  subtotal:       number;
+  tax_amount:     number;
+  total:          number;
+  currency:       string;
+  concepts:       any[];
+  notes:          string | null;
+  pdf_url:        string | null;
+  created_at:     string;
+};
+
+export const BUSINESS_NOTE_TYPES: { key: BusinessNoteType; labelEs: string; labelEn: string; descEs: string; descEn: string }[] = [
+  { key: "remision",    labelEs: "Nota de Remisión",     labelEn: "Delivery Note",       descEs: "Acompaña mercancía sin valor fiscal", descEn: "Accompanies goods without fiscal value" },
+  { key: "honorarios",  labelEs: "Recibo de Honorarios", labelEn: "Honorarium Receipt",  descEs: "Para servicios profesionales sin IVA", descEn: "For professional services without VAT" },
+  { key: "presupuesto", labelEs: "Presupuesto",          labelEn: "Estimate",            descEs: "Cotización informal sin compromiso",   descEn: "Informal quote without commitment" },
+  { key: "recibo",      labelEs: "Recibo de Pago",       labelEn: "Payment Receipt",     descEs: "Comprobante informal de pago recibido", descEn: "Informal proof of received payment" },
+  { key: "otro",        labelEs: "Otro Documento",       labelEn: "Other Document",      descEs: "Documento personalizado sin valor fiscal", descEn: "Custom document without fiscal value" },
+];
