@@ -858,6 +858,7 @@ export const es = {
     teamMembers:        "Miembros del equipo",
     rolesGuide:         "Guía de roles",
     monthlyGoalTitle:   "Meta mensual de ventas",
+    tabHerramientas:    "Herramientas",
   },
 
   products: {
