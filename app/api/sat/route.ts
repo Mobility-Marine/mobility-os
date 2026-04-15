@@ -22,5 +22,10 @@ export async function GET(req: NextRequest) {
   const data = await res.json();
   if (!res.ok) return NextResponse.json({ error: data.message ?? "Error en catálogo SAT" }, { status: res.status });
 
-  return NextResponse.json(data);
+  // DESPUÉS — normaliza description → name:
+  const items = (data.data ?? []).map((item: any) => ({
+    key:  item.key,
+    name: item.description ?? item.name ?? item.key,
+  }));
+  return NextResponse.json({ data: items });
 }
