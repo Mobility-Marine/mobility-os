@@ -2570,6 +2570,19 @@ cxc: {
     tabPipeline:     "Pipeline",
     tabClientes:     "Por cliente",
   },
+
+adminTools: {
+    title:      "Herramientas de administrador",
+    subtitle:   "Herramientas de configuración inicial y mantenimiento.",
+    infoMsg:    "Estas herramientas están diseñadas para el proceso de alta inicial de la empresa.",
+    adminOnly:  "Solo los administradores y propietarios pueden acceder a estas herramientas.",
+    migration:  "Migración e integración de datos",
+    migDesc:    "Sincroniza datos existentes entre módulos del sistema.",
+    initBadge:  "Configuración inicial",
+    running:    "Ejecutando…",
+    noChanges:  "Todo ya estaba sincronizado. Sin cambios.",
+    tabLabel:   "Herramientas",
+  },
   
 };
 
