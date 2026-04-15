@@ -102,13 +102,7 @@ export async function emitirCFDI(companyId: string, userId: string, form: NewCFD
       tax_id:      form.receiver_rfc,
       tax_system:  form.receiver_regime,
       email:       form.receiver_email || undefined,
-      address: {
-        zip:     form.receiver_zip,
-        street:  form.receiver_street  || undefined,
-        city:    form.receiver_city    || undefined,
-        state:   form.receiver_state   || undefined,
-        country: "MEX",
-      },
+      address: { zip: form.receiver_zip },
     },
     items: concepts.map((c) => ({
       product:  c.product,
