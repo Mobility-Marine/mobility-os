@@ -112,8 +112,9 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
       setShowDocForm(false);
       setNewDocName("");
       setNewDocCat("other");
-    } catch (err) { console.error(err); }
-    finally {
+   } catch (err) {
+      console.error(err);
+    } finally {
       setUploadingDoc(false);
       pendingDocRef.current = null;
       if (docFileRef.current) docFileRef.current.value = "";
