@@ -2523,5 +2523,18 @@ cxc: {
     tabPipeline:     "Pipeline",
     tabClientes:     "By client",
   },
+
+adminTools: {
+    title:      "Admin tools",
+    subtitle:   "Initial setup and maintenance tools.",
+    infoMsg:    "These tools are designed for the company's initial setup process.",
+    adminOnly:  "Only administrators and owners can access these tools.",
+    migration:  "Data migration & integration",
+    migDesc:    "Sync existing data between system modules.",
+    initBadge:  "Initial setup",
+    running:    "Running…",
+    noChanges:  "Everything was already in sync. No changes.",
+    tabLabel:   "Admin Tools",
+  },
   
 };
