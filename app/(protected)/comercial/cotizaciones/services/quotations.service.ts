@@ -422,7 +422,15 @@ export async function acceptQuotation(
       });
       return { type: "order", id: order.id };
     }
+  // DESPUÉS:
   } else {
+    // Generar referencia para el embarque
+    const { generateShipmentReference } = await import("@/services/shipments/shipments.service").catch(
+      () => import("../../logistica/embarques/services/shipments.service")
+    );
+    const clientName = (quotation as any).client?.name ?? quotation.client_name ?? "GEN";
+    const reference  = await generateShipmentReference(companyId, clientName, "terrestre_mx");
+
     // Crear embarque
     const { data: shipment, error } = await supabase
       .from("shipments")
@@ -430,11 +438,19 @@ export async function acceptQuotation(
         company_id:   companyId,
         client_id:    quotation.client_id   ?? null,
         quotation_id: quotation.id,
-        status:       "pending",
+        status:       "draft",
+        reference,
+        service_type: "terrestre_mx",
         origin:       quotation.origin      ?? null,
         destination:  quotation.destination ?? null,
         incoterm:     quotation.incoterm    ?? null,
         total:        quotation.total,
+        subtotal:     quotation.subtotal    ?? quotation.total,
+        tax_rate:     quotation.tax_rate    ?? 16,
+        tax_amount:   quotation.tax_amount  ?? 0,
+        provider_cost:0,
+        provider_currency: quotation.currency ?? "USD",
+        profit:       quotation.total,
         currency:     quotation.currency,
         notes:        quotation.notes       ?? null,
         created_by:   userId,
