@@ -1,12 +1,10 @@
 "use client";
-
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { Product } from "../types/products.types";
 import { PRODUCT_MODULE_LINKS } from "../types/products.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type Tab = "info" | "fiscal" | "stock" | "connections";
-
 type Props = {
   product:  Product | null;
   onUpdate: (id: string, updates: Partial<Product>) => Promise<void>;
@@ -22,6 +20,78 @@ const INPUT: React.CSSProperties = {
   fontSize: "12px", outline: "none", boxSizing: "border-box",
 };
 
+// ── SAT SEARCH COMPONENT ─────────────────────────────────────
+function SATSearch({ value, onChange, type, placeholder, style }: {
+  value:       string;
+  onChange:    (code: string) => void;
+  type:        "products" | "units";
+  placeholder?:string;
+  style?:      React.CSSProperties;
+}) {
+  const [input,   setInput]   = useState(value);
+  const [results, setResults] = useState<{ key: string; name: string }[]>([]);
+  const [open,    setOpen]    = useState(false);
+  const [loading, setLoading] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setInput(value); }, [value]);
+
+  useEffect(() => {
+    if (!input || input.length < 2) { setResults([]); setOpen(false); return; }
+    const t = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res  = await fetch(`/api/sat?type=${type}&q=${encodeURIComponent(input)}`);
+        const data = await res.json();
+        setResults((data.data ?? []).slice(0, 10));
+        setOpen(true);
+      } catch {} finally { setLoading(false); }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [input, type]);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative" }}>
+      <div style={{ position: "relative" }}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={placeholder}
+          style={{ ...INPUT, ...style }}
+        />
+        {loading && (
+          <div style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", fontSize: "10px", color: "var(--color-text-muted)" }}>...</div>
+        )}
+      </div>
+      {open && results.length > 0 && (
+        <div style={{ position: "absolute", top: "calc(100% + 2px)", left: 0, right: 0, zIndex: 999, background: "var(--color-bg-base)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", boxShadow: "0 8px 24px rgba(0,0,0,0.2)", maxHeight: "200px", overflowY: "auto" }}>
+          {results.map((r) => (
+            <div
+              key={r.key}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { onChange(r.key); setInput(`${r.key} — ${r.name}`); setOpen(false); }}
+              style={{ padding: "8px 10px", cursor: "pointer", fontSize: "11px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", gap: "8px", alignItems: "center" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-bg-subtle)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              <span style={{ fontWeight: 800, color: "var(--color-brand-blue)", fontFamily: "monospace", flexShrink: 0 }}>{r.key}</span>
+              <span style={{ color: "var(--color-text-second)" }}>{r.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle, saving }: Props) {
   const { t, lang } = useTranslation();
   const locale      = lang === "en" ? "en-US" : "es-MX";
@@ -34,19 +104,14 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
 
   if (!product) {
     return (
-      <div style={{
-        background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)",
-        borderRadius: "var(--radius-lg)", padding: "32px",
-        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-        gap: "12px", height: "100%",
-      }}>
+      <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "32px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", height: "100%" }}>
         <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="1.5">
           <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
           <line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/>
         </svg>
         <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-text-primary)" }}>
-  {tp.selectProduct ?? "Selecciona un producto"}
-</div>
+          {tp.selectProduct ?? "Selecciona un producto"}
+        </div>
         <div style={{ fontSize: "13px", color: "var(--color-text-muted)", textAlign: "center", maxWidth: "280px", lineHeight: 1.6 }}>
           {tp.connectionsDesc ?? "Aquí verás el detalle, información fiscal, stock y conexiones con otros módulos."}
         </div>
@@ -66,57 +131,42 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
   ];
 
   function startEdit() { setForm({ ...product }); setEditing(true); }
-
-  async function saveEdit() {
-    await onUpdate(product.id, form);
-    setEditing(false);
-    setForm({});
-  }
-
+  async function saveEdit() { await onUpdate(product.id, form); setEditing(false); setForm({}); }
   function set(k: keyof Product, v: any) { setForm((p) => ({ ...p, [k]: v })); }
 
-  const stockColor = !product.is_active        ? "var(--color-text-muted)"
-    : product.stock <= 0                        ? "var(--color-danger-text)"
-    : product.stock <= product.stock_min        ? "var(--color-warning-text)"
+  const stockColor = !product.is_active ? "var(--color-text-muted)"
+    : product.stock <= 0               ? "var(--color-danger-text)"
+    : product.stock <= product.stock_min ? "var(--color-warning-text)"
     : "var(--color-success-text)";
 
-  // Field labels para el form de edición
   const infoFields = [
-    { k: "sku",        label: tp.sku       ?? "SKU",      type: "text"   },
-    { k: "name",       label: tp.name      ?? "Nombre",   type: "text"   },
-    { k: "category",   label: tp.category  ?? "Categoría",type: "text"   },
-    { k: "unit",       label: tp.unit      ?? "Unidad",   type: "text"   },
-    { k: "unit_price", label: tp.unitPrice ?? "Precio",   type: "number" },
-    { k: "cost",       label: tp.cost      ?? "Costo",    type: "number" },
-    { k: "currency",   label: tp.currency  ?? "Moneda",   type: "text"   },
-    { k: "tax_rate",   label: tp.taxRate   ?? "IVA %",    type: "number" },
+    { k: "sku",        label: tp.sku       ?? "SKU",       type: "text"   },
+    { k: "name",       label: tp.name      ?? "Nombre",    type: "text"   },
+    { k: "category",   label: tp.category  ?? "Categoría", type: "text"   },
+    { k: "unit",       label: tp.unit      ?? "Unidad",    type: "text"   },
+    { k: "unit_price", label: tp.unitPrice ?? "Precio",    type: "number" },
+    { k: "cost",       label: tp.cost      ?? "Costo",     type: "number" },
+    { k: "currency",   label: tp.currency  ?? "Moneda",    type: "text"   },
+    { k: "tax_rate",   label: tp.taxRate   ?? "IVA %",     type: "number" },
   ];
 
   const infoRows = [
-    { label: tp.sku       ?? "SKU",      value: product.sku },
-    { label: tp.unit      ?? "Unidad",   value: product.unit },
-    { label: tp.category  ?? "Categoría",value: product.category },
-    { label: tp.currency  ?? "Moneda",   value: product.currency },
-    { label: tp.unitPrice ?? "Precio",   value: `${product.currency} $${Number(product.unit_price).toLocaleString(locale, { minimumFractionDigits: 2 })}` },
-    { label: tp.cost      ?? "Costo",    value: `${product.currency} $${Number(product.cost).toLocaleString(locale, { minimumFractionDigits: 2 })}` },
-    { label: tp.taxRate   ?? "IVA",      value: `${product.tax_rate}%` },
-    { label: tp.margin    ?? "Margen",   value: `${margin.toFixed(1)}%` },
-  ];
-
-  const fiscalFields = [
-    { k: "sat_product_code",   label: tp.satProductCode   ?? "Clave de producto SAT",      placeholder: "ej: 14111500" },
-    { k: "sat_unit_code",      label: tp.satUnitCode      ?? "Clave de unidad SAT",         placeholder: "ej: H87 (Pieza)" },
-    { k: "tariff_code",        label: tp.tariffCode       ?? "Fracción arancelaria",        placeholder: "ej: 4819.10.01" },
-    { k: "tariff_description", label: tp.tariffDescription?? "Descripción de la fracción",  placeholder: "ej: Cajas de cartón corrugado" },
-    { k: "country_of_origin",  label: tp.countryOfOrigin  ?? "País de origen",              placeholder: "México" },
+    { label: tp.sku       ?? "SKU",       value: product.sku },
+    { label: tp.unit      ?? "Unidad",    value: product.unit },
+    { label: tp.category  ?? "Categoría", value: product.category },
+    { label: tp.currency  ?? "Moneda",    value: product.currency },
+    { label: tp.unitPrice ?? "Precio",    value: `${product.currency} $${Number(product.unit_price).toLocaleString(locale, { minimumFractionDigits: 2 })}` },
+    { label: tp.cost      ?? "Costo",     value: `${product.currency} $${Number(product.cost).toLocaleString(locale, { minimumFractionDigits: 2 })}` },
+    { label: tp.taxRate   ?? "IVA",       value: `${product.tax_rate}%` },
+    { label: tp.margin    ?? "Margen",    value: `${margin.toFixed(1)}%` },
   ];
 
   const fiscalRows = [
-    { label: tp.satProductCode    ?? "Clave de producto SAT",     value: product.sat_product_code,    required: true,  module: "Facturación CFDI" },
-    { label: tp.satUnitCode       ?? "Clave de unidad SAT",       value: product.sat_unit_code,       required: true,  module: "Facturación CFDI" },
-    { label: tp.tariffCode        ?? "Fracción arancelaria",      value: product.tariff_code,         required: false, module: "Carta Porte / Comercio Exterior" },
-    { label: tp.tariffDescription ?? "Descripción de la fracción",value: product.tariff_description,  required: false, module: "Carta Porte / Comercio Exterior" },
-    { label: tp.countryOfOrigin   ?? "País de origen",            value: product.country_of_origin,   required: false, module: "Comercio Exterior" },
+    { label: tp.satProductCode    ?? "Clave de producto SAT",      value: product.sat_product_code,    required: true,  module: "Facturación CFDI" },
+    { label: tp.satUnitCode       ?? "Clave de unidad SAT",        value: product.sat_unit_code,       required: true,  module: "Facturación CFDI" },
+    { label: tp.tariffCode        ?? "Fracción arancelaria",       value: product.tariff_code,         required: false, module: "Carta Porte / Comercio Exterior" },
+    { label: tp.tariffDescription ?? "Descripción de la fracción", value: product.tariff_description,  required: false, module: "Carta Porte / Comercio Exterior" },
+    { label: tp.countryOfOrigin   ?? "País de origen",             value: product.country_of_origin,   required: false, module: "Comercio Exterior" },
   ];
 
   const stockKpis = [
@@ -126,11 +176,7 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
   ];
 
   return (
-    <div style={{
-      background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)",
-      borderRadius: "var(--radius-lg)", display: "flex", flexDirection: "column",
-      height: "100%", minHeight: 0, overflow: "hidden",
-    }}>
+    <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden" }}>
 
       {/* HEADER */}
       <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--color-border-faint)", flexShrink: 0 }}>
@@ -140,9 +186,7 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
               <span style={{ fontSize: "11px", fontFamily: "monospace", fontWeight: 800, padding: "2px 7px", borderRadius: "var(--radius-sm)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)" }}>
                 {product.sku}
               </span>
-              <span style={{ fontSize: "15px", fontWeight: 800, color: "var(--color-text-primary)" }}>
-                {product.name}
-              </span>
+              <span style={{ fontSize: "15px", fontWeight: 800, color: "var(--color-text-primary)" }}>{product.name}</span>
               {product.category && (
                 <span style={{ fontSize: "10px", padding: "2px 7px", borderRadius: "var(--radius-full)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", color: "var(--color-info-text)" }}>
                   {product.category}
@@ -153,12 +197,9 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
               </span>
             </div>
             {product.description && (
-              <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "4px" }}>
-                {product.description}
-              </div>
+              <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "4px" }}>{product.description}</div>
             )}
           </div>
-
           <div style={{ textAlign: "right", flexShrink: 0 }}>
             <div style={{ fontSize: "20px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
               {product.currency} ${Number(product.unit_price).toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -169,70 +210,35 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
           </div>
         </div>
 
-        {/* ACTIONS */}
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
           {!editing ? (
-            <button onClick={startEdit} style={{
-              height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)",
-              background: "var(--color-brand-blue)", color: "#fff", border: "none",
-              fontSize: "11px", fontWeight: 700, cursor: "pointer",
-              display: "flex", alignItems: "center", gap: "5px",
-            }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-              </svg>
+            <button onClick={startEdit} style={{ height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               {tp.edit ?? "Editar"}
             </button>
           ) : (
             <>
-              <button onClick={saveEdit} disabled={saving} style={{
-                height: "28px", padding: "0 14px", borderRadius: "var(--radius-md)",
-                background: "var(--color-success-text)", color: "#fff", border: "none",
-                fontSize: "11px", fontWeight: 700, cursor: "pointer",
-              }}>
+              <button onClick={saveEdit} disabled={saving} style={{ height: "28px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
                 {saving ? t.general.loading : `✓ ${tp.save ?? "Guardar"}`}
               </button>
-              <button onClick={() => { setEditing(false); setForm({}); }} style={{
-                height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)",
-                background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)",
-                color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer",
-              }}>
+              <button onClick={() => { setEditing(false); setForm({}); }} style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer" }}>
                 {tp.cancel ?? "Cancelar"}
               </button>
             </>
           )}
-          <button onClick={() => onToggle(product.id, !product.is_active)} style={{
-            height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)",
-            background: product.is_active ? "var(--color-warning-bg)" : "var(--color-success-bg)",
-            border: `1px solid ${product.is_active ? "var(--color-warning-border)" : "var(--color-success-border)"}`,
-            color: product.is_active ? "var(--color-warning-text)" : "var(--color-success-text)",
-            fontSize: "11px", fontWeight: 600, cursor: "pointer",
-          }}>
+          <button onClick={() => onToggle(product.id, !product.is_active)} style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", background: product.is_active ? "var(--color-warning-bg)" : "var(--color-success-bg)", border: `1px solid ${product.is_active ? "var(--color-warning-border)" : "var(--color-success-border)"}`, color: product.is_active ? "var(--color-warning-text)" : "var(--color-success-text)", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
             {product.is_active ? (tp.deactivate ?? "Desactivar") : (tp.activate ?? "Activar")}
           </button>
           {!confirm ? (
-            <button onClick={() => setConfirm(true)} style={{
-              height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)",
-              background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)",
-              color: "var(--color-danger-text)", fontSize: "11px", fontWeight: 600, cursor: "pointer",
-            }}>
+            <button onClick={() => setConfirm(true)} style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
               {tp.delete ?? "Eliminar"}
             </button>
           ) : (
             <>
-              <button onClick={() => onDelete(product.id)} style={{
-                height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)",
-                background: "var(--color-danger-text)", color: "#fff", border: "none",
-                fontSize: "11px", fontWeight: 700, cursor: "pointer",
-              }}>
+              <button onClick={() => onDelete(product.id)} style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-danger-text)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
                 {tp.confirmDelete ?? "¿Confirmar?"}
               </button>
-              <button onClick={() => setConfirm(false)} style={{
-                height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)",
-                background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)",
-                color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer",
-              }}>
+              <button onClick={() => setConfirm(false)} style={{ height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer" }}>
                 {(t.general as any).no ?? "No"}
               </button>
             </>
@@ -243,13 +249,7 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
       {/* TABS */}
       <div style={{ display: "flex", borderBottom: "1px solid var(--color-border-faint)", flexShrink: 0 }}>
         {TABS.map((tb) => (
-          <button key={tb.key} onClick={() => setTab(tb.key)} style={{
-            height: "36px", padding: "0 14px", border: "none", background: "transparent",
-            borderBottom: tab === tb.key ? "2px solid var(--color-brand-blue)" : "2px solid transparent",
-            color: tab === tb.key ? "var(--color-brand-blue)" : "var(--color-text-muted)",
-            fontSize: "12px", fontWeight: tab === tb.key ? 700 : 400,
-            cursor: "pointer", transition: "var(--transition-fast)",
-          }}>
+          <button key={tb.key} onClick={() => setTab(tb.key)} style={{ height: "36px", padding: "0 14px", border: "none", background: "transparent", borderBottom: tab === tb.key ? "2px solid var(--color-brand-blue)" : "2px solid transparent", color: tab === tb.key ? "var(--color-brand-blue)" : "var(--color-text-muted)", fontSize: "12px", fontWeight: tab === tb.key ? 700 : 400, cursor: "pointer", transition: "var(--transition-fast)" }}>
             {tb.label}
           </button>
         ))}
@@ -309,14 +309,57 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
             <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.6 }}>
               {tp.fiscalInfo ?? "Estos datos son obligatorios para generar CFDI 4.0. La clave de producto y unidad se usan en Facturación. La fracción arancelaria se usa en Carta Porte y Comercio Exterior."}
             </div>
+
             {editing ? (
-              <div style={{ display: "grid", gap: "10px" }}>
-                {fiscalFields.map((f) => (
-                  <div key={f.k}>
-                    <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{f.label}</div>
-                    <input value={(form as any)[f.k] ?? ""} onChange={(e) => set(f.k as keyof Product, e.target.value)} placeholder={f.placeholder} style={INPUT} />
+              <div style={{ display: "grid", gap: "12px" }}>
+
+                {/* Clave producto SAT — con búsqueda */}
+                <div>
+                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    {tp.satProductCode ?? "Clave de producto SAT"}
                   </div>
-                ))}
+                  <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "5px" }}>
+                    {lang === "en" ? "Search by name or code from SAT catalog" : "Busca por nombre o clave en el catálogo SAT"}
+                  </div>
+                  <SATSearch
+                    value={form.sat_product_code ?? ""}
+                    onChange={(code) => set("sat_product_code", code)}
+                    type="products"
+                    placeholder={lang === "en" ? "Search: 'computer', '84111506'…" : "Buscar: 'caja', 'tornillo', '14111500'…"}
+                  />
+                </div>
+
+                {/* Clave unidad SAT — con búsqueda */}
+                <div>
+                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    {tp.satUnitCode ?? "Clave de unidad SAT"}
+                  </div>
+                  <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "5px" }}>
+                    {lang === "en" ? "Search: 'piece', 'kilogram', 'service'…" : "Busca: 'pieza', 'kilogramo', 'servicio'…"}
+                  </div>
+                  <SATSearch
+                    value={form.sat_unit_code ?? ""}
+                    onChange={(code) => set("sat_unit_code", code)}
+                    type="units"
+                    placeholder={lang === "en" ? "Search SAT units…" : "Buscar unidades SAT…"}
+                  />
+                </div>
+
+                <div style={{ borderTop: "1px solid var(--color-border-faint)", paddingTop: "10px" }}>
+                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    {lang === "en" ? "Foreign Trade / Bill of Lading" : "Comercio Exterior / Carta Porte"}
+                  </div>
+                  {[
+                    { k: "tariff_code",        label: tp.tariffCode        ?? "Fracción arancelaria",       placeholder: "ej: 4819.10.01",                 mono: true  },
+                    { k: "tariff_description", label: tp.tariffDescription ?? "Descripción de la fracción", placeholder: "ej: Cajas de cartón corrugado",  mono: false },
+                    { k: "country_of_origin",  label: tp.countryOfOrigin   ?? "País de origen",             placeholder: "México",                         mono: false },
+                  ].map((f) => (
+                    <div key={f.k} style={{ marginBottom: "10px" }}>
+                      <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{f.label}</div>
+                      <input value={(form as any)[f.k] ?? ""} onChange={(e) => set(f.k as keyof Product, e.target.value)} placeholder={f.placeholder} style={{ ...INPUT, fontFamily: f.mono ? "monospace" : "inherit" }} />
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : (
               <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "14px", display: "grid", gap: "10px" }}>
@@ -328,17 +371,9 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                     </div>
                     <div style={{ textAlign: "right" }}>
                       {r.value ? (
-                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-success-text)", fontFamily: "monospace" }}>
-                          {r.value}
-                        </span>
+                        <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-success-text)", fontFamily: "monospace" }}>{r.value}</span>
                       ) : (
-                        <span style={{
-                          fontSize: "10px", padding: "2px 6px", borderRadius: "var(--radius-full)",
-                          background: r.required ? "var(--color-danger-bg)" : "var(--color-bg-base)",
-                          border: `1px solid ${r.required ? "var(--color-danger-border)" : "var(--color-border-faint)"}`,
-                          color: r.required ? "var(--color-danger-text)" : "var(--color-text-muted)",
-                          fontWeight: r.required ? 700 : 400,
-                        }}>
+                        <span style={{ fontSize: "10px", padding: "2px 6px", borderRadius: "var(--radius-full)", background: r.required ? "var(--color-danger-bg)" : "var(--color-bg-base)", border: `1px solid ${r.required ? "var(--color-danger-border)" : "var(--color-border-faint)"}`, color: r.required ? "var(--color-danger-text)" : "var(--color-text-muted)", fontWeight: r.required ? 700 : 400 }}>
                           {r.required ? (lang === "en" ? "Required" : "Requerido") : (lang === "en" ? "Not set" : "No configurado")}
                         </span>
                       )}
@@ -374,7 +409,6 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                     </div>
                   ))}
                 </div>
-
                 <div style={{ padding: "12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "8px" }}>
                     <span>0</span>
@@ -383,16 +417,9 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                   </div>
                   <div style={{ height: "8px", background: "var(--color-border-faint)", borderRadius: "var(--radius-full)", overflow: "hidden", position: "relative" }}>
                     {product.stock_min > 0 && (
-                      <div style={{
-                        position: "absolute", left: `${Math.min((product.stock_min / Math.max(product.stock, product.stock_min * 1.5)) * 100, 90)}%`,
-                        top: 0, bottom: 0, width: "2px", background: "var(--color-warning-text)", zIndex: 2,
-                      }} />
+                      <div style={{ position: "absolute", left: `${Math.min((product.stock_min / Math.max(product.stock, product.stock_min * 1.5)) * 100, 90)}%`, top: 0, bottom: 0, width: "2px", background: "var(--color-warning-text)", zIndex: 2 }} />
                     )}
-                    <div style={{
-                      height: "100%", borderRadius: "var(--radius-full)", background: stockColor,
-                      width: `${product.stock_min > 0 ? Math.min((product.stock / (product.stock_min * 3)) * 100, 100) : Math.min(product.stock, 100)}%`,
-                      transition: "width 0.5s ease",
-                    }} />
+                    <div style={{ height: "100%", borderRadius: "var(--radius-full)", background: stockColor, width: `${product.stock_min > 0 ? Math.min((product.stock / (product.stock_min * 3)) * 100, 100) : Math.min(product.stock, 100)}%`, transition: "width 0.5s ease" }} />
                   </div>
                   {product.stock <= 0 && (
                     <div style={{ marginTop: "8px", fontSize: "12px", fontWeight: 700, color: "var(--color-danger-text)" }}>
@@ -405,7 +432,6 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                     </div>
                   )}
                 </div>
-
                 <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.5 }}>
                   {tp.stockInfo ?? "El stock se actualiza automáticamente desde Recepciones (aumenta) y Pedidos (disminuye)."}
                 </div>
@@ -432,19 +458,11 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
               };
               const color = moduleColor[link.module] ?? "var(--color-text-muted)";
               return (
-                <div key={link.module} style={{
-                  padding: "12px 14px", borderRadius: "var(--radius-md)",
-                  background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)",
-                  display: "flex", gap: "12px", alignItems: "flex-start",
-                }}>
+                <div key={link.module} style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", display: "flex", gap: "12px", alignItems: "flex-start" }}>
                   <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: color, flexShrink: 0, marginTop: "4px" }} />
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "2px" }}>
-                      {link.label}
-                    </div>
-                    <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "5px" }}>
-                      {link.description}
-                    </div>
+                    <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "2px" }}>{link.label}</div>
+                    <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "5px" }}>{link.description}</div>
                     <div style={{ display: "flex", gap: "4px", flexWrap: "wrap" }}>
                       {link.field.split(", ").map((f) => (
                         <span key={f} style={{ fontSize: "10px", fontFamily: "monospace", padding: "1px 6px", borderRadius: "var(--radius-sm)", background: `${color}15`, border: `1px solid ${color}30`, color }}>
