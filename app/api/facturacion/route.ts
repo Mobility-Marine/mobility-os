@@ -56,9 +56,10 @@ export async function POST(req: NextRequest) {
 
     // ── SETUP ORG ──────────────────────────────────────────────────────────────
     if (action === "setup_org") {
+      // DESPUÉS — agrega los 3 campos fiscales al select:
       const { data: settings } = await supabaseAdmin
         .from("company_settings")
-        .select("fiscal_name, fiscal_rfc, fiscal_regime, fiscal_zip")
+        .select(`${folioConfig.s}, ${folioConfig.f}, fiscal_rfc, fiscal_name, fiscal_regime`)
         .eq("company_id", companyId)
         .single();
 
@@ -126,9 +127,10 @@ export async function POST(req: NextRequest) {
           type:                 invoice.type,
           status:               invoice.status === "valid" ? "valid" : "draft",
           cfdi_date:            invoice.date,
-          issuer_rfc:           invoice.issuer?.tax_id,
-          issuer_name:          invoice.issuer?.legal_name,
-          issuer_fiscal_regime: invoice.issuer?.tax_system,
+          // DESPUÉS:
+          issuer_rfc:           invoice.issuer?.tax_id           ?? (settings as any)?.fiscal_rfc     ?? null,
+          issuer_name:          invoice.issuer?.legal_name        ?? (settings as any)?.fiscal_name    ?? null,
+          issuer_fiscal_regime: invoice.issuer?.tax_system        ?? (settings as any)?.fiscal_regime  ?? null,
           receiver_rfc:         invoice.customer?.tax_id,
           receiver_name:        invoice.customer?.legal_name,
           receiver_email:       payload.receiver_email ?? null,
