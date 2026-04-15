@@ -48,6 +48,7 @@ export async function fetchItems(companyId: string, filters: InventoryFilters): 
     .select(`*, stock:inventory_stock(*, warehouse:warehouses(name, code))`)
     .eq("company_id", companyId)
     .eq("is_active", true)
+    .eq("product_type", "product")
     .order("name");
 
   if (filters.search.trim()) {
