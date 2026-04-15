@@ -1,5 +1,4 @@
 "use client";
-
 import type { Product, ProductFilters } from "../types/products.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
@@ -46,7 +45,6 @@ export default function ProductsSidebar({
       display: "flex", flexDirection: "column", gap: "10px",
       height: "100%", minHeight: 0, overflow: "hidden",
     }}>
-
       {/* HEADER */}
       <div style={{ flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
@@ -58,133 +56,90 @@ export default function ProductsSidebar({
           </span>
         </div>
 
-        {/* ACTIONS — 4 botones: Nuevo + Import + Export + Lista de precios */}
+        {/* ACTIONS */}
         <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: "5px", marginBottom: "10px" }}>
-          <button onClick={onNew} style={{
-            height: "34px", borderRadius: "var(--radius-md)",
-            background: "var(--color-brand-blue)", color: "#fff", border: "none",
-            fontSize: "12px", fontWeight: 700, cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center", gap: "5px",
-          }}>
+          <button onClick={onNew} style={{ height: "34px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "12px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}>
             <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
               <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
             {tp.newProduct ?? "Nuevo"}
           </button>
-
-          {/* IMPORTAR */}
-          <button onClick={onImport} title={tp.importTitle ?? "Importar CSV"} style={{
-            width: "34px", height: "34px", borderRadius: "var(--radius-md)",
-            background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)",
-            color: "var(--color-text-second)", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
-            </svg>
+          <button onClick={onImport} title={tp.importTitle ?? "Importar CSV"} style={{ width: "34px", height: "34px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           </button>
-
-          {/* EXPORTAR CSV */}
-          <button onClick={onExport} title={tp.exportBtn ?? "Exportar CSV"} style={{
-            width: "34px", height: "34px", borderRadius: "var(--radius-md)",
-            background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)",
-            color: "var(--color-text-second)", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
+          <button onClick={onExport} title={tp.exportBtn ?? "Exportar CSV"} style={{ width: "34px", height: "34px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           </button>
-
-          {/* LISTA DE PRECIOS PDF */}
-          <button onClick={onPriceList} title={tp.priceList ?? "Lista de precios"} style={{
-            width: "34px", height: "34px", borderRadius: "var(--radius-md)",
-            background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)",
-            color: "var(--color-brand-blue)", cursor: "pointer",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-              <line x1="16" y1="13" x2="8" y2="13"/>
-              <line x1="16" y1="17" x2="8" y2="17"/>
-              <polyline points="10 9 9 9 8 9"/>
-            </svg>
+          <button onClick={onPriceList} title={tp.priceList ?? "Lista de precios"} style={{ width: "34px", height: "34px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-brand-blue)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
           </button>
         </div>
 
         {/* SEARCH */}
         <div style={{ position: "relative", marginBottom: "8px" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2"
-            style={{ position: "absolute", left: "9px", top: "50%", transform: "translateY(-50%)" }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2" style={{ position: "absolute", left: "9px", top: "50%", transform: "translateY(-50%)" }}>
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
           </svg>
           <input
             placeholder={tp.search ?? "SKU, nombre o categoría…"}
             value={filters.search}
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            style={{
-              width: "100%", height: "32px", paddingLeft: "28px", paddingRight: "8px",
-              borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)",
-              background: "var(--color-bg-subtle)", color: "var(--color-text-primary)",
-              fontSize: "12px", outline: "none", boxSizing: "border-box",
-            }}
+            style={{ width: "100%", height: "32px", paddingLeft: "28px", paddingRight: "8px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
           />
         </div>
 
         {/* FILTROS */}
-<div style={{ display: "grid", gap: "5px" }}>
-  {/* Filtro status */}
-  <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
-    {STATUS_OPTS.map((s) => (
-      <button key={s.value} onClick={() => setFilters({ ...filters, status: s.value as any })} style={{
-        height: "22px", padding: "0 7px", borderRadius: "var(--radius-full)",
-        background: filters.status === s.value ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
-        border: `1px solid ${filters.status === s.value ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
-        color: filters.status === s.value ? "#fff" : "var(--color-text-muted)",
-        fontSize: "10px", fontWeight: filters.status === s.value ? 700 : 500, cursor: "pointer",
-      }}>
-        {s.label}
-      </button>
-    ))}
-  </div>
-  {/* Filtro tipo */}
-  <div style={{ display: "flex", gap: "3px" }}>
-    {[
-      { value: "all",     label: "Todos" },
-      { value: "product", label: "📦 Productos" },
-      { value: "service", label: "⚙️ Servicios" },
-    ].map((opt) => (
-      <button
-        key={opt.value}
-        onClick={() => setFilters({ ...filters, product_type: opt.value as any })}
-        style={{
-          height: "22px", padding: "0 8px", borderRadius: "var(--radius-full)", flex: 1,
-          background: (filters.product_type ?? "all") === opt.value ? "rgba(59,130,246,0.15)" : "var(--color-bg-subtle)",
-          border: `1px solid ${(filters.product_type ?? "all") === opt.value ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
-          color: (filters.product_type ?? "all") === opt.value ? "var(--color-brand-blue)" : "var(--color-text-muted)",
-          fontSize: "10px", fontWeight: (filters.product_type ?? "all") === opt.value ? 700 : 500,
-          cursor: "pointer",
-        }}
-      >
-        {opt.label}
-      </button>
-    ))}
-  </div>
-  {/* Filtro categoría */}
-  {categories.length > 0 && (
-    <select
-      value={filters.category}
-      onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-      style={{ height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", fontSize: "11px", cursor: "pointer" }}
-    >
-      <option value="">{tp.allCategories ?? "Todas las categorías"}</option>
-      {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-    </select>
-  )}
-</div>
+        <div style={{ display: "grid", gap: "5px" }}>
+          {/* Filtro status */}
+          <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
+            {STATUS_OPTS.map((s) => (
+              <button key={s.value} onClick={() => setFilters({ ...filters, status: s.value as any })} style={{
+                height: "22px", padding: "0 7px", borderRadius: "var(--radius-full)",
+                background: filters.status === s.value ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
+                border: `1px solid ${filters.status === s.value ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
+                color: filters.status === s.value ? "#fff" : "var(--color-text-muted)",
+                fontSize: "10px", fontWeight: filters.status === s.value ? 700 : 500, cursor: "pointer",
+              }}>
+                {s.label}
+              </button>
+            ))}
+          </div>
+          {/* Filtro tipo producto/servicio */}
+          <div style={{ display: "flex", gap: "3px" }}>
+            {[
+              { value: "all",     label: "Todos"         },
+              { value: "product", label: "📦 Productos"  },
+              { value: "service", label: "⚙️ Servicios"  },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setFilters({ ...filters, product_type: opt.value as any })}
+                style={{
+                  height: "22px", padding: "0 8px", borderRadius: "var(--radius-full)", flex: 1,
+                  background: (filters.product_type ?? "all") === opt.value ? "rgba(59,130,246,0.15)" : "var(--color-bg-subtle)",
+                  border: `1px solid ${(filters.product_type ?? "all") === opt.value ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
+                  color: (filters.product_type ?? "all") === opt.value ? "var(--color-brand-blue)" : "var(--color-text-muted)",
+                  fontSize: "10px", fontWeight: (filters.product_type ?? "all") === opt.value ? 700 : 500,
+                  cursor: "pointer",
+                }}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+          {/* Filtro categoría */}
+          {categories.length > 0 && (
+            <select
+              value={filters.category}
+              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+              style={{ height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", fontSize: "11px", cursor: "pointer" }}
+            >
+              <option value="">{tp.allCategories ?? "Todas las categorías"}</option>
+              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+            </select>
+          )}
+        </div>
+      </div>{/* ← cierre del div flexShrink:0 del HEADER */}
 
       {/* LIST */}
       <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "grid", gap: "4px", alignContent: "start" }}>
@@ -196,7 +151,6 @@ export default function ProductsSidebar({
           const isSelected = selected?.id === p.id;
           const stockColor = getStockColor(p);
           const margin     = p.unit_price > 0 ? ((p.unit_price - p.cost) / p.unit_price) * 100 : 0;
-
           return (
             <div
               key={p.id}
@@ -211,11 +165,7 @@ export default function ProductsSidebar({
               }}
             >
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                <span style={{
-                  fontSize: "9px", fontWeight: 800, padding: "1px 5px", borderRadius: "var(--radius-sm)",
-                  background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)",
-                  color: "var(--color-text-muted)", flexShrink: 0, fontFamily: "monospace",
-                }}>
+                <span style={{ fontSize: "9px", fontWeight: 800, padding: "1px 5px", borderRadius: "var(--radius-sm)", background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", color: "var(--color-text-muted)", flexShrink: 0, fontFamily: "monospace" }}>
                   {p.sku}
                 </span>
                 <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
@@ -229,7 +179,6 @@ export default function ProductsSidebar({
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px" }}>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  // DESPUÉS:
                   {p.product_type === "service" ? (
                     <span style={{ color: "var(--color-info-text)", fontWeight: 600 }}>⚙️ Servicio</span>
                   ) : (
