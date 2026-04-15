@@ -1,8 +1,7 @@
 "use client";
-
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { CreateProductPayload } from "../types/products.types";
-import { PRODUCT_UNITS, SAT_UNITS, CURRENCIES } from "../types/products.types";
+import { PRODUCT_UNITS, CURRENCIES } from "../types/products.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type Props = {
@@ -21,13 +20,88 @@ const INPUT: React.CSSProperties = {
   fontSize: "13px", outline: "none", boxSizing: "border-box",
 };
 
-function Field({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+// ── SAT SEARCH COMPONENT ─────────────────────────────────────
+function SATSearch({ value, onChange, type, placeholder, style }: {
+  value:       string;
+  onChange:    (code: string) => void;
+  type:        "products" | "units";
+  placeholder?:string;
+  style?:      React.CSSProperties;
+}) {
+  const [input,   setInput]   = useState(value);
+  const [results, setResults] = useState<{ key: string; name: string }[]>([]);
+  const [open,    setOpen]    = useState(false);
+  const [loading, setLoading] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => { setInput(value); }, [value]);
+
+  useEffect(() => {
+    if (!input || input.length < 2) { setResults([]); setOpen(false); return; }
+    const t = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const res  = await fetch(`/api/sat?type=${type}&q=${encodeURIComponent(input)}`);
+        const data = await res.json();
+        setResults((data.data ?? []).slice(0, 10));
+        setOpen(true);
+      } catch {} finally { setLoading(false); }
+    }, 350);
+    return () => clearTimeout(t);
+  }, [input, type]);
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  return (
+    <div ref={wrapRef} style={{ position: "relative" }}>
+      <div style={{ position: "relative" }}>
+        <input
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder={placeholder}
+          style={{ ...INPUT, ...style }}
+        />
+        {loading && (
+          <div style={{ position: "absolute", right: "10px", top: "50%", transform: "translateY(-50%)", fontSize: "10px", color: "var(--color-text-muted)" }}>
+            ...
+          </div>
+        )}
+      </div>
+      {open && results.length > 0 && (
+        <div style={{ position: "absolute", top: "calc(100% + 2px)", left: 0, right: 0, zIndex: 999, background: "var(--color-bg-base)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", boxShadow: "0 8px 24px rgba(0,0,0,0.2)", maxHeight: "220px", overflowY: "auto" }}>
+          {results.map((r) => (
+            <div
+              key={r.key}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => { onChange(r.key); setInput(`${r.key} — ${r.name}`); setOpen(false); }}
+              style={{ padding: "9px 12px", cursor: "pointer", fontSize: "12px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", gap: "10px", alignItems: "center" }}
+              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-bg-subtle)")}
+              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
+            >
+              <span style={{ fontWeight: 800, color: "var(--color-brand-blue)", fontFamily: "monospace", flexShrink: 0 }}>{r.key}</span>
+              <span style={{ color: "var(--color-text-second)", fontSize: "11px" }}>{r.name}</span>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Field({ label, required, hint, children }: { label: string; required?: boolean; hint?: string; children: React.ReactNode }) {
   return (
     <div>
       <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
         {label}{required && <span style={{ color: "var(--color-danger-text)", marginLeft: "3px" }}>*</span>}
       </div>
       {children}
+      {hint && <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "3px" }}>{hint}</div>}
     </div>
   );
 }
@@ -45,12 +119,11 @@ export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) 
   const [step,   setStep]   = useState<Step>("basic");
   const [saving, setSaving] = useState(false);
   const [error,  setError]  = useState<string | null>(null);
-
   const [form, setForm] = useState<Partial<CreateProductPayload>>({
     sku: "", name: "", description: "", category: "",
     unit: "pza", unit_price: 0, cost: 0, currency: "MXN",
     tax_rate: 16, stock: 0, stock_min: 0, is_active: true,
-    sat_product_code: "", sat_unit_code: "H87",
+    sat_product_code: "", sat_unit_code: "",
     tariff_code: "", tariff_description: "", country_of_origin: "México",
     notes: "",
   });
@@ -86,7 +159,7 @@ export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) 
       sku: "", name: "", description: "", category: "",
       unit: "pza", unit_price: 0, cost: 0, currency: "MXN",
       tax_rate: 16, stock: 0, stock_min: 0, is_active: true,
-      sat_product_code: "", sat_unit_code: "H87",
+      sat_product_code: "", sat_unit_code: "",
       tariff_code: "", tariff_description: "", country_of_origin: "México",
       notes: "",
     });
@@ -99,13 +172,7 @@ export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) 
   return (
     <>
       <div onClick={handleClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", zIndex: 400 }} />
-      <div style={{
-        position: "fixed", right: 0, top: 0, bottom: 0,
-        width: "min(520px, 96vw)",
-        background: "var(--color-bg-base)", borderLeft: "1px solid var(--color-border)",
-        boxShadow: "var(--shadow-xl)", zIndex: 401,
-        display: "flex", flexDirection: "column", overflow: "hidden",
-      }}>
+      <div style={{ position: "fixed", right: 0, top: 0, bottom: 0, width: "min(520px, 96vw)", background: "var(--color-bg-base)", borderLeft: "1px solid var(--color-border)", boxShadow: "var(--shadow-xl)", zIndex: 401, display: "flex", flexDirection: "column", overflow: "hidden" }}>
 
         {/* HEADER */}
         <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--color-border-faint)", flexShrink: 0 }}>
@@ -122,17 +189,13 @@ export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) 
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
             </button>
           </div>
-
-          {/* PROGRESS */}
           <div style={{ display: "flex", gap: "3px" }}>
             {STEPS.map((s, i) => {
-              const idx    = STEPS.indexOf(step);
-              const done   = i < idx;
-              const active = s === step;
+              const idx = STEPS.indexOf(step);
               return (
                 <div key={s} style={{ flex: 1 }}>
-                  <div style={{ height: "3px", borderRadius: "var(--radius-full)", background: done || active ? "var(--color-brand-blue)" : "var(--color-border-faint)", transition: "background 0.3s" }} />
-                  <div style={{ fontSize: "9px", fontWeight: 600, color: active ? "var(--color-brand-blue)" : "var(--color-text-muted)", marginTop: "3px", textTransform: "uppercase", letterSpacing: "0.3px" }}>
+                  <div style={{ height: "3px", borderRadius: "var(--radius-full)", background: i <= idx ? "var(--color-brand-blue)" : "var(--color-border-faint)", transition: "background 0.3s" }} />
+                  <div style={{ fontSize: "9px", fontWeight: 600, color: s === step ? "var(--color-brand-blue)" : "var(--color-text-muted)", marginTop: "3px", textTransform: "uppercase", letterSpacing: "0.3px" }}>
                     {STEP_LABELS[s]}
                   </div>
                 </div>
@@ -141,7 +204,6 @@ export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) 
           </div>
         </div>
 
-        {/* ERROR */}
         {error && (
           <div style={{ margin: "0 24px", marginTop: "10px", padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)", fontSize: "13px", flexShrink: 0 }}>
             {error}
@@ -163,13 +225,7 @@ export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) 
                 </Field>
               </div>
               <Field label={tp.description ?? "Descripción / Especificaciones"}>
-                <textarea
-                  rows={2}
-                  value={form.description ?? ""}
-                  onChange={(e) => set("description", e.target.value)}
-                  placeholder={lang === "en" ? "Dimensions, material, technical specs…" : "Medidas, calibre, material, especificaciones técnicas…"}
-                  style={{ ...INPUT, height: "auto", padding: "8px 12px", resize: "vertical" }}
-                />
+                <textarea rows={2} value={form.description ?? ""} onChange={(e) => set("description", e.target.value)} placeholder={lang === "en" ? "Dimensions, material, technical specs…" : "Medidas, calibre, material, especificaciones técnicas…"} style={{ ...INPUT, height: "auto", padding: "8px 12px", resize: "vertical" }} />
               </Field>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <Field label={tp.category ?? "Categoría"}>
@@ -206,14 +262,8 @@ export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) 
                   <input type="number" value={form.tax_rate ?? 16} onChange={(e) => set("tax_rate", Number(e.target.value))} min="0" max="100" style={INPUT} />
                 </Field>
               </div>
-
               {form.unit_price && form.unit_price > 0 && (
-                <div style={{
-                  padding: "12px 14px", borderRadius: "var(--radius-md)",
-                  background: margin >= 30 ? "var(--color-success-bg)" : margin >= 15 ? "var(--color-warning-bg)" : "var(--color-danger-bg)",
-                  border: `1px solid ${margin >= 30 ? "var(--color-success-border)" : margin >= 15 ? "var(--color-warning-border)" : "var(--color-danger-border)"}`,
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
-                }}>
+                <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: margin >= 30 ? "var(--color-success-bg)" : margin >= 15 ? "var(--color-warning-bg)" : "var(--color-danger-bg)", border: `1px solid ${margin >= 30 ? "var(--color-success-border)" : margin >= 15 ? "var(--color-warning-border)" : "var(--color-danger-border)"}`, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
                     <div style={{ fontSize: "11px", fontWeight: 700, color: margin >= 30 ? "var(--color-success-text)" : margin >= 15 ? "var(--color-warning-text)" : "var(--color-danger-text)" }}>
                       {tp.marginGain ?? "Margen de ganancia"}
@@ -227,7 +277,6 @@ export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) 
                   </div>
                 </div>
               )}
-
               <div style={{ borderTop: "1px solid var(--color-border-faint)", paddingTop: "12px" }}>
                 <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
                   {lang === "en" ? "Initial stock" : "Stock inicial"}
@@ -249,27 +298,49 @@ export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) 
             <>
               <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.6 }}>
                 {lang === "en"
-                  ? "Fiscal data is optional when creating a product, but required for invoicing. You can complete it later from the product workspace."
-                  : "Los datos fiscales son opcionales al crear el producto, pero obligatorios para facturar. Puedes completarlos después desde el workspace del producto."}
+                  ? "Fiscal data is optional when creating a product, but required for invoicing. Search by name or code from the official SAT catalog."
+                  : "Los datos fiscales son opcionales al crear el producto, pero obligatorios para facturar. Busca por nombre o clave del catálogo oficial SAT."}
               </div>
-              <div style={{ display: "grid", gap: "10px" }}>
-                <Field label={tp.satProductCode ?? "Clave de producto SAT"}>
-                  <input value={form.sat_product_code ?? ""} onChange={(e) => set("sat_product_code", e.target.value)} placeholder="ej: 14111500" style={INPUT} />
-                </Field>
-                <Field label={tp.satUnitCode ?? "Clave de unidad SAT"}>
-                  <select value={form.sat_unit_code ?? "H87"} onChange={(e) => set("sat_unit_code", e.target.value)} style={{ ...INPUT, cursor: "pointer" }}>
-                    {SAT_UNITS.map((u) => <option key={u.code} value={u.code}>{u.label}</option>)}
-                  </select>
-                </Field>
-                <Field label={tp.tariffCode ?? "Fracción arancelaria"}>
-                  <input value={form.tariff_code ?? ""} onChange={(e) => set("tariff_code", e.target.value)} placeholder="ej: 4819.10.01" style={{ ...INPUT, fontFamily: "monospace" }} />
-                </Field>
-                <Field label={tp.tariffDescription ?? "Descripción de la fracción"}>
-                  <input value={form.tariff_description ?? ""} onChange={(e) => set("tariff_description", e.target.value)} placeholder="ej: Cajas de cartón corrugado" style={INPUT} />
-                </Field>
-                <Field label={tp.countryOfOrigin ?? "País de origen"}>
-                  <input value={form.country_of_origin ?? "México"} onChange={(e) => set("country_of_origin", e.target.value)} style={INPUT} />
-                </Field>
+
+              <Field
+                label={tp.satProductCode ?? "Clave de producto SAT"}
+                hint={lang === "en" ? "Search by name or code: 'computer', '84111506'…" : "Busca por nombre o clave: 'caja', 'servicio', '84111506'…"}
+              >
+                <SATSearch
+                  value={form.sat_product_code ?? ""}
+                  onChange={(code) => set("sat_product_code", code)}
+                  type="products"
+                  placeholder={lang === "en" ? "Search SAT product catalog…" : "Buscar en catálogo SAT de productos…"}
+                />
+              </Field>
+
+              <Field
+                label={tp.satUnitCode ?? "Clave de unidad SAT"}
+                hint={lang === "en" ? "Search: 'piece', 'kilogram', 'service'…" : "Busca: 'pieza', 'kilogramo', 'servicio'…"}
+              >
+                <SATSearch
+                  value={form.sat_unit_code ?? ""}
+                  onChange={(code) => set("sat_unit_code", code)}
+                  type="units"
+                  placeholder={lang === "en" ? "Search SAT unit catalog…" : "Buscar en catálogo SAT de unidades…"}
+                />
+              </Field>
+
+              <div style={{ borderTop: "1px solid var(--color-border-faint)", paddingTop: "12px" }}>
+                <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  {lang === "en" ? "Foreign Trade / Bill of Lading (optional)" : "Comercio Exterior / Carta Porte (opcional)"}
+                </div>
+                <div style={{ display: "grid", gap: "10px" }}>
+                  <Field label={tp.tariffCode ?? "Fracción arancelaria"}>
+                    <input value={form.tariff_code ?? ""} onChange={(e) => set("tariff_code", e.target.value)} placeholder="ej: 4819.10.01" style={{ ...INPUT, fontFamily: "monospace" }} />
+                  </Field>
+                  <Field label={tp.tariffDescription ?? "Descripción de la fracción"}>
+                    <input value={form.tariff_description ?? ""} onChange={(e) => set("tariff_description", e.target.value)} placeholder="ej: Cajas de cartón corrugado" style={INPUT} />
+                  </Field>
+                  <Field label={tp.countryOfOrigin ?? "País de origen"}>
+                    <input value={form.country_of_origin ?? "México"} onChange={(e) => set("country_of_origin", e.target.value)} style={INPUT} />
+                  </Field>
+                </div>
               </div>
             </>
           )}
@@ -283,21 +354,11 @@ export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) 
             </button>
           )}
           {step !== "fiscal" ? (
-            <button onClick={next} disabled={!canAdvance()} style={{
-              flex: 1, height: "40px", borderRadius: "var(--radius-md)",
-              background: canAdvance() ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
-              color: canAdvance() ? "#fff" : "var(--color-text-muted)", border: "none",
-              fontSize: "13px", fontWeight: 700, cursor: canAdvance() ? "pointer" : "not-allowed",
-            }}>
+            <button onClick={next} disabled={!canAdvance()} style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: canAdvance() ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: canAdvance() ? "#fff" : "var(--color-text-muted)", border: "none", fontSize: "13px", fontWeight: 700, cursor: canAdvance() ? "pointer" : "not-allowed" }}>
               {(t.general as any).next ?? "Siguiente"} →
             </button>
           ) : (
-            <button onClick={handleCreate} disabled={saving} style={{
-              flex: 1, height: "40px", borderRadius: "var(--radius-md)",
-              background: "var(--color-success-text)", color: "#fff", border: "none",
-              fontSize: "13px", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer",
-              opacity: saving ? 0.7 : 1,
-            }}>
+            <button onClick={handleCreate} disabled={saving} style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
               {saving ? t.general.loading : (tp.createProduct ?? "Crear producto")}
             </button>
           )}
