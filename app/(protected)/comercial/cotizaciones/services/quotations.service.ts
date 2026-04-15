@@ -425,9 +425,7 @@ export async function acceptQuotation(
   // DESPUÉS:
   } else {
     // Generar referencia para el embarque
-    const { generateShipmentReference } = await import("@/services/shipments/shipments.service").catch(
-      () => import("../../logistica/embarques/services/shipments.service")
-    );
+   const { generateShipmentReference } = await import("../../../logistica/embarques/services/shipments.service");
     const clientName = (quotation as any).client?.name ?? quotation.client_name ?? "GEN";
     const reference  = await generateShipmentReference(companyId, clientName, "terrestre_mx");
 
