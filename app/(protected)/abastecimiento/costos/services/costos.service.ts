@@ -16,6 +16,7 @@ export async function fetchCostItems(companyId: string): Promise<CostItem[]> {
     `)
     .eq("company_id", companyId)
     .eq("is_active", true)
+    .eq("product_type", "product")
     .order("name");
 
   if (error) throw new Error(error.message);
