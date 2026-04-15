@@ -2545,6 +2545,31 @@ folioSettings: {
     previewTitle:   "Vista previa del próximo folio por tipo:",
     warning:        "El folio se incrementa automáticamente con cada documento timbrado. Si ya tienes documentos previos en otro sistema, ajusta el número para continuar el consecutivo sin duplicados.",
   },
+
+cxc: {
+    title:           "Cuentas por Cobrar",
+    subtitle:        "Gestión integral de cobranza, seguimiento y control de cartera.",
+    totalReceivable: "Total por cobrar",
+    totalOverdue:    "Cartera vencida (+30d)",
+    collectedMonth:  "Cobrado este mes",
+    dso:             "DSO — Días de cobro",
+    avgCollection:   "promedio de cobro",
+    activeAccounts:  "cuentas activas",
+    overdueAccounts: "cuentas vencidas",
+    distribution:    "Distribución de cartera por antigüedad",
+    topClients:      "Principales cuentas por cobrar",
+    topSubtitle:     "Ordenado por saldo pendiente. Haz clic para ver estado de cuenta completo.",
+    noAccounts:      "Sin cuentas por cobrar",
+    noAccountsDesc:  "Emite facturas PPD en el módulo de Facturación para verlas aquí automáticamente.",
+    syncSuccess:     "factura(s) PPD sincronizadas a CxC.",
+    syncUpToDate:    "Todo está sincronizado.",
+    registerPayment: "+ Registrar pago",
+    addActivity:     "+ Actividad",
+    tabDashboard:    "Dashboard",
+    tabCartera:      "Cartera",
+    tabPipeline:     "Pipeline",
+    tabClientes:     "Por cliente",
+  },
   
 };
 
