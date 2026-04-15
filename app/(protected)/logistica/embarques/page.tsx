@@ -32,7 +32,7 @@ export default function EmbarquesPage() {
         borderRadius: "var(--radius-lg)", padding: "20px 32px",
         fontSize: "14px", fontWeight: 700, color: "var(--color-text-primary)",
       }}>
-        {tl.loadingShipments ?? "Cargando embarques…"}
+        {tl.loadingShipments ?? "Cargando servicios…"}
       </div>
     </div>
   );
