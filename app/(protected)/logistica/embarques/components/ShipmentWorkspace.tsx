@@ -9,6 +9,10 @@ import {
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { upsertShipmentService, deleteShipmentService } from "../services/shipments.service";
+import { fetchDocuments, createDocument, uploadDocumentFile, deleteDocument } from "../../../logistica/documentacion/services/docs.service";
+import type { ShipmentDocument, DocCategory } from "../../../logistica/documentacion/types/docs.types";
+import { DOC_CATEGORY_CONFIG, DOC_STATUS_CONFIG } from "../../../logistica/documentacion/types/docs.types";
+import { useRef, useEffect } from "react";
 
 type Tab = "detail" | "services" | "documents" | "timeline";
 type Props = {
@@ -71,6 +75,56 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
     service_type: "terrestre", currency: "USD", price: 0, cost: 0,
   });
   const [savingSvc, setSavingSvc] = useState(false);
+  // Documents
+  const [docs,         setDocs]         = useState<ShipmentDocument[]>([]);
+  const [loadingDocs,  setLoadingDocs]  = useState(false);
+  const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [newDocName,   setNewDocName]   = useState("");
+  const [newDocCat,    setNewDocCat]    = useState<DocCategory>("other");
+  const [showDocForm,  setShowDocForm]  = useState(false);
+  const docFileRef = useRef<HTMLInputElement>(null);
+  const pendingDocRef = useRef<{ name: string; category: DocCategory } | null>(null);
+
+  useEffect(() => {
+    if (tab !== "documents" || !companyId || !shipment) return;
+    setLoadingDocs(true);
+    fetchDocuments(companyId, shipment.id)
+      .then(setDocs)
+      .finally(() => setLoadingDocs(false));
+  }, [tab, shipment?.id, companyId]);
+
+  async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file || !companyId || !pendingDocRef.current) return;
+    setUploadingDoc(true);
+    try {
+      const doc = await createDocument(companyId, "system", {
+        shipment_id: shipment!.id,
+        name:        pendingDocRef.current.name || file.name,
+        category:    pendingDocRef.current.category,
+        status:      "pending",
+        version:     1,
+        required:    false,
+      });
+      await uploadDocumentFile(companyId, doc.id, file);
+      const updated = await fetchDocuments(companyId, shipment!.id);
+      setDocs(updated);
+      setShowDocForm(false);
+      setNewDocName("");
+      setNewDocCat("other");
+    } catch (err) { console.error(err); }
+    finally {
+      setUploadingDoc(false);
+      pendingDocRef.current = null;
+      if (docFileRef.current) docFileRef.current.value = "";
+    }
+  }
+
+  async function handleDocDelete(docId: string) {
+    if (!companyId) return;
+    await deleteDocument(companyId, docId);
+    setDocs((prev) => prev.filter((d) => d.id !== docId));
+  }
 
   if (!shipment) return (
     <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "32px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", height: "100%" }}>
@@ -599,36 +653,155 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
         {/* ── DOCUMENTS ── */}
         {tab === "documents" && (
           <div style={{ display: "grid", gap: "12px" }}>
+            {/* Aviso según categoría */}
             <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: isConsulting ? "rgba(139,92,246,0.08)" : "var(--color-info-bg)", border: `1px solid ${isConsulting ? "rgba(139,92,246,0.3)" : "var(--color-info-border)"}`, fontSize: "12px", color: isConsulting ? "#8b5cf6" : "var(--color-info-text)", lineHeight: 1.6 }}>
               {isConsulting
-                ? "📋 Sube aquí la póliza de seguro, contratos, evidencias o cualquier documento relacionado a este servicio. Estos documentos quedarán vinculados al registro para soporte de facturación."
-                : "📄 Documentos del embarque — BL, carta porte, packing list, documentos aduanales y cualquier evidencia del servicio."}
+                ? "📋 Sube la póliza de seguro, contratos, evidencias o cualquier documento de soporte para este servicio."
+                : "📄 BL, carta porte, packing list, pedimento, documentos aduanales y evidencias del embarque."}
             </div>
 
-            {/* Área de subida de documentos */}
-            <div style={{
-              padding: "32px", borderRadius: "var(--radius-md)",
-              border: "2px dashed var(--color-border)", background: "var(--color-bg-subtle)",
-              textAlign: "center", cursor: "pointer",
-              display: "flex", flexDirection: "column", alignItems: "center", gap: "10px",
-            }}>
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="1.5">
-                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
-              </svg>
-              <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)" }}>
-                Subir documentos
+            {/* Botón nuevo documento */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
+                {docs.length} documento{docs.length !== 1 ? "s" : ""} vinculado{docs.length !== 1 ? "s" : ""}
               </div>
-              <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
-                PDF, imágenes, Word, Excel · Máx. 10MB por archivo
-              </div>
-              <div style={{ fontSize: "10px", marginTop: "4px", padding: "6px 12px", borderRadius: "var(--radius-md)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", color: "var(--color-warning-text)" }}>
-                ⚠️ Módulo de documentos en desarrollo — disponible próximamente
-              </div>
+              <button
+                onClick={() => setShowDocForm((v) => !v)}
+                style={{ height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)", background: isConsulting ? "#8b5cf6" : "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}
+              >
+                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Subir documento
+              </button>
             </div>
 
-            {/* Referencia del registro */}
-            <div style={{ fontSize: "11px", color: "var(--color-text-muted)", textAlign: "center" }}>
-              Referencia: <strong>{shipment.reference}</strong>
+            {/* Formulario de subida */}
+            {showDocForm && (
+              <div style={{ padding: "14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", display: "grid", gap: "10px" }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Nombre del documento</div>
+                    <input
+                      value={newDocName}
+                      onChange={(e) => setNewDocName(e.target.value)}
+                      placeholder="Ej: Póliza de seguro, BL original…"
+                      style={INPUT}
+                    />
+                  </div>
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Categoría</div>
+                    <select
+                      value={newDocCat}
+                      onChange={(e) => setNewDocCat(e.target.value as DocCategory)}
+                      style={{ ...INPUT, cursor: "pointer" }}
+                    >
+                      {(Object.entries(DOC_CATEGORY_CONFIG) as [DocCategory, any][]).map(([k, v]) => (
+                        <option key={k} value={k}>{k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+                <div style={{ display: "flex", gap: "8px" }}>
+                  <button
+                    onClick={() => {
+                      if (!newDocName.trim()) { alert("Escribe un nombre para el documento"); return; }
+                      pendingDocRef.current = { name: newDocName.trim(), category: newDocCat };
+                      docFileRef.current?.click();
+                    }}
+                    disabled={uploadingDoc}
+                    style={{ height: "32px", padding: "0 16px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px" }}
+                  >
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    {uploadingDoc ? "Subiendo…" : "Seleccionar archivo"}
+                  </button>
+                  <button onClick={() => { setShowDocForm(false); setNewDocName(""); setNewDocCat("other"); }} style={{ height: "32px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", fontSize: "12px", cursor: "pointer" }}>
+                    Cancelar
+                  </button>
+                </div>
+                <input ref={docFileRef} type="file" style={{ display: "none" }} onChange={handleDocUpload} accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.xml" />
+              </div>
+            )}
+
+            {/* Lista de documentos */}
+            {loadingDocs ? (
+              <div style={{ padding: "20px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "12px" }}>Cargando documentos…</div>
+            ) : docs.length === 0 ? (
+              <div style={{ padding: "28px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px", border: "1px dashed var(--color-border)", borderRadius: "var(--radius-md)" }}>
+                Sin documentos — presiona "Subir documento" para agregar el primero
+              </div>
+            ) : (
+              <div style={{ display: "grid", gap: "6px" }}>
+                {docs.map((doc) => {
+                  const catCfg = DOC_CATEGORY_CONFIG[doc.category];
+                  const stCfg  = DOC_STATUS_CONFIG[doc.status];
+                  const isExpired  = doc.expiry_date && new Date(doc.expiry_date) < new Date();
+                  return (
+                    <div key={doc.id} style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", display: "flex", gap: "10px", alignItems: "center" }}>
+                      {/* Icono */}
+                      <div style={{ width: "32px", height: "32px", borderRadius: "var(--radius-md)", background: catCfg.bg, border: `1px solid ${catCfg.border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={catCfg.color} strokeWidth="2">
+                          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                          <polyline points="14 2 14 8 20 8"/>
+                        </svg>
+                      </div>
+                      {/* Info */}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px", flexWrap: "wrap" }}>
+                          <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {doc.name}
+                          </span>
+                          <span style={{ fontSize: "9px", fontWeight: 700, padding: "1px 5px", borderRadius: "var(--radius-full)", background: catCfg.bg, border: `1px solid ${catCfg.border}`, color: catCfg.color, flexShrink: 0 }}>
+                            {doc.category.replace(/_/g, " ")}
+                          </span>
+                          <span style={{ fontSize: "9px", fontWeight: 700, padding: "1px 5px", borderRadius: "var(--radius-full)", background: stCfg.bg, border: `1px solid ${stCfg.border}`, color: stCfg.color, flexShrink: 0 }}>
+                            {doc.status}
+                          </span>
+                          {isExpired && (
+                            <span style={{ fontSize: "9px", fontWeight: 700, padding: "1px 5px", borderRadius: "var(--radius-full)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)", flexShrink: 0 }}>
+                              VENCIDO
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "2px" }}>
+                          {doc.file_size ? `${(doc.file_size / 1024).toFixed(0)} KB · ` : ""}
+                          v{doc.version} · {new Date(doc.created_at).toLocaleDateString(locale)}
+                          {doc.expiry_date && ` · Vence: ${new Date(doc.expiry_date).toLocaleDateString(locale)}`}
+                        </div>
+                      </div>
+                      {/* Acciones */}
+                      <div style={{ display: "flex", gap: "5px", flexShrink: 0 }}>
+                        {doc.file_url && (
+                          
+                            href={doc.file_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ height: "26px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-base)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", fontSize: "11px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", textDecoration: "none" }}
+                          >
+                            <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                            Ver
+                          </a>
+                        )}
+                        <button
+                          onClick={() => handleDocDelete(doc.id)}
+                          style={{ width: "26px", height: "26px", borderRadius: "var(--radius-sm)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
+                        >
+                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger-text)" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Link al módulo completo */}
+            <div style={{ fontSize: "11px", color: "var(--color-text-muted)", textAlign: "center", paddingTop: "4px" }}>
+              Ver todos los documentos en{" "}
+              <span
+                onClick={() => window.location.href = "/logistica/documentacion"}
+                style={{ color: "var(--color-brand-blue)", cursor: "pointer", fontWeight: 600 }}
+              >
+                Documentación →
+              </span>
             </div>
           </div>
         )}
