@@ -10,10 +10,11 @@ import {
 } from "../types/facturacion.types";
 
 type Props = {
-  open:    boolean;
-  saving:  boolean;
-  onClose: () => void;
-  onCreate:(form: NewCFDIForm) => Promise<void>;
+  open:      boolean;
+  saving:    boolean;
+  onClose:   () => void;
+  onCreate:  (form: NewCFDIForm) => Promise<any>;
+  onCreated?:(cfdi: any) => void;
 };
 
 type Step = "receptor" | "conceptos" | "config";
@@ -94,8 +95,9 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate }: Pr
     if (form.concepts.length === 0) { setError(es ? "Agrega al menos un concepto" : "Add at least one concept"); return; }
     setError(null);
     try {
-      await onCreate(form);
+      const result = await onCreate(form);
       handleClose();
+      if (result && onCreated) onCreated(result);
     } catch (e: any) { setError(e.message); }
   }
 
