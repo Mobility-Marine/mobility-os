@@ -169,13 +169,13 @@ export async function updateShipmentStatus(
 
   // Timeline
   const labels: Partial<Record<ShipmentStatus, string>> = {
-    coordinating:      "Embarque en coordinación",
+    coordinating:      "Servicio en coordinación",
     pickup_scheduled:  "Recolección programada",
-    in_transit:        "Embarque en tránsito",
-    at_destination:    "Embarque en destino",
-    delivered:         "Embarque entregado",
-    invoiced:          "Embarque facturado",
-    cancelled:         "Embarque cancelado",
+    in_transit:        "Servicio en tránsito",
+    at_destination:    "Servicio en destino",
+    delivered:         "Servicio entregado",
+    invoiced:          "Servicio facturado",
+    cancelled:         "Servicio cancelado",
   };
 
   await supabase.from("entity_timeline_events").insert({
