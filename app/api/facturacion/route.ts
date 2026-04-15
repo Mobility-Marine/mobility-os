@@ -8,19 +8,43 @@ const supabaseAdmin = createClient(
 
 const FACTURAPI_BASE = "https://www.facturapi.io/v2";
 
-function getMasterApiKey(): string {
-  const key = process.env.FACTURAPI_SECRET_KEY;
-  if (!key) throw new Error("FACTURAPI_SECRET_KEY no configurada en el servidor.");
+// ── KEYS ────────────────────────────────────────────────────────────────────
+// FACTURAPI_LIVE_KEY  → timbre directo como Mobility Marine (tu cuenta)
+// FACTURAPI_USER_KEY  → crear/administrar orgs de clientes (SaaS futuro)
+// FACTURAPI_SECRET_KEY → test key (fallback para desarrollo)
+
+function getLiveKey(): string {
+  const key = process.env.FACTURAPI_LIVE_KEY ?? process.env.FACTURAPI_SECRET_KEY;
+  if (!key) throw new Error("FACTURAPI_LIVE_KEY no configurada en el servidor.");
   return key;
 }
 
-async function getOrgId(companyId: string): Promise<string | null> {
+function getUserKey(): string | null {
+  return process.env.FACTURAPI_USER_KEY ?? null;
+}
+
+// ── HELPERS ─────────────────────────────────────────────────────────────────
+async function getCompanySettings(companyId: string) {
   const { data } = await supabaseAdmin
     .from("company_settings")
-    .select("facturapi_org_id")
+    .select("facturapi_org_id, facturapi_api_key, pac_provider, fiscal_name, fiscal_rfc, fiscal_regime, fiscal_zip")
     .eq("company_id", companyId)
     .single();
-  return data?.facturapi_org_id ?? null;
+  return data;
+}
+
+// Devuelve la API key correcta para esta empresa:
+// - Si tiene su propia key (cliente SaaS con org propia) → la suya
+// - Si no → usa la Live Key maestra (Mobility Marine)
+async function getApiKeyForCompany(companyId: string): Promise<string> {
+  const settings = await getCompanySettings(companyId);
+  if (settings?.facturapi_api_key) return settings.facturapi_api_key;
+  return getLiveKey();
+}
+
+async function getOrgId(companyId: string): Promise<string | null> {
+  const settings = await getCompanySettings(companyId);
+  return settings?.facturapi_org_id ?? null;
 }
 
 async function facturapi(
@@ -28,7 +52,7 @@ async function facturapi(
   path: string,
   method = "GET",
   body?: object,
-  orgId?: string
+  orgId?: string | null
 ) {
   const headers: Record<string, string> = {
     "Authorization": `Bearer ${apiKey}`,
@@ -46,21 +70,15 @@ async function facturapi(
   return data;
 }
 
+// ── MAIN HANDLER ─────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     const { action, companyId, payload } = await req.json();
-
     if (!companyId) return NextResponse.json({ error: "companyId requerido" }, { status: 400 });
 
-    const apiKey = getMasterApiKey();
-
-    // ── SETUP ORG ──────────────────────────────────────────────────────────────
+    // ── SETUP ORG ────────────────────────────────────────────────────────────
     if (action === "setup_org") {
-     const { data: settings } = await supabaseAdmin
-        .from("company_settings")
-        .select("fiscal_name, fiscal_rfc, fiscal_regime, fiscal_zip")
-        .eq("company_id", companyId)
-        .single();
+      const settings = await getCompanySettings(companyId);
 
       if (!settings?.fiscal_rfc) {
         return NextResponse.json(
@@ -69,23 +87,56 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Obtener la organización existente de esta API Key
-      // (cada cuenta de Facturapi tiene automáticamente una organización)
-      const org = await facturapi(apiKey, "/organization");
+      const userKey  = getUserKey();
+      const liveKey  = getLiveKey();
+      let   orgId:   string;
+      let   orgName: string;
 
+      if (userKey) {
+        // ── MODO SAAS (producción) ──────────────────────────────────────────
+        // User Key → crear organización propia para esta empresa cliente
+        // Si ya existe org_id, solo re-sincroniza
+        if (settings.facturapi_org_id) {
+          // Ya registrada — solo refrescar nombre
+          const org = await facturapi(userKey, `/organizations/${settings.facturapi_org_id}`);
+          orgId   = org.id;
+          orgName = org.legal?.name ?? settings.fiscal_name;
+        } else {
+          // Crear nueva organización para este cliente
+          const org = await facturapi(userKey, "/organizations", "POST", {
+            name: settings.fiscal_name,
+            legal: {
+              name:       settings.fiscal_name,
+              tax_id:     settings.fiscal_rfc,
+              tax_system: settings.fiscal_regime ?? "601",
+              address:    { zip: settings.fiscal_zip ?? "00000", country: "MEX" },
+            },
+          });
+          orgId   = org.id;
+          orgName = org.legal?.name ?? settings.fiscal_name;
+        }
+      } else {
+        // ── MODO DIRECTO (Mobility Marine factura con su propia cuenta) ─────
+        // Live Key → obtener la organización de esta cuenta
+        const org = await facturapi(liveKey, "/organization");
+        orgId   = org.id;
+        orgName = org.legal?.name ?? settings.fiscal_name;
+      }
+
+      // Guardar org_id y marcar PAC como Facturapi
       await supabaseAdmin
         .from("company_settings")
-        .update({ facturapi_org_id: org.id, pac_provider: "facturapi" })
+        .update({ facturapi_org_id: orgId, pac_provider: "facturapi" })
         .eq("company_id", companyId);
 
-      return NextResponse.json({ org_id: org.id, legal_name: org.legal?.name });
+      return NextResponse.json({ org_id: orgId, legal_name: orgName });
     }
 
-    // org_id opcional — si existe se usa para multi-tenant (producción)
-    // si no existe, Facturapi usa directamente la cuenta del API Key (testing)
-    const orgId = await getOrgId(companyId);
+    // Para todos los demás actions: obtener key y org_id de esta empresa
+    const apiKey = await getApiKeyForCompany(companyId);
+    const orgId  = await getOrgId(companyId);
 
-    // ── EMITIR CFDI ────────────────────────────────────────────────────────────
+    // ── EMITIR CFDI ──────────────────────────────────────────────────────────
     if (action === "emitir") {
       const FOLIO_MAP: Record<string, { s: string; f: string; def_s: string }> = {
         I: { s: "invoice_series",  f: "invoice_next_folio",  def_s: "A" },
@@ -95,7 +146,7 @@ export async function POST(req: NextRequest) {
         N: { s: "nomina_series",   f: "nomina_next_folio",   def_s: "N" },
       };
 
-      const cfdiType: string = payload.invoice?.type ?? "I";
+      const cfdiType   = payload.invoice?.type ?? "I";
       const folioConfig = FOLIO_MAP[cfdiType] ?? FOLIO_MAP["I"];
 
       const { data: settings } = await supabaseAdmin
@@ -126,7 +177,6 @@ export async function POST(req: NextRequest) {
           type:                 invoice.type,
           status:               invoice.status === "valid" ? "valid" : "draft",
           cfdi_date:            invoice.date,
-          // DESPUÉS:
           issuer_rfc:           invoice.issuer?.tax_id           ?? (settings as any)?.fiscal_rfc     ?? null,
           issuer_name:          invoice.issuer?.legal_name        ?? (settings as any)?.fiscal_name    ?? null,
           issuer_fiscal_regime: invoice.issuer?.tax_system        ?? (settings as any)?.fiscal_regime  ?? null,
@@ -150,8 +200,8 @@ export async function POST(req: NextRequest) {
         .select()
         .single();
 
-if (saveError) throw new Error(`Error guardando CFDI en BD: ${saveError.message}`);
-      
+      if (saveError) throw new Error(`Error guardando CFDI en BD: ${saveError.message}`);
+
       if (saved && payload.concepts?.length) {
         await supabaseAdmin.from("cfdi_concepts").insert(
           payload.concepts.map((c: any) => ({
@@ -177,11 +227,11 @@ if (saveError) throw new Error(`Error guardando CFDI en BD: ${saveError.message}
         .from("company_settings")
         .update({ [folioConfig.f]: folio + 1 })
         .eq("company_id", companyId);
-      
+
       return NextResponse.json({ success: true, cfdi: saved, invoice });
     }
 
-    // ── CANCELAR CFDI ──────────────────────────────────────────────────────────
+    // ── CANCELAR CFDI ────────────────────────────────────────────────────────
     if (action === "cancelar") {
       const { cfdi_id, facturapi_id, motive, substitution } = payload;
       const cancelPayload: any = { motive };
@@ -203,33 +253,27 @@ if (saveError) throw new Error(`Error guardando CFDI en BD: ${saveError.message}
       return NextResponse.json({ success: true });
     }
 
-    // ── DESCARGAR XML ──────────────────────────────────────────────────────────
+    // ── DESCARGAR XML ────────────────────────────────────────────────────────
     if (action === "xml") {
       const { facturapi_id } = payload;
-      const xml = await fetch(`${FACTURAPI_BASE}/invoices/${facturapi_id}/xml`, {
-        headers: {
-          Authorization:              `Bearer ${apiKey}`,
-          "X-Facturapi-Organization": orgId,
-        },
-      });
+      const headers: Record<string, string> = { Authorization: `Bearer ${apiKey}` };
+      if (orgId) headers["X-Facturapi-Organization"] = orgId;
+      const xml = await fetch(`${FACTURAPI_BASE}/invoices/${facturapi_id}/xml`, { headers });
       const text = await xml.text();
       return new NextResponse(text, { headers: { "Content-Type": "application/xml" } });
     }
 
-    // ── DESCARGAR PDF ──────────────────────────────────────────────────────────
+    // ── DESCARGAR PDF ────────────────────────────────────────────────────────
     if (action === "pdf") {
       const { facturapi_id } = payload;
-      const pdf = await fetch(`${FACTURAPI_BASE}/invoices/${facturapi_id}/pdf`, {
-        headers: {
-          Authorization:              `Bearer ${apiKey}`,
-          "X-Facturapi-Organization": orgId,
-        },
-      });
+      const headers: Record<string, string> = { Authorization: `Bearer ${apiKey}` };
+      if (orgId) headers["X-Facturapi-Organization"] = orgId;
+      const pdf = await fetch(`${FACTURAPI_BASE}/invoices/${facturapi_id}/pdf`, { headers });
       const buffer = await pdf.arrayBuffer();
       return new NextResponse(buffer, { headers: { "Content-Type": "application/pdf" } });
     }
 
-    // ── ENVIAR EMAIL ───────────────────────────────────────────────────────────
+    // ── ENVIAR EMAIL ─────────────────────────────────────────────────────────
     if (action === "send_email") {
       const { facturapi_id, email } = payload;
       await facturapi(apiKey, `/invoices/${facturapi_id}/email`, "POST", { email }, orgId);
