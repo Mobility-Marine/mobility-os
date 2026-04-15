@@ -313,7 +313,7 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
           )}
 
           {/* Facturar — cuando está completado/entregado */}
-          {(shipment.status === "delivered" || (isConsulting && shipment.status === "delivered")) && !shipment.invoice_id && (
+          {shipment.status === "delivered" && !shipment.invoice_id && (
             <button onClick={() => router.push("/finanzas/facturacion")} style={{
               height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)",
               background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)",
