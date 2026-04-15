@@ -56,10 +56,9 @@ export async function POST(req: NextRequest) {
 
     // ── SETUP ORG ──────────────────────────────────────────────────────────────
     if (action === "setup_org") {
-      // DESPUÉS — agrega los 3 campos fiscales al select:
-      const { data: settings } = await supabaseAdmin
+     const { data: settings } = await supabaseAdmin
         .from("company_settings")
-        .select(`${folioConfig.s}, ${folioConfig.f}, fiscal_rfc, fiscal_name, fiscal_regime`)
+        .select("fiscal_name, fiscal_rfc, fiscal_regime, fiscal_zip")
         .eq("company_id", companyId)
         .single();
 
@@ -101,7 +100,7 @@ export async function POST(req: NextRequest) {
 
       const { data: settings } = await supabaseAdmin
         .from("company_settings")
-        .select(`${folioConfig.s}, ${folioConfig.f}`)
+        .select(`${folioConfig.s}, ${folioConfig.f}, fiscal_rfc, fiscal_name, fiscal_regime`)
         .eq("company_id", companyId)
         .single();
 
