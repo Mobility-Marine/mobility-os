@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
 
       const invoice = await facturapi(apiKey, "/invoices", "POST", invoicePayload, orgId);
 
-      const { data: saved } = await supabaseAdmin
+      const { data: saved, error: saveError } = await supabaseAdmin
         .from("cfdi_documents")
         .insert({
           company_id:           companyId,
@@ -149,6 +149,8 @@ export async function POST(req: NextRequest) {
         .select()
         .single();
 
+if (saveError) throw new Error(`Error guardando CFDI en BD: ${saveError.message}`);
+      
       if (saved && payload.concepts?.length) {
         await supabaseAdmin.from("cfdi_concepts").insert(
           payload.concepts.map((c: any) => ({
@@ -174,7 +176,7 @@ export async function POST(req: NextRequest) {
         .from("company_settings")
         .update({ [folioConfig.f]: folio + 1 })
         .eq("company_id", companyId);
-
+      
       return NextResponse.json({ success: true, cfdi: saved, invoice });
     }
 
