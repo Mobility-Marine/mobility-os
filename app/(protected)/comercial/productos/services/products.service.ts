@@ -134,6 +134,7 @@ export function filterProducts(products: Product[], filters: ProductFilters): Pr
     if (filters.status === "inactive"  && p.is_active)                    return false;
     if (filters.status === "low_stock" && !(p.stock > 0 && p.stock <= p.stock_min)) return false;
     if (filters.status === "no_stock"  && p.stock > 0)                    return false;
+    if (filters.product_type && filters.product_type !== "all" && p.product_type !== filters.product_type) return false;
     return true;
   });
 }
