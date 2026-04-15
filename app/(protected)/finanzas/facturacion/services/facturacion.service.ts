@@ -109,7 +109,7 @@ export async function emitirCFDI(companyId: string, userId: string, form: NewCFD
       quantity: c.quantity,
       discount: c.discount_pct > 0 ? (c.unit_price * c.quantity * c.discount_pct / 100) : undefined,
     })),
-    notes_ref: form.notes || undefined,
+   pdf_custom_section: form.notes || undefined,
   };
 
   return callApi("emitir", companyId, {
