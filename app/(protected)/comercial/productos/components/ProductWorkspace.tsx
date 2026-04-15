@@ -92,6 +92,96 @@ function SATSearch({ value, onChange, type, placeholder, style }: {
   );
 }
 
+// ── PRICING EDITOR ────────────────────────────────────────────
+function PricingEditor({ cost, price, currency, onChange }: {
+  cost:     number;
+  price:    number;
+  currency: string;
+  onChange: (updates: { cost?: number; unit_price?: number }) => void;
+}) {
+  const margin = price > 0 ? ((price - cost) / price) * 100 : 0;
+
+  function handleCostChange(newCost: number) {
+    onChange({ cost: newCost });
+  }
+
+  function handlePriceChange(newPrice: number) {
+    onChange({ unit_price: newPrice });
+  }
+
+  function handleMarginChange(newMargin: number) {
+    if (cost > 0 && newMargin < 100) {
+      const newPrice = cost / (1 - newMargin / 100);
+      onChange({ unit_price: Math.round(newPrice * 100) / 100 });
+    }
+  }
+
+  const marginColor = margin >= 30 ? "var(--color-success-text)"
+    : margin >= 15 ? "var(--color-warning-text)"
+    : "var(--color-danger-text)";
+
+  return (
+    <div style={{ gridColumn: "1 / -1", display: "grid", gap: "10px" }}>
+      {/* Fila costo + precio */}
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+        <div>
+          <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Costo</div>
+          <input
+            type="number" min="0" value={cost}
+            onChange={(e) => handleCostChange(Number(e.target.value))}
+            style={{ width: "100%", height: "34px", padding: "0 10px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" as any }}
+          />
+        </div>
+        <div>
+          <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Precio de venta</div>
+          <input
+            type="number" min="0" value={price}
+            onChange={(e) => handlePriceChange(Number(e.target.value))}
+            style={{ width: "100%", height: "34px", padding: "0 10px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" as any }}
+          />
+        </div>
+      </div>
+
+      {/* Estimador de margen */}
+      <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: margin >= 30 ? "var(--color-success-bg)" : margin >= 15 ? "var(--color-warning-bg)" : "var(--color-danger-bg)", border: `1px solid ${margin >= 30 ? "var(--color-success-border)" : margin >= 15 ? "var(--color-warning-border)" : "var(--color-danger-border)"}` }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
+          <div>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: marginColor }}>Margen de ganancia</div>
+            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "2px" }}>
+              Ganancia: {currency} ${(price - cost).toLocaleString("es-MX", { minimumFractionDigits: 2 })} por unidad
+            </div>
+          </div>
+          <div style={{ fontSize: "26px", fontWeight: 900, color: marginColor, fontVariantNumeric: "tabular-nums" }}>
+            {margin.toFixed(1)}%
+          </div>
+        </div>
+        {/* Slider + input de margen deseado */}
+        <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
+          <div style={{ fontSize: "10px", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>Estimar precio:</div>
+          <input
+            type="range" min="0" max="90" step="0.5"
+            value={Math.round(margin * 2) / 2}
+            onChange={(e) => handleMarginChange(Number(e.target.value))}
+            style={{ flex: 1, accentColor: marginColor, cursor: "pointer" }}
+          />
+          <div style={{ display: "flex", alignItems: "center", gap: "2px", flexShrink: 0 }}>
+            <input
+              type="number" min="0" max="99" step="0.5"
+              value={Math.round(margin * 10) / 10}
+              onChange={(e) => handleMarginChange(Number(e.target.value))}
+              style={{ width: "52px", height: "28px", padding: "0 6px", borderRadius: "var(--radius-md)", border: `1px solid ${margin >= 30 ? "var(--color-success-border)" : margin >= 15 ? "var(--color-warning-border)" : "var(--color-danger-border)"}`, background: "var(--color-bg-base)", color: marginColor, fontSize: "12px", fontWeight: 700, outline: "none", textAlign: "center" }}
+            />
+            <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>%</span>
+          </div>
+        </div>
+        <div style={{ fontSize: "9px", color: "var(--color-text-muted)", marginTop: "6px" }}>
+          Mueve el slider o escribe el % deseado → el precio se calcula automáticamente. También puedes editar el precio manualmente.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle, saving }: Props) {
   const { t, lang } = useTranslation();
   const locale      = lang === "en" ? "en-US" : "es-MX";
@@ -263,12 +353,30 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
           <div style={{ display: "grid", gap: "12px" }}>
             {editing ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                {infoFields.map((f) => (
+                {/* Campos básicos — sin precio/costo (van en PricingEditor) */}
+                {[
+                  { k: "sku",      label: tp.sku       ?? "SKU",       type: "text"   },
+                  { k: "name",     label: tp.name      ?? "Nombre",    type: "text"   },
+                  { k: "category", label: tp.category  ?? "Categoría", type: "text"   },
+                  { k: "unit",     label: tp.unit      ?? "Unidad",    type: "text"   },
+                  { k: "currency", label: tp.currency  ?? "Moneda",    type: "text"   },
+                  { k: "tax_rate", label: tp.taxRate   ?? "IVA %",     type: "number" },
+                ].map((f) => (
                   <div key={f.k}>
                     <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{f.label}</div>
                     <input type={f.type} value={(form as any)[f.k] ?? ""} onChange={(e) => set(f.k as keyof Product, f.type === "number" ? Number(e.target.value) : e.target.value)} style={INPUT} />
                   </div>
                 ))}
+                {/* Pricing editor — costo + precio + estimador de margen */}
+                <PricingEditor
+                  cost={Number((form as any).cost ?? 0)}
+                  price={Number((form as any).unit_price ?? 0)}
+                  currency={(form as any).currency ?? product.currency}
+                  onChange={(updates) => {
+                    if (updates.cost       !== undefined) set("cost",       updates.cost);
+                    if (updates.unit_price !== undefined) set("unit_price", updates.unit_price);
+                  }}
+                />
                 <div style={{ gridColumn: "1 / -1" }}>
                   <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{tp.description ?? "Descripción"}</div>
                   <textarea value={(form as any).description ?? ""} onChange={(e) => set("description", e.target.value)} rows={2} style={{ ...INPUT, height: "auto", padding: "8px 10px", resize: "vertical" }} />
