@@ -81,14 +81,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ org_id: org.id, legal_name: org.legal?.name });
     }
 
-    // Para todos los demás actions necesitamos el org_id
+    // org_id opcional — si existe se usa para multi-tenant (producción)
+    // si no existe, Facturapi usa directamente la cuenta del API Key (testing)
     const orgId = await getOrgId(companyId);
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Empresa no registrada en el sistema de timbrado. Ve a Configuración → Sellos SAT y guarda tus certificados." },
-        { status: 400 }
-      );
-    }
 
     // ── EMITIR CFDI ────────────────────────────────────────────────────────────
     if (action === "emitir") {
