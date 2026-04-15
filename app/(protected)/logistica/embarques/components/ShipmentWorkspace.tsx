@@ -1,15 +1,16 @@
 "use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Shipment, ShipmentStatus, ShipmentService, ServiceLineType } from "../types/shipments.types";
-import { SHIPMENT_STATUS_CONFIG, SERVICE_TYPE_CONFIG, NEXT_STATUS, STATUS_FLOW, SERVICE_LINE_TYPES, INCOTERMS, CURRENCIES, SHIPMENT_SERVICE_TYPES } from "../types/shipments.types";
+import {
+  SHIPMENT_STATUS_CONFIG, SERVICE_TYPE_CONFIG, SERVICE_TYPE_CATEGORY,
+  NEXT_STATUS, STATUS_FLOW, SERVICE_LINE_TYPES, INCOTERMS, CURRENCIES,
+} from "../types/shipments.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { upsertShipmentService, deleteShipmentService } from "../services/shipments.service";
 
-type Tab = "detail" | "services" | "documents" | "service_orders" | "timeline";
-
+type Tab = "detail" | "services" | "documents" | "timeline";
 type Props = {
   shipment:       Shipment | null;
   onStatusChange: (id: string, status: ShipmentStatus) => Promise<void>;
@@ -25,6 +26,32 @@ const INPUT: React.CSSProperties = {
   fontSize: "12px", outline: "none", boxSizing: "border-box",
 };
 
+// ── FLUJOS POR CATEGORÍA ──────────────────────────────────────
+// Logística: flujo completo con tracking físico
+const LOGISTICS_FLOW: ShipmentStatus[] = [
+  "draft", "coordinating", "pickup_scheduled",
+  "in_transit", "at_destination", "delivered",
+];
+
+// Consultoría/Seguro: flujo simplificado
+const CONSULTING_FLOW: ShipmentStatus[] = [
+  "draft", "coordinating", "delivered",
+];
+
+const CONSULTING_NEXT: Partial<Record<ShipmentStatus, ShipmentStatus>> = {
+  draft:        "coordinating",
+  coordinating: "delivered",
+};
+
+// Etiquetas especiales para flujo de consultoría
+const CONSULTING_LABELS: Partial<Record<ShipmentStatus, string>> = {
+  draft:        "Borrador",
+  coordinating: "En proceso",
+  delivered:    "Completado",
+  invoiced:     "Facturado",
+  cancelled:    "Cancelado",
+};
+
 export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, onReload, saving }: Props) {
   const { t, lang }   = useTranslation();
   const { companyId } = useTenant();
@@ -32,16 +59,18 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
   const tl            = (t.logistics as any) ?? {};
   const locale        = lang === "en" ? "en-US" : "es-MX";
 
-  const [tab,          setTab]          = useState<Tab>("detail");
-  const [editing,      setEditing]      = useState(false);
-  const [form,         setForm]         = useState<Partial<Shipment>>({});
-  const [confirmNext,  setConfirmNext]  = useState(false);
+  const [tab,           setTab]           = useState<Tab>("detail");
+  const [editing,       setEditing]       = useState(false);
+  const [form,          setForm]          = useState<Partial<Shipment>>({});
+  const [confirmNext,   setConfirmNext]   = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
 
   // Services
-  const [addingSvc,    setAddingSvc]    = useState(false);
-  const [svcForm,      setSvcForm]      = useState<Partial<ShipmentService>>({ service_type: "terrestre", currency: "USD", price: 0, cost: 0 });
-  const [savingSvc,    setSavingSvc]    = useState(false);
+  const [addingSvc, setAddingSvc] = useState(false);
+  const [svcForm,   setSvcForm]   = useState<Partial<ShipmentService>>({
+    service_type: "terrestre", currency: "USD", price: 0, cost: 0,
+  });
+  const [savingSvc, setSavingSvc] = useState(false);
 
   if (!shipment) return (
     <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "32px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", height: "100%" }}>
@@ -53,32 +82,45 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
         {tl.workspaceEmpty ?? "Selecciona un servicio"}
       </div>
       <div style={{ fontSize: "13px", color: "var(--color-text-muted)", textAlign: "center", maxWidth: "300px", lineHeight: 1.6 }}>
-        {tl.workspaceEmptyDesc ?? "Aquí verás el detalle del embarque, servicios y documentos."}
+        {tl.workspaceEmptyDesc ?? "Aquí verás el detalle, documentos y estado del servicio."}
       </div>
     </div>
   );
 
-  const stCfg      = SHIPMENT_STATUS_CONFIG[shipment.status];
-  const svcCfg     = SERVICE_TYPE_CONFIG[shipment.service_type];
-  const nextStatus = NEXT_STATUS[shipment.status];
+  // ── Detectar categoría del servicio ───────────────────────
+  const isConsulting = SERVICE_TYPE_CATEGORY[shipment.service_type] === "consulting";
+  const activeFlow   = isConsulting ? CONSULTING_FLOW   : LOGISTICS_FLOW;
+  const activeNext   = isConsulting ? CONSULTING_NEXT   : NEXT_STATUS;
+
+  const stCfg       = SHIPMENT_STATUS_CONFIG[shipment.status];
+  const svcCfg      = SERVICE_TYPE_CONFIG[shipment.service_type];
+  const nextStatus  = activeNext[shipment.status];
   const isCancelled = shipment.status === "cancelled";
-  const isDelivered = ["delivered","invoiced"].includes(shipment.status);
+  const isDelivered = ["delivered", "invoiced"].includes(shipment.status);
   const isDone      = isCancelled || isDelivered;
   const services    = shipment.services ?? [];
 
   function getStatusLabel(s: ShipmentStatus): string {
+    if (isConsulting && CONSULTING_LABELS[s]) return CONSULTING_LABELS[s]!;
     const key = `status${s.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("")}`;
     return tl[key] ?? s;
   }
 
   function getNextLabel(): string {
     if (!nextStatus) return "";
+    if (isConsulting) {
+      const labels: Partial<Record<ShipmentStatus, string>> = {
+        coordinating: "Iniciar proceso",
+        delivered:    "Marcar como completado",
+      };
+      return labels[nextStatus] ?? `Avanzar`;
+    }
     const labels: Partial<Record<ShipmentStatus, string>> = {
-      coordinating:      tl.confirmCoordinating  ?? "Confirmar coordinación",
-      pickup_scheduled:  tl.confirmPickup        ?? "Confirmar recolección",
-      in_transit:        tl.confirmInTransit     ?? "Confirmar en tránsito",
-      at_destination:    tl.confirmAtDest        ?? "Confirmar en destino",
-      delivered:         tl.confirmDelivered     ?? "Confirmar entrega",
+      coordinating:     tl.confirmCoordinating ?? "Confirmar coordinación",
+      pickup_scheduled: tl.confirmPickup       ?? "Confirmar recolección",
+      in_transit:       tl.confirmInTransit    ?? "Confirmar en tránsito",
+      at_destination:   tl.confirmAtDest       ?? "Confirmar en destino",
+      delivered:        tl.confirmDelivered    ?? "Confirmar entrega",
     };
     return labels[nextStatus] ?? `Avanzar a ${getStatusLabel(nextStatus)}`;
   }
@@ -111,12 +153,12 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
     await onReload();
   }
 
+  // Tabs — consultoría no tiene "Órdenes de servicio"
   const TABS: { key: Tab; label: string }[] = [
-    { key: "detail",         label: tl.tabDetail        ?? "Detalle"              },
-    { key: "services",       label: `${tl.tabServices  ?? "Servicios"} (${services.length})` },
-    { key: "documents",      label: tl.tabDocuments     ?? "Documentos"           },
-    { key: "service_orders", label: tl.tabServiceOrders ?? "Órdenes de servicio"  },
-    { key: "timeline",       label: tl.tabTimeline      ?? "Historial"            },
+    { key: "detail",    label: tl.tabDetail   ?? "Detalle" },
+    { key: "services",  label: `${tl.tabServices ?? "Servicios"} (${services.length})` },
+    { key: "documents", label: tl.tabDocuments ?? "Documentos" },
+    { key: "timeline",  label: tl.tabTimeline  ?? "Historial" },
   ];
 
   const profitPct = shipment.total > 0 ? ((shipment.profit ?? 0) / shipment.total) * 100 : 0;
@@ -136,17 +178,21 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
                 {getStatusLabel(shipment.status)}
               </span>
               <span style={{ fontSize: "10px", color: svcCfg.color, background: `${svcCfg.color}15`, padding: "2px 7px", borderRadius: "var(--radius-full)", border: `1px solid ${svcCfg.color}30` }}>
-                {tl[`service${shipment.service_type.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("")}`] ?? shipment.service_type}
+                {shipment.service_type.charAt(0).toUpperCase() + shipment.service_type.slice(1).replace(/_/g, " ")}
+              </span>
+              {/* Badge categoría */}
+              <span style={{ fontSize: "10px", padding: "2px 7px", borderRadius: "var(--radius-full)", background: isConsulting ? "rgba(139,92,246,0.1)" : "rgba(59,130,246,0.1)", border: `1px solid ${isConsulting ? "rgba(139,92,246,0.3)" : "rgba(59,130,246,0.3)"}`, color: isConsulting ? "#8b5cf6" : "var(--color-brand-blue)", fontWeight: 600 }}>
+                {isConsulting ? "📋 Consultoría" : "🚛 Logística"}
               </span>
               {shipment.quotation?.quote_number && (
-                <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
-                  ← {shipment.quotation.quote_number}
-                </span>
+                <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>← {shipment.quotation.quote_number}</span>
               )}
             </div>
             <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "3px" }}>
               {shipment.client?.name ?? "—"}
-              {(shipment.origin || shipment.destination) && ` · ${[shipment.origin, shipment.destination].filter(Boolean).join(" → ")}`}
+              {!isConsulting && (shipment.origin || shipment.destination) &&
+                ` · ${[shipment.origin, shipment.destination].filter(Boolean).join(" → ")}`
+              }
             </div>
           </div>
           <div style={{ textAlign: "right", flexShrink: 0 }}>
@@ -159,26 +205,24 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
           </div>
         </div>
 
-        {/* PROGRESO */}
+        {/* PROGRESO — adaptado según categoría */}
         {!isCancelled && (
           <div style={{ display: "flex", gap: "0", marginBottom: "10px", alignItems: "center" }}>
-            {STATUS_FLOW.map((s, i) => {
+            {activeFlow.map((s, i) => {
               const sCfg = SHIPMENT_STATUS_CONFIG[s];
               const done = sCfg.step < stCfg.step;
               const cur  = s === shipment.status;
               const label = getStatusLabel(s);
               return (
                 <div key={s} style={{ flex: 1, display: "flex", alignItems: "center" }}>
-                  <div style={{ flex: 1, height: "2px", background: done || cur ? sCfg.color : "var(--color-border-faint)" }} />
+                  {i > 0 && <div style={{ flex: 1, height: "2px", background: done || cur ? sCfg.color : "var(--color-border-faint)" }} />}
                   <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "2px" }}>
                     <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: done ? "var(--color-success-text)" : cur ? sCfg.color : "var(--color-border-faint)", border: `2px solid ${done ? "var(--color-success-text)" : cur ? sCfg.color : "var(--color-border-faint)"}` }} />
                     <span style={{ fontSize: "8px", color: cur ? sCfg.color : "var(--color-text-muted)", fontWeight: cur ? 700 : 400, whiteSpace: "nowrap" }}>
                       {label}
                     </span>
                   </div>
-                  {i < STATUS_FLOW.length - 1 && (
-                    <div style={{ flex: 1, height: "2px", background: done ? "var(--color-success-text)" : "var(--color-border-faint)" }} />
-                  )}
+                  {i < activeFlow.length - 1 && <div style={{ flex: 1, height: "2px", background: done ? "var(--color-success-text)" : "var(--color-border-faint)" }} />}
                 </div>
               );
             })}
@@ -187,13 +231,14 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
 
         {/* ACTIONS */}
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+
           {/* Avanzar estado */}
           {nextStatus && !isDone && (
             !confirmNext ? (
               <button onClick={() => setConfirmNext(true)} disabled={saving} style={{
                 height: "28px", padding: "0 14px", borderRadius: "var(--radius-md)",
-                background: SHIPMENT_STATUS_CONFIG[nextStatus].color, color: "#fff", border: "none",
-                fontSize: "11px", fontWeight: 700, cursor: "pointer",
+                background: isConsulting ? "#8b5cf6" : SHIPMENT_STATUS_CONFIG[nextStatus].color,
+                color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer",
                 display: "flex", alignItems: "center", gap: "5px",
               }}>
                 <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -240,8 +285,8 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
             </>
           )}
 
-          {/* Crear orden de servicio */}
-          {!isDone && (
+          {/* Órdenes de servicio — solo logística */}
+          {!isDone && !isConsulting && (
             <button onClick={() => router.push("/logistica/ordenes-servicio")} style={{
               height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)",
               background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)",
@@ -251,8 +296,24 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
             </button>
           )}
 
-          {/* Facturar */}
-          {shipment.status === "delivered" && !shipment.invoice_id && (
+          {/* Subir documento — siempre visible */}
+          {!isDone && (
+            <button onClick={() => setTab("documents")} style={{
+              height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)",
+              background: "rgba(139,92,246,0.1)", border: "1px solid rgba(139,92,246,0.3)",
+              color: "#8b5cf6", fontSize: "11px", fontWeight: 600, cursor: "pointer",
+              display: "flex", alignItems: "center", gap: "4px",
+            }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+              </svg>
+              Documentos
+            </button>
+          )}
+
+          {/* Facturar — cuando está completado/entregado */}
+          {(shipment.status === "delivered" || (isConsulting && shipment.status === "delivered")) && !shipment.invoice_id && (
             <button onClick={() => router.push("/finanzas/facturacion")} style={{
               height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)",
               background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)",
@@ -274,7 +335,7 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
                   ¿Confirmar cancelación?
                 </button>
                 <button onClick={() => setConfirmCancel(false)} style={{ height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer" }}>
-                  {(t.general as any).no ?? "No"}
+                  No
                 </button>
               </>
             )
@@ -302,56 +363,82 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
         {/* ── DETAIL ── */}
         {tab === "detail" && (
           <div style={{ display: "grid", gap: "12px" }}>
+
+            {/* Aviso especial para consultoría */}
+            {isConsulting && !editing && (
+              <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.3)", fontSize: "12px", color: "#8b5cf6", lineHeight: 1.6 }}>
+                📋 <strong>Servicio de consultoría</strong> — Sin tracking logístico. Sube los documentos del servicio (póliza, contrato, evidencia) en la pestaña Documentos y factura cuando esté completado.
+              </div>
+            )}
+
             {editing ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                {([
-                  { k: "origin",              label: tl.origin              ?? "Origen",           cols: "" },
-                  { k: "destination",         label: tl.destination         ?? "Destino",          cols: "" },
-                  { k: "origin_country",      label: tl.originCountry       ?? "País origen",      cols: "" },
-                  { k: "destination_country", label: tl.destinationCountry  ?? "País destino",     cols: "" },
-                  { k: "pickup_date",         label: tl.pickupDate          ?? "Fecha recolección", type: "date" },
-                  { k: "estimated_delivery",  label: tl.estimatedDelivery   ?? "Entrega estimada",  type: "date" },
-                  { k: "tracking_number",     label: tl.trackingNumber      ?? "No. rastreo",      cols: "" },
-                  { k: "provider_cost",       label: tl.cost                ?? "Costo proveedor",  type: "number" },
-                ] as any[]).map((f) => (
-                  <div key={f.k} style={{ gridColumn: f.cols === "1 / -1" ? "1 / -1" : "auto" }}>
+                {/* Campos comunes */}
+                {[
+                  { k: "total",        label: "Precio de venta",  type: "number" },
+                  { k: "provider_cost",label: "Costo proveedor",  type: "number" },
+                  { k: "currency",     label: "Moneda",           type: "select-currency" },
+                ].map((f) => (
+                  <div key={f.k}>
                     <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{f.label}</div>
-                    <input type={f.type ?? "text"} value={(form as any)[f.k] ?? ""} onChange={(e) => setForm((p) => ({ ...p, [f.k]: f.type === "number" ? parseFloat(e.target.value) || 0 : e.target.value }))} style={INPUT} />
+                    {f.type === "select-currency" ? (
+                      <select value={(form as any)[f.k] ?? "USD"} onChange={(e) => setForm((p) => ({ ...p, [f.k]: e.target.value }))} style={{ ...INPUT, cursor: "pointer" }}>
+                        {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      </select>
+                    ) : (
+                      <input type={f.type} value={(form as any)[f.k] ?? ""} onChange={(e) => setForm((p) => ({ ...p, [f.k]: f.type === "number" ? parseFloat(e.target.value) || 0 : e.target.value }))} style={INPUT} />
+                    )}
                   </div>
                 ))}
-                <div>
-                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Incoterm</div>
-                  <select value={(form as any).incoterm ?? ""} onChange={(e) => setForm((p) => ({ ...p, incoterm: e.target.value }))} style={{ ...INPUT, cursor: "pointer" }}>
-                    <option value="">—</option>
-                    {INCOTERMS.map((inc) => <option key={inc} value={inc}>{inc}</option>)}
-                  </select>
-                </div>
-                <div>
-                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Moneda</div>
-                  <select value={(form as any).currency ?? "USD"} onChange={(e) => setForm((p) => ({ ...p, currency: e.target.value }))} style={{ ...INPUT, cursor: "pointer" }}>
-                    {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
-                  </select>
-                </div>
+
+                {/* Campos solo logística */}
+                {!isConsulting && ([
+                  { k: "origin",              label: "Origen",              type: "text" },
+                  { k: "destination",         label: "Destino",             type: "text" },
+                  { k: "origin_country",      label: "País origen",         type: "text" },
+                  { k: "destination_country", label: "País destino",        type: "text" },
+                  { k: "pickup_date",         label: "Fecha recolección",   type: "date" },
+                  { k: "estimated_delivery",  label: "Entrega estimada",    type: "date" },
+                  { k: "tracking_number",     label: "No. rastreo",         type: "text" },
+                  { k: "incoterm",            label: "Incoterm",            type: "select-incoterm" },
+                ] as any[]).map((f) => (
+                  <div key={f.k}>
+                    <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{f.label}</div>
+                    {f.type === "select-incoterm" ? (
+                      <select value={(form as any)[f.k] ?? ""} onChange={(e) => setForm((p) => ({ ...p, [f.k]: e.target.value }))} style={{ ...INPUT, cursor: "pointer" }}>
+                        <option value="">—</option>
+                        {INCOTERMS.map((inc) => <option key={inc} value={inc}>{inc}</option>)}
+                      </select>
+                    ) : (
+                      <input type={f.type} value={(form as any)[f.k] ?? ""} onChange={(e) => setForm((p) => ({ ...p, [f.k]: f.type === "number" ? parseFloat(e.target.value) || 0 : e.target.value }))} style={INPUT} />
+                    )}
+                  </div>
+                ))}
+
                 <div style={{ gridColumn: "1 / -1" }}>
-                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{tl.notes ?? "Notas"}</div>
+                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Notas</div>
                   <textarea rows={2} value={(form as any).notes ?? ""} onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} style={{ ...INPUT, height: "auto", padding: "8px 10px", resize: "vertical" }} />
                 </div>
               </div>
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "14px" }}>
                 {[
-                  { label: tl.reference         ?? "Referencia",     value: shipment.reference },
-                  { label: tl.serviceType       ?? "Tipo",           value: tl[`service${shipment.service_type.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("")}`] ?? shipment.service_type },
-                  { label: tl.origin            ?? "Origen",         value: shipment.origin },
-                  { label: tl.destination       ?? "Destino",        value: shipment.destination },
-                  { label: tl.originCountry     ?? "País origen",    value: shipment.origin_country },
-                  { label: tl.destinationCountry ?? "País destino",  value: shipment.destination_country },
-                  { label: tl.incoterm          ?? "Incoterm",       value: shipment.incoterm },
-                  { label: tl.provider          ?? "Proveedor",      value: shipment.provider?.name },
-                  { label: tl.pickupDate        ?? "Recolección",    value: shipment.pickup_date ? new Date(shipment.pickup_date).toLocaleDateString(locale) : null },
-                  { label: tl.estimatedDelivery ?? "Entrega est.",   value: shipment.estimated_delivery ? new Date(shipment.estimated_delivery).toLocaleDateString(locale) : null },
-                  { label: tl.trackingNumber    ?? "Rastreo",        value: shipment.tracking_number },
-                  { label: tl.currency          ?? "Moneda",         value: shipment.currency },
+                  { label: "Referencia",   value: shipment.reference },
+                  { label: "Cliente",      value: shipment.client?.name },
+                  { label: "Tipo",         value: shipment.service_type.charAt(0).toUpperCase() + shipment.service_type.slice(1).replace(/_/g, " ") },
+                  { label: "Moneda",       value: shipment.currency },
+                  // Campos logísticos
+                  ...(!isConsulting ? [
+                    { label: "Origen",         value: shipment.origin },
+                    { label: "Destino",        value: shipment.destination },
+                    { label: "País origen",    value: shipment.origin_country },
+                    { label: "País destino",   value: shipment.destination_country },
+                    { label: "Incoterm",       value: shipment.incoterm },
+                    { label: "Recolección",    value: shipment.pickup_date ? new Date(shipment.pickup_date).toLocaleDateString(locale) : null },
+                    { label: "Entrega est.",   value: shipment.estimated_delivery ? new Date(shipment.estimated_delivery).toLocaleDateString(locale) : null },
+                    { label: "No. rastreo",    value: shipment.tracking_number },
+                  ] : []),
+                  { label: "Cotización",   value: shipment.quotation?.quote_number },
                 ].map((r) => r.value ? (
                   <div key={r.label}>
                     <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "2px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{r.label}</div>
@@ -364,9 +451,9 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
             {/* FINANCIERO */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
               {[
-                { label: tl.revenue ?? "Ingreso",   value: shipment.total,         color: "var(--color-success-text)" },
-                { label: tl.cost    ?? "Costo",     value: shipment.provider_cost, color: "var(--color-danger-text)"  },
-                { label: tl.profit  ?? "Ganancia",  value: shipment.profit ?? 0,   color: (shipment.profit ?? 0) >= 0 ? "var(--color-success-text)" : "var(--color-danger-text)" },
+                { label: "Ingreso",  value: shipment.total,         color: "var(--color-success-text)" },
+                { label: "Costo",    value: shipment.provider_cost, color: "var(--color-danger-text)"  },
+                { label: "Ganancia", value: shipment.profit ?? 0,   color: (shipment.profit ?? 0) >= 0 ? "var(--color-success-text)" : "var(--color-danger-text)" },
               ].map((r) => (
                 <div key={r.label} style={{ padding: "10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", textAlign: "center" }}>
                   <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>{r.label}</div>
@@ -380,23 +467,19 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
             {/* Barra de margen */}
             <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginBottom: "6px" }}>
-                <span style={{ color: "var(--color-text-muted)" }}>{tl.margin ?? "Margen"}</span>
+                <span style={{ color: "var(--color-text-muted)" }}>Margen</span>
                 <span style={{ fontWeight: 800, color: profitPct >= 20 ? "var(--color-success-text)" : profitPct >= 10 ? "var(--color-warning-text)" : "var(--color-danger-text)" }}>
                   {profitPct.toFixed(1)}%
                 </span>
               </div>
               <div style={{ height: "6px", background: "var(--color-border-faint)", borderRadius: "var(--radius-full)", overflow: "hidden" }}>
-                <div style={{
-                  height: "100%", borderRadius: "var(--radius-full)", transition: "width 0.5s ease",
-                  background: profitPct >= 20 ? "var(--color-success-text)" : profitPct >= 10 ? "var(--color-warning-text)" : "var(--color-danger-text)",
-                  width: `${Math.min(Math.max(profitPct, 0), 100)}%`,
-                }} />
+                <div style={{ height: "100%", borderRadius: "var(--radius-full)", transition: "width 0.5s ease", background: profitPct >= 20 ? "var(--color-success-text)" : profitPct >= 10 ? "var(--color-warning-text)" : "var(--color-danger-text)", width: `${Math.min(Math.max(profitPct, 0), 100)}%` }} />
               </div>
             </div>
 
             {shipment.notes && (
               <div style={{ padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", fontSize: "12px", color: "var(--color-text-second)", lineHeight: 1.6 }}>
-                <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>{tl.notes ?? "Notas"}</div>
+                <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Notas</div>
                 {shipment.notes}
               </div>
             )}
@@ -408,44 +491,34 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
           <div style={{ display: "grid", gap: "10px" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
               <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
-                {tl.shipmentServices ?? "Servicios del embarque"}
+                {isConsulting ? "Líneas de servicio y conceptos a facturar" : "Servicios del embarque"}
               </div>
               {!addingSvc && (
-                <button onClick={() => setAddingSvc(true)} style={{
-                  height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)",
-                  background: "var(--color-brand-blue)", color: "#fff", border: "none",
-                  fontSize: "11px", fontWeight: 700, cursor: "pointer",
-                  display: "flex", alignItems: "center", gap: "5px",
-                }}>
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                    <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-                  </svg>
-                  {tl.addService ?? "Agregar servicio"}
+                <button onClick={() => setAddingSvc(true)} style={{ height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  Agregar
                 </button>
               )}
             </div>
 
-            {/* Formulario agregar servicio */}
             {addingSvc && (
               <div style={{ padding: "14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", display: "grid", gap: "10px" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                   <div style={{ gridColumn: "1 / -1" }}>
                     <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Tipo *</div>
                     <select value={svcForm.service_type ?? "terrestre"} onChange={(e) => setSvcForm((p) => ({ ...p, service_type: e.target.value as ServiceLineType }))} style={{ ...INPUT, cursor: "pointer" }}>
-                      {SERVICE_LINE_TYPES.map((type) => (
-                        <option key={type} value={type} style={{ textTransform: "capitalize" }}>{type}</option>
-                      ))}
+                      {SERVICE_LINE_TYPES.map((type) => <option key={type} value={type} style={{ textTransform: "capitalize" }}>{type}</option>)}
                     </select>
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
                     <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Descripción *</div>
-                    <input value={svcForm.description ?? ""} onChange={(e) => setSvcForm((p) => ({ ...p, description: e.target.value }))} placeholder="Flete terrestre GDL-CDMX…" style={INPUT} />
+                    <input value={svcForm.description ?? ""} onChange={(e) => setSvcForm((p) => ({ ...p, description: e.target.value }))} placeholder={isConsulting ? "Ej: Póliza de seguro de carga…" : "Flete terrestre GDL-CDMX…"} style={INPUT} />
                   </div>
-                  {[
-                    { k: "origin",       label: "Origen",      type: "text" },
-                    { k: "destination",  label: "Destino",     type: "text" },
-                    { k: "transit_time", label: "Tiempo tránsito", type: "text" },
-                    { k: "incoterm",     label: "Incoterm",    type: "text" },
+                  {!isConsulting && [
+                    { k: "origin",       label: "Origen"            },
+                    { k: "destination",  label: "Destino"           },
+                    { k: "transit_time", label: "Tiempo tránsito"   },
+                    { k: "incoterm",     label: "Incoterm"          },
                   ].map((f) => (
                     <div key={f.k}>
                       <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>{f.label}</div>
@@ -453,11 +526,11 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
                     </div>
                   ))}
                   <div>
-                    <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>{tl.servicePrice ?? "Precio venta"} *</div>
+                    <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Precio venta *</div>
                     <input type="number" min="0" value={svcForm.price ?? 0} onChange={(e) => setSvcForm((p) => ({ ...p, price: parseFloat(e.target.value) || 0 }))} style={INPUT} />
                   </div>
                   <div>
-                    <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>{tl.serviceCost ?? "Costo proveedor"}</div>
+                    <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Costo proveedor</div>
                     <input type="number" min="0" value={svcForm.cost ?? 0} onChange={(e) => setSvcForm((p) => ({ ...p, cost: parseFloat(e.target.value) || 0 }))} style={INPUT} />
                   </div>
                   <div>
@@ -478,10 +551,9 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
               </div>
             )}
 
-            {/* Lista de servicios */}
             {services.length === 0 && !addingSvc ? (
               <div style={{ padding: "24px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px", border: "1px dashed var(--color-border)", borderRadius: "var(--radius-md)" }}>
-                {tl.noServices ?? "Sin servicios capturados"}
+                {isConsulting ? "Sin conceptos capturados — agrega las líneas que se incluirán en la factura" : "Sin servicios capturados"}
               </div>
             ) : services.map((svc) => {
               const svcMargin = svc.price > 0 ? ((svc.price - svc.cost) / svc.price) * 100 : 0;
@@ -491,20 +563,18 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
                     <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-brand-blue)", background: "var(--color-info-bg)", padding: "1px 6px", borderRadius: "var(--radius-full)", border: "1px solid var(--color-info-border)", textTransform: "capitalize" }}>
                       {svc.service_type}
                     </span>
-                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", flex: 1 }}>
-                      {svc.description}
-                    </span>
+                    <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", flex: 1 }}>{svc.description}</span>
                     <button onClick={() => handleDeleteService(svc.id)} style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger-text)" strokeWidth="2">
-                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
-                      </svg>
+                      <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger-text)" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
                     </button>
                   </div>
-                  <div style={{ display: "flex", gap: "10px", fontSize: "11px" }}>
-                    {svc.origin && <span style={{ color: "var(--color-text-muted)" }}>{svc.origin} → {svc.destination}</span>}
-                    {svc.transit_time && <span style={{ color: "var(--color-text-muted)" }}>⏱ {svc.transit_time}</span>}
-                    {svc.incoterm && <span style={{ color: "var(--color-text-muted)" }}>{svc.incoterm}</span>}
-                  </div>
+                  {!isConsulting && (
+                    <div style={{ display: "flex", gap: "10px", fontSize: "11px" }}>
+                      {svc.origin && <span style={{ color: "var(--color-text-muted)" }}>{svc.origin} → {svc.destination}</span>}
+                      {svc.transit_time && <span style={{ color: "var(--color-text-muted)" }}>⏱ {svc.transit_time}</span>}
+                      {svc.incoterm && <span style={{ color: "var(--color-text-muted)" }}>{svc.incoterm}</span>}
+                    </div>
+                  )}
                   <div style={{ display: "flex", gap: "12px", fontSize: "11px" }}>
                     <span style={{ color: "var(--color-success-text)", fontWeight: 700 }}>
                       {svc.currency} ${Number(svc.price).toLocaleString(locale, { minimumFractionDigits: 2 })}
@@ -528,25 +598,38 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
 
         {/* ── DOCUMENTS ── */}
         {tab === "documents" && (
-          <div style={{ padding: "20px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px", border: "1px dashed var(--color-border)", borderRadius: "var(--radius-md)" }}>
-            La documentación de este servicio se gestiona en el módulo <strong>Documentación</strong>.
-            Los documentos subidos para este servicio ({shipment.reference}) aparecerán aquí conectados.
-          </div>
-        )}
-
-        {/* ── SERVICE ORDERS ── */}
-        {tab === "service_orders" && (
-          <div style={{ display: "grid", gap: "10px" }}>
-            <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)" }}>
-              Las órdenes de servicio son opcionales. Genera una CCP+Carta, BOL USA o Carta Aduanal desde el módulo de Órdenes de Servicio vinculada a este embarque.
+          <div style={{ display: "grid", gap: "12px" }}>
+            <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: isConsulting ? "rgba(139,92,246,0.08)" : "var(--color-info-bg)", border: `1px solid ${isConsulting ? "rgba(139,92,246,0.3)" : "var(--color-info-border)"}`, fontSize: "12px", color: isConsulting ? "#8b5cf6" : "var(--color-info-text)", lineHeight: 1.6 }}>
+              {isConsulting
+                ? "📋 Sube aquí la póliza de seguro, contratos, evidencias o cualquier documento relacionado a este servicio. Estos documentos quedarán vinculados al registro para soporte de facturación."
+                : "📄 Documentos del embarque — BL, carta porte, packing list, documentos aduanales y cualquier evidencia del servicio."}
             </div>
-            <button onClick={() => router.push("/logistica/ordenes-servicio")} style={{
-              height: "36px", padding: "0 16px", borderRadius: "var(--radius-md)",
-              background: "var(--color-brand-blue)", color: "#fff", border: "none",
-              fontSize: "12px", fontWeight: 700, cursor: "pointer", width: "fit-content",
+
+            {/* Área de subida de documentos */}
+            <div style={{
+              padding: "32px", borderRadius: "var(--radius-md)",
+              border: "2px dashed var(--color-border)", background: "var(--color-bg-subtle)",
+              textAlign: "center", cursor: "pointer",
+              display: "flex", flexDirection: "column", alignItems: "center", gap: "10px",
             }}>
-              {tl.createServiceOrder ?? "Crear orden de servicio"}
-            </button>
+              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="1.5">
+                <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+              </svg>
+              <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)" }}>
+                Subir documentos
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
+                PDF, imágenes, Word, Excel · Máx. 10MB por archivo
+              </div>
+              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "4px", padding: "6px 12px", borderRadius: "var(--radius-md)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", color: "var(--color-warning-text)" }}>
+                ⚠️ Módulo de documentos en desarrollo — disponible próximamente
+              </div>
+            </div>
+
+            {/* Referencia del registro */}
+            <div style={{ fontSize: "11px", color: "var(--color-text-muted)", textAlign: "center" }}>
+              Referencia: <strong>{shipment.reference}</strong>
+            </div>
           </div>
         )}
 
@@ -554,13 +637,13 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
         {tab === "timeline" && (
           <div style={{ display: "grid", gap: "10px" }}>
             <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", fontSize: "12px", color: "var(--color-text-muted)" }}>
-              Historial de cambios — {shipment.reference}
+              Historial — {shipment.reference}
             </div>
             {[
-              { label: "Servicio creado",        date: shipment.created_at,         color: "var(--color-brand-blue)",   icon: "+" },
-              { label: "En recolección",         date: shipment.pickup_date,        color: "#a78bfa",                   icon: "↑" },
-              { label: "Entrega estimada",       date: shipment.estimated_delivery, color: "var(--color-warning-text)", icon: "→" },
-              { label: "Entregado",              date: shipment.actual_delivery,    color: "var(--color-success-text)", icon: "✓" },
+              { label: isConsulting ? "Servicio creado" : "Embarque creado",       date: shipment.created_at,         color: "var(--color-brand-blue)",   icon: "+" },
+              { label: isConsulting ? "En proceso"      : "En recolección",        date: shipment.pickup_date,        color: "#a78bfa",                   icon: "↑" },
+              { label: isConsulting ? "Entrega estimada": "Entrega estimada",      date: shipment.estimated_delivery, color: "var(--color-warning-text)", icon: "→" },
+              { label: isConsulting ? "Completado"      : "Entregado",             date: shipment.actual_delivery,    color: "var(--color-success-text)", icon: "✓" },
             ].filter((e) => e.date).map((event, i) => (
               <div key={i} style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
                 <div style={{ width: "28px", height: "28px", borderRadius: "50%", flexShrink: 0, background: `${event.color}20`, border: `1px solid ${event.color}40`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "11px", fontWeight: 800, color: event.color }}>
