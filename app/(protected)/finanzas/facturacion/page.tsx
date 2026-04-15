@@ -285,6 +285,11 @@ export default function FacturacionPage() {
         saving={ctrl.saving}
         onClose={() => setSelectedCFDIType(null)}
         onCreate={ctrl.handleEmitir}
+        onCreated={(cfdi) => {
+          setSelectedCFDIType(null);
+          setTab("historial");
+          ctrl.handleSelect(cfdi);
+        }}
       />
 
       <CFDIComplementoPago
