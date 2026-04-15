@@ -173,10 +173,10 @@ export default function ShipmentCreateDrawer({ open, onClose, onCreated }: Props
         <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--color-border-faint)", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
           <div>
             <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-text-primary)" }}>
-              {tl.newShipment ?? "Nuevo embarque"}
+              {tl.newShipment ?? "Nuevo servicio"}
             </div>
             <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "2px" }}>
-              {tl.shipmentsDesc ?? "Gestión de operaciones logísticas."}
+              {tl.shipmentsDesc ?? "Gestión de servicios al cliente."}
             </div>
           </div>
           <button onClick={handleClose} style={{ width: "30px", height: "30px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -190,7 +190,7 @@ export default function ShipmentCreateDrawer({ open, onClose, onCreated }: Props
           {/* MODO */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
             {([
-              { key: "direct",    label: tl.createDirect       ?? "Embarque directo",   icon: "🚚" },
+              { key: "direct",    label: tl.createDirect       ?? "Servicio directo",   icon: "🚚" },
               { key: "quotation", label: tl.createFromQuotation ?? "Desde cotización",   icon: "📄" },
             ] as { key: CreateMode; label: string; icon: string }[]).map((m) => (
               <button key={m.key} onClick={() => setMode(m.key)} style={{
@@ -375,7 +375,7 @@ export default function ShipmentCreateDrawer({ open, onClose, onCreated }: Props
                     {tl.suggestedPrice ?? "Precio sugerido"} — Clic para usar
                   </div>
                   <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "1px" }}>
-                    {tl.avgFromHistory ?? "Basado en"} {avgPrice.count} {tl.avgShipments ?? "embarques anteriores"}
+                    {tl.avgFromHistory ?? "Basado en"} {avgPrice.count} {tl.avgShipments ?? "servicios anteriores"}
                   </div>
                 </div>
                 <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-info-text)", fontVariantNumeric: "tabular-nums" }}>
@@ -461,7 +461,7 @@ export default function ShipmentCreateDrawer({ open, onClose, onCreated }: Props
                   <circle cx="5.5" cy="18.5" r="2.5"/>
                   <circle cx="18.5" cy="18.5" r="2.5"/>
                 </svg>
-                {tl.newShipment ?? "Crear embarque"}
+                {tl.newShipment ?? "Crear servicio"}
               </>
             )}
           </button>
