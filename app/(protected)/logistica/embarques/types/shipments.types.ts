@@ -7,9 +7,24 @@ export type ShipmentServiceType =
   | "terrestre_mx" | "terrestre_usa" | "maritimo"
   | "aereo" | "multimodal" | "almacenaje" | "aduanal" | "otro";
 
-export type ServiceLineType =
-  | "terrestre" | "aereo" | "maritimo" | "almacenaje"
-  | "comercializadora" | "aduanal" | "seguro" | "courier" | "otro";
+export type ShipmentServiceType =
+  | "terrestre_mx" | "terrestre_usa" | "maritimo"
+  | "aereo" | "multimodal" | "almacenaje" | "aduanal"
+  | "consultoria" | "seguro" | "otro";
+
+// Categoría: logistics = requiere ruta, consulting = solo registro/facturación
+export const SERVICE_TYPE_CATEGORY: Record<ShipmentServiceType, "logistics" | "consulting"> = {
+  terrestre_mx:  "logistics",
+  terrestre_usa: "logistics",
+  maritimo:      "logistics",
+  aereo:         "logistics",
+  multimodal:    "logistics",
+  almacenaje:    "logistics",
+  aduanal:       "logistics",
+  consultoria:   "consulting",
+  seguro:        "consulting",
+  otro:          "consulting",
+};
 
 export const SHIPMENT_STATUS_CONFIG: Record<ShipmentStatus, {
   labelKey: string; color: string; bg: string; border: string; step: number;
@@ -33,6 +48,8 @@ export const SERVICE_TYPE_CONFIG: Record<ShipmentServiceType, { labelKey: string
   almacenaje:    { labelKey: "logistics.serviceAlmacenaje",   color: "#84cc16",                   code: "W" },
   aduanal:       { labelKey: "logistics.serviceAduanal",      color: "var(--color-warning-text)", code: "D" },
   otro:          { labelKey: "logistics.serviceOtro",         color: "var(--color-text-muted)",   code: "O" },
+  consultoria: { labelKey: "logistics.serviceConsultoria", color: "#8b5cf6", code: "C" },
+  seguro:      { labelKey: "logistics.serviceSeguro",      color: "#ec4899", code: "S" },
 };
 
 export const STATUS_FLOW: ShipmentStatus[] = [
@@ -137,7 +154,8 @@ export const SERVICE_LINE_TYPES: ServiceLineType[] = [
 
 export const SHIPMENT_SERVICE_TYPES: ShipmentServiceType[] = [
   "terrestre_mx","terrestre_usa","maritimo",
-  "aereo","multimodal","almacenaje","aduanal","otro",
+  "aereo","multimodal","almacenaje","aduanal",
+  "consultoria","seguro","otro",
 ];
 
 export const INCOTERMS = [
