@@ -45,7 +45,7 @@ export default function ShipmentsSidebar({ shipments, selected, setSelected, fil
       <div style={{ flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
           <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "1px" }}>
-            {tl.shipments ?? "Embarques"}
+            {tl.shipments ?? "Servicios"}
           </span>
           <span style={{ fontSize: "11px", fontWeight: 700, padding: "1px 7px", borderRadius: "var(--radius-full)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", color: "var(--color-text-muted)" }}>
             {shipments.length}
@@ -61,7 +61,7 @@ export default function ShipmentsSidebar({ shipments, selected, setSelected, fil
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
             <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
           </svg>
-          {tl.newShipment ?? "Nuevo embarque"}
+          {tl.newShipment ?? "Nuevo servicio"}
         </button>
 
         {/* SEARCH */}
@@ -115,7 +115,7 @@ export default function ShipmentsSidebar({ shipments, selected, setSelected, fil
       <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "grid", gap: "5px", alignContent: "start" }}>
         {shipments.length === 0 ? (
           <div style={{ padding: "28px 12px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
-            {tl.noShipments ?? "Sin embarques"}
+            {tl.noShipments ?? "Sin servicios"}
           </div>
         ) : shipments.map((s) => {
           const isSelected = selected?.id === s.id;
