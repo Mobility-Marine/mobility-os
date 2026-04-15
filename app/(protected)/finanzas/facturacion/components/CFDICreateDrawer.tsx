@@ -30,7 +30,8 @@ const INPUT: React.CSSProperties = {
 const SELECT: React.CSSProperties = { ...INPUT, cursor: "pointer" };
 const fmt = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export default function CFDICreateDrawer({ open, saving, onClose, onCreate }: Props) {
+// DESPUÉS:
+export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCreated }: Props) {
   const { lang } = useTranslation();
   const { companyId } = useTenant();
   const es = lang !== "en";
