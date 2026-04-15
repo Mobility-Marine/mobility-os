@@ -173,7 +173,7 @@ export default function SettingsPage() {
         {activeTab === "usuarios"     && canManageCompany && <TabUsuarios />}
         {activeTab === "objetivos"    && canManageCompany && <TabObjetivos />}
         {activeTab === "suscripcion"  && canManageCompany && <TabSuscripcion />}
-        {activeTab === "herramientas" && <TabHerramientas />}
+        {activeTab === "herramientas" && canManageCompany && <TabHerramientas />}
       </div>
     </div>
   );
