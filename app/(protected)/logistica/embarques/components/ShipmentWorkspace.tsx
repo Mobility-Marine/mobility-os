@@ -50,7 +50,7 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
         <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
       </svg>
       <div style={{ fontSize: "16px", fontWeight: 700, color: "var(--color-text-primary)" }}>
-        {tl.workspaceEmpty ?? "Selecciona un embarque"}
+        {tl.workspaceEmpty ?? "Selecciona un servicio"}
       </div>
       <div style={{ fontSize: "13px", color: "var(--color-text-muted)", textAlign: "center", maxWidth: "300px", lineHeight: 1.6 }}>
         {tl.workspaceEmptyDesc ?? "Aquí verás el detalle del embarque, servicios y documentos."}
@@ -529,8 +529,8 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
         {/* ── DOCUMENTS ── */}
         {tab === "documents" && (
           <div style={{ padding: "20px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px", border: "1px dashed var(--color-border)", borderRadius: "var(--radius-md)" }}>
-            La documentación de este embarque se gestiona en el módulo <strong>Documentación</strong>.
-            Los documentos subidos para este embarque ({shipment.reference}) aparecerán aquí conectados.
+            La documentación de este servicio se gestiona en el módulo <strong>Documentación</strong>.
+            Los documentos subidos para este servicio ({shipment.reference}) aparecerán aquí conectados.
           </div>
         )}
 
@@ -557,7 +557,7 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
               Historial de cambios — {shipment.reference}
             </div>
             {[
-              { label: "Embarque creado",        date: shipment.created_at,         color: "var(--color-brand-blue)",   icon: "+" },
+              { label: "Servicio creado",        date: shipment.created_at,         color: "var(--color-brand-blue)",   icon: "+" },
               { label: "En recolección",         date: shipment.pickup_date,        color: "#a78bfa",                   icon: "↑" },
               { label: "Entrega estimada",       date: shipment.estimated_delivery, color: "var(--color-warning-text)", icon: "→" },
               { label: "Entregado",              date: shipment.actual_delivery,    color: "var(--color-success-text)", icon: "✓" },
