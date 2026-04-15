@@ -183,6 +183,7 @@ export async function fetchProductCatalog(companyId: string): Promise<{
     .select("id, sku, name, unit, cost, unit_price, category")
     .eq("company_id", companyId)
     .eq("is_active", true)
+    .eq("product_type", "product")
     .order("name");
   return (data ?? []) as any[];
 }
