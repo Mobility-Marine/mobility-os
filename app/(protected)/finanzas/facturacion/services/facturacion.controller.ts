@@ -72,13 +72,14 @@ export function useFacturacionController(companyId: string, userId: string) {
   // ── EMITIR FACTURA INGRESO ───────────────────────────────────
 
   const handleEmitir = useCallback(async (form: NewCFDIForm) => {
-    setSaving(true); setError(null);
-    try {
-      await emitirCFDI(companyId, userId, form);
-      await load();
-    } catch (e: any) { setError(e.message); throw e; }
-    finally { setSaving(false); }
-  }, [companyId, userId, load]);
+      setSaving(true); setError(null);
+      try {
+        const result = await emitirCFDI(companyId, userId, form);
+        await load();
+        return result?.cfdi ?? null;
+      } catch (e: any) { setError(e.message); throw e; }
+      finally { setSaving(false); }
+    }, [companyId, userId, load]);
 
   // ── EMITIR COMPLEMENTO DE PAGO (REP) ─────────────────────────
 
