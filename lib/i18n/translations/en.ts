@@ -2476,5 +2476,27 @@ cfdiSelector: {
     otro:         "Other Document",
     otroDesc:     "Custom document without fiscal value",
   },
+
+folioSettings: {
+    sectionTitle:   "Fiscal and non-fiscal document numbering",
+    sectionDesc:    "Configure the series and starting folio for each CFDI type. Standard invoices, Bill of Lading and Foreign Trade share the same folio as they are all Type I.",
+    adminOnly:      "Only administrators and owners can modify document numbering.",
+    typeIngreso:    "Income Invoices (Type I)",
+    typeIngresoDesc:"Includes Standard Invoices, Bill of Lading and Foreign Trade",
+    typeEgreso:     "Credit Notes (Type E)",
+    typeEgresoDesc: "Returns, discounts and bonuses",
+    typePago:       "Payment Complements (Type P)",
+    typePagoDesc:   "Electronic payment receipts (REP)",
+    typeTraslado:   "Transfers (Type T)",
+    typeTrasladoDesc:"Goods movement without commercial transaction",
+    typeNomina:     "Payroll (Type N)",
+    typeNominaDesc: "Employee payroll receipts",
+    typeNotas:      "Non-fiscal notes",
+    typeNotasDesc:  "Delivery notes, honorarium receipts, informal estimates",
+    series:         "Series",
+    nextFolio:      "Next folio",
+    previewTitle:   "Preview of next folio by type:",
+    warning:        "The folio auto-increments with each stamped document. If you have prior documents in another system, adjust the number to continue the sequence without duplicates.",
+  },
   
 };
