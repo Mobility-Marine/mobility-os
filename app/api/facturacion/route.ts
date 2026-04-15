@@ -10,7 +10,7 @@ const FACTURAPI_BASE = "https://www.facturapi.io/v2";
 
 function getMasterApiKey(): string {
   const key = process.env.FACTURAPI_SECRET_KEY;
-  if (!key) throw new Error("FACTURAPI_SECRET_KEY no configurada en el servidor. Agrégala en Vercel → Environment Variables.");
+  if (!key) throw new Error("FACTURAPI_SECRET_KEY no configurada en el servidor.");
   return key;
 }
 
@@ -56,8 +56,6 @@ export async function POST(req: NextRequest) {
 
     // ── SETUP ORG ──────────────────────────────────────────────────────────────
     if (action === "setup_org") {
-
-      // Verificar que los datos fiscales estén en la BD
       const { data: settings } = await supabaseAdmin
         .from("company_settings")
         .select("fiscal_name, fiscal_rfc, fiscal_regime, fiscal_zip")
@@ -75,7 +73,6 @@ export async function POST(req: NextRequest) {
       // (cada cuenta de Facturapi tiene automáticamente una organización)
       const org = await facturapi(apiKey, "/organization");
 
-      // Guardar el org_id en Supabase para esta empresa
       await supabaseAdmin
         .from("company_settings")
         .update({ facturapi_org_id: org.id, pac_provider: "facturapi" })
@@ -83,7 +80,16 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({ org_id: org.id, legal_name: org.legal?.name });
     }
-    
+
+    // Para todos los demás actions necesitamos el org_id
+    const orgId = await getOrgId(companyId);
+    if (!orgId) {
+      return NextResponse.json(
+        { error: "Empresa no registrada en el sistema de timbrado. Ve a Configuración → Sellos SAT y guarda tus certificados." },
+        { status: 400 }
+      );
+    }
+
     // ── EMITIR CFDI ────────────────────────────────────────────────────────────
     if (action === "emitir") {
       const FOLIO_MAP: Record<string, { s: string; f: string; def_s: string }> = {
@@ -169,7 +175,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Incrementar folio según tipo de CFDI
       await supabaseAdmin
         .from("company_settings")
         .update({ [folioConfig.f]: folio + 1 })
