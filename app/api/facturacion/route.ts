@@ -56,9 +56,11 @@ export async function POST(req: NextRequest) {
 
     // ── SETUP ORG ──────────────────────────────────────────────────────────────
     if (action === "setup_org") {
+
+      // Verificar que los datos fiscales estén en la BD
       const { data: settings } = await supabaseAdmin
         .from("company_settings")
-        .select("fiscal_name, fiscal_rfc, fiscal_regime, fiscal_zip, cer_file_url, key_file_url")
+        .select("fiscal_name, fiscal_rfc, fiscal_regime, fiscal_zip")
         .eq("company_id", companyId)
         .single();
 
@@ -69,16 +71,11 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const org = await facturapi(apiKey, "/organizations", "POST", {
-        name: settings.fiscal_name ?? settings.fiscal_rfc,
-        legal: {
-          name:       settings.fiscal_name,
-          tax_id:     settings.fiscal_rfc,
-          tax_system: settings.fiscal_regime ?? "601",
-          address:    { zip: settings.fiscal_zip ?? "00000", country: "MEX" },
-        },
-      });
+      // Obtener la organización existente de esta API Key
+      // (cada cuenta de Facturapi tiene automáticamente una organización)
+      const org = await facturapi(apiKey, "/organization");
 
+      // Guardar el org_id en Supabase para esta empresa
       await supabaseAdmin
         .from("company_settings")
         .update({ facturapi_org_id: org.id, pac_provider: "facturapi" })
@@ -86,16 +83,7 @@ export async function POST(req: NextRequest) {
 
       return NextResponse.json({ org_id: org.id, legal_name: org.legal?.name });
     }
-
-    // Para todos los demás actions necesitamos el org_id
-    const orgId = await getOrgId(companyId);
-    if (!orgId) {
-      return NextResponse.json(
-        { error: "Empresa no registrada en el sistema de timbrado. Ve a Configuración → Sellos SAT y guarda tus certificados." },
-        { status: 400 }
-      );
-    }
-
+    
     // ── EMITIR CFDI ────────────────────────────────────────────────────────────
     if (action === "emitir") {
       const FOLIO_MAP: Record<string, { s: string; f: string; def_s: string }> = {
