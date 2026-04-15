@@ -42,10 +42,12 @@ export function useShipmentsController() {
   }, [companyId, load]);
 
   // Sync selected
-  useEffect(() => {
-    if (!selected || !companyId) return;
-    fetchShipment(companyId, selected.id).then((s) => { if (s) setSelected(s); });
-  }, [shipments]);
+useEffect(() => {
+  if (!selected || !companyId) return;
+  const updated = shipments.find((s) => s.id === selected.id);
+  if (updated) setSelected(updated);
+  else if (shipments.length > 0) setSelected(null); // fue eliminado
+}, [shipments]);
 
   const filtered = filterShipments(shipments, filters);
 
