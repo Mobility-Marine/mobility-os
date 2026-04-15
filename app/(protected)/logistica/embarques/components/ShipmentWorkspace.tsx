@@ -621,7 +621,7 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
               <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
                 PDF, imágenes, Word, Excel · Máx. 10MB por archivo
               </div>
-              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "4px", padding: "6px 12px", borderRadius: "var(--radius-md)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", color: "var(--color-warning-text)" }}>
+              <div style={{ fontSize: "10px", marginTop: "4px", padding: "6px 12px", borderRadius: "var(--radius-md)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", color: "var(--color-warning-text)" }}>
                 ⚠️ Módulo de documentos en desarrollo — disponible próximamente
               </div>
             </div>
