@@ -7,7 +7,7 @@ import type {
   Quotation, QuotationItem, QuotationService, CompanySettings,
   CreateQuotationPayload, CreateItemPayload, CreateServicePayload,
 } from "../types/quotations.types";
-import type { ShipmentServiceType } from "../../logistica/embarques/types/shipments.types";
+import type { ShipmentServiceType } from "../../../logistica/embarques/types/shipments.types";
 
 // ── CONSECUTIVO ───────────────────────────────────────────────
 export async function generateQuoteNumber(
