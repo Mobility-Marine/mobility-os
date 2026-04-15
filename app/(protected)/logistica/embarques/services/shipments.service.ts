@@ -45,9 +45,10 @@ export async function generateShipmentReference(
 // ── FETCH ─────────────────────────────────────────────────────
 
 export async function fetchShipments(companyId: string): Promise<Shipment[]> {
+  // DESPUÉS — sin el join de logistics_providers que no existe aún:
   const { data } = await supabase
     .from("shipments")
-    .select("*, client:clients(name, email, rfc), quotation:quotations(quote_number), provider:logistics_providers(name, contact_phone)")
+    .select("*, client:clients(name, email, rfc), quotation:quotations(quote_number)")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
   return (data ?? []) as Shipment[];
@@ -55,8 +56,9 @@ export async function fetchShipments(companyId: string): Promise<Shipment[]> {
 
 export async function fetchShipment(companyId: string, id: string): Promise<Shipment | null> {
   const [{ data: shipment }, { data: services }] = await Promise.all([
+    // DESPUÉS:
     supabase.from("shipments")
-      .select("*, client:clients(name, email, rfc), quotation:quotations(quote_number), provider:logistics_providers(name, contact_phone)")
+      .select("*, client:clients(name, email, rfc), quotation:quotations(quote_number)")
       .eq("company_id", companyId).eq("id", id).single(),
     supabase.from("shipment_services")
       .select("*").eq("shipment_id", id).order("sort_order"),
