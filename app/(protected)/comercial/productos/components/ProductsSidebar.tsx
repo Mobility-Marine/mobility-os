@@ -135,37 +135,56 @@ export default function ProductsSidebar({
         </div>
 
         {/* FILTROS */}
-        <div style={{ display: "grid", gap: "5px" }}>
-          <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
-            {STATUS_OPTS.map((s) => (
-              <button key={s.value} onClick={() => setFilters({ ...filters, status: s.value as any })} style={{
-                height: "22px", padding: "0 7px", borderRadius: "var(--radius-full)",
-                background: filters.status === s.value ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
-                border: `1px solid ${filters.status === s.value ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
-                color: filters.status === s.value ? "#fff" : "var(--color-text-muted)",
-                fontSize: "10px", fontWeight: filters.status === s.value ? 700 : 500,
-                cursor: "pointer",
-              }}>
-                {s.label}
-              </button>
-            ))}
-          </div>
-          {categories.length > 0 && (
-            <select
-              value={filters.category}
-              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-              style={{
-                height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)",
-                border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)",
-                color: "var(--color-text-second)", fontSize: "11px", cursor: "pointer",
-              }}
-            >
-              <option value="">{tp.allCategories ?? "Todas las categorías"}</option>
-              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          )}
-        </div>
-      </div>
+<div style={{ display: "grid", gap: "5px" }}>
+  {/* Filtro status */}
+  <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
+    {STATUS_OPTS.map((s) => (
+      <button key={s.value} onClick={() => setFilters({ ...filters, status: s.value as any })} style={{
+        height: "22px", padding: "0 7px", borderRadius: "var(--radius-full)",
+        background: filters.status === s.value ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
+        border: `1px solid ${filters.status === s.value ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
+        color: filters.status === s.value ? "#fff" : "var(--color-text-muted)",
+        fontSize: "10px", fontWeight: filters.status === s.value ? 700 : 500, cursor: "pointer",
+      }}>
+        {s.label}
+      </button>
+    ))}
+  </div>
+  {/* Filtro tipo */}
+  <div style={{ display: "flex", gap: "3px" }}>
+    {[
+      { value: "all",     label: "Todos" },
+      { value: "product", label: "📦 Productos" },
+      { value: "service", label: "⚙️ Servicios" },
+    ].map((opt) => (
+      <button
+        key={opt.value}
+        onClick={() => setFilters({ ...filters, product_type: opt.value as any })}
+        style={{
+          height: "22px", padding: "0 8px", borderRadius: "var(--radius-full)", flex: 1,
+          background: (filters.product_type ?? "all") === opt.value ? "rgba(59,130,246,0.15)" : "var(--color-bg-subtle)",
+          border: `1px solid ${(filters.product_type ?? "all") === opt.value ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
+          color: (filters.product_type ?? "all") === opt.value ? "var(--color-brand-blue)" : "var(--color-text-muted)",
+          fontSize: "10px", fontWeight: (filters.product_type ?? "all") === opt.value ? 700 : 500,
+          cursor: "pointer",
+        }}
+      >
+        {opt.label}
+      </button>
+    ))}
+  </div>
+  {/* Filtro categoría */}
+  {categories.length > 0 && (
+    <select
+      value={filters.category}
+      onChange={(e) => setFilters({ ...filters, category: e.target.value })}
+      style={{ height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", fontSize: "11px", cursor: "pointer" }}
+    >
+      <option value="">{tp.allCategories ?? "Todas las categorías"}</option>
+      {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+    </select>
+  )}
+</div>
 
       {/* LIST */}
       <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "grid", gap: "4px", alignContent: "start" }}>
@@ -210,9 +229,14 @@ export default function ProductsSidebar({
               </div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px" }}>
                 <div style={{ display: "flex", gap: "8px" }}>
-                  <span style={{ color: stockColor, fontWeight: 600 }}>
-                    {tp.stock ?? "Stock"}: {p.stock} {p.unit}
-                  </span>
+                  // DESPUÉS:
+                  {p.product_type === "service" ? (
+                    <span style={{ color: "var(--color-info-text)", fontWeight: 600 }}>⚙️ Servicio</span>
+                  ) : (
+                    <span style={{ color: stockColor, fontWeight: 600 }}>
+                      {tp.stock ?? "Stock"}: {p.stock} {p.unit}
+                    </span>
+                  )}
                   {p.category && (
                     <span style={{ color: "var(--color-text-muted)" }}>{p.category}</span>
                   )}
