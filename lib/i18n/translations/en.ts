@@ -859,6 +859,7 @@ export const en: TranslationKeys = {
     teamMembers:        "Team members",
     rolesGuide:         "Roles guide",
     monthlyGoalTitle:   "Monthly sales goal",
+    tabHerramientas:    "Admin Tools",
   },
 
   products: {
