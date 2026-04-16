@@ -117,6 +117,7 @@ export type APStats = {
   count_61_90:     number;
   count_90plus:    number;
   by_type:         { procurement: number; logistics: number; operating: number };
+  por_moneda: Record<string, { balance: number; overdue: number; paid: number; count: number }>;
 };
 
 export type SupplierAPSummary = {
