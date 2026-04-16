@@ -515,6 +515,7 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
                     { label: "Entrega est.",   value: shipment.estimated_delivery ? new Date(shipment.estimated_delivery).toLocaleDateString(locale) : null },
                     { label: "No. rastreo",    value: shipment.tracking_number },
                   ] : []),
+                  { label: "Proveedor",    value: shipment.provider?.name },
                   { label: "Cotización",   value: shipment.quotation?.quote_number },
                 ].map((r) => r.value ? (
                   <div key={r.label}>
