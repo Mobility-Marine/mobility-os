@@ -80,6 +80,8 @@ function ProveedorFacturaPanel({
     try {
       const { data: user } = await sb.auth.getUser();
       const userId = user.user?.id ?? null;
+      const totalNum = parseFloat(form.total);
+      if (!totalNum || totalNum <= 0) return;
 
       // 1. Crear registro en accounts_payable
       const { data: ap, error: apErr } = await sb.from("accounts_payable").insert({
@@ -95,73 +97,88 @@ function ProveedorFacturaPanel({
         currency:              form.currency,
         subtotal:              parseFloat(form.subtotal) || 0,
         tax_amount:            parseFloat(form.tax_amount) || 0,
-        total:                 parseFloat(form.total),
-        balance:               parseFloat(form.total),
+        total:                 totalNum,
+        balance:               totalNum,
         status:                "pending",
         payment_status:        "not_scheduled",
         related_shipment_id:   shipment.id,
         notes:                 `Servicio logístico — ${shipment.reference}`,
         created_by:            userId,
       }).select("id").single();
-      if (apErr) throw apErr;
 
-      let pdfUrl: string | null = null;
+      if (apErr) { console.error("AP insert error:", apErr); return; }
+      if (!ap)   { console.error("AP insert returned null"); return; }
 
-      // 2. Subir PDF si se adjuntó
-      if (pdfFile) {
-        const doc = await createDocument(companyId, userId, {
-          shipment_id: shipment.id,
-          name:        `Factura proveedor — ${form.supplier_name}${form.document_number ? ` (${form.document_number})` : ""}`,
-          category:    "factura_proveedor",
-          status:      "approved",
-          version:     1,
-          required:    false,
-        });
-        pdfUrl = await uploadDocumentFile(companyId, doc.id, pdfFile);
-        // Actualizar AP con la URL del PDF
-        await sb.from("accounts_payable")
-          .update({ pdf_url: pdfUrl, updated_at: new Date().toISOString() })
-          .eq("id", ap.id);
-      }
-
-      // 3. Subir XML si se adjuntó
-      if (xmlFile) {
-        const docXml = await createDocument(companyId, userId, {
-          shipment_id: shipment.id,
-          name:        `XML factura proveedor — ${form.supplier_name}${form.document_number ? ` (${form.document_number})` : ""}`,
-          category:    "factura_proveedor",
-          status:      "approved",
-          version:     1,
-          required:    false,
-        });
-        const xmlUrl = await uploadDocumentFile(companyId, docXml.id, xmlFile);
-        await sb.from("accounts_payable")
-          .update({ xml_url: xmlUrl, updated_at: new Date().toISOString() })
-          .eq("id", ap.id);
-      }
-
-      // Sumar facturas previas + la que acabamos de insertar (evita race condition)
-      const currentTotal = parseFloat(form.total);
+      // 2. Actualizar provider_cost INMEDIATAMENTE después del insert
+      //    Sumar facturas previas de este embarque + la nueva
       const { data: prevAP } = await sb
         .from("accounts_payable")
         .select("total")
         .eq("related_shipment_id", shipment.id)
-        .neq("id", ap.id)
-        .neq("status", "cancelled");
-      const totalProviderCost = (prevAP ?? []).reduce((s: number, r: any) => s + (r.total ?? 0), 0) + currentTotal;
-      const { data: sh } = await sb.from("shipments").select("total").eq("id", shipment.id).single();
-      await sb.from("shipments").update({
-        provider_cost: totalProviderCost,
-        profit:        (sh?.total ?? 0) - totalProviderCost,
-        updated_at:    new Date().toISOString(),
-      }).eq("id", shipment.id);
+        .neq("id", ap.id);
+
+      const prevTotal         = (prevAP ?? []).reduce((s: number, r: any) => s + (parseFloat(r.total) || 0), 0);
+      const totalProviderCost = prevTotal + totalNum;
+
+      const { data: sh } = await sb
+        .from("shipments")
+        .select("total")
+        .eq("id", shipment.id)
+        .single();
+
+      const { error: updateErr } = await sb
+        .from("shipments")
+        .update({
+          provider_cost: totalProviderCost,
+          profit:        (sh?.total ?? 0) - totalProviderCost,
+          updated_at:    new Date().toISOString(),
+        })
+        .eq("id", shipment.id);
+
+      if (updateErr) console.error("Shipment update error:", updateErr);
+
+      // 3. Subir PDF si se adjuntó (secundario — no bloquea el flujo)
+      let pdfUrl: string | null = null;
+      if (pdfFile) {
+        try {
+          const doc = await createDocument(companyId, userId, {
+            shipment_id: shipment.id,
+            name:        `Factura proveedor — ${form.supplier_name}${form.document_number ? ` (${form.document_number})` : ""}`,
+            category:    "factura_proveedor",
+            status:      "approved",
+            version:     1,
+            required:    false,
+          });
+          pdfUrl = await uploadDocumentFile(companyId, doc.id, pdfFile);
+          await sb.from("accounts_payable")
+            .update({ pdf_url: pdfUrl, updated_at: new Date().toISOString() })
+            .eq("id", ap.id);
+        } catch (pdfErr) { console.error("PDF upload error:", pdfErr); }
+      }
+
+      // 4. Subir XML si se adjuntó (secundario)
+      if (xmlFile) {
+        try {
+          const docXml = await createDocument(companyId, userId, {
+            shipment_id: shipment.id,
+            name:        `XML factura proveedor — ${form.supplier_name}${form.document_number ? ` (${form.document_number})` : ""}`,
+            category:    "factura_proveedor",
+            status:      "approved",
+            version:     1,
+            required:    false,
+          });
+          const xmlUrl = await uploadDocumentFile(companyId, docXml.id, xmlFile);
+          await sb.from("accounts_payable")
+            .update({ xml_url: xmlUrl, updated_at: new Date().toISOString() })
+            .eq("id", ap.id);
+        } catch (xmlErr) { console.error("XML upload error:", xmlErr); }
+      }
 
       setHasAP(true);
       setApData({ id: ap.id, pdf_url: pdfUrl ?? undefined });
       setOpen(false);
       await onCreated();
-    } catch (e: any) {
-      console.error(e);
+
     } finally { setSaving(false); }
   }
 
