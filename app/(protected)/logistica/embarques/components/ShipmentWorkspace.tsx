@@ -46,6 +46,7 @@ function ProveedorFacturaPanel({
     subtotal:        "",
     tax_amount:      "",
     total:           String(shipment.provider_cost > 0 ? shipment.provider_cost : ""),
+    exchange_rate:   "1",
   });
 
   useEffect(() => {
@@ -99,6 +100,7 @@ function ProveedorFacturaPanel({
         tax_amount:            parseFloat(form.tax_amount) || 0,
         total:                 totalNum,
         balance:               totalNum,
+        exchange_rate:         parseFloat(form.exchange_rate) || 1,
         status:                "pending",
         payment_status:        "not_scheduled",
         related_shipment_id:   shipment.id,
@@ -258,6 +260,32 @@ function ProveedorFacturaPanel({
             </div>
           ))}
 
+{/* Tipo de cambio — solo si moneda difiere del embarque */}
+          {form.currency !== (shipment.currency ?? "USD") && (
+            <div style={{ gridColumn: "1 / -1" }}>
+              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>
+                Tipo de cambio ({form.currency} → {shipment.currency ?? "USD"}) *
+              </div>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                <input
+                  type="number" min="0.01" step="0.01"
+                  value={form.exchange_rate}
+                  onChange={e => setForm(f => ({ ...f, exchange_rate: e.target.value }))}
+                  placeholder="Ej: 17.50"
+                  style={{ ...INPUT_S, flex: 1 }}
+                />
+                {form.total && form.exchange_rate && (
+                  <div style={{ fontSize: "11px", color: "var(--color-text-muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                    = {shipment.currency} ${(parseFloat(form.total) / parseFloat(form.exchange_rate)).toFixed(2)}
+                  </div>
+                )}
+              </div>
+              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "3px" }}>
+                Cuántos {form.currency} equivalen a 1 {shipment.currency ?? "USD"}
+              </div>
+            </div>
+          )}
+          
           {/* Importes */}
           <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
             {[
