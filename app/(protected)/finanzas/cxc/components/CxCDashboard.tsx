@@ -32,51 +32,64 @@ export default function CxCDashboard({ stats: s, clients, loading, onClientSelec
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-      {/* ── KPIs ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
-        {[
-          {
-            l: es ? "Total por cobrar"   : "Total receivable",
-            v: "$" + fmt0(s.total_balance),
-            sub: `${s.count_pending} ${es ? "cuentas activas" : "active accounts"}`,
-            color: "var(--color-brand-blue)", bg: "var(--color-info-bg)",
-            icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>,
-          },
-          {
-            l: es ? "Cartera vencida (+30d)" : "Overdue (+30d)",
-            v: "$" + fmt0(s.total_overdue),
-            sub: `${s.count_overdue} ${es ? "cuentas vencidas" : "overdue accounts"}`,
-            color: s.total_overdue > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)",
-            bg:    s.total_overdue > 0 ? "var(--color-danger-bg)"   : "var(--color-bg-base)",
-            icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
-          },
-          {
-            l: es ? "Cobrado este mes"    : "Collected this month",
-            v: "$" + fmt0(s.collected_month),
-            sub: es ? "pagos registrados" : "registered payments",
-            color: "var(--color-success-text)", bg: "var(--color-success-bg)",
-            icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><polyline points="20 6 9 17 4 12"/></svg>,
-          },
-          {
-            l: es ? "DSO — Días de cobro" : "DSO — Days outstanding",
-            v: `${s.dso} ${es ? "días" : "days"}`,
-            sub: es ? "promedio de cobro" : "average collection",
-            color: s.dso > 60 ? "var(--color-danger-text)" : s.dso > 30 ? "var(--color-warning-text)" : "var(--color-success-text)",
-            bg: s.dso > 60 ? "var(--color-danger-bg)" : s.dso > 30 ? "var(--color-warning-bg)" : "var(--color-success-bg)",
-            icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-          },
-        ].map((c) => (
-          <div key={c.l} style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", flex: 1, lineHeight: 1.3 }}>{c.l}</div>
-              <div style={{ width: "34px", height: "34px", borderRadius: "var(--radius-md)", background: c.bg, color: c.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{c.icon}</div>
-            </div>
-            <div style={{ fontSize: "24px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{c.v}</div>
-            <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{c.sub}</div>
+      {/* ── KPIs por moneda ── */}
+      {Object.entries(s.por_moneda).sort().map(([cur, v]) => (
+        <div key={cur} style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+          <div style={{ padding: "8px 18px", background: "var(--color-bg-subtle)", borderBottom: "1px solid var(--color-border-faint)", display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "14px" }}>{cur === "MXN" ? "🇲🇽" : cur === "USD" ? "🇺🇸" : cur === "EUR" ? "🇪🇺" : "💱"}</span>
+            <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--color-text-primary)" }}>{cur}</span>
+            <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>· {v.count} {es ? "documentos activos" : "active documents"}</span>
           </div>
-        ))}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
+            {[
+              { l: es ? "Por cobrar"  : "Receivable",   v: v.balance,   color: "var(--color-warning-text)",                                              icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> },
+              { l: es ? "Vencido"     : "Overdue",      v: v.overdue,   color: v.overdue > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)",   icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg> },
+              { l: es ? "Cobrado mes" : "Coll. month",  v: v.collected, color: "var(--color-success-text)",                                              icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><polyline points="20 6 9 17 4 12"/></svg> },
+            ].map((c, i) => (
+              <div key={c.l} style={{ padding: "16px 18px", borderRight: i < 2 ? "1px solid var(--color-border-faint)" : "none", display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{c.l}</div>
+                  <div style={{ color: c.color, opacity: 0.7 }}>{c.icon}</div>
+                </div>
+                <div style={{ fontSize: "20px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                  {cur} ${fmt(c.v)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      {/* DSO — métrica global */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
+        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+            <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{es ? "DSO — Días promedio de cobro" : "DSO — Days Sales Outstanding"}</div>
+            <div style={{ width: "34px", height: "34px", borderRadius: "var(--radius-md)", background: s.dso > 60 ? "var(--color-danger-bg)" : s.dso > 30 ? "var(--color-warning-bg)" : "var(--color-success-bg)", color: s.dso > 60 ? "var(--color-danger-text)" : s.dso > 30 ? "var(--color-warning-text)" : "var(--color-success-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+          </div>
+          <div style={{ fontSize: "28px", fontWeight: 900, color: s.dso > 60 ? "var(--color-danger-text)" : s.dso > 30 ? "var(--color-warning-text)" : "var(--color-success-text)", fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+            {s.dso} <span style={{ fontSize: "14px", fontWeight: 600 }}>{es ? "días" : "days"}</span>
+          </div>
+          <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{es ? "promedio de cobro" : "average collection"}</div>
+        </div>
+        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>
+            {es ? "Resumen total consolidado" : "Total consolidated summary"}
+          </div>
+          {[
+            { l: es ? "Total activo" : "Total active", v: "$" + fmt0(s.total_balance) },
+            { l: es ? "Vencido total" : "Total overdue", v: "$" + fmt0(s.total_overdue) },
+            { l: es ? "Cuentas activas" : "Active accounts", v: String(s.count_pending) },
+          ].map(r => (
+            <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "11px" }}>
+              <span style={{ color: "var(--color-text-muted)" }}>{r.l}</span>
+              <span style={{ fontWeight: 700, color: "var(--color-text-primary)", fontVariantNumeric: "tabular-nums" }}>{r.v}</span>
+            </div>
+          ))}
+        </div>
       </div>
-
+      
       {/* ── Aging + Acciones rápidas ── */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "16px" }}>
 
