@@ -434,8 +434,8 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
 
             {editing ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                {/* Proveedor — solo logística */}
-                {!isConsulting && (
+                {/* Proveedor — logística y seguros */}
+                {(!isConsulting || shipment.service_type === "seguro") && (
                   <div style={{ gridColumn: "1 / -1" }}>
                     <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Proveedor logístico</div>
                     <select
