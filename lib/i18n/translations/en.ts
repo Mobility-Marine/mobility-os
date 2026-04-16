@@ -42,7 +42,6 @@ export const en: TranslationKeys = {
     inventory:    "Inventory & supply",
     economic:     "Economic control",
     platformSupport: "Platform & support",
-    fixedAssets: "Fixed Assets",
   },
 
   dashboard: {
@@ -304,6 +303,7 @@ export const en: TranslationKeys = {
     rfq:               "Purchase RFQ",
     cashFlow:  "Cash Flow",
     employees: "Employees",
+    fixedAssets: "Fixed Assets",
   },
 
   prospects: {
