@@ -35,9 +35,9 @@ export default function ContabilidadBalance({ data: d, loading }: Props) {
         </div>
         <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: "12px" }}>
           {[
-            { label: co.efectivo   ?? "Efectivo y bancos",    value: d.efectivo_bancos, pct: pctEfectivo, color: "var(--color-brand-blue)"   },
-            { label: es ? "Activos fijos netos" : "Net fixed assets", value: (d as any).activos_fijos_netos ?? 0, pct: d.total_activo > 0 ? (((d as any).activos_fijos_netos ?? 0) / d.total_activo) * 100 : 0, color: "#8b5cf6" },
-            { label: co.cxcActivo  ?? "Cuentas por cobrar",   value: d.cxc_pendiente,   pct: pctCxC,      color: "var(--color-warning-text)" },
+            { label: co.efectivo   ?? "Efectivo y bancos",    value: d.efectivo_bancos,       pct: pctEfectivo, color: "var(--color-brand-blue)"   },
+            { label: co.cxcActivo  ?? "Cuentas por cobrar",   value: d.cxc_pendiente,         pct: pctCxC,      color: "var(--color-warning-text)" },
+            { label: es ? "Activos fijos netos" : "Net fixed assets", value: d.activos_fijos_netos, pct: d.total_activo > 0 ? (d.activos_fijos_netos / d.total_activo) * 100 : 0, color: "#8b5cf6" },
           ].map(r => (
             <div key={r.label}>
               <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
