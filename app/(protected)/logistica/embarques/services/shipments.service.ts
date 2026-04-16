@@ -20,8 +20,10 @@ export async function generateShipmentReference(
 
   // Código de tipo
   const TYPE_CODES: Record<string, string> = {
-    terrestre_mx: "T", terrestre_usa: "T", maritimo: "M",
-    aereo: "A", multimodal: "X", almacenaje: "W", aduanal: "D", otro: "O",
+    terrestre_mx:  "T", terrestre_usa: "T", maritimo: "M",
+    aereo:         "A", multimodal:    "X", almacenaje: "W",
+    aduanal:       "D", consultoria:   "C", seguro:     "S",
+    otro:          "O",
   };
 
   // Clave de cliente: primeras 3 letras sin espacios, mayúsculas
