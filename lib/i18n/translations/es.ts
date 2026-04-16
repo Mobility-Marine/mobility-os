@@ -41,6 +41,7 @@ export const es = {
     inventory:       "Inventario y suministro",
     economic:        "Control económico",
     platformSupport: "Plataforma y soporte",
+    fixedAssets:     "Activos Fijos",
   },
 
   dashboard: {
