@@ -6,12 +6,26 @@ import { supabase } from "@/lib/supabaseClient";
 import type { NewCFDIForm, NewConcept } from "../types/facturacion.types";
 import { DEFAULT_NEW_CFDI, CFDI_USES, PAYMENT_FORMS, FISCAL_REGIMES } from "../types/facturacion.types";
 
+type PreloadShipment = {
+  reference:       string;
+  client_id?:      string | null;
+  receiver_rfc?:   string;
+  receiver_name?:  string;
+  receiver_email?: string;
+  receiver_zip?:   string;
+  receiver_regime?:string;
+  currency?:       string;
+  total?:          number;
+  services?:       { description: string; price: number; currency: string }[];
+};
+
 type Props = {
-  open:      boolean;
-  saving:    boolean;
-  onClose:   () => void;
-  onCreate:  (form: NewCFDIForm) => Promise<any>;
-  onCreated?:(cfdi: any) => void;
+  open:             boolean;
+  saving:           boolean;
+  onClose:          () => void;
+  onCreate:         (form: NewCFDIForm) => Promise<any>;
+  onCreated?:       (cfdi: any) => void;
+  preloadShipment?: PreloadShipment | null;
 };
 
 type Step  = "receptor" | "conceptos" | "config";
@@ -97,7 +111,7 @@ function SATSearch({ value, onChange, type, placeholder, inputStyle }: {
   );
 }
 
-export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCreated }: Props) {
+export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCreated, preloadShipment }: Props) {
   const { lang } = useTranslation();
   const { companyId } = useTenant();
   const es = lang !== "en";
@@ -120,6 +134,34 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
 
   useEffect(() => {
     if (!open || !companyId) return;
+    // Precargar desde embarque si viene de logística
+    if (preloadShipment) {
+      setForm((p) => ({
+        ...p,
+        client_id:       preloadShipment.client_id       ?? "",
+        receiver_rfc:    preloadShipment.receiver_rfc    ?? "",
+        receiver_name:   preloadShipment.receiver_name   ?? "",
+        receiver_email:  preloadShipment.receiver_email  ?? "",
+        receiver_zip:    preloadShipment.receiver_zip    ?? "",
+        receiver_regime: preloadShipment.receiver_regime ?? "601",
+        currency:        preloadShipment.currency        ?? "MXN",
+        notes:           `Ref. ${preloadShipment.reference}`,
+        concepts: (preloadShipment.services ?? []).map((svc) => ({
+          product_key:  "84111506",
+          unit_key:     "E48",
+          description:  svc.description,
+          unit:         "Servicio",
+          quantity:     1,
+          unit_price:   svc.price,
+          discount_pct: 0,
+          tax_rate:     0.16,
+          subtotal:     svc.price,
+          tax_amount:   svc.price * 0.16,
+        })),
+      }));
+      if ((preloadShipment.services ?? []).length > 0) setStep("config");
+      else setStep("conceptos");
+    }
     // Clientes
     supabase
       .from("clients")
@@ -346,12 +388,33 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                     <div style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>{es ? "Desc. %" : "Disc. %"}</div>
                     <input type="number" min="0" max="100" value={conceptForm.discount_pct} onChange={(e) => setCF("discount_pct", Number(e.target.value))} style={{ ...INPUT, height: "32px", fontSize: "12px" }} />
                   </div>
-                  <div>
-                    <div style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>IVA</div>
-                    <select value={conceptForm.tax_rate} onChange={(e) => setCF("tax_rate", Number(e.target.value))} style={{ ...SELECT, height: "32px", fontSize: "11px" }}>
-                      <option value={0.16}>16%</option>
-                      <option value={0.08}>8%</option>
-                      <option value={0}>0%</option>
+                  <div style={{ gridColumn: "span 2" }}>
+                    <div style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Impuestos</div>
+                    <select
+                      value={`${conceptForm.tax_rate ?? 0.16}_${(conceptForm as any).tax_type ?? "IVA_T"}`}
+                      onChange={(e) => {
+                        const [rate, type] = e.target.value.split("_");
+                        setCF("tax_rate",  parseFloat(rate));
+                        setCF("tax_type",  type);
+                      }}
+                      style={{ ...SELECT, height: "32px", fontSize: "11px" }}
+                    >
+                      <optgroup label="── IVA Trasladado ──">
+                        <option value="0.16_IVA_T">IVA Trasladado 16%</option>
+                        <option value="0.08_IVA_T">IVA Trasladado 8%</option>
+                        <option value="0_IVA_T0">IVA Trasladado 0%</option>
+                        <option value="0_EXENTO">Exento de IVA</option>
+                      </optgroup>
+                      <optgroup label="── Retenciones ──">
+                        <option value="0.106_IVA_R">IVA Retenido 10.6%</option>
+                        <option value="0.04_IVA_R">IVA Retenido 4%</option>
+                        <option value="0.10_ISR_R">ISR Retenido 10%</option>
+                        <option value="0.0125_ISR_R">ISR Retenido 1.25%</option>
+                      </optgroup>
+                      <optgroup label="── Combinados ──">
+                        <option value="0.16_IVA_T+0.10_ISR_R">IVA 16% + ISR Ret. 10%</option>
+                        <option value="0.16_IVA_T+0.106_IVA_R">IVA 16% + IVA Ret. 10.6%</option>
+                      </optgroup>
                     </select>
                   </div>
                   <button onClick={addConcept} disabled={!conceptForm.description || !conceptForm.unit_price}
