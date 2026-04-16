@@ -8,6 +8,7 @@ import ActivosDashboard  from "./components/ActivosDashboard";
 import ActivosDepreciacion from "./components/ActivosDepreciacion";
 import ActivosBajas      from "./components/ActivosBajas";
 import ActivosNuevoDrawer from "./components/ActivosNuevoDrawer";
+import { ASSET_TYPE_CONFIG, ASSET_STATUS_CONFIG } from "./types/activos.types";
 
 type Tab = "dashboard" | "catalogo" | "depreciacion" | "bajas";
 
@@ -122,7 +123,8 @@ export default function ActivosPage() {
               </button>
             </div>
           ) : ctrl.assets.map((a, i) => {
-            const { ASSET_TYPE_CONFIG: ATC, ASSET_STATUS_CONFIG: ASC } = require("./types/activos.types");
+            const ATC = ASSET_TYPE_CONFIG;
+            const ASC = ASSET_STATUS_CONFIG;
             const cfg = ATC[a.asset_type];
             const sc  = ASC[a.status];
             const pct = a.acquisition_cost > 0 ? (a.accumulated_depreciation / a.acquisition_cost) * 100 : 0;
