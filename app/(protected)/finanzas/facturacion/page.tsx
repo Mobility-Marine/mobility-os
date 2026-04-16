@@ -40,6 +40,8 @@ export default function FacturacionPage() {
   const [compREPOpen,        setCompREPOpen]         = useState(false);
   const [notaCreditoOpen,    setNotaCreditoOpen]     = useState(false);
   const [savingExtra,        setSavingExtra]         = useState(false);
+  const [pendingShipments,   setPendingShipments]    = useState<any[]>([]);
+  const [preloadShipment,    setPreloadShipment]     = useState<any | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? ""));
@@ -50,6 +52,15 @@ export default function FacturacionPage() {
   useEffect(() => {
     if (!companyId) return;
     ctrl.load();
+    // Cargar embarques completados sin factura
+    supabase
+      .from("shipments")
+      .select("id, reference, service_type, currency, total, client:clients(name), quotation:quotations(quote_number)")
+      .eq("company_id", companyId)
+      .eq("status", "delivered")
+      .is("invoice_id", null)
+      .order("updated_at", { ascending: false })
+      .then(({ data }) => setPendingShipments(data ?? []));
   }, [companyId]);
 
   const loadNotes = useCallback(async () => {
@@ -68,6 +79,38 @@ export default function FacturacionPage() {
     setSelectedCFDIType(opt);
   }
 
+async function handleFacturarEmbarque(shipment: any) {
+    if (!companyId) return;
+    // Cargar datos del cliente para precargar el drawer
+    const { data: sh } = await supabase
+      .from("shipments")
+      .select(`
+        *, 
+        client:clients(name, legal_name, rfc, email, tax_regime, zip_code),
+        services:shipment_services(description, price, currency)
+      `)
+      .eq("id", shipment.id)
+      .single();
+    if (!sh) return;
+    setPreloadShipment({
+      reference:       sh.reference,
+      client_id:       sh.client_id,
+      receiver_rfc:    (sh.client as any)?.rfc           ?? "",
+      receiver_name:   (sh.client as any)?.legal_name    ?? (sh.client as any)?.name ?? "",
+      receiver_email:  (sh.client as any)?.email         ?? "",
+      receiver_zip:    (sh.client as any)?.zip_code      ?? "",
+      receiver_regime: (sh.client as any)?.tax_regime    ?? "601",
+      currency:        sh.currency ?? "MXN",
+      total:           sh.total,
+      services:        (sh.services ?? []).map((s: any) => ({
+        description: s.description,
+        price:       s.price,
+        currency:    s.currency,
+      })),
+    });
+    setSelectedCFDIType({ id: "factura" } as any);
+  }
+  
   async function handleSendEmail() {
     if (!emailTarget) return;
     try { await ctrl.handleSendEmail(emailTarget, emailInput); setEmailTarget(null); setEmailInput(""); }
@@ -155,8 +198,10 @@ export default function FacturacionPage() {
           stats={ctrl.stats}
           cfdis={ctrl.cfdis}
           loading={ctrl.loading}
+          pendingShipments={pendingShipments}
           onSelect={ctrl.handleSelect}
           onEmitir={() => setTab("emitir")}
+          onFacturarEmbarque={handleFacturarEmbarque}
         />
       )}
 
@@ -283,12 +328,18 @@ export default function FacturacionPage() {
       <CFDICreateDrawer
         open={selectedCFDIType?.id === "factura"}
         saving={ctrl.saving}
-        onClose={() => setSelectedCFDIType(null)}
+        preloadShipment={preloadShipment}
+        onClose={() => { setSelectedCFDIType(null); setPreloadShipment(null); }}
         onCreate={ctrl.handleEmitir}
         onCreated={(cfdi) => {
           setSelectedCFDIType(null);
+          setPreloadShipment(null);
           setTab("historial");
           ctrl.handleSelect(cfdi);
+          // Recargar embarques pendientes
+          if (companyId) {
+            supabase.from("shipments").select("id, reference, service_type, currency, total, client:clients(name), quotation:quotations(quote_number)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingShipments(data ?? []));
+          }
         }}
       />
 
