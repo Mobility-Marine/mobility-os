@@ -28,53 +28,74 @@ export default function CxPDashboard({ stats: s, suppliers, loading, onSupplierS
     CRITICAL: { label: "Crítico", color: "var(--color-danger-text)", bg: "var(--color-danger-bg)"  },
   };
 
-  const cards = [
-    {
-      label: cxp.totalPayable ?? "Total por pagar",
-      value: "$" + fmt0(s.total_balance),
-      sub:   `${s.count_pending} ${cxp.pendingCount ?? "obligaciones activas"}`,
-      color: "var(--color-danger-text)", bg: "var(--color-danger-bg)",
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>,
-    },
-    {
-      label: cxp.totalOverdue ?? "Vencido",
-      value: "$" + fmt0(s.total_overdue),
-      sub:   `${s.count_overdue} ${cxp.overdueCount ?? "vencidas"}`,
-      color: s.total_overdue > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)",
-      bg:    s.total_overdue > 0 ? "var(--color-danger-bg)"   : "var(--color-bg-base)",
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,
-    },
-    {
-      label: cxp.paidMonth ?? "Pagado este mes",
-      value: "$" + fmt0(s.paid_month),
-      sub:   es ? "pagos realizados" : "payments made",
-      color: "var(--color-success-text)", bg: "var(--color-success-bg)",
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><polyline points="20 6 9 17 4 12"/></svg>,
-    },
-    {
-      label: es ? "Por tipo" : "By type",
-      value: `$${fmt0(s.by_type.logistics)}`,
-      sub:   es ? "logística pendiente" : "logistics pending",
-      color: "var(--color-warning-text)", bg: "var(--color-warning-bg)",
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>,
-    },
-  ];
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-
-      {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "12px" }}>
-        {cards.map((c) => (
-          <div key={c.label} style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", flex: 1, lineHeight: 1.3 }}>{c.label}</div>
-              <div style={{ width: "34px", height: "34px", borderRadius: "var(--radius-md)", background: c.bg, color: c.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{c.icon}</div>
-            </div>
-            <div style={{ fontSize: "24px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{c.value}</div>
-            <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{c.sub}</div>
+  {/* ── KPIs por moneda ── */}
+      {Object.entries(s.por_moneda ?? {}).sort().map(([cur, v]) => (
+        <div key={cur} style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+          <div style={{ padding: "8px 18px", background: "var(--color-bg-subtle)", borderBottom: "1px solid var(--color-border-faint)", display: "flex", alignItems: "center", gap: "6px" }}>
+            <span style={{ fontSize: "14px" }}>{cur === "MXN" ? "🇲🇽" : cur === "USD" ? "🇺🇸" : cur === "EUR" ? "🇪🇺" : "💱"}</span>
+            <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--color-text-primary)" }}>{cur}</span>
+            <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>· {v.count} {es ? "documentos activos" : "active documents"}</span>
           </div>
-        ))}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
+            {[
+              { l: cxp.totalPayable ?? "Por pagar",  v: v.balance, color: "var(--color-danger-text)",                                             icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> },
+              { l: cxp.totalOverdue ?? "Vencido",    v: v.overdue, color: v.overdue > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)", icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/></svg> },
+              { l: cxp.paidMonth    ?? "Pagado mes", v: v.paid,    color: "var(--color-success-text)",                                            icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><polyline points="20 6 9 17 4 12"/></svg> },
+            ].map((c, i) => (
+              <div key={c.l} style={{ padding: "16px 18px", borderRight: i < 2 ? "1px solid var(--color-border-faint)" : "none", display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{c.l}</div>
+                  <div style={{ color: c.color, opacity: 0.7 }}>{c.icon}</div>
+                </div>
+                <div style={{ fontSize: "20px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
+                  {cur} ${fmt(c.v)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ))}
+      {/* Totales consolidados */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
+        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", display: "flex", flexDirection: "column", gap: "8px" }}>
+          <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>
+            {es ? "Resumen consolidado" : "Consolidated summary"}
+          </div>
+          {[
+            { l: es ? "Total activo"    : "Total active",    v: "$" + fmt0(s.total_balance) },
+            { l: es ? "Vencido total"   : "Total overdue",   v: "$" + fmt0(s.total_overdue) },
+            { l: es ? "Obligaciones"    : "Obligations",     v: String(s.count_pending)     },
+          ].map(r => (
+            <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "11px" }}>
+              <span style={{ color: "var(--color-text-muted)" }}>{r.l}</span>
+              <span style={{ fontWeight: 700, color: "var(--color-text-primary)", fontVariantNumeric: "tabular-nums" }}>{r.v}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}>
+          <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+            {es ? "Por tipo de gasto" : "By expense type"}
+          </div>
+          {(["procurement","logistics","operating"] as const).map((type) => {
+            const cfg = AP_SUPPLIER_TYPE_CONFIG[type];
+            const amt = s.by_type[type];
+            const pct = (amt / (s.total_balance || 1)) * 100;
+            return (
+              <div key={type}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
+                  <span style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-second)" }}>{cfg.icon} {cfg.labelEs}</span>
+                  <span style={{ fontSize: "10px", fontWeight: 700, color: cfg.color, fontVariantNumeric: "tabular-nums" }}>${fmt0(amt)}</span>
+                </div>
+                <div style={{ height: "4px", borderRadius: "2px", background: "var(--color-border-faint)", overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${Math.min(pct, 100)}%`, background: cfg.color, borderRadius: "2px" }} />
+                </div>
+              </div>
+            );
+          })}
+          <button onClick={onNewPayable} style={{ height: "32px", borderRadius: "var(--radius-md)", background: "var(--color-danger-text)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", marginTop: "4px" }}>
+            {cxp.newPayable ?? "+ Nueva cuenta por pagar"}
+          </button>
+        </div>
       </div>
 
       {/* Aging + Por tipo */}
