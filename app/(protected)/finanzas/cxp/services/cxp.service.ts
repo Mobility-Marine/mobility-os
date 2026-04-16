@@ -66,7 +66,7 @@ export async function fetchAPStats(companyId: string): Promise<APStats> {
     .eq("company_id", companyId)
     .neq("status", "cancelled");
 
-  const records = (data ?? []).map(enrichAP);
+  const records = (data ?? []).map(r => enrichAP(r as AccountPayable));
   const today   = new Date(); today.setHours(0, 0, 0, 0);
   const first   = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
 
