@@ -215,11 +215,15 @@ export async function deleteItem(companyId: string, id: string, quotationId: str
 export async function addService(
   companyId: string, payload: CreateServicePayload
 ): Promise<QuotationService> {
-  const { data: existing } = await supabase
-    .from("quotation_services").select("sort_order")
-    .eq("quotation_id", payload.quotation_id)
-    .order("sort_order", { ascending: false }).limit(1);
-  const sort_order = (existing?.[0]?.sort_order ?? -1) + 1;
+  const sort_order = payload.sort_order !== undefined
+    ? payload.sort_order
+    : ((await supabase
+        .from("quotation_services")
+        .select("sort_order")
+        .eq("quotation_id", payload.quotation_id)
+        .order("sort_order", { ascending: false })
+        .limit(1)
+        .then(({ data }) => data?.[0]?.sort_order ?? -1)) + 1);
   const { data, error } = await supabase
     .from("quotation_services")
     .insert({
