@@ -94,7 +94,8 @@ export default function FlujoEfectivoPage() {
       {tab === "posicion" && (
         <FlujoPosicionView
           posicion={posicion ?? {
-            saldo_bancos: 0, cxc_pendiente: 0, cxp_pendiente: 0,
+            saldo_bancos: 0, saldo_por_moneda: {},
+            cxc_pendiente: 0, cxp_pendiente: 0,
             flujo_neto_mes: 0, ingresos_mes: 0, egresos_mes: 0,
             saldo_30d: 0, saldo_60d: 0, saldo_90d: 0, dias_negativo: null,
           }}
