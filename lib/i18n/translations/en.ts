@@ -42,6 +42,7 @@ export const en: TranslationKeys = {
     inventory:    "Inventory & supply",
     economic:     "Economic control",
     platformSupport: "Platform & support",
+    fixedAssets: "Fixed Assets",
   },
 
   dashboard: {
