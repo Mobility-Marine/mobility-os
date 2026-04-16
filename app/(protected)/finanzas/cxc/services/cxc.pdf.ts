@@ -13,7 +13,8 @@ export async function generateEstadoCuentaPDF(
   const generatedAt = new Date().toLocaleDateString("es-MX", {
     day: "2-digit", month: "long", year: "numeric",
   });
-  const doc  = createElement(Template, { client, records, payments, settings, generatedAt });
+  const pendingRecords = records.filter(r => r.balance > 0);
+  const doc  = createElement(Template, { client, records: pendingRecords, payments, settings, generatedAt });
   const blob = await pdf(doc as any).toBlob();
   const url  = URL.createObjectURL(blob);
   const link = document.createElement("a");
