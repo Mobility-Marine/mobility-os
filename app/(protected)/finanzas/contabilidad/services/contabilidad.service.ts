@@ -87,8 +87,18 @@ export async function fetchEstadoResultados(
 
   const ingresos_facturados = sum(cfdis);
   const ingresos_cobrados   = sum(cobros);
+  // Sumar depreciación posteada del período como gasto operativo
+  const { data: depEntries } = await supabase
+    .from("asset_depreciation_entries")
+    .select("depreciation_amount")
+    .eq("company_id", companyId)
+    .eq("posted", true)
+    .gte("period_date", desde)
+    .lte("period_date", hasta);
+  const depreciacion_periodo = (depEntries ?? []).reduce((s, r) => s + (r.depreciation_amount ?? 0), 0);
+
   const costo_ventas        = sum(cxpLog) + sum(cxpPro);
-  const gastos_operativos   = sum(cxpOpe);
+  const gastos_operativos   = sum(cxpOpe) + depreciacion_periodo;
   const utilidad_bruta      = ingresos_facturados - costo_ventas;
   const utilidad_operativa  = utilidad_bruta - gastos_operativos;
   const isr_estimado        = Math.max(0, utilidad_operativa * 0.30);
@@ -130,14 +140,22 @@ export async function fetchBalanceGeneral(companyId: string): Promise<BalanceGen
     supabase.from("accounts_payable").select("balance").eq("company_id", companyId).in("status", ["pending","partial"]),
   ]);
 
+  // Activos fijos netos
+  const { data: activos } = await supabase
+    .from("fixed_assets")
+    .select("book_value")
+    .eq("company_id", companyId)
+    .neq("status", "disposed");
+  const activos_fijos_netos = (activos ?? []).reduce((s, a) => s + (a.book_value ?? 0), 0);
+
   const efectivo_bancos = (bancos ?? []).reduce((s, b) => s + (b.current_balance ?? 0), 0);
   const cxc_pendiente   = (cxc    ?? []).reduce((s, r) => s + (r.balance ?? 0), 0);
   const cxp_pendiente   = (cxp    ?? []).reduce((s, r) => s + (r.balance ?? 0), 0);
-  const total_activo    = efectivo_bancos + cxc_pendiente;
+  const total_activo    = efectivo_bancos + cxc_pendiente + activos_fijos_netos;
   const total_pasivo    = cxp_pendiente;
   const capital_contable = total_activo - total_pasivo;
 
-  return { efectivo_bancos, cxc_pendiente, total_activo, cxp_pendiente, total_pasivo, capital_contable };
+  return { efectivo_bancos, cxc_pendiente, activos_fijos_netos, total_activo, cxp_pendiente, total_pasivo, capital_contable };
 }
 
 // ── LIBRO DIARIO ──────────────────────────────────────────────
