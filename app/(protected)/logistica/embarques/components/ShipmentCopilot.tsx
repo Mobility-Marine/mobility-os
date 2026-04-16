@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { Shipment } from "../types/shipments.types";
-import { SHIPMENT_STATUS_CONFIG } from "../types/shipments.types";
+import { SHIPMENT_STATUS_CONFIG, SERVICE_TYPE_CONFIG, SERVICE_TYPE_CATEGORY } from "../types/shipments.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type Props = { shipment: Shipment | null };
@@ -30,7 +30,8 @@ export default function ShipmentCopilot({ shipment }: Props) {
     ? Math.ceil((Date.now() - new Date(shipment.estimated_delivery).getTime()) / 86400000)
     : 0;
   const isReadyToInvoice = shipment.status === "delivered" && !shipment.invoice_id;
-  const hasNoProvider    = !shipment.provider_id && !["cancelled"].includes(shipment.status);
+  const isConsulting     = SERVICE_TYPE_CATEGORY[shipment.service_type] === "consulting";
+  const hasNoProvider    = !isConsulting && !shipment.provider_id && !["cancelled"].includes(shipment.status);
 
   return (
     <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "16px", display: "flex", flexDirection: "column", gap: "12px", height: "100%", minHeight: 0, overflowY: "auto" }}>
@@ -92,7 +93,7 @@ export default function ShipmentCopilot({ shipment }: Props) {
         </div>
       )}
 
-      {!shipment.pickup_date && !["delivered","invoiced","cancelled"].includes(shipment.status) && (
+      {!isConsulting && !shipment.pickup_date && !["delivered","invoiced","cancelled"].includes(shipment.status) && (
         <div style={{ padding: "8px 10px", borderRadius: "var(--radius-sm)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", fontSize: "11px", color: "var(--color-warning-text)" }}>
           ⚠️ {tl.noPickupDate ?? "Sin fecha de recolección definida"}
         </div>
