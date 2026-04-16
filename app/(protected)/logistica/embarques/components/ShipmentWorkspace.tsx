@@ -8,7 +8,7 @@ import {
 } from "../types/shipments.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant } from "@/lib/tenant/TenantProvider";
-import { upsertShipmentService, deleteShipmentService } from "../services/shipments.service";
+import { upsertShipmentService, deleteShipmentService, fetchLogisticsProviders } from "../services/shipments.service";
 import { fetchDocuments, createDocument, uploadDocumentFile, deleteDocument } from "../../../logistica/documentacion/services/docs.service";
 import type { ShipmentDocument, DocCategory } from "../../../logistica/documentacion/types/docs.types";
 import { DOC_CATEGORY_CONFIG, DOC_STATUS_CONFIG } from "../../../logistica/documentacion/types/docs.types";
@@ -74,7 +74,13 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
   const [svcForm,   setSvcForm]   = useState<Partial<ShipmentService>>({
     service_type: "terrestre", currency: "USD", price: 0, cost: 0,
   });
-  const [savingSvc, setSavingSvc] = useState(false);
+  const [savingSvc,   setSavingSvc]   = useState(false);
+  const [providers,   setProviders]   = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    if (!companyId) return;
+    fetchLogisticsProviders(companyId).then(setProviders);
+  }, [companyId]);
   // Documents
   const [docs,         setDocs]         = useState<ShipmentDocument[]>([]);
   const [loadingDocs,  setLoadingDocs]  = useState(false);
@@ -428,6 +434,22 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
 
             {editing ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                {/* Proveedor — solo logística */}
+                {!isConsulting && (
+                  <div style={{ gridColumn: "1 / -1" }}>
+                    <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Proveedor logístico</div>
+                    <select
+                      value={(form as any).provider_id ?? ""}
+                      onChange={(e) => setForm((p) => ({ ...p, provider_id: e.target.value || null }))}
+                      style={{ ...INPUT, cursor: "pointer" }}
+                    >
+                      <option value="">— Sin proveedor —</option>
+                      {providers.map((pv) => (
+                        <option key={pv.id} value={pv.id}>{pv.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
                 {/* Campos comunes */}
                 {[
                   { k: "total",        label: "Precio de venta",  type: "number" },
