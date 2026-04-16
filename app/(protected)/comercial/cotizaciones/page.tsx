@@ -48,7 +48,9 @@ export default function CotizacionesPage() {
       await Promise.all(items.map((item) => createItem({ ...item, quotation_id: q.id })));
     }
     if (services?.length) {
-      await Promise.all(services.map((svc) => createService({ ...svc, quotation_id: q.id })));
+      for (let i = 0; i < services.length; i++) {
+        await createService({ ...services[i], quotation_id: q.id, sort_order: i });
+      }
     }
 
     setSelected(q);
