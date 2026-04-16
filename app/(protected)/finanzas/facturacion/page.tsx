@@ -97,10 +97,19 @@ async function handleFacturarEmbarque(shipment: any) {
     if (services.length === 0 && sh.quotation_id) {
       const { data: qsvcs } = await supabase
         .from("quotation_services")
-        .select("description, price, currency")
+        .select("description, price, currency, product_id, product:products(name, sat_product_code, sat_unit_code, unit)")
         .eq("quotation_id", sh.quotation_id)
         .order("sort_order");
-      services = qsvcs ?? [];
+      // Si la línea tiene producto vinculado, usar el nombre y claves del producto
+      services = (qsvcs ?? []).map((s: any) => ({
+        description:      s.product?.name            ?? s.description,
+        price:            s.price,
+        currency:         s.currency,
+        product_id:       s.product_id               ?? null,
+        sat_product_code: s.product?.sat_product_code ?? "84111506",
+        sat_unit_code:    s.product?.sat_unit_code    ?? "E48",
+        unit:             s.product?.unit             ?? "Servicio",
+      }));
     }
 
     // Si aún no hay servicios, crear una línea con el total del embarque
@@ -123,9 +132,13 @@ async function handleFacturarEmbarque(shipment: any) {
       currency:        sh.currency ?? "MXN",
       total:           sh.total,
       services:        services.map((s: any) => ({
-        description: s.description,
-        price:       s.price,
-        currency:    s.currency ?? sh.currency ?? "MXN",
+        description:      s.description,
+        price:            s.price,
+        currency:         s.currency         ?? sh.currency ?? "MXN",
+        product_id:       s.product_id       ?? null,
+        sat_product_code: s.sat_product_code ?? "84111506",
+        sat_unit_code:    s.sat_unit_code    ?? "E48",
+        unit:             s.unit             ?? "Servicio",
       })),
     });
     setSelectedCFDIType({ id: "factura" } as any);
