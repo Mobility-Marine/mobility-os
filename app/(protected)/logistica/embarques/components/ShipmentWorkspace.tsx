@@ -140,13 +140,18 @@ function ProveedorFacturaPanel({
           .eq("id", ap.id);
       }
 
-      // Actualizar provider_cost y profit en el embarque
-      const total = parseFloat(form.total);
+      // Sumar TODAS las facturas de proveedor de este embarque
+      const { data: allAP } = await sb
+        .from("accounts_payable")
+        .select("total")
+        .eq("related_shipment_id", shipment.id)
+        .neq("status", "cancelled");
+      const totalProviderCost = (allAP ?? []).reduce((s: number, r: any) => s + (r.total ?? 0), 0);
       const { data: sh } = await sb.from("shipments").select("total").eq("id", shipment.id).single();
       await sb.from("shipments").update({
-        provider_cost:    total,
-        profit:           (sh?.total ?? 0) - total,
-        updated_at:       new Date().toISOString(),
+        provider_cost: totalProviderCost,
+        profit:        (sh?.total ?? 0) - totalProviderCost,
+        updated_at:    new Date().toISOString(),
       }).eq("id", shipment.id);
 
       setHasAP(true);
