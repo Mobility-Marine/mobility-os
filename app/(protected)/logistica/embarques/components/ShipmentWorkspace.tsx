@@ -18,50 +18,50 @@ import { useRef, useEffect } from "react";
 function ProveedorFacturaPanel({
   shipment, companyId, onCreated,
 }: {
-  shipment: Shipment;
-  companyId: string;
-  onCreated: () => Promise<void>;
+  shipment:   Shipment;
+  companyId:  string;
+  onCreated:  () => Promise<void>;
 }) {
-  const [hasAP,    setHasAP]    = useState<boolean | null>(null);
-  const [open,     setOpen]     = useState(false);
-  const [saving,   setSaving]   = useState(false);
+  const { supabase }   = require("@/lib/supabaseClient");
+  const { createDocument, uploadDocumentFile } = require("../../../logistica/documentacion/services/docs.service");
+
+  const [hasAP,     setHasAP]     = useState<boolean | null>(null);
+  const [apData,    setApData]    = useState<{ id: string; pdf_url?: string } | null>(null);
+  const [open,      setOpen]      = useState(false);
+  const [saving,    setSaving]    = useState(false);
   const [providers, setProviders] = useState<{ id: string; name: string; rfc?: string }[]>([]);
+  const [pdfFile,   setPdfFile]   = useState<File | null>(null);
+  const [xmlFile,   setXmlFile]   = useState<File | null>(null);
+  const pdfRef = useRef<HTMLInputElement>(null);
+  const xmlRef = useRef<HTMLInputElement>(null);
+
   const [form, setForm] = useState({
     logistics_provider_id: shipment.provider_id ?? "",
-    supplier_name:  (shipment as any).provider?.name ?? "",
-    supplier_rfc:   "",
-    document_number:"",
-    document_date:  new Date().toISOString().split("T")[0],
-    due_date:       "",
-    currency:       shipment.currency ?? "USD",
-    subtotal:       "",
-    tax_amount:     "",
-    total:          String(shipment.provider_cost > 0 ? shipment.provider_cost : ""),
+    supplier_name:   (shipment as any).provider?.name ?? "",
+    supplier_rfc:    "",
+    document_number: "",
+    document_date:   new Date().toISOString().split("T")[0],
+    due_date:        "",
+    currency:        shipment.currency ?? "USD",
+    subtotal:        "",
+    tax_amount:      "",
+    total:           String(shipment.provider_cost > 0 ? shipment.provider_cost : ""),
   });
 
-  const { supabase } = require("@/lib/supabaseClient");
-
   useEffect(() => {
-    // Verificar si ya existe AP
     supabase.from("accounts_payable")
-      .select("id").eq("related_shipment_id", shipment.id).limit(1)
-      .then(({ data }: any) => setHasAP((data ?? []).length > 0));
-    // Cargar proveedores logísticos
+      .select("id, pdf_url").eq("related_shipment_id", shipment.id).limit(1)
+      .then(({ data }: any) => {
+        if ((data ?? []).length > 0) { setHasAP(true); setApData(data[0]); }
+        else setHasAP(false);
+      });
     supabase.from("logistics_providers")
       .select("id, name, rfc").eq("company_id", companyId).eq("is_active", true).order("name")
       .then(({ data }: any) => setProviders(data ?? []));
   }, [shipment.id, companyId]);
 
-  if (hasAP === null) return null;
-  if (hasAP) return (
-    <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", fontSize: "12px", color: "var(--color-success-text)", display: "flex", alignItems: "center", gap: "8px" }}>
-      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-      Factura de proveedor registrada en Cuentas por Pagar
-    </div>
-  );
-
   function selectProvider(id: string) {
-    const p = providers.find(x => x.id === id);
+    const p = providers.find((x: any) => x.id === id);
     setForm(f => ({ ...f, logistics_provider_id: id, supplier_name: p?.name ?? "", supplier_rfc: p?.rfc ?? "" }));
   }
 
@@ -79,7 +79,10 @@ function ProveedorFacturaPanel({
     setSaving(true);
     try {
       const { data: user } = await supabase.auth.getUser();
-      await supabase.from("accounts_payable").insert({
+      const userId = user.user?.id ?? null;
+
+      // 1. Crear registro en accounts_payable
+      const { data: ap, error: apErr } = await supabase.from("accounts_payable").insert({
         company_id:            companyId,
         logistics_provider_id: form.logistics_provider_id || null,
         supplier_type:         "logistics",
@@ -98,11 +101,51 @@ function ProveedorFacturaPanel({
         payment_status:        "not_scheduled",
         related_shipment_id:   shipment.id,
         notes:                 `Servicio logístico — ${shipment.reference}`,
-        created_by:            user.user?.id ?? null,
-      });
+        created_by:            userId,
+      }).select("id").single();
+      if (apErr) throw apErr;
+
+      let pdfUrl: string | null = null;
+
+      // 2. Subir PDF si se adjuntó
+      if (pdfFile) {
+        const doc = await createDocument(companyId, userId, {
+          shipment_id: shipment.id,
+          name:        `Factura proveedor — ${form.supplier_name}${form.document_number ? ` (${form.document_number})` : ""}`,
+          category:    "factura_proveedor",
+          status:      "approved",
+          version:     1,
+          required:    false,
+        });
+        pdfUrl = await uploadDocumentFile(companyId, doc.id, pdfFile);
+        // Actualizar AP con la URL del PDF
+        await supabase.from("accounts_payable")
+          .update({ pdf_url: pdfUrl, updated_at: new Date().toISOString() })
+          .eq("id", ap.id);
+      }
+
+      // 3. Subir XML si se adjuntó
+      if (xmlFile) {
+        const docXml = await createDocument(companyId, userId, {
+          shipment_id: shipment.id,
+          name:        `XML factura proveedor — ${form.supplier_name}${form.document_number ? ` (${form.document_number})` : ""}`,
+          category:    "factura_proveedor",
+          status:      "approved",
+          version:     1,
+          required:    false,
+        });
+        const xmlUrl = await uploadDocumentFile(companyId, docXml.id, xmlFile);
+        await supabase.from("accounts_payable")
+          .update({ xml_url: xmlUrl, updated_at: new Date().toISOString() })
+          .eq("id", ap.id);
+      }
+
       setHasAP(true);
+      setApData({ id: ap.id, pdf_url: pdfUrl ?? undefined });
       setOpen(false);
       await onCreated();
+    } catch (e: any) {
+      console.error(e);
     } finally { setSaving(false); }
   }
 
@@ -113,6 +156,26 @@ function ProveedorFacturaPanel({
     fontSize: "12px", outline: "none", boxSizing: "border-box",
   };
 
+  if (hasAP === null) return null;
+
+  // ── Ya tiene AP registrado ──
+  if (hasAP) return (
+    <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", fontSize: "12px", color: "var(--color-success-text)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Factura de proveedor registrada en Cuentas por Pagar
+      </div>
+      {apData?.pdf_url && (
+        <a href={apData.pdf_url} target="_blank" rel="noopener noreferrer"
+          style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700, color: "var(--color-success-text)", textDecoration: "none", padding: "3px 10px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-success-border)", background: "var(--color-bg-base)" }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Ver factura PDF
+        </a>
+      )}
+    </div>
+  );
+
+  // ── Pendiente de registrar ──
   return (
     <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.3)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: open ? "12px" : 0 }}>
@@ -122,26 +185,32 @@ function ProveedorFacturaPanel({
             Factura de proveedor pendiente de registrar
           </span>
         </div>
-        <button onClick={() => setOpen(v => !v)} style={{ height: "26px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "#ef4444", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={() => setOpen(v => !v)}
+          style={{ height: "26px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "#ef4444", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
           {open ? "Cancelar" : "Registrar factura"}
         </button>
       </div>
+
       {open && (
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+          {/* Proveedor */}
           <div style={{ gridColumn: "1 / -1" }}>
             <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Proveedor *</div>
             <select value={form.logistics_provider_id} onChange={e => selectProvider(e.target.value)} style={{ ...INPUT_S, cursor: "pointer" }}>
               <option value="">— Seleccionar —</option>
-              {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {providers.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             {!form.logistics_provider_id && (
-              <input value={form.supplier_name} onChange={e => setForm(f => ({ ...f, supplier_name: e.target.value }))} placeholder="O escribe nombre del proveedor" style={{ ...INPUT_S, marginTop: "4px" }} />
+              <input value={form.supplier_name} onChange={e => setForm(f => ({ ...f, supplier_name: e.target.value }))}
+                placeholder="O escribe el nombre del proveedor" style={{ ...INPUT_S, marginTop: "4px" }} />
             )}
           </div>
+
+          {/* Campos de documento */}
           {[
-            { k: "document_number", label: "Folio factura",  type: "text"   },
-            { k: "document_date",   label: "Fecha factura",  type: "date"   },
-            { k: "due_date",        label: "Vencimiento",    type: "date"   },
+            { k: "document_number", label: "Folio factura",  type: "text" },
+            { k: "document_date",   label: "Fecha factura",  type: "date" },
+            { k: "due_date",        label: "Vencimiento",    type: "date" },
             { k: "currency",        label: "Moneda",         type: "select" },
           ].map(f => (
             <div key={f.k}>
@@ -155,11 +224,13 @@ function ProveedorFacturaPanel({
               )}
             </div>
           ))}
+
+          {/* Importes */}
           <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
             {[
-              { k: "subtotal",   label: "Subtotal"  },
-              { k: "tax_amount", label: "IVA"       },
-              { k: "total",      label: "Total *"   },
+              { k: "subtotal",   label: "Subtotal" },
+              { k: "tax_amount", label: "IVA"      },
+              { k: "total",      label: "Total *"  },
             ].map(f => (
               <div key={f.k}>
                 <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>{f.label}</div>
@@ -169,9 +240,53 @@ function ProveedorFacturaPanel({
               </div>
             ))}
           </div>
+
+          {/* Adjuntar archivos */}
+          <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+            {/* PDF */}
+            <div>
+              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>
+                Factura PDF
+                <span style={{ color: "var(--color-text-muted)", fontWeight: 400, textTransform: "none", marginLeft: "4px" }}>(opcional)</span>
+              </div>
+              <div
+                onClick={() => pdfRef.current?.click()}
+                style={{ height: "36px", borderRadius: "var(--radius-md)", border: `1px dashed ${pdfFile ? "var(--color-success-text)" : "var(--color-border)"}`, background: pdfFile ? "var(--color-success-bg)" : "var(--color-bg-base)", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer", fontSize: "11px", color: pdfFile ? "var(--color-success-text)" : "var(--color-text-muted)", fontWeight: pdfFile ? 600 : 400 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                {pdfFile ? pdfFile.name.substring(0, 20) + (pdfFile.name.length > 20 ? "…" : "") : "Subir PDF"}
+              </div>
+              <input ref={pdfRef} type="file" accept=".pdf" style={{ display: "none" }}
+                onChange={e => setPdfFile(e.target.files?.[0] ?? null)} />
+            </div>
+
+            {/* XML */}
+            <div>
+              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>
+                XML SAT
+                <span style={{ color: "var(--color-text-muted)", fontWeight: 400, textTransform: "none", marginLeft: "4px" }}>(opcional)</span>
+              </div>
+              <div
+                onClick={() => xmlRef.current?.click()}
+                style={{ height: "36px", borderRadius: "var(--radius-md)", border: `1px dashed ${xmlFile ? "var(--color-success-text)" : "var(--color-border)"}`, background: xmlFile ? "var(--color-success-bg)" : "var(--color-bg-base)", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer", fontSize: "11px", color: xmlFile ? "var(--color-success-text)" : "var(--color-text-muted)", fontWeight: xmlFile ? 600 : 400 }}>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                {xmlFile ? xmlFile.name.substring(0, 20) + (xmlFile.name.length > 20 ? "…" : "") : "Subir XML"}
+              </div>
+              <input ref={xmlRef} type="file" accept=".xml" style={{ display: "none" }}
+                onChange={e => setXmlFile(e.target.files?.[0] ?? null)} />
+            </div>
+          </div>
+
+          {/* Botón guardar */}
           <button onClick={handleSave} disabled={saving || !form.supplier_name || !form.total}
-            style={{ gridColumn: "1 / -1", height: "34px", borderRadius: "var(--radius-md)", background: "#ef4444", color: "#fff", border: "none", fontSize: "12px", fontWeight: 700, cursor: "pointer", opacity: (!form.supplier_name || !form.total) ? 0.6 : 1 }}>
-            {saving ? "Guardando…" : "✓ Registrar en Cuentas por Pagar"}
+            style={{ gridColumn: "1 / -1", height: "36px", borderRadius: "var(--radius-md)", background: "#ef4444", color: "#fff", border: "none", fontSize: "12px", fontWeight: 700, cursor: saving || (!form.supplier_name || !form.total) ? "not-allowed" : "pointer", opacity: (!form.supplier_name || !form.total) ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+            {saving ? (
+              <>"Guardando…"</>
+            ) : (
+              <>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Registrar en Cuentas por Pagar{pdfFile || xmlFile ? " y subir archivos" : ""}
+              </>
+            )}
           </button>
         </div>
       )}
