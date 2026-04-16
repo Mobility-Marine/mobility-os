@@ -4,13 +4,13 @@ import type { FlujoPosicion } from "../services/flujo.service";
 
 type Props = { posicion: FlujoPosicion; loading: boolean };
 
-const fmt = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2 });
 const fmt0 = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 0 });
+const fmt  = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2 });
 
 export default function FlujoPosicionView({ posicion: p, loading }: Props) {
   const { lang, t } = useTranslation();
-  const es  = lang !== "en";
-  const fl  = (t as any).flujo ?? {};
+  const es = lang !== "en";
+  const fl = (t as any).flujo ?? {};
 
   if (loading) return (
     <div style={{ padding: "60px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
@@ -18,9 +18,21 @@ export default function FlujoPosicionView({ posicion: p, loading }: Props) {
     </div>
   );
 
-  // Semáforo de liquidez
+  // Todas las monedas presentes en el sistema
+  const todasMonedas = Array.from(new Set([
+    ...Object.keys(p.saldo_por_moneda),
+    ...Object.keys(p.cxc_por_moneda),
+    ...Object.keys(p.cxp_por_moneda),
+    ...Object.keys(p.flujo_por_moneda),
+  ])).sort();
+
+  // Semáforo — basado en moneda principal
   const minSaldo = Math.min(p.saldo_30d, p.saldo_60d, p.saldo_90d);
-  const salud = minSaldo < 0 ? "critico" : minSaldo < p.saldo_bancos * 0.2 ? "precaucion" : "saludable";
+  const salud = minSaldo < 0
+    ? "critico"
+    : minSaldo < p.saldo_bancos * 0.2
+    ? "precaucion"
+    : "saludable";
   const saludConfig = {
     saludable:  { color: "var(--color-success-text)", bg: "var(--color-success-bg)", border: "var(--color-success-border)", icon: "✅" },
     precaucion: { color: "var(--color-warning-text)", bg: "var(--color-warning-bg)", border: "var(--color-warning-border)", icon: "⚠️" },
@@ -45,106 +57,128 @@ export default function FlujoPosicionView({ posicion: p, loading }: Props) {
             {fl[salud] ?? salud}
           </div>
           <div style={{ fontSize: "12px", color: saludConfig.color, opacity: 0.8, marginTop: "2px" }}>
-            {es ? "Basado en saldo actual + CXC cobrable − CXP por pagar en 90 días" : "Based on current balance + collectible AR − payable AP in 90 days"}
+            {es
+              ? `Proyección en ${p.moneda_principal} — moneda principal del sistema`
+              : `Projection in ${p.moneda_principal} — primary system currency`}
           </div>
         </div>
         <div style={{ marginLeft: "auto", textAlign: "right" }}>
-          <div style={{ fontSize: "11px", color: saludConfig.color, opacity: 0.7 }}>{es ? "Mínimo proyectado" : "Projected minimum"}</div>
+          <div style={{ fontSize: "11px", color: saludConfig.color, opacity: 0.7 }}>
+            {es ? "Mínimo proyectado 90d" : "90d projected minimum"}
+          </div>
           <div style={{ fontSize: "20px", fontWeight: 900, color: saludConfig.color, fontVariantNumeric: "tabular-nums" }}>
-            ${fmt0(minSaldo)}
+            {p.moneda_principal} {minSaldo < 0 ? "−" : ""}${fmt0(Math.abs(minSaldo))}
           </div>
         </div>
       </div>
 
-      {/* KPIs principales */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "12px" }}>
-        {[
-          {
-          label: fl.saldoBancos ?? "Saldo en bancos",
-          value: null,
-          saldo_por_moneda: p.saldo_por_moneda,
-          color: "var(--color-brand-blue)", icon: "🏦",
-          sub: es ? "disponible ahora" : "available now"
-        },
-          { label: fl.cxcPendiente   ?? "CXC por cobrar",     value: p.cxc_pendiente,   color: "var(--color-success-text)", icon: "📥", sub: es ? "por ingresar" : "incoming" },
-          { label: fl.cxpPendiente   ?? "CXP por pagar",      value: p.cxp_pendiente,   color: "var(--color-danger-text)",  icon: "📤", sub: es ? "comprometido" : "committed" },
-        ].map(c => (
-          <div key={c.label} style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", display: "flex", flexDirection: "column", gap: "8px" }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{c.label}</div>
-              <span style={{ fontSize: "18px" }}>{c.icon}</span>
-            </div>
-            {(c as any).saldo_por_moneda ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-                {Object.entries((c as any).saldo_por_moneda).map(([cur, val]) => (
-                  <div key={cur} style={{ fontSize: cur === "MXN" ? "18px" : "15px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums", display: "flex", alignItems: "baseline", gap: "4px" }}>
-                    <span style={{ fontSize: "10px", fontWeight: 700, opacity: 0.7 }}>{cur}</span>
-                    ${fmt0(val as number)}
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div style={{ fontSize: "22px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums" }}>${fmt0((c as any).value)}</div>
-            )}
-            <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{c.sub}</div>
-          </div>
-        ))}
-      </div>
+      {/* ── KPIs POR MONEDA ── */}
+      {todasMonedas.map(cur => {
+        const saldo  = p.saldo_por_moneda[cur] ?? 0;
+        const cxc    = p.cxc_por_moneda[cur]   ?? 0;
+        const cxp    = p.cxp_por_moneda[cur]   ?? 0;
+        const flujo  = p.flujo_por_moneda[cur]  ?? { ingresos: 0, egresos: 0, neto: 0 };
+        const esPrincipal = cur === p.moneda_principal;
 
-      {/* Proyección 30/60/90 días */}
+        return (
+          <div key={cur} style={{ background: "var(--color-bg-base)", border: `1px solid ${esPrincipal ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`, borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+
+            {/* Header moneda */}
+            <div style={{ padding: "10px 20px", background: esPrincipal ? "var(--color-info-bg)" : "var(--color-bg-subtle)", borderBottom: "1px solid var(--color-border-faint)", display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "14px", fontWeight: 800, color: esPrincipal ? "var(--color-brand-blue)" : "var(--color-text-second)" }}>
+                {cur === "MXN" ? "🇲🇽" : cur === "USD" ? "🇺🇸" : cur === "EUR" ? "🇪🇺" : "💱"} {cur}
+              </span>
+              {esPrincipal && (
+                <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 7px", borderRadius: "var(--radius-full)", background: "var(--color-brand-blue)", color: "#fff" }}>
+                  {es ? "MONEDA PRINCIPAL" : "PRIMARY CURRENCY"}
+                </span>
+              )}
+            </div>
+
+            {/* 4 KPIs de esta moneda */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)" }}>
+              {[
+                { label: fl.saldoBancos  ?? "Saldo bancos",   value: saldo,       color: "var(--color-brand-blue)",   icon: "🏦" },
+                { label: fl.cxcPendiente ?? "CXC por cobrar", value: cxc,         color: "var(--color-success-text)", icon: "📥" },
+                { label: fl.cxpPendiente ?? "CXP por pagar",  value: cxp,         color: "var(--color-danger-text)",  icon: "📤" },
+                { label: fl.flujaNeto    ?? "Flujo del mes",   value: flujo.neto,  color: flujo.neto >= 0 ? "var(--color-success-text)" : "var(--color-danger-text)", icon: "📊" },
+              ].map((c, i) => (
+                <div key={c.label} style={{ padding: "16px 18px", borderRight: i < 3 ? "1px solid var(--color-border-faint)" : "none", display: "flex", flexDirection: "column", gap: "6px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                    <span style={{ fontSize: "14px" }}>{c.icon}</span>
+                    <span style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{c.label}</span>
+                  </div>
+                  <div style={{ fontSize: "18px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums" }}>
+                    {c.value < 0 ? "−" : ""}{cur} ${fmt0(Math.abs(c.value))}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Detalle flujo del mes */}
+            {(flujo.ingresos > 0 || flujo.egresos > 0) && (
+              <div style={{ padding: "8px 20px", borderTop: "1px solid var(--color-border-faint)", background: "var(--color-bg-subtle)", display: "flex", gap: "20px" }}>
+                <span style={{ fontSize: "11px", color: "var(--color-success-text)", fontWeight: 600 }}>
+                  ↑ +{cur} ${fmt(flujo.ingresos)} {es ? "ingresos" : "income"}
+                </span>
+                <span style={{ fontSize: "11px", color: "var(--color-danger-text)", fontWeight: 600 }}>
+                  ↓ −{cur} ${fmt(flujo.egresos)} {es ? "egresos" : "expenses"}
+                </span>
+              </div>
+            )}
+          </div>
+        );
+      })}
+
+      {/* ── PROYECCIÓN 30/60/90 — solo moneda principal ── */}
       <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "20px" }}>
-        <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "16px" }}>
-          {fl.saldoProyectado ?? "Saldo proyectado"} — {es ? "incluyendo CXC cobrable y CXP por vencer" : "including collectible AR and upcoming AP"}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "16px" }}>
+          <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
+            {fl.saldoProyectado ?? "Saldo proyectado"} — {es ? "CXC cobrable menos CXP por vencer" : "collectible AR minus upcoming AP"}
+          </div>
+          <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "var(--radius-full)", background: "var(--color-info-bg)", color: "var(--color-brand-blue)", border: "1px solid var(--color-info-border)" }}>
+            {p.moneda_principal}
+          </span>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
           {[
-            { label: fl.dias30 ?? "En 30 días", value: p.saldo_30d, base: p.saldo_bancos },
-            { label: fl.dias60 ?? "En 60 días", value: p.saldo_60d, base: p.saldo_bancos },
-            { label: fl.dias90 ?? "En 90 días", value: p.saldo_90d, base: p.saldo_bancos },
+            { label: fl.dias30 ?? "En 30 días", value: p.saldo_30d },
+            { label: fl.dias60 ?? "En 60 días", value: p.saldo_60d },
+            { label: fl.dias90 ?? "En 90 días", value: p.saldo_90d },
           ].map((r, i) => {
-            const pct   = r.base > 0 ? Math.min((r.value / r.base) * 100, 200) : 0;
-            const color = r.value < 0 ? "var(--color-danger-text)" : r.value < r.base * 0.5 ? "var(--color-warning-text)" : "var(--color-success-text)";
+            const base  = p.saldo_bancos;
+            const pct   = base > 0 ? Math.min((r.value / base) * 100, 200) : 0;
+            const color = r.value < 0
+              ? "var(--color-danger-text)"
+              : r.value < base * 0.5
+              ? "var(--color-warning-text)"
+              : "var(--color-success-text)";
+            const diff  = r.value - base;
             return (
               <div key={i} style={{ padding: "14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", display: "flex", flexDirection: "column", gap: "8px" }}>
                 <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase" }}>{r.label}</div>
                 <div style={{ fontSize: "20px", fontWeight: 900, color, fontVariantNumeric: "tabular-nums" }}>
-                  {r.value < 0 ? "−" : ""}${fmt0(Math.abs(r.value))}
+                  {r.value < 0 ? "−" : ""}{p.moneda_principal} ${fmt0(Math.abs(r.value))}
                 </div>
                 <div style={{ height: "6px", background: "var(--color-border-faint)", borderRadius: "3px", overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${Math.max(Math.min(pct, 100), 0)}%`, background: color, borderRadius: "3px", transition: "width 0.5s" }} />
                 </div>
-                <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
-                  {r.value >= r.base
-                    ? `↑ +${fmt0(r.value - r.base)} vs hoy`
-                    : `↓ ${fmt0(r.value - r.base)} vs hoy`
-                  }
+                <div style={{ fontSize: "10px", color: diff >= 0 ? "var(--color-success-text)" : "var(--color-danger-text)", fontWeight: 600 }}>
+                  {diff >= 0 ? "↑" : "↓"} {diff >= 0 ? "+" : ""}{fmt0(diff)} {es ? "vs hoy" : "vs today"}
                 </div>
               </div>
             );
           })}
         </div>
+        {todasMonedas.length > 1 && (
+          <div style={{ marginTop: "12px", padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", fontSize: "11px", color: "var(--color-text-muted)" }}>
+            ℹ️ {es
+              ? `La proyección usa únicamente ${p.moneda_principal}. Las operaciones en otras monedas requieren tipo de cambio para consolidarse.`
+              : `Projection uses ${p.moneda_principal} only. Multi-currency consolidation requires exchange rates.`}
+          </div>
+        )}
       </div>
 
-      {/* Flujo del mes actual */}
-      <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "20px" }}>
-        <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "14px" }}>
-          {es ? "Flujo real del mes actual" : "Current month real cash flow"}
-        </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "12px" }}>
-          {[
-            { label: fl.ingresos ?? "Ingresos", value: p.ingresos_mes, color: "var(--color-success-text)", sign: "+" },
-            { label: fl.egresos  ?? "Egresos",  value: p.egresos_mes,  color: "var(--color-danger-text)",  sign: "−" },
-            { label: fl.flujaNeto?? "Neto",     value: p.flujo_neto_mes, color: p.flujo_neto_mes >= 0 ? "var(--color-success-text)" : "var(--color-danger-text)", sign: p.flujo_neto_mes >= 0 ? "+" : "−" },
-          ].map(r => (
-            <div key={r.label} style={{ padding: "14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", textAlign: "center" }}>
-              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>{r.label}</div>
-              <div style={{ fontSize: "18px", fontWeight: 900, color: r.color, fontVariantNumeric: "tabular-nums" }}>
-                {r.sign}${fmt(Math.abs(r.value))}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
