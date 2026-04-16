@@ -53,7 +53,7 @@ export const AR_ACTIVITY_CONFIG: Record<ARActivityType, { labelEs: string; label
 export const AR_AGING_CONFIG: Record<ARAging, { labelEs: string; labelEn: string; color: string; bg: string; border: string }> = {
   "0-30":  { labelEs: "0-30 días",   labelEn: "0-30 days",   color: "var(--color-success-text)", bg: "var(--color-success-bg)",  border: "var(--color-success-border)"  },
   "31-60": { labelEs: "31-60 días",  labelEn: "31-60 days",  color: "var(--color-warning-text)", bg: "var(--color-warning-bg)",  border: "var(--color-warning-border)"  },
-  "61-90": { labelEs: "61-90 días",  labelEn: "61-90 days",  color: "#f97316",                   bg: "#fff7ed",                  border: "#fed7aa"                      },
+  "61-90": { labelEs: "61-90 días", labelEn: "61-90 days", color: "#f97316", bg: "rgba(249,115,22,0.12)", border: "rgba(249,115,22,0.3)" },
   "+90":   { labelEs: "+90 días",    labelEn: "+90 days",    color: "var(--color-danger-text)",  bg: "var(--color-danger-bg)",   border: "var(--color-danger-border)"   },
 };
 
