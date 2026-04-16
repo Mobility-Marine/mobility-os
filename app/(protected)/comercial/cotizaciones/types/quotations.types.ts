@@ -198,6 +198,7 @@ export type CreateItemPayload = {
 
 export type CreateServicePayload = {
   quotation_id:  string;
+  sort_order?:   number;
   service_type:  ServiceType;
   description:   string;
   origin?:       string;
