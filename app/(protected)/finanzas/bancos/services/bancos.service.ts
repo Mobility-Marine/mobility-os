@@ -59,7 +59,6 @@ export async function fetchTransactions(
   companyId: string, filters: BankFilters, limit = 100
 ): Promise<BankTransaction[]> {
   let q = supabase
-   supabase
     .from("bank_transactions")
     .select("*, bank_account:bank_accounts!bank_account_id(name, bank_name, color), transfer_to:bank_accounts!transfer_to_id(name)")
     .eq("company_id", companyId)
