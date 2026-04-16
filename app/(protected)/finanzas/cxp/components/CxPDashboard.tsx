@@ -147,6 +147,39 @@ export default function CxPDashboard({ stats: s, suppliers, loading, onSupplierS
         </div>
       </div>
 
+      {/* ── Desglose por moneda ── */}
+      {Object.keys(s.por_moneda ?? {}).length > 0 && (
+        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+          <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--color-border-faint)", background: "var(--color-bg-subtle)" }}>
+            <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)" }}>
+              {es ? "Obligaciones por moneda" : "Payables by currency"}
+            </div>
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(Object.keys(s.por_moneda).length, 4)}, 1fr)` }}>
+            {Object.entries(s.por_moneda).sort().map(([cur, v], i, arr) => (
+              <div key={cur} style={{ padding: "16px 20px", borderRight: i < arr.length - 1 ? "1px solid var(--color-border-faint)" : "none" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
+                  <span style={{ fontSize: "16px" }}>{cur === "MXN" ? "🇲🇽" : cur === "USD" ? "🇺🇸" : cur === "EUR" ? "🇪🇺" : "💱"}</span>
+                  <span style={{ fontSize: "13px", fontWeight: 800, color: "var(--color-text-primary)" }}>{cur}</span>
+                  <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>· {v.count} {es ? "docs" : "docs"}</span>
+                </div>
+                {[
+                  { l: es ? "Por pagar"  : "Payable",    v: v.balance, color: "var(--color-danger-text)"  },
+                  { l: es ? "Vencido"    : "Overdue",    v: v.overdue, color: v.overdue > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)" },
+                  { l: es ? "Pagado mes" : "Paid month", v: v.paid,    color: "var(--color-success-text)" },
+                ].map(r => (
+                  <div key={r.l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+                    <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{r.l}</span>
+                    <span style={{ fontSize: "12px", fontWeight: 800, color: r.color, fontVariantNumeric: "tabular-nums" }}>
+                      {cur} ${fmt(r.v)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
       {/* Top proveedores */}
       {suppliers.length > 0 && (
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
