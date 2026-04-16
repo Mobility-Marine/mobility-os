@@ -31,7 +31,7 @@ export default function ShipmentCopilot({ shipment }: Props) {
     : 0;
   const isReadyToInvoice = shipment.status === "delivered" && !shipment.invoice_id;
   const isConsulting     = SERVICE_TYPE_CATEGORY[shipment.service_type] === "consulting";
-  const hasNoProvider    = !isConsulting && !shipment.provider_id && !["cancelled"].includes(shipment.status);
+  const hasNoProvider    = (!isConsulting || shipment.service_type === "seguro") && !shipment.provider_id && !["cancelled"].includes(shipment.status);
 
   return (
     <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "16px", display: "flex", flexDirection: "column", gap: "12px", height: "100%", minHeight: 0, overflowY: "auto" }}>
