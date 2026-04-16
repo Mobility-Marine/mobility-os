@@ -142,7 +142,7 @@ export default function ContabilidadPage() {
       )}
       {tab === "balance" && (
         <ContabilidadBalance
-          data={balance ?? { efectivo_bancos: 0, cxc_pendiente: 0, total_activo: 0, cxp_pendiente: 0, total_pasivo: 0, capital_contable: 0 }}
+          data={balance ?? { efectivo_bancos: 0, cxc_pendiente: 0, activos_fijos_netos: 0, total_activo: 0, cxp_pendiente: 0, total_pasivo: 0, capital_contable: 0 }}
           loading={loading}
         />
       )}
