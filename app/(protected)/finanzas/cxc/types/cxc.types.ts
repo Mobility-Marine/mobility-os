@@ -123,20 +123,21 @@ export type ARActivity = {
 };
 
 export type ARStats = {
-  total_balance:   number;
-  total_overdue:   number;
+  total_balance: number;
+  total_overdue: number;
   collected_month: number;
-  count_pending:   number;
-  count_overdue:   number;
-  dso:             number;
-  bucket_0_30:     number;
-  bucket_31_60:    number;
-  bucket_61_90:    number;
-  bucket_90plus:   number;
-  count_0_30:      number;
-  count_31_60:     number;
-  count_61_90:     number;
-  count_90plus:    number;
+  count_pending: number;
+  count_overdue: number;
+  dso: number;
+  bucket_0_30: number;
+  bucket_31_60: number;
+  bucket_61_90: number;
+  bucket_90plus: number;
+  count_0_30: number;
+  count_31_60: number;
+  count_61_90: number;
+  count_90plus: number;
+  por_moneda: Record<string, { balance: number; overdue: number; collected: number; count: number }>;
 };
 
 export type ClientARSummary = {
