@@ -19,6 +19,7 @@ export type BalanceGeneral = {
   // Activos
   efectivo_bancos:      number;
   cxc_pendiente:        number;
+  activos_fijos_netos:  number;
   total_activo:         number;
   // Pasivos
   cxp_pendiente:        number;
