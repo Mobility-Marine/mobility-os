@@ -144,9 +144,7 @@ export async function fetchPendingFromShipments(companyId: string) {
     .from("shipments")
     .select("id, reference, service_type, provider_cost, currency, provider:logistics_providers(id,name), client:clients(name)")
     .eq("company_id", companyId)
-    .eq("status", "invoiced")
-    .gt("provider_cost", 0)
-    .not("provider_id", "is", null);
+    .in("status", ["delivered", "invoiced"]);  // sin filtrar por provider_cost ni provider_id
 
   // Filtrar los que ya tienen AP
   const ids = (data ?? []).map(s => s.id);
@@ -254,4 +252,77 @@ export async function fetchSuppliersForAP(companyId: string) {
     supabase.from("logistics_providers").select("id, name, rfc, contact_email").eq("company_id", companyId).eq("is_active", true).order("name"),
   ]);
   return { suppliers: suppliers ?? [], providers: providers ?? [] };
+}
+
+// ── TODOS LOS PROVEEDORES (para vista Por Proveedor) ──────────
+export async function fetchAllProvidersForView(companyId: string): Promise<SupplierAPSummary[]> {
+  // 1. Traer todos los proveedores registrados
+  const [{ data: logProviders }, { data: suppliers }] = await Promise.all([
+    supabase.from("logistics_providers")
+      .select("id, name, rfc")
+      .eq("company_id", companyId).eq("is_active", true).order("name"),
+    supabase.from("suppliers")
+      .select("id, name, tax_id, type")
+      .eq("company_id", companyId).eq("is_active", true).order("name"),
+  ]);
+
+  // 2. Traer los AP existentes para calcular balances
+  const { data: apData } = await supabase
+    .from("accounts_payable")
+    .select("supplier_id, logistics_provider_id, supplier_name, supplier_rfc, supplier_type, total, balance, due_date, currency")
+    .eq("company_id", companyId)
+    .in("status", ["pending", "partial", "disputed"]);
+
+  // Mapas de balance por proveedor
+  const balanceMap: Record<string, { total: number; balance: number; overdue: number; count: number; oldest: string; currency: string }> = {};
+  for (const ap of (apData ?? [])) {
+    const key = ap.logistics_provider_id ?? ap.supplier_id ?? ap.supplier_name;
+    const { days } = calcAging(ap.due_date);
+    if (!balanceMap[key]) balanceMap[key] = { total: 0, balance: 0, overdue: 0, count: 0, oldest: ap.due_date ?? "", currency: ap.currency };
+    balanceMap[key].total   += ap.total;
+    balanceMap[key].balance += ap.balance;
+    if (days > 0) balanceMap[key].overdue += ap.balance;
+    balanceMap[key].count++;
+    if ((ap.due_date ?? "") < balanceMap[key].oldest) balanceMap[key].oldest = ap.due_date ?? "";
+  }
+
+  const result: SupplierAPSummary[] = [];
+
+  // Proveedores logísticos
+  for (const lp of (logProviders ?? [])) {
+    const b = balanceMap[lp.id] ?? { total: 0, balance: 0, overdue: 0, count: 0, oldest: new Date().toISOString().split("T")[0], currency: "MXN" };
+    result.push({
+      supplier_id:   lp.id,
+      supplier_name: lp.name,
+      supplier_rfc:  lp.rfc ?? null,
+      supplier_type: "logistics",
+      total:         b.total,
+      balance:       b.balance,
+      overdue:       b.overdue,
+      count:         b.count,
+      oldest_date:   b.oldest,
+      currency:      b.currency,
+      risk: b.overdue > b.balance * 0.8 ? "CRITICAL" : b.overdue > b.balance * 0.5 ? "HIGH" : b.overdue > 0 ? "MEDIUM" : "LOW",
+    });
+  }
+
+  // Proveedores de abastecimiento
+  for (const sp of (suppliers ?? [])) {
+    const b = balanceMap[sp.id] ?? { total: 0, balance: 0, overdue: 0, count: 0, oldest: new Date().toISOString().split("T")[0], currency: "MXN" };
+    result.push({
+      supplier_id:   sp.id,
+      supplier_name: sp.name,
+      supplier_rfc:  sp.tax_id ?? null,
+      supplier_type: "procurement",
+      total:         b.total,
+      balance:       b.balance,
+      overdue:       b.overdue,
+      count:         b.count,
+      oldest_date:   b.oldest,
+      currency:      b.currency,
+      risk: b.overdue > b.balance * 0.8 ? "CRITICAL" : b.overdue > b.balance * 0.5 ? "HIGH" : b.overdue > 0 ? "MEDIUM" : "LOW",
+    });
+  }
+
+  return result.sort((a, b) => b.balance - a.balance);
 }
