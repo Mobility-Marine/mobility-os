@@ -17,6 +17,7 @@ const STATUS_COLORS: Record<DocStatus, string> = {
   received:  "#3b82f6",
   validated: "#10b981",
   rejected:  "#ef4444",
+  approved:  "#10b981",
 };
 
 export default function DocsSidebar({ docs, selected, setSelected, filters, setFilters, onNew }: Props) {
