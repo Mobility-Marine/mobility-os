@@ -5,6 +5,7 @@ import {
   fetchAP, fetchAPById, fetchAPStats, fetchSupplierAPSummaries,
   fetchPendingFromShipments, fetchPendingFromPOs,
   createAP, registerAPPayment, updateAPStatus,
+  fetchAllProvidersForView,
 } from "./cxp.service";
 
 export function useCxPController(companyId: string, userId: string) {
@@ -33,7 +34,7 @@ export function useCxPController(companyId: string, userId: string) {
       const [list, st, suppliers, ships, pos] = await Promise.all([
         fetchAP(companyId, active),
         fetchAPStats(companyId),
-        fetchSupplierAPSummaries(companyId),
+        fetchAllProvidersForView(companyId),   // todos los proveedores, no solo con AP
         fetchPendingFromShipments(companyId),
         fetchPendingFromPOs(companyId),
       ]);
