@@ -2,7 +2,6 @@ import {
   Document, Page, Text, View, StyleSheet, Image,
 } from "@react-pdf/renderer";
 import type { AccountReceivable, ARPayment } from "../types/cxc.types";
-import { AR_STATUS_CONFIG } from "../types/cxc.types";
 import type { CompanySettings } from "../../../comercial/cotizaciones/types/quotations.types";
 
 type Props = {
@@ -80,6 +79,14 @@ export default function CxCEstadoCuentaPDF({ client, records, payments, settings
     paid:     "Pagado",
     disputed: "En disputa",
     bad_debt: "Incobrable",
+  };
+
+  const STATUS_COLORS: Record<string, { color: string; bg: string }> = {
+    pending:  { color: "#92400e", bg: "#fef3c7" },
+    partial:  { color: "#1e40af", bg: "#dbeafe" },
+    paid:     { color: "#14532d", bg: "#dcfce7" },
+    disputed: { color: "#6d28d9", bg: "#ede9fe" },
+    bad_debt: { color: "#991b1b", bg: "#fee2e2" },
   };
 
   const s = StyleSheet.create({
@@ -227,7 +234,7 @@ export default function CxCEstadoCuentaPDF({ client, records, payments, settings
               const bucket = ar.aging_bucket ?? "0-30";
               const agingColor = AGING_COLORS[bucket] ?? "#64748b";
               const statusLabel = STATUS_LABELS[ar.status] ?? ar.status;
-              const scfg = AR_STATUS_CONFIG[ar.status];
+                  const scfg = STATUS_COLORS[ar.status] ?? { color: "#64748b", bg: "#f1f5f9" };
               return (
                 <View key={ar.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
                   <Text style={[s.cellTxt, { flex: 1.2, fontFamily: "Courier" }]}>{ar.document_number || "—"}</Text>
@@ -242,8 +249,8 @@ export default function CxCEstadoCuentaPDF({ client, records, payments, settings
                     </View>
                   </View>
                   <View style={{ flex: 0.9, alignItems: "center" }}>
-                    <View style={[s.badge, { backgroundColor: scfg?.bg ?? "#f1f5f9" }]}>
-                      <Text style={[s.badgeTxt, { color: scfg?.color ?? TEXT_MUTED }]}>{statusLabel}</Text>
+                    <View style={[s.badge, { backgroundColor: scfg.bg }]}>
+                      <Text style={[s.badgeTxt, { color: scfg.color }]}>{statusLabel}</Text>
                     </View>
                   </View>
                 </View>
