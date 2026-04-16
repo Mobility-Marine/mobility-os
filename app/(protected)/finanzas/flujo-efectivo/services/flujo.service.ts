@@ -1,17 +1,22 @@
 import { supabase } from "@/lib/supabaseClient";
 
 export type FlujoPosicion = {
-  saldo_bancos:       number;
-  saldo_por_moneda:   Record<string, number>;
-  cxc_pendiente:     number;
-  cxp_pendiente:     number;
-  flujo_neto_mes:    number;
-  ingresos_mes:      number;
-  egresos_mes:       number;
-  saldo_30d:         number;
-  saldo_60d:         number;
-  saldo_90d:         number;
-  dias_negativo:     number | null;
+  saldo_por_moneda:    Record<string, number>;  // { MXN: 12500, USD: 1800 }
+  cxc_por_moneda:      Record<string, number>;  // { MXN: 4879, USD: 0 }
+  cxp_por_moneda:      Record<string, number>;  // { MXN: 0, USD: 2438 }
+  flujo_por_moneda:    Record<string, { ingresos: number; egresos: number; neto: number }>;
+  saldo_bancos:        number;   // solo para compatibilidad proyección (moneda principal)
+  cxc_pendiente:       number;
+  cxp_pendiente:       number;
+  flujo_neto_mes:      number;
+  ingresos_mes:        number;
+  egresos_mes:         number;
+  saldo_30d:           number;
+  saldo_60d:           number;
+  saldo_90d:           number;
+  dias_negativo:       number | null;
+  moneda_principal:    string;   // moneda con mayor saldo
+  saldo_por_moneda:    Record<string, number>;
 };
 
 export type FlujoHistorico = {
@@ -32,66 +37,98 @@ export type FlujoProyeccion = {
 
 // ── POSICIÓN ACTUAL ───────────────────────────────────────────
 export async function fetchFlujoPosicion(companyId: string): Promise<FlujoPosicion> {
-  const today    = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today    = new Date(); today.setHours(0, 0, 0, 0);
   const firstDay = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
   const todayStr = today.toISOString().split("T")[0];
 
   const [
     { data: bancos },
-    { data: cxc },
-    { data: cxp },
+    { data: cxcRaw },
+    { data: cxpRaw },
     { data: txMes },
     { data: cxcFutura },
     { data: cxpFutura },
   ] = await Promise.all([
     supabase.from("bank_accounts").select("current_balance, currency").eq("company_id", companyId).eq("is_active", true),
-    supabase.from("accounts_receivable").select("balance").eq("company_id", companyId).in("status", ["pending","partial"]),
-    supabase.from("accounts_payable").select("balance").eq("company_id", companyId).in("status", ["pending","partial"]),
-    supabase.from("bank_transactions").select("type, amount").eq("company_id", companyId).gte("transaction_date", firstDay).lte("transaction_date", todayStr),
-    supabase.from("accounts_receivable").select("balance, due_date").eq("company_id", companyId).in("status", ["pending","partial"]).not("due_date", "is", null),
-    supabase.from("accounts_payable").select("balance, due_date").eq("company_id", companyId).in("status", ["pending","partial"]).not("due_date", "is", null),
+    supabase.from("accounts_receivable").select("balance, currency").eq("company_id", companyId).in("status", ["pending","partial"]),
+    supabase.from("accounts_payable").select("balance, currency, exchange_rate").eq("company_id", companyId).in("status", ["pending","partial"]),
+    supabase.from("bank_transactions").select("type, amount, currency").eq("company_id", companyId).gte("transaction_date", firstDay).lte("transaction_date", todayStr),
+    supabase.from("accounts_receivable").select("balance, due_date, currency").eq("company_id", companyId).in("status", ["pending","partial"]).not("due_date", "is", null),
+    supabase.from("accounts_payable").select("balance, due_date, currency, exchange_rate").eq("company_id", companyId).in("status", ["pending","partial"]).not("due_date", "is", null),
   ]);
 
-  // Agrupar saldo por moneda — nunca mezclar MXN con USD
-  const saldoPorMoneda: Record<string, number> = {};
+  // ── Saldo bancos por moneda ───────────────────────────────
+  const saldo_por_moneda: Record<string, number> = {};
   for (const b of (bancos ?? [])) {
     const cur = b.currency ?? "MXN";
-    saldoPorMoneda[cur] = (saldoPorMoneda[cur] ?? 0) + (b.current_balance ?? 0);
+    saldo_por_moneda[cur] = (saldo_por_moneda[cur] ?? 0) + (b.current_balance ?? 0);
   }
-  const saldo_bancos = saldoPorMoneda["MXN"] ?? saldoPorMoneda[Object.keys(saldoPorMoneda)[0]] ?? 0;
-  const cxc_pendiente  = (cxc    ?? []).reduce((s, r) => s + (r.balance ?? 0), 0);
-  const cxp_pendiente  = (cxp    ?? []).reduce((s, r) => s + (r.balance ?? 0), 0);
-  const ingresos_mes   = (txMes  ?? []).filter(t => ["income","transfer_in"].includes(t.type)).reduce((s, t) => s + t.amount, 0);
-  const egresos_mes    = (txMes  ?? []).filter(t => ["expense","transfer_out"].includes(t.type)).reduce((s, t) => s + t.amount, 0);
+
+  // ── CXC por moneda ────────────────────────────────────────
+  const cxc_por_moneda: Record<string, number> = {};
+  for (const r of (cxcRaw ?? [])) {
+    const cur = r.currency ?? "MXN";
+    cxc_por_moneda[cur] = (cxc_por_moneda[cur] ?? 0) + (r.balance ?? 0);
+  }
+
+  // ── CXP por moneda ────────────────────────────────────────
+  const cxp_por_moneda: Record<string, number> = {};
+  for (const r of (cxpRaw ?? [])) {
+    const cur = r.currency ?? "MXN";
+    cxp_por_moneda[cur] = (cxp_por_moneda[cur] ?? 0) + (r.balance ?? 0);
+  }
+
+  // ── Flujo del mes por moneda ──────────────────────────────
+  const flujo_por_moneda: Record<string, { ingresos: number; egresos: number; neto: number }> = {};
+  for (const tx of (txMes ?? [])) {
+    const cur = tx.currency ?? "MXN";
+    if (!flujo_por_moneda[cur]) flujo_por_moneda[cur] = { ingresos: 0, egresos: 0, neto: 0 };
+    if (["income","transfer_in"].includes(tx.type))   flujo_por_moneda[cur].ingresos += tx.amount;
+    if (["expense","transfer_out"].includes(tx.type)) flujo_por_moneda[cur].egresos  += tx.amount;
+    flujo_por_moneda[cur].neto = flujo_por_moneda[cur].ingresos - flujo_por_moneda[cur].egresos;
+  }
+
+  // ── Moneda principal (mayor saldo en banco) ───────────────
+  const moneda_principal = Object.entries(saldo_por_moneda).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "MXN";
+
+  // ── Totales moneda principal para proyección ──────────────
+  const saldo_bancos  = saldo_por_moneda[moneda_principal] ?? 0;
+  const cxc_pendiente = cxc_por_moneda[moneda_principal]   ?? 0;
+  const cxp_pendiente = cxp_por_moneda[moneda_principal]   ?? 0;
+  const ingresos_mes  = flujo_por_moneda[moneda_principal]?.ingresos ?? 0;
+  const egresos_mes   = flujo_por_moneda[moneda_principal]?.egresos  ?? 0;
   const flujo_neto_mes = ingresos_mes - egresos_mes;
 
-  // Proyección diaria: saldo actual + entradas CXC - salidas CXP por fecha de vencimiento
+  // ── Proyección 30/60/90 días (moneda principal) ───────────
   const addDays = (d: Date, n: number) => { const r = new Date(d); r.setDate(r.getDate() + n); return r; };
   const d30 = addDays(today, 30).toISOString().split("T")[0];
   const d60 = addDays(today, 60).toISOString().split("T")[0];
   const d90 = addDays(today, 90).toISOString().split("T")[0];
 
-  const cxc30  = (cxcFutura ?? []).filter(r => r.due_date! <= d30).reduce((s, r) => s + r.balance, 0);
-  const cxc60  = (cxcFutura ?? []).filter(r => r.due_date! <= d60).reduce((s, r) => s + r.balance, 0);
-  const cxc90  = (cxcFutura ?? []).filter(r => r.due_date! <= d90).reduce((s, r) => s + r.balance, 0);
-  const cxp30  = (cxpFutura ?? []).filter(r => r.due_date! <= d30).reduce((s, r) => s + r.balance, 0);
-  const cxp60  = (cxpFutura ?? []).filter(r => r.due_date! <= d60).reduce((s, r) => s + r.balance, 0);
-  const cxp90  = (cxpFutura ?? []).filter(r => r.due_date! <= d90).reduce((s, r) => s + r.balance, 0);
+  const filterByMonedaAndDate = (items: any[], date: string) =>
+    (items ?? []).filter(r => r.currency === moneda_principal && r.due_date! <= date)
+                 .reduce((s: number, r: any) => s + (r.balance ?? 0), 0);
+
+  const cxc30 = filterByMonedaAndDate(cxcFutura ?? [], d30);
+  const cxc60 = filterByMonedaAndDate(cxcFutura ?? [], d60);
+  const cxc90 = filterByMonedaAndDate(cxcFutura ?? [], d90);
+  const cxp30 = filterByMonedaAndDate(cxpFutura ?? [], d30);
+  const cxp60 = filterByMonedaAndDate(cxpFutura ?? [], d60);
+  const cxp90 = filterByMonedaAndDate(cxpFutura ?? [], d90);
 
   const saldo_30d = saldo_bancos + cxc30 - cxp30;
   const saldo_60d = saldo_bancos + cxc60 - cxp60;
   const saldo_90d = saldo_bancos + cxc90 - cxp90;
 
-  // Detectar primer día que cae negativo
   let dias_negativo: number | null = null;
   if (saldo_30d < 0) dias_negativo = 30;
   else if (saldo_60d < 0) dias_negativo = 60;
   else if (saldo_90d < 0) dias_negativo = 90;
 
   return {
-    saldo_bancos, saldo_por_moneda: saldoPorMoneda,
-    cxc_pendiente, cxp_pendiente,
+    saldo_por_moneda, cxc_por_moneda, cxp_por_moneda, flujo_por_moneda,
+    moneda_principal,
+    saldo_bancos, cxc_pendiente, cxp_pendiente,
     flujo_neto_mes, ingresos_mes, egresos_mes,
     saldo_30d, saldo_60d, saldo_90d, dias_negativo,
   };
