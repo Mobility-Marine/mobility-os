@@ -18,17 +18,19 @@ export default function CxPDashboard({ stats: s, suppliers, loading, onSupplierS
   const { lang, t } = useTranslation();
   const es  = lang !== "en";
   const cxp = (t as any).cxp ?? {};
-
   const totalBuckets = s.bucket_0_30 + s.bucket_31_60 + s.bucket_61_90 + s.bucket_90plus || 1;
 
   const RISK_CONFIG = {
     LOW:      { label: "Bajo",    color: "var(--color-success-text)", bg: "var(--color-success-bg)" },
     MEDIUM:   { label: "Medio",   color: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
-    HIGH:     { label: "Alto",    color: "#f97316",                  bg: "rgba(249,115,22,0.1)"    },
-    CRITICAL: { label: "Crítico", color: "var(--color-danger-text)", bg: "var(--color-danger-bg)"  },
+    HIGH:     { label: "Alto",    color: "#f97316",                   bg: "rgba(249,115,22,0.1)"   },
+    CRITICAL: { label: "Crítico", color: "var(--color-danger-text)",  bg: "var(--color-danger-bg)" },
   };
 
-  {/* ── KPIs por moneda ── */}
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+      {/* ── KPIs por moneda ── */}
       {Object.entries(s.por_moneda ?? {}).sort().map(([cur, v]) => (
         <div key={cur} style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "8px 18px", background: "var(--color-bg-subtle)", borderBottom: "1px solid var(--color-border-faint)", display: "flex", alignItems: "center", gap: "6px" }}>
@@ -55,16 +57,17 @@ export default function CxPDashboard({ stats: s, suppliers, loading, onSupplierS
           </div>
         </div>
       ))}
-      {/* Totales consolidados */}
+
+      {/* ── Totales consolidados + Por tipo ── */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", display: "flex", flexDirection: "column", gap: "8px" }}>
           <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>
             {es ? "Resumen consolidado" : "Consolidated summary"}
           </div>
           {[
-            { l: es ? "Total activo"    : "Total active",    v: "$" + fmt0(s.total_balance) },
-            { l: es ? "Vencido total"   : "Total overdue",   v: "$" + fmt0(s.total_overdue) },
-            { l: es ? "Obligaciones"    : "Obligations",     v: String(s.count_pending)     },
+            { l: es ? "Total activo"  : "Total active",  v: "$" + fmt0(s.total_balance) },
+            { l: es ? "Vencido total" : "Total overdue", v: "$" + fmt0(s.total_overdue) },
+            { l: es ? "Obligaciones"  : "Obligations",   v: String(s.count_pending)     },
           ].map(r => (
             <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "11px" }}>
               <span style={{ color: "var(--color-text-muted)" }}>{r.l}</span>
@@ -98,110 +101,41 @@ export default function CxPDashboard({ stats: s, suppliers, loading, onSupplierS
         </div>
       </div>
 
-      {/* Aging + Por tipo */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "16px" }}>
-        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "20px" }}>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "16px" }}>
-            {cxp.distribution ?? "Distribución por antigüedad"}
-          </div>
-          {/* Barra stacked */}
-          <div style={{ height: "24px", borderRadius: "var(--radius-md)", overflow: "hidden", display: "flex", marginBottom: "16px" }}>
-            {[
-              { pct: s.bucket_0_30   / totalBuckets, ...AP_AGING_CONFIG["0-30"]  },
-              { pct: s.bucket_31_60  / totalBuckets, ...AP_AGING_CONFIG["31-60"] },
-              { pct: s.bucket_61_90  / totalBuckets, ...AP_AGING_CONFIG["61-90"] },
-              { pct: s.bucket_90plus / totalBuckets, ...AP_AGING_CONFIG["+90"]   },
-            ].filter(b => b.pct > 0).map((b, i) => (
-              <div key={i} style={{ width: `${b.pct * 100}%`, background: b.color, transition: "width 0.5s" }} />
-            ))}
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px" }}>
-            {([
-              { key: "0-30",  amount: s.bucket_0_30,   count: s.count_0_30   },
-              { key: "31-60", amount: s.bucket_31_60,  count: s.count_31_60  },
-              { key: "61-90", amount: s.bucket_61_90,  count: s.count_61_90  },
-              { key: "+90",   amount: s.bucket_90plus, count: s.count_90plus },
-            ] as const).map(({ key, amount, count }) => {
-              const cfg = AP_AGING_CONFIG[key];
-              return (
-                <div key={key} style={{ padding: "10px", borderRadius: "var(--radius-md)", background: cfg.bg, border: `1px solid ${cfg.border}` }}>
-                  <div style={{ fontSize: "9px", fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>{cfg.labelEs}</div>
-                  <div style={{ fontSize: "15px", fontWeight: 800, color: cfg.color, fontVariantNumeric: "tabular-nums" }}>${fmt0(amount)}</div>
-                  <div style={{ fontSize: "10px", color: cfg.color, opacity: 0.8, marginTop: "2px" }}>{count} {es ? "cuentas" : "accounts"}</div>
-                </div>
-              );
-            })}
-          </div>
+      {/* ── Aging ── */}
+      <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "20px" }}>
+        <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "16px" }}>
+          {cxp.distribution ?? "Distribución por antigüedad"}
         </div>
-
-        {/* Por tipo + Acciones */}
-        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "20px", display: "flex", flexDirection: "column", gap: "12px" }}>
-          <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
-            {cxp.byType ?? "Por tipo de gasto"}
-          </div>
-          {(["procurement","logistics","operating"] as const).map((type) => {
-            const cfg   = AP_SUPPLIER_TYPE_CONFIG[type];
-            const amt   = s.by_type[type];
-            const total = s.total_balance || 1;
-            const pct   = (amt / total) * 100;
+        <div style={{ height: "24px", borderRadius: "var(--radius-md)", overflow: "hidden", display: "flex", marginBottom: "16px" }}>
+          {[
+            { pct: s.bucket_0_30   / totalBuckets, ...AP_AGING_CONFIG["0-30"]  },
+            { pct: s.bucket_31_60  / totalBuckets, ...AP_AGING_CONFIG["31-60"] },
+            { pct: s.bucket_61_90  / totalBuckets, ...AP_AGING_CONFIG["61-90"] },
+            { pct: s.bucket_90plus / totalBuckets, ...AP_AGING_CONFIG["+90"]   },
+          ].filter(b => b.pct > 0).map((b, i) => (
+            <div key={i} style={{ width: `${b.pct * 100}%`, background: b.color, transition: "width 0.5s" }} />
+          ))}
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "8px" }}>
+          {([
+            { key: "0-30",  amount: s.bucket_0_30,   count: s.count_0_30   },
+            { key: "31-60", amount: s.bucket_31_60,  count: s.count_31_60  },
+            { key: "61-90", amount: s.bucket_61_90,  count: s.count_61_90  },
+            { key: "+90",   amount: s.bucket_90plus, count: s.count_90plus },
+          ] as const).map(({ key, amount, count }) => {
+            const cfg = AP_AGING_CONFIG[key];
             return (
-              <div key={type}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "4px" }}>
-                  <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-second)" }}>
-                    {cfg.icon} {cfg.labelEs}
-                  </span>
-                  <span style={{ fontSize: "11px", fontWeight: 700, color: cfg.color, fontVariantNumeric: "tabular-nums" }}>
-                    ${fmt0(amt)}
-                  </span>
-                </div>
-                <div style={{ height: "6px", borderRadius: "3px", background: "var(--color-border-faint)", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${Math.min(pct, 100)}%`, background: cfg.color, borderRadius: "3px", transition: "width 0.5s" }} />
-                </div>
+              <div key={key} style={{ padding: "10px", borderRadius: "var(--radius-md)", background: cfg.bg, border: `1px solid ${cfg.border}` }}>
+                <div style={{ fontSize: "9px", fontWeight: 700, color: cfg.color, textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>{cfg.labelEs}</div>
+                <div style={{ fontSize: "15px", fontWeight: 800, color: cfg.color, fontVariantNumeric: "tabular-nums" }}>${fmt0(amount)}</div>
+                <div style={{ fontSize: "10px", color: cfg.color, opacity: 0.8, marginTop: "2px" }}>{count} {es ? "cuentas" : "accounts"}</div>
               </div>
             );
           })}
-          <div style={{ borderTop: "1px solid var(--color-border-faint)", paddingTop: "12px", marginTop: "4px" }}>
-            <button onClick={onNewPayable} style={{ width: "100%", height: "38px", borderRadius: "var(--radius-md)", background: "var(--color-danger-text)", color: "#fff", border: "none", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-              {cxp.newPayable ?? "+ Nueva cuenta por pagar"}
-            </button>
-          </div>
         </div>
       </div>
 
-      {/* ── Desglose por moneda ── */}
-      {Object.keys(s.por_moneda ?? {}).length > 0 && (
-        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
-          <div style={{ padding: "12px 20px", borderBottom: "1px solid var(--color-border-faint)", background: "var(--color-bg-subtle)" }}>
-            <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)" }}>
-              {es ? "Obligaciones por moneda" : "Payables by currency"}
-            </div>
-          </div>
-          <div style={{ display: "grid", gridTemplateColumns: `repeat(${Math.min(Object.keys(s.por_moneda).length, 4)}, 1fr)` }}>
-            {Object.entries(s.por_moneda).sort().map(([cur, v], i, arr) => (
-              <div key={cur} style={{ padding: "16px 20px", borderRight: i < arr.length - 1 ? "1px solid var(--color-border-faint)" : "none" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "10px" }}>
-                  <span style={{ fontSize: "16px" }}>{cur === "MXN" ? "🇲🇽" : cur === "USD" ? "🇺🇸" : cur === "EUR" ? "🇪🇺" : "💱"}</span>
-                  <span style={{ fontSize: "13px", fontWeight: 800, color: "var(--color-text-primary)" }}>{cur}</span>
-                  <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>· {v.count} {es ? "docs" : "docs"}</span>
-                </div>
-                {[
-                  { l: es ? "Por pagar"  : "Payable",    v: v.balance, color: "var(--color-danger-text)"  },
-                  { l: es ? "Vencido"    : "Overdue",    v: v.overdue, color: v.overdue > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)" },
-                  { l: es ? "Pagado mes" : "Paid month", v: v.paid,    color: "var(--color-success-text)" },
-                ].map(r => (
-                  <div key={r.l} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-                    <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{r.l}</span>
-                    <span style={{ fontSize: "12px", fontWeight: 800, color: r.color, fontVariantNumeric: "tabular-nums" }}>
-                      {cur} ${fmt(r.v)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {/* Top proveedores */}
+      {/* ── Top proveedores ── */}
       {suppliers.length > 0 && (
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "14px 20px", borderBottom: "1px solid var(--color-border-faint)" }}>
@@ -255,6 +189,7 @@ export default function CxPDashboard({ stats: s, suppliers, loading, onSupplierS
           })}
         </div>
       )}
+
     </div>
   );
 }
