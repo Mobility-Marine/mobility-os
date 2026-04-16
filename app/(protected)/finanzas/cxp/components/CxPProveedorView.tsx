@@ -30,7 +30,8 @@ export default function CxPProveedorView({ suppliers, preselected, onPay, onNew 
   const [supTab,         setSupTab]         = useState<SupTab>("overview");
   const [loading,        setLoading]        = useState(false);
   const [generatingPDF,  setGeneratingPDF]  = useState(false);
-  const [search,         setSearch]         = useState("");
+  const [search,      setSearch]      = useState("");
+  const [typeFilter,  setTypeFilter]  = useState<"all" | "logistics" | "procurement" | "operating">("all");
 
   const loadSupplier = useCallback(async (s: SupplierAPSummary) => {
     if (!companyId) return;
@@ -73,8 +74,9 @@ export default function CxPProveedorView({ suppliers, preselected, onPay, onNew 
   }
 
   const filtered = suppliers.filter(s =>
-    s.supplier_name.toLowerCase().includes(search.toLowerCase()) ||
-    (s.supplier_rfc ?? "").toLowerCase().includes(search.toLowerCase())
+    (typeFilter === "all" || s.supplier_type === typeFilter) &&
+    (s.supplier_name.toLowerCase().includes(search.toLowerCase()) ||
+     (s.supplier_rfc ?? "").toLowerCase().includes(search.toLowerCase()))
   );
 
   const RISK_COLORS = {
@@ -92,10 +94,21 @@ export default function CxPProveedorView({ suppliers, preselected, onPay, onNew 
 
       {/* Lista proveedores */}
       <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "12px 14px", borderBottom: "1px solid var(--color-border-faint)" }}>
+        <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", flexDirection: "column", gap: "6px" }}>
           <input value={search} onChange={e => setSearch(e.target.value)}
             placeholder={es ? "Buscar proveedor…" : "Search supplier…"}
-            style={{ width: "100%", height: "34px", padding: "0 10px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" }} />
+            style={{ width: "100%", height: "32px", padding: "0 10px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" }} />
+          <div style={{ display: "flex", gap: "4px" }}>
+            {([["all","Todos"],["logistics","🚛"],["procurement","📦"],["operating","🏢"]] as const).map(([val, label]) => (
+              <button key={val} onClick={() => setTypeFilter(val)}
+                style={{ flex: 1, height: "24px", borderRadius: "var(--radius-sm)", border: `1px solid ${typeFilter === val ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`, background: typeFilter === val ? "var(--color-info-bg)" : "var(--color-bg-subtle)", color: typeFilter === val ? "var(--color-brand-blue)" : "var(--color-text-muted)", fontSize: "10px", fontWeight: typeFilter === val ? 700 : 400, cursor: "pointer" }}>
+                {label}
+              </button>
+            ))}
+          </div>
+          <div style={{ fontSize: "10px", color: "var(--color-text-muted)", textAlign: "right" }}>
+            {filtered.length} {es ? "proveedores" : "suppliers"}
+          </div>
         </div>
         <div style={{ flex: 1, overflowY: "auto" }}>
           {filtered.map((s, i) => {
