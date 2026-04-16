@@ -10,6 +10,7 @@ import CxPCartera    from "./components/CxPCartera";
 import CxPPendientes from "./components/CxPPendientes";
 import CxPPagoDrawer from "./components/CxPPagoDrawer";
 import CxPNewDrawer  from "./components/CxPNewDrawer";
+import CxPProveedorView from "./components/CxPProveedorView";
 
 type Tab = "dashboard" | "cartera" | "proveedores" | "pendientes";
 
@@ -120,9 +121,12 @@ export default function CxPPage() {
         />
       )}
       {tab === "proveedores" && (
-        <div style={{ padding: "20px", background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
-          Vista por proveedor — próximamente
-        </div>
+        <CxPProveedorView
+          suppliers={ctrl.supplierSummaries}
+          preselected={preselected}
+          onPay={openPayment}
+          onNew={() => { setPreloadShip(null); setPreloadPO(null); setNewOpen(true); }}
+        />
       )}
       {tab === "pendientes" && (
         <CxPPendientes
