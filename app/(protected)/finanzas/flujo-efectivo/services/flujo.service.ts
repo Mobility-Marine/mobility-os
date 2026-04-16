@@ -1,7 +1,8 @@
 import { supabase } from "@/lib/supabaseClient";
 
 export type FlujoPosicion = {
-  saldo_bancos:      number;
+  saldo_bancos:       number;
+  saldo_por_moneda:   Record<string, number>;
   cxc_pendiente:     number;
   cxp_pendiente:     number;
   flujo_neto_mes:    number;
@@ -52,7 +53,13 @@ export async function fetchFlujoPosicion(companyId: string): Promise<FlujoPosici
     supabase.from("accounts_payable").select("balance, due_date").eq("company_id", companyId).in("status", ["pending","partial"]).not("due_date", "is", null),
   ]);
 
-  const saldo_bancos   = (bancos ?? []).reduce((s, b) => s + (b.current_balance ?? 0), 0);
+  // Agrupar saldo por moneda — nunca mezclar MXN con USD
+  const saldoPorMoneda: Record<string, number> = {};
+  for (const b of (bancos ?? [])) {
+    const cur = b.currency ?? "MXN";
+    saldoPorMoneda[cur] = (saldoPorMoneda[cur] ?? 0) + (b.current_balance ?? 0);
+  }
+  const saldo_bancos = saldoPorMoneda["MXN"] ?? saldoPorMoneda[Object.keys(saldoPorMoneda)[0]] ?? 0;
   const cxc_pendiente  = (cxc    ?? []).reduce((s, r) => s + (r.balance ?? 0), 0);
   const cxp_pendiente  = (cxp    ?? []).reduce((s, r) => s + (r.balance ?? 0), 0);
   const ingresos_mes   = (txMes  ?? []).filter(t => ["income","transfer_in"].includes(t.type)).reduce((s, t) => s + t.amount, 0);
@@ -83,7 +90,8 @@ export async function fetchFlujoPosicion(companyId: string): Promise<FlujoPosici
   else if (saldo_90d < 0) dias_negativo = 90;
 
   return {
-    saldo_bancos, cxc_pendiente, cxp_pendiente,
+    saldo_bancos, saldo_por_moneda: saldoPorMoneda,
+    cxc_pendiente, cxp_pendiente,
     flujo_neto_mes, ingresos_mes, egresos_mes,
     saldo_30d, saldo_60d, saldo_90d, dias_negativo,
   };
