@@ -125,23 +125,6 @@ export async function fetchARStats(companyId: string): Promise<ARStats> {
   const daily_revenue = revenue90 > 0 ? revenue90 / 90 : 1;
   const dso = Math.round(total_balance / daily_revenue);
 
-  // Agrupar por moneda
-  const por_moneda: Record<string, { balance: number; overdue: number; collected: number; count: number }> = {};
-  for (const r of records) {
-    const cur = (r as any).currency ?? "MXN";
-    if (!por_moneda[cur]) por_moneda[cur] = { balance: 0, overdue: 0, collected: 0, count: 0 };
-    if (r.status !== "paid") {
-      por_moneda[cur].balance += r.balance;
-      if ((r.days_overdue ?? 0) > 0) por_moneda[cur].overdue += r.balance;
-      por_moneda[cur].count++;
-    }
-  }
-  for (const p of (paidMonth ?? [])) {
-    const cur = (p as any).currency ?? "MXN";
-    if (!por_moneda[cur]) por_moneda[cur] = { balance: 0, overdue: 0, collected: 0, count: 0 };
-    por_moneda[cur].collected += p.amount;
-  }
-
   // Desglose por moneda
   const por_moneda: Record<string, { balance: number; overdue: number; collected: number; count: number }> = {};
   for (const r of active) {
