@@ -2,17 +2,29 @@
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { CFDIDocument, FacturacionStats } from "../types/facturacion.types";
 
-type Props = {
-  stats:   FacturacionStats;
-  cfdis:   CFDIDocument[];
-  loading: boolean;
-  onSelect:(c: CFDIDocument) => void;
-  onEmitir:() => void;
+type PendingShipment = {
+  id:           string;
+  reference:    string;
+  service_type: string;
+  currency:     string;
+  total:        number;
+  client?:      { name: string } | null;
+  quotation?:   { quote_number: string } | null;
 };
 
-const fmt  = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+type Props = {
+  stats:             FacturacionStats;
+  cfdis:             CFDIDocument[];
+  loading:           boolean;
+  pendingShipments:  PendingShipment[];
+  onSelect:          (c: CFDIDocument) => void;
+  onEmitir:          () => void;
+  onFacturarEmbarque:(s: PendingShipment) => void;
+};
 
-export default function FacturacionDashboard({ stats: s, cfdis, loading, onSelect, onEmitir }: Props) {
+const fmt = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+export default function FacturacionDashboard({ stats: s, cfdis, loading, pendingShipments, onSelect, onEmitir, onFacturarEmbarque }: Props) {
   const { lang } = useTranslation();
   const es = lang !== "en";
 
@@ -59,13 +71,18 @@ export default function FacturacionDashboard({ stats: s, cfdis, loading, onSelec
     T: { color: "var(--color-text-muted)",   bg: "var(--color-bg-subtle)"  },
     N: { color: "#7c3aed",                   bg: "#ede9fe"                 },
   };
-
   const TYPE_LABELS: Record<string, { es: string; en: string }> = {
-    I: { es: "Factura",  en: "Invoice"  },
-    E: { es: "N.Crédito",en: "Credit"   },
-    P: { es: "Pago",     en: "Payment"  },
-    T: { es: "Traslado", en: "Transfer" },
-    N: { es: "Nómina",   en: "Payroll"  },
+    I: { es: "Factura",   en: "Invoice"  },
+    E: { es: "N.Crédito", en: "Credit"   },
+    P: { es: "Pago",      en: "Payment"  },
+    T: { es: "Traslado",  en: "Transfer" },
+    N: { es: "Nómina",    en: "Payroll"  },
+  };
+
+  const SVC_ICONS: Record<string, string> = {
+    terrestre_mx: "🚛", terrestre_usa: "🚛", maritimo: "🚢", aereo: "✈️",
+    multimodal: "🔄", almacenaje: "🏭", aduanal: "📋", consultoria: "💼",
+    seguro: "🛡️", otro: "📦",
   };
 
   return (
@@ -85,6 +102,55 @@ export default function FacturacionDashboard({ stats: s, cfdis, loading, onSelec
         ))}
       </div>
 
+      {/* ── SERVICIOS PENDIENTES DE FACTURAR ── */}
+      {pendingShipments.length > 0 && (
+        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+          <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(245,158,11,0.05)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "16px" }}>⚡</span>
+              <div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-warning-text)" }}>
+                  {pendingShipments.length} {es ? "servicio(s) completados pendientes de facturar" : "completed service(s) pending invoicing"}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "1px" }}>
+                  {es ? "Haz clic en Facturar para generar el CFDI precargado" : "Click Invoice to generate pre-filled CFDI"}
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize: "18px", fontWeight: 900, color: "var(--color-warning-text)", fontVariantNumeric: "tabular-nums" }}>
+              ${fmt(pendingShipments.reduce((s, sh) => s + sh.total, 0))}
+            </div>
+          </div>
+          {pendingShipments.map((sh, i) => (
+            <div key={sh.id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "11px 18px", borderBottom: i < pendingShipments.length - 1 ? "1px solid var(--color-border-faint)" : "none" }}>
+              <span style={{ fontSize: "18px", flexShrink: 0 }}>{SVC_ICONS[sh.service_type] ?? "📦"}</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--color-text-primary)", fontFamily: "monospace" }}>{sh.reference}</span>
+                  {sh.quotation?.quote_number && (
+                    <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>← {sh.quotation.quote_number}</span>
+                  )}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "1px" }}>
+                  {sh.client?.name ?? "—"} · {sh.service_type.replace(/_/g, " ")}
+                </div>
+              </div>
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <div style={{ fontSize: "13px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
+                  {sh.currency} ${fmt(sh.total)}
+                </div>
+              </div>
+              <button
+                onClick={() => onFacturarEmbarque(sh)}
+                style={{ height: "30px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-warning-text)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
+              >
+                ⚡ {es ? "Facturar" : "Invoice"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Alerta PPD */}
       {ppd_pending.length > 0 && (
         <div style={{ padding: "12px 16px", borderRadius: "var(--radius-md)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px" }}>
@@ -103,10 +169,9 @@ export default function FacturacionDashboard({ stats: s, cfdis, loading, onSelec
 
       {/* Últimos CFDIs + Acciones rápidas */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "16px" }}>
-
         {/* Recientes */}
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
-          <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--color-border-faint)" }}>
             <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
               {es ? "CFDIs recientes" : "Recent CFDIs"}
             </div>
@@ -124,16 +189,14 @@ export default function FacturacionDashboard({ stats: s, cfdis, loading, onSelec
               const tl = TYPE_LABELS[cfdi.type] ?? TYPE_LABELS.I;
               return (
                 <div key={cfdi.id} onClick={() => onSelect(cfdi)}
-                  style={{ display: "flex", alignItems: "center", gap: "12px", padding: "11px 18px", borderBottom: i < recent.length - 1 ? "1px solid var(--color-border-faint)" : "none", cursor: "pointer", transition: "background 0.1s" }}
+                  style={{ display: "flex", alignItems: "center", gap: "12px", padding: "11px 18px", borderBottom: i < recent.length - 1 ? "1px solid var(--color-border-faint)" : "none", cursor: "pointer" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-bg-subtle)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
                   <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 7px", borderRadius: "var(--radius-full)", background: tc.bg, color: tc.color, flexShrink: 0 }}>
                     {es ? tl.es : tl.en}
                   </span>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                      {cfdi.receiver_name}
-                    </div>
+                    <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cfdi.receiver_name}</div>
                     <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "1px" }}>
                       {cfdi.serie ?? ""}{cfdi.folio ?? "—"} · {new Date(cfdi.cfdi_date).toLocaleDateString(es ? "es-MX" : "en-US", { month: "short", day: "2-digit" })}
                     </div>
@@ -156,12 +219,12 @@ export default function FacturacionDashboard({ stats: s, cfdis, loading, onSelec
             {es ? "Acciones rápidas" : "Quick actions"}
           </div>
           {[
-            { labelEs: "Emitir nueva factura",      labelEn: "Issue new invoice",      action: "factura",   color: "var(--color-brand-blue)" },
-            { labelEs: "Complemento de pago (REP)", labelEn: "Payment complement",     action: "rep",       color: "var(--color-success-text)" },
-            { labelEs: "Nota de crédito",           labelEn: "Credit note",            action: "credito",   color: "var(--color-warning-text)" },
+            { labelEs: "Emitir nueva factura",      labelEn: "Issue new invoice",   color: "var(--color-brand-blue)"   },
+            { labelEs: "Complemento de pago (REP)", labelEn: "Payment complement",  color: "var(--color-success-text)" },
+            { labelEs: "Nota de crédito",           labelEn: "Credit note",         color: "var(--color-warning-text)" },
           ].map((a) => (
-            <button key={a.action} onClick={onEmitir}
-              style={{ height: "38px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", color: "var(--color-text-second)", fontSize: "12px", fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: "8px", transition: "all 0.1s" }}
+            <button key={a.labelEs} onClick={onEmitir}
+              style={{ height: "38px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", color: "var(--color-text-second)", fontSize: "12px", fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: "8px" }}
               onMouseEnter={(e) => { e.currentTarget.style.borderColor = a.color; e.currentTarget.style.color = a.color; }}
               onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--color-border-faint)"; e.currentTarget.style.color = "var(--color-text-second)"; }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -173,9 +236,9 @@ export default function FacturacionDashboard({ stats: s, cfdis, loading, onSelec
               {es ? "Este mes" : "This month"}
             </div>
             {[
-              { l: es ? "Facturas"      : "Invoices",   v: String(s.count_month)    },
-              { l: es ? "Facturado"     : "Billed",     v: "$" + fmt(s.total_month) },
-              { l: es ? "Por cobrar"    : "Receivable", v: "$" + fmt(total_ppd)     },
+              { l: es ? "Facturas"   : "Invoices",   v: String(s.count_month)    },
+              { l: es ? "Facturado"  : "Billed",     v: "$" + fmt(s.total_month) },
+              { l: es ? "Por cobrar" : "Receivable", v: "$" + fmt(total_ppd)     },
             ].map((r) => (
               <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
                 <span style={{ color: "var(--color-text-muted)" }}>{r.l}</span>
