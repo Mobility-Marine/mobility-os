@@ -127,7 +127,7 @@ export default function CxCDashboard({ stats: s, clients, loading, onClientSelec
           </div>
           {[
             { es: "Registrar pago recibido",   en: "Register received payment",  action: onNewPayment, color: "var(--color-success-text)" },
-            { es: "Sincronizar CFDIs PPD",     en: "Sync PPD invoices",          action: onSync,       color: "var(--color-brand-blue)",   loading: syncing },
+            { es: "Sincronizar CFDIs a CxC", en: "Sync CFDIs to AR", action: onSync, color: "var(--color-brand-blue)", loading: syncing },
           ].map((a, i) => (
             <button key={i} onClick={a.action} disabled={a.loading}
               style={{ height: "40px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", color: "var(--color-text-second)", fontSize: "12px", fontWeight: 600, cursor: "pointer", textAlign: "left", display: "flex", alignItems: "center", gap: "8px", transition: "all 0.1s", opacity: a.loading ? 0.6 : 1 }}
