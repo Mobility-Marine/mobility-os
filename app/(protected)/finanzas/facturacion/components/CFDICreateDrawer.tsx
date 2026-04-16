@@ -166,10 +166,10 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
       currency:        preloadShipment.currency        ?? "MXN",
       notes:           `Ref. ${preloadShipment.reference}`,
       concepts: (preloadShipment.services ?? []).map((svc) => ({
-        product_key:  "84111506",
-        unit_key:     "E48",
+        product_key:  (svc as any).sat_product_code ?? "84111506",
+        unit_key:     (svc as any).sat_unit_code    ?? "E48",
         description:  svc.description,
-        unit:         "Servicio",
+        unit:         (svc as any).unit             ?? "Servicio",
         quantity:     1,
         unit_price:   svc.price,
         discount_pct: 0,
