@@ -16,6 +16,7 @@ export function useCxPController(companyId: string, userId: string) {
     bucket_0_30: 0, bucket_31_60: 0, bucket_61_90: 0, bucket_90plus: 0,
     count_0_30: 0, count_31_60: 0, count_61_90: 0, count_90plus: 0,
     by_type: { procurement: 0, logistics: 0, operating: 0 },
+    por_moneda: {},
   });
   const [supplierSummaries,setSupplierSummaries]= useState<SupplierAPSummary[]>([]);
   const [pendingShipments, setPendingShipments] = useState<any[]>([]);
