@@ -24,8 +24,9 @@ export default function CxCPage() {
   const [tab,    setTab]    = useState<Tab>("dashboard");
   const [pagoAR, setPagoAR] = useState<AccountReceivable | null>(null);
   const [actAR,  setActAR]  = useState<AccountReceivable | null>(null);
-  const [pagoOpen, setPagoOpen] = useState(false);
-  const [actOpen,  setActOpen]  = useState(false);
+  const [pagoOpen,          setPagoOpen]          = useState(false);
+  const [actOpen,           setActOpen]            = useState(false);
+  const [preselectedClient, setPreselectedClient]  = useState<any | null>(null);
   const [syncMsg,  setSyncMsg]  = useState<string | null>(null);
 
   useEffect(() => {
@@ -125,7 +126,7 @@ export default function CxCPage() {
           stats={ctrl.stats}
           clients={ctrl.clientSummaries}
           loading={ctrl.loading}
-          onClientSelect={(c) => { setTab("clientes"); }}
+          onClientSelect={(c) => { setPreselectedClient(c); setTab("clientes"); }}
           onNewPayment={() => setPagoOpen(true)}
           onSync={handleSync}
           syncing={ctrl.syncing}
@@ -154,11 +155,12 @@ export default function CxCPage() {
       {tab === "clientes" && (
         <CxCClienteView
           clients={ctrl.clientSummaries}
+          preselectedClient={preselectedClient}
           onPay={openPayment}
           onActivity={openActivity}
         />
       )}
-
+      
       {/* DRAWERS */}
       <CxCPagoDrawer
         open={pagoOpen}
