@@ -770,8 +770,8 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
                       </div>
                       {/* Acciones */}
                       <div style={{ display: "flex", gap: "5px", flexShrink: 0 }}>
-                      {doc.file_url && (
-                          
+                     {doc.file_url && (
+                          <a
                             href={doc.file_url}
                             target="_blank"
                             rel="noopener noreferrer"
