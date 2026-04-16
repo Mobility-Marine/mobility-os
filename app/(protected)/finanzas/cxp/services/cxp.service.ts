@@ -71,7 +71,7 @@ export async function fetchAPStats(companyId: string): Promise<APStats> {
   const first   = new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split("T")[0];
 
   const { data: paidMonth } = await supabase
-    .from("ap_payments").select("amount")
+    .from("ap_payments").select("amount, currency")
     .eq("company_id", companyId).gte("payment_date", first);
 
   const paid_month   = (paidMonth ?? []).reduce((s, p) => s + p.amount, 0);
@@ -84,7 +84,20 @@ export async function fetchAPStats(companyId: string): Promise<APStats> {
   const b1  = active.filter(r => r.aging_bucket === "31-60");
   const b2  = active.filter(r => r.aging_bucket === "61-90");
   const b3  = active.filter(r => r.aging_bucket === "+90");
-
+  // Agrupar por moneda
+  const por_moneda: Record<string, { balance: number; overdue: number; paid: number; count: number }> = {};
+  for (const r of records) {
+    const cur = (r as any).currency ?? "MXN";
+    if (!por_moneda[cur]) por_moneda[cur] = { balance: 0, overdue: 0, paid: 0, count: 0 };
+    por_moneda[cur].balance += r.balance;
+    if ((r.days_due ?? 0) > 0) por_moneda[cur].overdue += r.balance;
+    por_moneda[cur].count++;
+  }
+  for (const p of (paidMonth ?? [])) {
+    const cur = (p as any).currency ?? "MXN";
+    if (!por_moneda[cur]) por_moneda[cur] = { balance: 0, overdue: 0, paid: 0, count: 0 };
+    por_moneda[cur].paid += p.amount;
+  }
   return {
     total_balance, total_overdue, paid_month,
     count_pending:  active.length,
@@ -100,6 +113,7 @@ export async function fetchAPStats(companyId: string): Promise<APStats> {
       logistics:   active.filter(r => r.supplier_type === "logistics").reduce((s, r) => s + r.balance, 0),
       operating:   active.filter(r => r.supplier_type === "operating").reduce((s, r) => s + r.balance, 0),
     },
+    por_moneda,
   };
 }
 
