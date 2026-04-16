@@ -290,6 +290,13 @@ export default function CxPProveedorView({ suppliers, preselected, onPay, onNew 
                       <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 7px", borderRadius: "var(--radius-full)", background: sc.bg, color: sc.color }}>
                         {sc.labelEs}
                       </span>
+                      {(ap as any).pdf_url && (
+                        <a href={(ap as any).pdf_url} target="_blank" rel="noopener noreferrer"
+                          style={{ height: "26px", padding: "0 8px", borderRadius: "var(--radius-md)", background: "var(--color-bg-base)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", fontSize: "10px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "3px", textDecoration: "none" }}>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                          PDF
+                        </a>
+                      )}
                       {ap.balance > 0 && (
                         <button onClick={() => onPay(ap)}
                           style={{ height: "26px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", color: "var(--color-success-text)", fontSize: "10px", fontWeight: 700, cursor: "pointer" }}>
