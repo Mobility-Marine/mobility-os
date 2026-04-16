@@ -81,7 +81,6 @@ export default function FacturacionPage() {
 
 async function handleFacturarEmbarque(shipment: any) {
     if (!companyId) return;
-    // Cargar datos del cliente para precargar el drawer
     const { data: sh } = await supabase
       .from("shipments")
       .select(`
@@ -92,6 +91,27 @@ async function handleFacturarEmbarque(shipment: any) {
       .eq("id", shipment.id)
       .single();
     if (!sh) return;
+
+    // Si no hay líneas en shipment_services, buscar en quotation_services
+    let services = (sh.services ?? []) as any[];
+    if (services.length === 0 && sh.quotation_id) {
+      const { data: qsvcs } = await supabase
+        .from("quotation_services")
+        .select("description, price, currency")
+        .eq("quotation_id", sh.quotation_id)
+        .order("sort_order");
+      services = qsvcs ?? [];
+    }
+
+    // Si aún no hay servicios, crear una línea con el total del embarque
+    if (services.length === 0) {
+      services = [{
+        description: `Servicio logístico — ${sh.reference}`,
+        price:       sh.total ?? 0,
+        currency:    sh.currency ?? "MXN",
+      }];
+    }
+
     setPreloadShipment({
       reference:       sh.reference,
       client_id:       sh.client_id,
@@ -102,10 +122,10 @@ async function handleFacturarEmbarque(shipment: any) {
       receiver_regime: (sh.client as any)?.tax_regime    ?? "601",
       currency:        sh.currency ?? "MXN",
       total:           sh.total,
-      services:        (sh.services ?? []).map((s: any) => ({
+      services:        services.map((s: any) => ({
         description: s.description,
         price:       s.price,
-        currency:    s.currency,
+        currency:    s.currency ?? sh.currency ?? "MXN",
       })),
     });
     setSelectedCFDIType({ id: "factura" } as any);
