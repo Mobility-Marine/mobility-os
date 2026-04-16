@@ -161,14 +161,13 @@ export async function addItem(
 ): Promise<QuotationItem> {
   const subtotal = payload.quantity * payload.unit_price * (1 - (payload.discount_pct ?? 0) / 100);
   // DESPUÉS:
-  const sort_order = payload.sort_order ?? 
-    ((await supabase
-      .from("quotation_services")
-      .select("sort_order")
-      .eq("quotation_id", payload.quotation_id)
-      .order("sort_order", { ascending: false })
-      .limit(1)
-      .then(({ data }) => data?.[0]?.sort_order ?? -1)) + 1);
+  const { data: existing } = await supabase
+    .from("quotation_items")
+    .select("sort_order")
+    .eq("quotation_id", payload.quotation_id)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+  const sort_order = (existing?.[0]?.sort_order ?? -1) + 1;
   const { data, error } = await supabase
     .from("quotation_items")
     .insert({
