@@ -1,11 +1,12 @@
 import { supabase } from "@/lib/supabaseClient";
 
 export type FlujoPosicion = {
-  saldo_por_moneda:    Record<string, number>;  // { MXN: 12500, USD: 1800 }
-  cxc_por_moneda:      Record<string, number>;  // { MXN: 4879, USD: 0 }
-  cxp_por_moneda:      Record<string, number>;  // { MXN: 0, USD: 2438 }
+  saldo_por_moneda:    Record<string, number>;
+  cxc_por_moneda:      Record<string, number>;
+  cxp_por_moneda:      Record<string, number>;
   flujo_por_moneda:    Record<string, { ingresos: number; egresos: number; neto: number }>;
-  saldo_bancos:        number;   // solo para compatibilidad proyección (moneda principal)
+  moneda_principal:    string;
+  saldo_bancos:        number;
   cxc_pendiente:       number;
   cxp_pendiente:       number;
   flujo_neto_mes:      number;
@@ -15,8 +16,6 @@ export type FlujoPosicion = {
   saldo_60d:           number;
   saldo_90d:           number;
   dias_negativo:       number | null;
-  moneda_principal:    string;   // moneda con mayor saldo
-  saldo_por_moneda:    Record<string, number>;
 };
 
 export type FlujoHistorico = {
