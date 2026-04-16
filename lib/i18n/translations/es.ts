@@ -41,7 +41,6 @@ export const es = {
     inventory:       "Inventario y suministro",
     economic:        "Control económico",
     platformSupport: "Plataforma y soporte",
-    fixedAssets:     "Activos Fijos",
   },
 
   dashboard: {
@@ -303,6 +302,7 @@ export const es = {
     rfq:                "Cotizaciones RFQ",
     cashFlow:  "Flujo de Efectivo",
     employees: "Empleados",
+    fixedAssets:     "Activos Fijos",
   },
 
   prospects: {
