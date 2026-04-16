@@ -140,13 +140,15 @@ function ProveedorFacturaPanel({
           .eq("id", ap.id);
       }
 
-      // Sumar TODAS las facturas de proveedor de este embarque
-      const { data: allAP } = await sb
+      // Sumar facturas previas + la que acabamos de insertar (evita race condition)
+      const currentTotal = parseFloat(form.total);
+      const { data: prevAP } = await sb
         .from("accounts_payable")
         .select("total")
         .eq("related_shipment_id", shipment.id)
+        .neq("id", ap.id)
         .neq("status", "cancelled");
-      const totalProviderCost = (allAP ?? []).reduce((s: number, r: any) => s + (r.total ?? 0), 0);
+      const totalProviderCost = (prevAP ?? []).reduce((s: number, r: any) => s + (r.total ?? 0), 0) + currentTotal;
       const { data: sh } = await sb.from("shipments").select("total").eq("id", shipment.id).single();
       await sb.from("shipments").update({
         provider_cost: totalProviderCost,
