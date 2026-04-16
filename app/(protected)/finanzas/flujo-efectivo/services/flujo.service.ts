@@ -45,7 +45,7 @@ export async function fetchFlujoPosicion(companyId: string): Promise<FlujoPosici
     { data: cxcFutura },
     { data: cxpFutura },
   ] = await Promise.all([
-    supabase.from("bank_accounts").select("current_balance").eq("company_id", companyId).eq("is_active", true),
+    supabase.from("bank_accounts").select("current_balance, currency").eq("company_id", companyId).eq("is_active", true),
     supabase.from("accounts_receivable").select("balance").eq("company_id", companyId).in("status", ["pending","partial"]),
     supabase.from("accounts_payable").select("balance").eq("company_id", companyId).in("status", ["pending","partial"]),
     supabase.from("bank_transactions").select("type, amount").eq("company_id", companyId).gte("transaction_date", firstDay).lte("transaction_date", todayStr),
