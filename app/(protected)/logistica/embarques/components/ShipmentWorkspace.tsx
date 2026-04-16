@@ -14,6 +14,171 @@ import type { ShipmentDocument, DocCategory } from "../../../logistica/documenta
 import { DOC_CATEGORY_CONFIG, DOC_STATUS_CONFIG } from "../../../logistica/documentacion/types/docs.types";
 import { useRef, useEffect } from "react";
 
+// ── PANEL FACTURA PROVEEDOR ───────────────────────────────────
+function ProveedorFacturaPanel({
+  shipment, companyId, onCreated,
+}: {
+  shipment: Shipment;
+  companyId: string;
+  onCreated: () => Promise<void>;
+}) {
+  const [hasAP,    setHasAP]    = useState<boolean | null>(null);
+  const [open,     setOpen]     = useState(false);
+  const [saving,   setSaving]   = useState(false);
+  const [providers, setProviders] = useState<{ id: string; name: string; rfc?: string }[]>([]);
+  const [form, setForm] = useState({
+    logistics_provider_id: shipment.provider_id ?? "",
+    supplier_name:  (shipment as any).provider?.name ?? "",
+    supplier_rfc:   "",
+    document_number:"",
+    document_date:  new Date().toISOString().split("T")[0],
+    due_date:       "",
+    currency:       shipment.currency ?? "USD",
+    subtotal:       "",
+    tax_amount:     "",
+    total:          String(shipment.provider_cost > 0 ? shipment.provider_cost : ""),
+  });
+
+  const { supabase } = require("@/lib/supabaseClient");
+
+  useEffect(() => {
+    // Verificar si ya existe AP
+    supabase.from("accounts_payable")
+      .select("id").eq("related_shipment_id", shipment.id).limit(1)
+      .then(({ data }: any) => setHasAP((data ?? []).length > 0));
+    // Cargar proveedores logísticos
+    supabase.from("logistics_providers")
+      .select("id, name, rfc").eq("company_id", companyId).eq("is_active", true).order("name")
+      .then(({ data }: any) => setProviders(data ?? []));
+  }, [shipment.id, companyId]);
+
+  if (hasAP === null) return null;
+  if (hasAP) return (
+    <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", fontSize: "12px", color: "var(--color-success-text)", display: "flex", alignItems: "center", gap: "8px" }}>
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      Factura de proveedor registrada en Cuentas por Pagar
+    </div>
+  );
+
+  function selectProvider(id: string) {
+    const p = providers.find(x => x.id === id);
+    setForm(f => ({ ...f, logistics_provider_id: id, supplier_name: p?.name ?? "", supplier_rfc: p?.rfc ?? "" }));
+  }
+
+  function calcTotals(field: "subtotal" | "total", val: string) {
+    const n = parseFloat(val) || 0;
+    if (field === "total") {
+      setForm(f => ({ ...f, total: val, subtotal: (n / 1.16).toFixed(2), tax_amount: (n - n / 1.16).toFixed(2) }));
+    } else {
+      setForm(f => ({ ...f, subtotal: val, tax_amount: (n * 0.16).toFixed(2), total: (n * 1.16).toFixed(2) }));
+    }
+  }
+
+  async function handleSave() {
+    if (!form.supplier_name || !form.total) return;
+    setSaving(true);
+    try {
+      const { data: user } = await supabase.auth.getUser();
+      await supabase.from("accounts_payable").insert({
+        company_id:            companyId,
+        logistics_provider_id: form.logistics_provider_id || null,
+        supplier_type:         "logistics",
+        supplier_name:         form.supplier_name,
+        supplier_rfc:          form.supplier_rfc || null,
+        document_type:         "invoice",
+        document_number:       form.document_number || null,
+        document_date:         form.document_date,
+        due_date:              form.due_date || null,
+        currency:              form.currency,
+        subtotal:              parseFloat(form.subtotal) || 0,
+        tax_amount:            parseFloat(form.tax_amount) || 0,
+        total:                 parseFloat(form.total),
+        balance:               parseFloat(form.total),
+        status:                "pending",
+        payment_status:        "not_scheduled",
+        related_shipment_id:   shipment.id,
+        notes:                 `Servicio logístico — ${shipment.reference}`,
+        created_by:            user.user?.id ?? null,
+      });
+      setHasAP(true);
+      setOpen(false);
+      await onCreated();
+    } finally { setSaving(false); }
+  }
+
+  const INPUT_S: React.CSSProperties = {
+    width: "100%", height: "32px", padding: "0 8px",
+    borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)",
+    background: "var(--color-bg-base)", color: "var(--color-text-primary)",
+    fontSize: "12px", outline: "none", boxSizing: "border-box",
+  };
+
+  return (
+    <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.3)" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: open ? "12px" : 0 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <span style={{ fontSize: "12px", fontWeight: 700, color: "#ef4444" }}>
+            Factura de proveedor pendiente de registrar
+          </span>
+        </div>
+        <button onClick={() => setOpen(v => !v)} style={{ height: "26px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "#ef4444", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
+          {open ? "Cancelar" : "Registrar factura"}
+        </button>
+      </div>
+      {open && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Proveedor *</div>
+            <select value={form.logistics_provider_id} onChange={e => selectProvider(e.target.value)} style={{ ...INPUT_S, cursor: "pointer" }}>
+              <option value="">— Seleccionar —</option>
+              {providers.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+            {!form.logistics_provider_id && (
+              <input value={form.supplier_name} onChange={e => setForm(f => ({ ...f, supplier_name: e.target.value }))} placeholder="O escribe nombre del proveedor" style={{ ...INPUT_S, marginTop: "4px" }} />
+            )}
+          </div>
+          {[
+            { k: "document_number", label: "Folio factura",  type: "text"   },
+            { k: "document_date",   label: "Fecha factura",  type: "date"   },
+            { k: "due_date",        label: "Vencimiento",    type: "date"   },
+            { k: "currency",        label: "Moneda",         type: "select" },
+          ].map(f => (
+            <div key={f.k}>
+              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>{f.label}</div>
+              {f.type === "select" ? (
+                <select value={(form as any)[f.k]} onChange={e => setForm(p => ({ ...p, [f.k]: e.target.value }))} style={{ ...INPUT_S, cursor: "pointer" }}>
+                  {["USD","MXN","EUR"].map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              ) : (
+                <input type={f.type} value={(form as any)[f.k]} onChange={e => setForm(p => ({ ...p, [f.k]: e.target.value }))} style={INPUT_S} />
+              )}
+            </div>
+          ))}
+          <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+            {[
+              { k: "subtotal",   label: "Subtotal"  },
+              { k: "tax_amount", label: "IVA"       },
+              { k: "total",      label: "Total *"   },
+            ].map(f => (
+              <div key={f.k}>
+                <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>{f.label}</div>
+                <input type="number" min="0" value={(form as any)[f.k]}
+                  onChange={e => f.k !== "tax_amount" ? calcTotals(f.k as any, e.target.value) : setForm(p => ({ ...p, tax_amount: e.target.value }))}
+                  placeholder="0.00" style={INPUT_S} />
+              </div>
+            ))}
+          </div>
+          <button onClick={handleSave} disabled={saving || !form.supplier_name || !form.total}
+            style={{ gridColumn: "1 / -1", height: "34px", borderRadius: "var(--radius-md)", background: "#ef4444", color: "#fff", border: "none", fontSize: "12px", fontWeight: 700, cursor: "pointer", opacity: (!form.supplier_name || !form.total) ? 0.6 : 1 }}>
+            {saving ? "Guardando…" : "✓ Registrar en Cuentas por Pagar"}
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 type Tab = "detail" | "services" | "documents" | "timeline";
 type Props = {
   shipment:       Shipment | null;
@@ -555,6 +720,15 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
               </div>
             </div>
 
+{/* ── FACTURA PROVEEDOR PENDIENTE ── */}
+            {(shipment.status === "delivered" || shipment.status === "invoiced") && !editing && (
+              <ProveedorFacturaPanel
+                shipment={shipment}
+                companyId={companyId}
+                onCreated={onReload}
+              />
+            )}
+            
             {shipment.notes && (
               <div style={{ padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", fontSize: "12px", color: "var(--color-text-second)", lineHeight: 1.6 }}>
                 <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Notas</div>
