@@ -8,16 +8,17 @@ import { AR_STATUS_CONFIG, AR_AGING_CONFIG, AR_ACTIVITY_CONFIG } from "../types/
 import { fetchAR, fetchClientActivities } from "../services/cxc.service";
 
 type Props = {
-  clients:   ClientARSummary[];
-  onPay:     (ar: AccountReceivable) => void;
-  onActivity:(ar?: AccountReceivable) => void;
+  clients:             ClientARSummary[];
+  preselectedClient?:  ClientARSummary | null;
+  onPay:               (ar: AccountReceivable) => void;
+  onActivity:          (ar?: AccountReceivable) => void;
 };
 
 type ClientTab = "overview" | "invoices" | "payments" | "activities";
 
 const fmt = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2 });
 
-export default function CxCClienteView({ clients, onPay, onActivity }: Props) {
+export default function CxCClienteView({ clients, preselectedClient, onPay, onActivity }: Props) {
   const { lang } = useTranslation();
   const { companyId } = useTenant();
   const es = lang !== "en";
@@ -46,6 +47,13 @@ export default function CxCClienteView({ clients, onPay, onActivity }: Props) {
   useEffect(() => {
     if (selectedClient) loadClient(selectedClient);
   }, [selectedClient]);
+
+  // Auto-seleccionar cliente cuando viene del dashboard
+  useEffect(() => {
+    if (preselectedClient && clients.length > 0) {
+      setSelectedClient(preselectedClient);
+    }
+  }, [preselectedClient, clients]);
 
   const filtered = clients.filter(c =>
     c.client_name.toLowerCase().includes(search.toLowerCase()) ||
