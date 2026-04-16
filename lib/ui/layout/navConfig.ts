@@ -79,6 +79,7 @@ export const navSections: NavSection[] = [
       { nameKey: "accountsPayable",    path: "/finanzas/cxp"            },
       { nameKey: "banks",              path: "/finanzas/bancos"          },
       { nameKey: "cashFlow",           path: "/finanzas/flujo-efectivo"  },
+      { nameKey: "fixedAssets",        path: "/finanzas/activos"         },
       { nameKey: "employees",          path: "/finanzas/empleados"       },
       { nameKey: "accounting",         path: "/finanzas/contabilidad"    },
       { nameKey: "taxes",              path: "/finanzas/impuestos"       },
