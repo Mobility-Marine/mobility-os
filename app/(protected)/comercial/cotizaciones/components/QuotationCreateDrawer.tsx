@@ -85,8 +85,10 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
   const [svcForm,  setSvcForm]  = useState<{
     service_type: ServiceType; description: string; origin: string; destination: string;
     incoterm: string; transit_time: string; currency: string; price: string; notes: string;
-  }>({ service_type: "terrestre", description: "", origin: "", destination: "", incoterm: "", transit_time: "", currency: "USD", price: "", notes: "" });
-  const [routeHint, setRouteHint] = useState<any | null>(null);
+    product_id?: string;
+  }>({ service_type: "terrestre", description: "", origin: "", destination: "", incoterm: "", transit_time: "", currency: "USD", price: "", notes: "", product_id: undefined });
+  const [routeHint,   setRouteHint]   = useState<any | null>(null);
+  const [svcCatalog,  setSvcCatalog]  = useState<any[]>([]);
 
   // Step 4 — Config (sin template — siempre "elegante")
   const [config, setConfig] = useState({
@@ -126,6 +128,19 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
     }
   }
 
+// Cargar catálogo de servicios al abrir
+  useEffect(() => {
+    if (!open || !companyId) return;
+    supabase
+      .from("products")
+      .select("id, name, sku, unit, unit_price, sat_product_code, sat_unit_code")
+      .eq("company_id", companyId)
+      .eq("is_active", true)
+      .eq("product_type", "service")
+      .order("name")
+      .then(({ data }) => setSvcCatalog(data ?? []));
+  }, [open, companyId]);
+  
   // ── PRODUCT SEARCH ─────────────────────────────────────────
   useEffect(() => {
     if (!prodSearch.trim() || !companyId) { setProductSuggestions([]); return; }
@@ -186,8 +201,9 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
       currency:     svcForm.currency,
       price:        Number(svcForm.price),
       notes:        svcForm.notes        || undefined,
+      product_id:   svcForm.product_id   || undefined,
     }]);
-    setSvcForm({ service_type: "terrestre", description: "", origin: "", destination: "", incoterm: "", transit_time: "", currency: "USD", price: "", notes: "" });
+    setSvcForm({ service_type: "terrestre", description: "", origin: "", destination: "", incoterm: "", transit_time: "", currency: "USD", price: "", notes: "", product_id: undefined });
     setRouteHint(null);
   }
 
@@ -509,6 +525,30 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
             <>
               <SectionTitle>Agregar servicios logísticos</SectionTitle>
               <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", padding: "14px", display: "grid", gap: "10px" }}>
+                {/* Selector de producto del catálogo */}
+                <div>
+                  <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    Vincular a producto del catálogo
+                    <span style={{ marginLeft: "6px", fontSize: "9px", color: "var(--color-brand-blue)", fontWeight: 400, textTransform: "none" }}>(opcional — para facturación con clave SAT correcta)</span>
+                  </div>
+                  <select
+                    value={svcForm.product_id ?? ""}
+                    onChange={(e) => {
+                      const prod = (productSuggestions.length > 0 ? productSuggestions : []).find((p: any) => p.id === e.target.value);
+                      setSvcForm((p) => ({
+                        ...p,
+                        product_id:  e.target.value || undefined,
+                        description: prod?.name ?? p.description,
+                      }));
+                    }}
+                    style={SELECT}
+                  >
+                    <option value="">— Sin vincular (texto libre) —</option>
+                    {svcCatalog.map((p: any) => (
+                      <option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ""}</option>
+                    ))}
+                  </select>
+                </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "10px" }}>
                   <Field label="Tipo de servicio *">
                     <select value={svcForm.service_type} onChange={(e) => setSvcForm((p) => ({ ...p, service_type: e.target.value as ServiceType }))} style={SELECT}>
