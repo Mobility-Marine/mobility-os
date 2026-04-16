@@ -10,6 +10,7 @@ import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { upsertShipmentService, deleteShipmentService, fetchLogisticsProviders } from "../services/shipments.service";
 import { fetchDocuments, createDocument, uploadDocumentFile, deleteDocument } from "../../../logistica/documentacion/services/docs.service";
+import { supabase as sb } from "@/lib/supabaseClient";
 import type { ShipmentDocument, DocCategory } from "../../../logistica/documentacion/types/docs.types";
 import { DOC_CATEGORY_CONFIG, DOC_STATUS_CONFIG } from "../../../logistica/documentacion/types/docs.types";
 import { useRef, useEffect } from "react";
@@ -22,8 +23,7 @@ function ProveedorFacturaPanel({
   companyId:  string;
   onCreated:  () => Promise<void>;
 }) {
-  const { supabase }   = require("@/lib/supabaseClient");
-  const { createDocument, uploadDocumentFile } = require("../../../logistica/documentacion/services/docs.service");
+  // usa sb y las funciones importadas al inicio del archivo
 
   const [hasAP,     setHasAP]     = useState<boolean | null>(null);
   const [apData,    setApData]    = useState<{ id: string; pdf_url?: string } | null>(null);
@@ -49,13 +49,13 @@ function ProveedorFacturaPanel({
   });
 
   useEffect(() => {
-    supabase.from("accounts_payable")
+    sb.from("accounts_payable")
       .select("id, pdf_url").eq("related_shipment_id", shipment.id).limit(1)
       .then(({ data }: any) => {
         if ((data ?? []).length > 0) { setHasAP(true); setApData(data[0]); }
         else setHasAP(false);
       });
-    supabase.from("logistics_providers")
+    sb.from("logistics_providers")
       .select("id, name, rfc").eq("company_id", companyId).eq("is_active", true).order("name")
       .then(({ data }: any) => setProviders(data ?? []));
   }, [shipment.id, companyId]);
@@ -78,11 +78,11 @@ function ProveedorFacturaPanel({
     if (!form.supplier_name || !form.total) return;
     setSaving(true);
     try {
-      const { data: user } = await supabase.auth.getUser();
+      const { data: user } = await sb.auth.getUser();
       const userId = user.user?.id ?? null;
 
       // 1. Crear registro en accounts_payable
-      const { data: ap, error: apErr } = await supabase.from("accounts_payable").insert({
+      const { data: ap, error: apErr } = await sb.from("accounts_payable").insert({
         company_id:            companyId,
         logistics_provider_id: form.logistics_provider_id || null,
         supplier_type:         "logistics",
@@ -119,7 +119,7 @@ function ProveedorFacturaPanel({
         });
         pdfUrl = await uploadDocumentFile(companyId, doc.id, pdfFile);
         // Actualizar AP con la URL del PDF
-        await supabase.from("accounts_payable")
+        await sb.from("accounts_payable")
           .update({ pdf_url: pdfUrl, updated_at: new Date().toISOString() })
           .eq("id", ap.id);
       }
@@ -135,10 +135,19 @@ function ProveedorFacturaPanel({
           required:    false,
         });
         const xmlUrl = await uploadDocumentFile(companyId, docXml.id, xmlFile);
-        await supabase.from("accounts_payable")
+        await sb.from("accounts_payable")
           .update({ xml_url: xmlUrl, updated_at: new Date().toISOString() })
           .eq("id", ap.id);
       }
+
+      // Actualizar provider_cost y profit en el embarque
+      const total = parseFloat(form.total);
+      const { data: sh } = await sb.from("shipments").select("total").eq("id", shipment.id).single();
+      await sb.from("shipments").update({
+        provider_cost:    total,
+        profit:           (sh?.total ?? 0) - total,
+        updated_at:       new Date().toISOString(),
+      }).eq("id", shipment.id);
 
       setHasAP(true);
       setApData({ id: ap.id, pdf_url: pdfUrl ?? undefined });
