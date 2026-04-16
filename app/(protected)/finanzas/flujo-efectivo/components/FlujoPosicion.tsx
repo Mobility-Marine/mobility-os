@@ -59,7 +59,13 @@ export default function FlujoPosicionView({ posicion: p, loading }: Props) {
       {/* KPIs principales */}
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: "12px" }}>
         {[
-          { label: fl.saldoBancos    ?? "Saldo en bancos",    value: p.saldo_bancos,    color: "var(--color-brand-blue)",   icon: "🏦", sub: es ? "disponible ahora" : "available now" },
+          {
+          label: fl.saldoBancos ?? "Saldo en bancos",
+          value: null,
+          saldo_por_moneda: p.saldo_por_moneda,
+          color: "var(--color-brand-blue)", icon: "🏦",
+          sub: es ? "disponible ahora" : "available now"
+        },
           { label: fl.cxcPendiente   ?? "CXC por cobrar",     value: p.cxc_pendiente,   color: "var(--color-success-text)", icon: "📥", sub: es ? "por ingresar" : "incoming" },
           { label: fl.cxpPendiente   ?? "CXP por pagar",      value: p.cxp_pendiente,   color: "var(--color-danger-text)",  icon: "📤", sub: es ? "comprometido" : "committed" },
         ].map(c => (
@@ -68,7 +74,18 @@ export default function FlujoPosicionView({ posicion: p, loading }: Props) {
               <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{c.label}</div>
               <span style={{ fontSize: "18px" }}>{c.icon}</span>
             </div>
-            <div style={{ fontSize: "22px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums" }}>${fmt0(c.value)}</div>
+            {(c as any).saldo_por_moneda ? (
+              <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
+                {Object.entries((c as any).saldo_por_moneda).map(([cur, val]) => (
+                  <div key={cur} style={{ fontSize: cur === "MXN" ? "18px" : "15px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums", display: "flex", alignItems: "baseline", gap: "4px" }}>
+                    <span style={{ fontSize: "10px", fontWeight: 700, opacity: 0.7 }}>{cur}</span>
+                    ${fmt0(val as number)}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div style={{ fontSize: "22px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums" }}>${fmt0((c as any).value)}</div>
+            )}
             <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{c.sub}</div>
           </div>
         ))}
