@@ -2,9 +2,9 @@ export type DocCategory =
   | "commercial_invoice" | "packing_list" | "bill_of_lading" | "airway_bill"
   | "pedimento" | "doda" | "certificate_origin" | "phytosanitary" | "health_cert"
   | "insurance" | "customs_power" | "carta_porte" | "service_order"
-  | "delivery_note" | "other";
+  | "delivery_note" | "factura_proveedor" | "other";
 
-export type DocStatus = "pending" | "received" | "validated" | "rejected";
+export type DocStatus = "pending" | "received" | "validated" | "rejected" | "approved";
 
 export const DOC_CATEGORY_CONFIG: Record<DocCategory, { labelKey: string; color: string; bg: string; border: string }> = {
   commercial_invoice: { labelKey: "logistics.catCommercialInvoice", color: "#2563eb",  bg: "#dbeafe",  border: "#93c5fd" },
@@ -21,6 +21,7 @@ export const DOC_CATEGORY_CONFIG: Record<DocCategory, { labelKey: string; color:
   carta_porte:        { labelKey: "logistics.catCartaPorte",         color: "#0f766e",  bg: "#ccfbf1",  border: "#5eead4" },
   service_order:      { labelKey: "logistics.catServiceOrder",       color: "#475569",  bg: "#f1f5f9",  border: "#cbd5e1" },
   delivery_note:      { labelKey: "logistics.catDeliveryNote",       color: "#475569",  bg: "#f1f5f9",  border: "#cbd5e1" },
+  factura_proveedor:  { labelKey: "logistics.catFacturaProveedor",   color: "#ef4444",  bg: "#fee2e2",  border: "#fca5a5" },
   other:              { labelKey: "logistics.catOther2",             color: "#64748b",  bg: "#f8fafc",  border: "#e2e8f0" },
 };
 
@@ -29,6 +30,7 @@ export const DOC_STATUS_CONFIG: Record<DocStatus, { labelKey: string; color: str
   received:  { labelKey: "logistics.statusReceived",  color: "var(--color-brand-blue)",   bg: "var(--color-info-bg)",    border: "var(--color-info-border)"   },
   validated: { labelKey: "logistics.statusValidated", color: "var(--color-success-text)", bg: "var(--color-success-bg)", border: "var(--color-success-border)" },
   rejected:  { labelKey: "logistics.statusRejected2", color: "var(--color-danger-text)",  bg: "var(--color-danger-bg)",  border: "var(--color-danger-border)"  },
+  approved:  { labelKey: "logistics.statusApproved",  color: "var(--color-success-text)", bg: "var(--color-success-bg)", border: "var(--color-success-border)" },
 };
 
 export type ShipmentDocument = {
