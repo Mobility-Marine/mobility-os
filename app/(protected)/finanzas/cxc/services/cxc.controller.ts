@@ -19,6 +19,7 @@ export function useCxCController(companyId: string, userId: string) {
     count_pending: 0, count_overdue: 0, dso: 0,
     bucket_0_30: 0, bucket_31_60: 0, bucket_61_90: 0, bucket_90plus: 0,
     count_0_30: 0, count_31_60: 0, count_61_90: 0, count_90plus: 0,
+    por_moneda: {},
   });
   const [clientSummaries, setClientSummaries] = useState<ClientARSummary[]>([]);
   const [selected,     setSelected]     = useState<{ ar: AccountReceivable; payments: ARPayment[]; activities: ARActivity[] } | null>(null);
