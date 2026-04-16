@@ -132,37 +132,9 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
     tax_rate:    0.16,
   });
 
+  // Cargar catálogos al abrir
   useEffect(() => {
     if (!open || !companyId) return;
-    // Precargar desde embarque si viene de logística
-    if (preloadShipment) {
-      setForm((p) => ({
-        ...p,
-        client_id:       preloadShipment.client_id       ?? "",
-        receiver_rfc:    preloadShipment.receiver_rfc    ?? "",
-        receiver_name:   preloadShipment.receiver_name   ?? "",
-        receiver_email:  preloadShipment.receiver_email  ?? "",
-        receiver_zip:    preloadShipment.receiver_zip    ?? "",
-        receiver_regime: preloadShipment.receiver_regime ?? "601",
-        currency:        preloadShipment.currency        ?? "MXN",
-        notes:           `Ref. ${preloadShipment.reference}`,
-        concepts: (preloadShipment.services ?? []).map((svc) => ({
-          product_key:  "84111506",
-          unit_key:     "E48",
-          description:  svc.description,
-          unit:         "Servicio",
-          quantity:     1,
-          unit_price:   svc.price,
-          discount_pct: 0,
-          tax_rate:     0.16,
-          subtotal:     svc.price,
-          tax_amount:   svc.price * 0.16,
-        })),
-      }));
-      if ((preloadShipment.services ?? []).length > 0) setStep("config");
-      else setStep("conceptos");
-    }
-    // Clientes
     supabase
       .from("clients")
       .select("id, name, legal_name, rfc, email, tax_regime, zip_code")
@@ -170,7 +142,6 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
       .order("name")
       .limit(200)
       .then(({ data }) => setClients((data ?? []) as Client[]));
-    // Productos — incluir sat_product_code y sat_unit_code
     supabase
       .from("products")
       .select("id, name, sku, unit, unit_price, cost, tax_rate, sat_product_code, sat_unit_code")
@@ -181,6 +152,36 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
       .then(({ data }) => setProducts(data ?? []));
   }, [open, companyId]);
 
+  // Precargar datos del embarque cuando llegan
+  useEffect(() => {
+    if (!open || !preloadShipment) return;
+    setForm((p) => ({
+      ...p,
+      client_id:       preloadShipment.client_id       ?? "",
+      receiver_rfc:    preloadShipment.receiver_rfc    ?? "",
+      receiver_name:   preloadShipment.receiver_name   ?? "",
+      receiver_email:  preloadShipment.receiver_email  ?? "",
+      receiver_zip:    preloadShipment.receiver_zip    ?? "",
+      receiver_regime: preloadShipment.receiver_regime ?? "601",
+      currency:        preloadShipment.currency        ?? "MXN",
+      notes:           `Ref. ${preloadShipment.reference}`,
+      concepts: (preloadShipment.services ?? []).map((svc) => ({
+        product_key:  "84111506",
+        unit_key:     "E48",
+        description:  svc.description,
+        unit:         "Servicio",
+        quantity:     1,
+        unit_price:   svc.price,
+        discount_pct: 0,
+        tax_rate:     0.16,
+        subtotal:     svc.price,
+        tax_amount:   svc.price * 0.16,
+      })),
+    }));
+    if ((preloadShipment.services ?? []).length > 0) setStep("config");
+    else setStep("conceptos");
+  }, [open, preloadShipment]);
+  
   function setF(k: keyof NewCFDIForm, v: any) { setForm((p) => ({ ...p, [k]: v })); }
   function setCF(k: string, v: any) { setConceptForm((p) => ({ ...p, [k]: v })); }
 
