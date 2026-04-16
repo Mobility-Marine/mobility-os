@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type { AccountReceivable, ARActivity, ClientARSummary } from "../types/cxc.types";
 import { AR_STATUS_CONFIG, AR_AGING_CONFIG, AR_ACTIVITY_CONFIG } from "../types/cxc.types";
 import { fetchAR, fetchClientActivities } from "../services/cxc.service";
+import { generateEstadoCuentaPDF } from "../services/cxc.pdf";
 
 type Props = {
   clients:             ClientARSummary[];
@@ -27,7 +28,9 @@ export default function CxCClienteView({ clients, preselectedClient, onPay, onAc
   const [clientAR,       setClientAR]        = useState<AccountReceivable[]>([]);
   const [activities,     setActivities]      = useState<ARActivity[]>([]);
   const [clientTab,      setClientTab]       = useState<ClientTab>("overview");
-  const [loadingClient,  setLoadingClient]   = useState(false);
+  const [loadingClient,    setLoadingClient]    = useState(false);
+  const [generatingPDF,    setGeneratingPDF]    = useState(false);
+  const [clientPayments,   setClientPayments]   = useState<any[]>([]);
   const [search,         setSearch]          = useState("");
 
   const loadClient = useCallback(async (c: ClientARSummary) => {
@@ -35,12 +38,20 @@ export default function CxCClienteView({ clients, preselectedClient, onPay, onAc
     setLoadingClient(true);
     setClientTab("overview");
     try {
-      const [ar, acts] = await Promise.all([
+      const [ar, acts, pmts] = await Promise.all([
         fetchAR(companyId, { search: c.client_name, status: "all", aging: "all", collection: "all", currency: "", from: "", to: "" }),
         fetchClientActivities(companyId, c.client_id ?? undefined),
+        supabase.from("ar_payments").select("*")
+          .eq("company_id", companyId)
+          .order("payment_date", { ascending: false })
+          .then(({ data }) => data ?? []),
       ]);
-      setClientAR(ar.filter(r => r.client_rfc === c.client_rfc || r.client_name === c.client_name));
+      const filteredAR = ar.filter(r => r.client_rfc === c.client_rfc || r.client_name === c.client_name);
+      setClientAR(filteredAR);
       setActivities(acts);
+      // Pagos de este cliente — filtrar por AR ids
+      const arIds = new Set(filteredAR.map(r => r.id));
+      setClientPayments((pmts as any[]).filter(p => arIds.has(p.ar_id)));
     } finally { setLoadingClient(false); }
   }, [companyId]);
 
@@ -67,6 +78,21 @@ export default function CxCClienteView({ clients, preselectedClient, onPay, onAc
     CRITICAL: { color: "var(--color-danger-text)",  bg: "var(--color-danger-bg)"  },
   };
 
+async function handleDownloadPDF() {
+    if (!selectedClient) return;
+    setGeneratingPDF(true);
+    try {
+      const { fetchCompanySettings } = await import("../../../comercial/cotizaciones/services/quotations.service");
+      const settings = companyId ? await fetchCompanySettings(companyId) : null;
+      await generateEstadoCuentaPDF(
+        { name: selectedClient.client_name, rfc: selectedClient.client_rfc },
+        clientAR,
+        clientPayments,
+        settings,
+      );
+    } finally { setGeneratingPDF(false); }
+  }
+  
   const totalPaid    = clientAR.reduce((s, ar) => s + ar.paid_amount, 0);
   const totalBalance = clientAR.reduce((s, ar) => s + ar.balance, 0);
 
@@ -141,10 +167,17 @@ export default function CxCClienteView({ clients, preselectedClient, onPay, onAc
                 <div style={{ fontSize: "12px", color: "var(--color-text-muted)", fontFamily: "monospace", marginTop: "2px" }}>{selectedClient.client_rfc || "Sin RFC"}</div>
               </div>
               <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={() => onActivity(undefined)}
-                  style={{ height: "34px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-base)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
-                  {es ? "+ Actividad" : "+ Activity"}
-                </button>
+                <button
+                onClick={handleDownloadPDF}
+                disabled={generatingPDF || clientAR.length === 0}
+                style={{ height: "34px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-base)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", fontSize: "11px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "6px", opacity: clientAR.length === 0 ? 0.5 : 1 }}
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                {generatingPDF ? "Generando…" : (es ? "Estado de cuenta" : "Statement")}
+              </button>
+              <button onClick={() => onActivity(undefined)} style={{ height: "34px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-base)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
+                {es ? "+ Actividad" : "+ Activity"}
+              </button>
               </div>
             </div>
 
