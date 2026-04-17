@@ -80,8 +80,9 @@ export default function TabHerramientas() {
   const [termsTab,   setTermsTab]   = useState<"services" | "products">("services");
 
   // ── Estado objetivos ───────────────────────────────────────
-  const [goal,        setGoal]       = useState("");
+  const [goal,        setGoal]        = useState("");
   const [goalCurrency,setGoalCurrency] = useState("MXN");
+  const [goalMetric,  setGoalMetric]   = useState("invoices");
   const [goalSaving,  setGoalSaving]  = useState(false);
   const [goalSaved,   setGoalSaved]   = useState(false);
   const [goalError,   setGoalError]   = useState<string | null>(null);
@@ -106,6 +107,7 @@ export default function TabHerramientas() {
         }));
         setGoal(String(s.monthly_goal ?? ""));
         setGoalCurrency(s.goal_currency ?? "MXN");
+        setGoalMetric((s as any).monthly_goal_metric ?? "invoices");
       }
     });
   }, [companyId]);
@@ -138,7 +140,11 @@ export default function TabHerramientas() {
     if (!companyId) return;
     setGoalSaving(true); setGoalError(null);
     try {
-      await upsertCompanySettings(companyId, { monthly_goal: Number(goal) || 0, goal_currency: goalCurrency });
+      await upsertCompanySettings(companyId, {
+        monthly_goal:        Number(goal) || 0,
+        goal_currency:       goalCurrency,
+        monthly_goal_metric: goalMetric,
+      });
       setGoalSaved(true); setTimeout(() => setGoalSaved(false), 2000);
     } catch (e: any) { setGoalError(e.message); }
     finally { setGoalSaving(false); }
@@ -308,33 +314,81 @@ export default function TabHerramientas() {
 
       <Section title="Meta mensual de ventas" desc="Aparece en el Dashboard como indicador de progreso mensual.">
         <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.6 }}>
-          El sistema compara las cotizaciones aceptadas vs. la meta establecida. Visible solo para admin y manager.
+          El sistema compara el avance real del mes vs. la meta configurada. Visible para admin y manager.
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 120px", gap: "12px" }}>
-          <div>
-            <FieldLabel>Monto objetivo mensual</FieldLabel>
-            <input type="number" value={goal} onChange={(e) => setGoal(e.target.value)} placeholder="500000" min="0" style={INPUT} />
-          </div>
-          <div>
-            <FieldLabel>Moneda</FieldLabel>
-            <select value={goalCurrency} onChange={(e) => setGoalCurrency(e.target.value)} style={{ ...INPUT, cursor: "pointer" }}>
-              <option value="MXN">MXN</option>
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-            </select>
+
+        {/* Tipo de métrica */}
+        <div>
+          <FieldLabel>¿Qué quieres medir?</FieldLabel>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
+            {[
+              { value: "invoices",    icon: "🧾", label: "Facturas emitidas",    desc: "Cantidad de CFDIs válidos" },
+              { value: "amount_mxn",  icon: "💰", label: "Monto facturado MXN",  desc: "Suma del mes en MXN" },
+              { value: "amount_usd",  icon: "💵", label: "Monto facturado USD",  desc: "Suma del mes en USD" },
+              { value: "quotations",  icon: "📋", label: "Cotizaciones enviadas", desc: "Cotizaciones del mes" },
+              { value: "shipments",   icon: "🚛", label: "Embarques completados", desc: "Servicios entregados" },
+              { value: "prospects",   icon: "👥", label: "Prospectos convertidos", desc: "Conversiones del mes" },
+            ].map((opt) => (
+              <button
+                key={opt.value}
+                onClick={() => setGoalMetric(opt.value)}
+                style={{
+                  padding: "10px 12px", borderRadius: "var(--radius-md)", textAlign: "left",
+                  background: goalMetric === opt.value ? "var(--color-brand-blue-light)" : "var(--color-bg-subtle)",
+                  border: `1px solid ${goalMetric === opt.value ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
+                  cursor: "pointer",
+                }}
+              >
+                <div style={{ fontSize: "16px", marginBottom: "3px" }}>{opt.icon}</div>
+                <div style={{ fontSize: "11px", fontWeight: 700, color: goalMetric === opt.value ? "var(--color-brand-blue)" : "var(--color-text-primary)" }}>{opt.label}</div>
+                <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "1px" }}>{opt.desc}</div>
+              </button>
+            ))}
           </div>
         </div>
-        {goalNum > 0 && (
-          <div style={{ padding: "16px 20px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+
+        {/* Meta numérica */}
+        <div style={{ display: "grid", gridTemplateColumns: goalMetric.startsWith("amount") ? "1fr 120px" : "1fr", gap: "12px" }}>
+          <div>
+            <FieldLabel>
+              {goalMetric === "invoices"   ? "Cantidad objetivo de facturas" :
+               goalMetric === "amount_mxn" ? "Monto objetivo mensual (MXN)"  :
+               goalMetric === "amount_usd" ? "Monto objetivo mensual (USD)"  :
+               goalMetric === "quotations" ? "Cantidad objetivo de cotizaciones" :
+               goalMetric === "shipments"  ? "Cantidad objetivo de embarques"    :
+               "Cantidad objetivo de conversiones"}
+            </FieldLabel>
+            <input
+              type="number" value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+              placeholder={goalMetric.startsWith("amount") ? "500000" : "50"}
+              min="0" style={INPUT}
+            />
+          </div>
+          {goalMetric.startsWith("amount") && (
             <div>
-              <div style={{ fontSize: "11px", color: "var(--color-success-text)", fontWeight: 600, marginBottom: "3px" }}>META MENSUAL CONFIGURADA</div>
-              <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>Aparecerá en el Dashboard como indicador de progreso</div>
+              <FieldLabel>Moneda</FieldLabel>
+              <select value={goalCurrency} onChange={(e) => setGoalCurrency(e.target.value)} style={{ ...INPUT, cursor: "pointer" }}>
+                <option value="MXN">MXN</option>
+                <option value="USD">USD</option>
+                <option value="EUR">EUR</option>
+              </select>
             </div>
-            <div style={{ fontSize: "24px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
-              {goalCurrency} ${goalNum.toLocaleString("es-MX")}
+          )}
+        </div>
+
+        {goalNum > 0 && (
+          <div style={{ padding: "12px 16px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <div>
+              <div style={{ fontSize: "11px", color: "var(--color-success-text)", fontWeight: 700, marginBottom: "2px" }}>META MENSUAL CONFIGURADA</div>
+              <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>Aparecerá en el Dashboard como barra de progreso</div>
+            </div>
+            <div style={{ fontSize: "22px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
+              {goalMetric.startsWith("amount") ? `${goalCurrency} $${Number(goal).toLocaleString("es-MX")}` : `${Number(goal).toLocaleString("es-MX")} ${goalMetric === "invoices" ? "facturas" : goalMetric === "quotations" ? "cotizaciones" : goalMetric === "shipments" ? "embarques" : "conversiones"}`}
             </div>
           </div>
         )}
+
         {goalError && <div style={{ padding: "8px 12px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)", fontSize: "12px" }}>{goalError}</div>}
         <div>
           <button onClick={handleSaveGoal} disabled={goalSaving}
