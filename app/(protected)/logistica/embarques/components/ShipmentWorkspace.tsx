@@ -417,6 +417,7 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
   });
   const [savingSvc,   setSavingSvc]   = useState(false);
   const [providers,       setProviders]       = useState<{ id: string; name: string }[]>([]);
+  const [apProviders, setApProviders] = useState<{ supplier_name: string; total: number; currency: string }[]>([]);
   const [serviceProducts, setServiceProducts] = useState<{
     id: string; name: string; unit_price: number; currency: string;
     sat_product_code: string; sat_unit_code: string; unit: string;
@@ -457,6 +458,15 @@ function selectServiceProduct(productId: string) {
   const docFileRef = useRef<HTMLInputElement>(null);
   const pendingDocRef = useRef<{ name: string; category: DocCategory } | null>(null);
 
+useEffect(() => {
+    if (!companyId || !shipment) return;
+    sb.from("accounts_payable")
+      .select("supplier_name, total, currency")
+      .eq("company_id", companyId)
+      .eq("related_shipment_id", shipment.id)
+      .then(({ data }) => setApProviders(data ?? []));
+  }, [shipment?.id, companyId]);
+  
   useEffect(() => {
     if (tab !== "documents" || !companyId || !shipment) return;
     setLoadingDocs(true);
@@ -887,7 +897,11 @@ function selectServiceProduct(productId: string) {
                     { label: "Entrega est.",   value: shipment.estimated_delivery ? new Date(shipment.estimated_delivery).toLocaleDateString(locale) : null },
                     { label: "No. rastreo",    value: shipment.tracking_number },
                   ] : []),
-                  { label: "Proveedor",    value: shipment.provider?.name },
+                  { label: "Proveedor principal", value: shipment.provider?.name },
+                  ...apProviders.map((ap, i) => ({
+                    label: `Proveedor facturado${apProviders.length > 1 ? ` ${i + 1}` : ""}`,
+                    value: `${ap.supplier_name} — ${ap.currency} $${Number(ap.total).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`,
+                  })),
                   { label: "Cotización",   value: shipment.quotation?.quote_number },
                 ].map((r) => r.value ? (
                   <div key={r.label}>
