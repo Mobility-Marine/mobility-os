@@ -238,6 +238,7 @@ export async function addService(
       currency:     payload.currency     ?? "USD",
       price:        payload.price,
       notes:        payload.notes        ?? null,
+      product_id:   payload.product_id   ?? null,
     })
     .select("*").single();
   if (error) throw error;
