@@ -248,8 +248,7 @@ export const CFDI_TYPE_GROUPS: CFDITypeGroup[] = [
     items: [
       {
         id: "nomina", type: "N", labelEs: "Recibo de Nómina", labelEn: "Payroll Receipt",
-        descEs: "Requiere configurar el módulo de Empleados primero", descEn: "Requires the Employees module to be configured first",
-        disabled: true, disabledMsg: "Configura el módulo de Empleados para habilitar esta opción",
+        descEs: "Timbra CFDIs de nómina para cada empleado con complemento nómina 1.2", descEn: "Stamp payroll CFDIs for each employee with payroll complement 1.2",
         icon: "M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z M12 12h.01",
       },
     ],
