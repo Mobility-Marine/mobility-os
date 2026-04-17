@@ -25,7 +25,7 @@ export default function ContabilidadEstadoResultados({ data: d, loading }: Props
     { label: co.utilidadBruta   ?? "Utilidad bruta",         value: d.utilidad_bruta,      indent: 0, bold: true,  color: d.utilidad_bruta   >= 0 ? "var(--color-success-text)" : "var(--color-danger-text)", sign: d.utilidad_bruta   >= 0 ? "+" : "−", pct: d.margen_bruto_pct,  divider: true },
     { label: co.gastosOperativos?? "Gastos operativos",      value: d.gastos_operativos,   indent: 0, bold: false, color: "var(--color-danger-text)",   sign: "−" },
     { label: co.utilidadOperativa ?? "Utilidad operativa",   value: d.utilidad_operativa,  indent: 0, bold: true,  color: d.utilidad_operativa >= 0 ? "var(--color-success-text)" : "var(--color-danger-text)", sign: d.utilidad_operativa >= 0 ? "+" : "−", divider: true },
-    { label: co.isr              ?? "ISR estimado (30%)",    value: d.isr_estimado,        indent: 1, bold: false, color: "var(--color-danger-text)",   sign: "−" },
+    { label: co.isr ?? "ISR estimado",    value: d.isr_estimado,        indent: 1, bold: false, color: "var(--color-danger-text)",   sign: "−" },
     { label: co.utilidadNeta    ?? "Utilidad neta",          value: d.utilidad_neta,       indent: 0, bold: true,  color: d.utilidad_neta    >= 0 ? "var(--color-success-text)" : "var(--color-danger-text)", sign: d.utilidad_neta    >= 0 ? "+" : "−", pct: d.margen_neto_pct, divider: true, highlight: true },
   ];
 
