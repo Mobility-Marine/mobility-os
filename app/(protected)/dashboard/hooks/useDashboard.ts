@@ -4,15 +4,16 @@ import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 
 export interface DashboardMetrics {
-  activeProspects:   number;
-  openQuotations:    number;
-  activeShipments:   number;
-  pendingInvoices:   number;   // CFDIs válidos emitidos
-  criticalPending:   number;   // compat
-  delayedShipments:  number;   // embarques logísticos con retraso real
-  cxcBalance:        number;   // saldo por cobrar desde CXC
-  monthlyGoal:       number;   // objetivo mensual desde Settings
-  monthlyGoalMetric: string;   // "invoices" | "amount"
+  activeProspects:    number;
+  openQuotations:     number;
+  activeShipments:    number;
+  pendingInvoices:    number;
+  criticalPending:    number;
+  delayedShipments:   number;
+  cxcBalance:         number;
+  monthlyGoal:        number;
+  monthlyGoalMetric:  string;
+  monthlyCurrentValue:number;
 }
 
 const REFRESH_INTERVAL_MS = 60_000;
@@ -71,7 +72,7 @@ export function useDashboard() {
     if (!companyId) return;
     try {
       const now = new Date().toISOString();
-      const [prospects, quotations, shipments, invoices, delayed, cxc, goalSettings] = await Promise.all([
+      const [prospects, quotations, shipments, invoices, delayed, cxc, goalSettings, monthlyDocs] = await Promise.all([
         supabase.from("prospects")
           .select("id", { count: "exact", head: true })
           .eq("company_id", companyId).eq("is_active", true),
@@ -101,22 +102,42 @@ export function useDashboard() {
           .select("monthly_goal, monthly_goal_metric")
           .eq("company_id", companyId)
           .maybeSingle(),
+        // Valor actual del mes según la métrica configurada
+        supabase.from("cfdi_documents")
+          .select("total, currency")
+          .eq("company_id", companyId)
+          .eq("status", "valid")
+          .gte("cfdi_date", new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString()),
       ]);
 
       const cxcTotal = (cxc.data ?? []).reduce((sum: number, r: any) => sum + (parseFloat(r.balance) || 0), 0);
       const goal     = (goalSettings.data as any)?.monthly_goal        ?? 100;
       const metric   = (goalSettings.data as any)?.monthly_goal_metric ?? "invoices";
 
+      // Calcular valor actual del mes según la métrica
+      const docs = monthlyDocs.data ?? [];
+      const monthlyCurrentValue = (() => {
+        switch (metric) {
+          case "amount_mxn":  return docs.filter((d: any) => d.currency === "MXN").reduce((s: number, d: any) => s + (parseFloat(d.total) || 0), 0);
+          case "amount_usd":  return docs.filter((d: any) => d.currency === "USD").reduce((s: number, d: any) => s + (parseFloat(d.total) || 0), 0);
+          case "quotations":  return quotations.count ?? 0;
+          case "shipments":   return (shipments.count ?? 0);
+          case "prospects":   return prospects.count ?? 0;
+          default:            return docs.length; // "invoices" = cantidad
+        }
+      })();
+
       setMetrics({
-        activeProspects:   prospects.count  ?? 0,
-        openQuotations:    quotations.count ?? 0,
-        activeShipments:   shipments.count  ?? 0,
-        pendingInvoices:   invoices.count   ?? 0,
-        criticalPending:   invoices.count   ?? 0,
-        delayedShipments:  delayed.count    ?? 0,
-        cxcBalance:        cxcTotal,
-        monthlyGoal:       goal,
-        monthlyGoalMetric: metric,
+        activeProspects:    prospects.count  ?? 0,
+        openQuotations:     quotations.count ?? 0,
+        activeShipments:    shipments.count  ?? 0,
+        pendingInvoices:    invoices.count   ?? 0,
+        criticalPending:    invoices.count   ?? 0,
+        delayedShipments:   delayed.count    ?? 0,
+        cxcBalance:         cxcTotal,
+        monthlyGoal:        goal,
+        monthlyGoalMetric:  metric,
+        monthlyCurrentValue,
       });
     } catch (err) {
       console.error("Dashboard metrics error:", err);
