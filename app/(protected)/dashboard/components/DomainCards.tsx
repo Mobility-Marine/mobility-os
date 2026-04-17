@@ -35,7 +35,7 @@ export default function DomainCards({ metrics }: DomainCardsProps) {
       kpis: [
         { label: t.dashboard.activeShipmentsKPI, value: metrics.activeShipments },
         { label: t.dashboard.scheduled,          value: "—" },
-        { label: t.dashboard.delays,             value: metrics.criticalPending },
+        { label: t.dashboard.delays,             value: metrics.delayedShipments },
         { label: t.dashboard.sla,                value: "—" },
       ],
     },
@@ -46,10 +46,10 @@ export default function DomainCards({ metrics }: DomainCardsProps) {
       color:  "var(--color-success-text)",
       path:   "/finanzas/facturacion",
       kpis: [
-        { label: t.dashboard.pendingInvoicesKPI, value: metrics.pendingInvoices },
-        { label: t.dashboard.toCollect,          value: "—" },
-        { label: t.dashboard.pendingPayments,    value: "—" },
-        { label: t.dashboard.liquidity,          value: "—" },
+        { label: t.dashboard.invoicesIssued,   value: metrics.pendingInvoices },
+        { label: t.dashboard.toCollect,        value: metrics.cxcBalance > 0 ? `$${Math.round(metrics.cxcBalance).toLocaleString("es-MX")}` : "—" },
+        { label: t.dashboard.pendingPayments,  value: "—" },
+        { label: t.dashboard.liquidity,        value: "—" },
       ],
     },
     {
