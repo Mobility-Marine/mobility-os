@@ -103,15 +103,19 @@ export async function POST(req: NextRequest) {
           orgName = org.legal?.name ?? settings.fiscal_name;
         } else {
           // Crear nueva organización para este cliente
+          // Paso 1: crear org solo con nombre
           const org = await facturapi(userKey, "/organizations", "POST", {
-            name: settings.fiscal_name,
-            legal: {
+            name: settings.fiscal_name ?? "Mi empresa",
+          });
+          // Paso 2: actualizar datos fiscales (legal)
+          if (settings.fiscal_rfc) {
+            await facturapi(userKey, `/organizations/${org.id}/legal`, "PUT", {
               name:       settings.fiscal_name,
               tax_id:     settings.fiscal_rfc,
               tax_system: settings.fiscal_regime ?? "601",
-              address:    { zip: settings.fiscal_zip ?? "00000", country: "MEX" },
-            },
-          });
+              address:    { zip: settings.fiscal_zip ?? "00000" },
+            });
+          }
           orgId   = org.id;
           orgName = org.legal?.name ?? settings.fiscal_name;
         }
