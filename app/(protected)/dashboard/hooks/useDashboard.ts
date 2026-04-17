@@ -65,7 +65,7 @@ export function useDashboard() {
         filter: `company_id=eq.${companyId}`,
       }, () => void loadMetrics())
       .on("postgres_changes", {
-        event: "*", schema: "public", table: "invoices",
+        event: "*", schema: "public", table: "cfdi_documents",
         filter: `company_id=eq.${companyId}`,
       }, () => void loadMetrics())
       .subscribe();
@@ -81,18 +81,30 @@ export function useDashboard() {
     if (!companyId) return;
     try {
       const [prospects, quotations, shipments, invoices] = await Promise.all([
-        supabase.from("prospects").select("id", { count: "exact", head: true }).eq("company_id", companyId),
-        supabase.from("quotations").select("id", { count: "exact", head: true }).eq("company_id", companyId),
-        supabase.from("shipments").select("id", { count: "exact", head: true }).eq("company_id", companyId),
-        supabase.from("invoices").select("id", { count: "exact", head: true }).eq("company_id", companyId),
+        supabase.from("prospects")
+          .select("id", { count: "exact", head: true })
+          .eq("company_id", companyId)
+          .eq("is_active", true),
+        supabase.from("quotations")
+          .select("id", { count: "exact", head: true })
+          .eq("company_id", companyId)
+          .not("status", "in", "(rejected,expired,cancelled)"),
+        supabase.from("shipments")
+          .select("id", { count: "exact", head: true })
+          .eq("company_id", companyId)
+          .not("status", "in", "(delivered,invoiced,cancelled)"),
+        supabase.from("cfdi_documents")
+          .select("id", { count: "exact", head: true })
+          .eq("company_id", companyId)
+          .eq("status", "valid"),
       ]);
       const pending = invoices.count ?? 0;
       setMetrics({
-        activeProspects: prospects.count ?? 0,
-        openQuotations: quotations.count ?? 0,
-        activeShipments: shipments.count ?? 0,
-        pendingInvoices: pending,
-        criticalPending: pending,
+        activeProspects:  prospects.count  ?? 0,
+        openQuotations:   quotations.count ?? 0,
+        activeShipments:  shipments.count  ?? 0,
+        pendingInvoices:  pending,
+        criticalPending:  pending,
       });
     } catch (err) {
       console.error("Dashboard metrics error:", err);
