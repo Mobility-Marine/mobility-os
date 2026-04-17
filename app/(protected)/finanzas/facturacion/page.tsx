@@ -125,6 +125,7 @@ async function handleFacturarEmbarque(shipment: any) {
     }
 
     setPreloadShipment({
+      shipment_id:     sh.id,
       reference:       sh.reference,
       client_id:       sh.client_id,
       receiver_rfc:    (sh.client as any)?.rfc           ?? "",
@@ -367,12 +368,19 @@ async function handleFacturarEmbarque(shipment: any) {
         preloadShipment={preloadShipment}
         onClose={() => { setSelectedCFDIType(null); setPreloadShipment(null); }}
         onCreate={ctrl.handleEmitir}
-        onCreated={(cfdi) => {
+        onCreated={async (cfdi) => {
+          // Vincular CFDI al embarque y marcarlo como facturado
+          if (preloadShipment?.shipment_id && cfdi?.id) {
+            await supabase.from("shipments")
+              .update({ invoice_id: cfdi.id, status: "invoiced", updated_at: new Date().toISOString() })
+              .eq("id", preloadShipment.shipment_id)
+              .eq("company_id", companyId!);
+          }
           setSelectedCFDIType(null);
           setPreloadShipment(null);
           setTab("historial");
           ctrl.handleSelect(cfdi);
-          // Recargar embarques pendientes
+          // Recargar embarques pendientes — el recién facturado ya no aparecerá
           if (companyId) {
             supabase.from("shipments").select("id, reference, service_type, currency, total, client:clients(name), quotation:quotations(quote_number)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingShipments(data ?? []));
           }
