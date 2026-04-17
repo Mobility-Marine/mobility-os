@@ -21,15 +21,16 @@ const REFRESH_INTERVAL_MS = 60_000;
 export function useDashboard() {
   const { companyId } = useTenant();
   const [metrics, setMetrics] = useState<DashboardMetrics>({
-    activeProspects:   0,
-    openQuotations:    0,
-    activeShipments:   0,
-    pendingInvoices:   0,
-    criticalPending:   0,
-    delayedShipments:  0,
-    cxcBalance:        0,
-    monthlyGoal:       100,
-    monthlyGoalMetric: "invoices",
+    activeProspects:    0,
+    openQuotations:     0,
+    activeShipments:    0,
+    pendingInvoices:    0,
+    criticalPending:    0,
+    delayedShipments:   0,
+    cxcBalance:         0,
+    monthlyGoal:        100,
+    monthlyGoalMetric:  "invoices",
+    monthlyCurrentValue:0,
   });
   const [loading, setLoading]         = useState(true);
   const [companyState, setCompanyState] = useState<any>(null);
