@@ -83,6 +83,7 @@ export default function ProductosPage() {
         open={showCreate}
         onClose={() => setShowCreate(false)}
         onCreate={async (payload) => { await handleCreate(payload); }}
+        categories={categories}
       />
       <ProductImportExport
         open={showImport}
