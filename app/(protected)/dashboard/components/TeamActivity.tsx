@@ -72,11 +72,9 @@ export default function TeamActivity() {
       data.map(async (m) => {
         const [{ data: settings }, { data: profile }] = await Promise.all([
           supabase.from("user_settings").select("updated_at").eq("user_id", m.user_id).maybeSingle() as any,
-          supabase.from("profiles").select("full_name, email").eq("id", m.user_id).maybeSingle() as any,
+          supabase.from("user_profiles").select("full_name").eq("user_id", m.user_id).maybeSingle() as any,
         ]);
-        const display_name = profile?.full_name
-          || profile?.email?.split("@")[0]
-          || null;
+        const display_name = profile?.full_name || null;
         return { ...m, last_active: settings?.updated_at, display_name };
       })
     );
@@ -182,12 +180,6 @@ export default function TeamActivity() {
                   }} />
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{
-                    fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)",
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                  }}>
-                    {member.user_id.slice(0, 12)}…
-                  </div>
                   <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {member.display_name || member.user_id.slice(0, 8) + "…"}
                   </div>
