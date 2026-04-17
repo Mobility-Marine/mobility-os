@@ -28,11 +28,12 @@ export default function ClientSidebar({
   const active    = clients.filter((c) => c.is_active).length;
   const customers = clients.filter((c) => c.is_customer).length;
   const both      = clients.filter((c) => c.is_customer && c.is_supplier).length;
+  const withBalance = clients.filter((c) => (c.stats?.pendingBalance ?? 0) > 0).length;
 
   const kpis = [
     { label: (t.clients as any)?.active    ?? "Activos",  value: active,         color: "var(--color-brand-blue)"  },
     { label: (t.clients as any)?.customersS ?? "Clientes", value: customers,      color: "var(--color-info-text)"  },
-    { label: (t.clients as any)?.both      ?? "Ambos",    value: both,           color: "#a78bfa"                 },
+    { label: (t.clients as any)?.withBalance ?? "Por cobrar", value: withBalance, color: "var(--color-warning-text)" },
     { label: (t.clients as any)?.total     ?? "Total",    value: clients.length, color: "var(--color-text-second)"},
   ];
 
