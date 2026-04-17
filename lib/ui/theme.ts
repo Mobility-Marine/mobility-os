@@ -33,11 +33,20 @@ export const cssVariablesLight = `
     --color-text-disabled: #A8B8C8;
 
     /* Sidebar */
-    --color-sidebar-bg:          #FFFFFF;
-    --color-sidebar-border:      #E8EDF5;
-    --color-sidebar-active-bg:   #EEF2FB;
-    --color-sidebar-text:        #3D4F63;
-    --color-sidebar-active-text: #274B97;
+    --color-sidebar-bg:          #274B97;
+    --color-sidebar-border:      #1E3A78;
+    --color-sidebar-active-bg:   #1E3A78;
+    --color-sidebar-active-border:#1A3270;
+    --color-sidebar-text:        #C8D8F0;
+    --color-sidebar-active-text: #FFFFFF;
+    --color-sidebar-muted:       #7A9BD4;
+    /* Header */
+    --color-header-bg:           #274B97;
+    --color-header-border:       #1E3A78;
+    --color-header-text:         #FFFFFF;
+    --color-header-text-muted:   #A8C0E8;
+    --color-header-input-bg:     #1E3A78;
+    --color-header-input-border: #2A52A8;
 
     /* Semantic */
     --color-success-bg:    #F0FDF4;
@@ -114,6 +123,13 @@ export const cssVariablesDark = `
     --color-info-bg:       #0A1628;
     --color-info-border:   #1E40AF;
     --color-info-text:     #60A5FA;
+
+    --color-header-bg:           #0D1219;
+    --color-header-border:       #1C2535;
+    --color-header-text:         #F0F4F8;
+    --color-header-text-muted:   #6B7F96;
+    --color-header-input-bg:     #161D28;
+    --color-header-input-border: #243044;
 
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.20);
     --shadow-md: 0 2px 8px rgba(0,0,0,0.28);
