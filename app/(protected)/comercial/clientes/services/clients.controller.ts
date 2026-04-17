@@ -37,8 +37,32 @@ export function useClientsController() {
   const load = useCallback(async () => {
     if (!companyId) return;
     try {
-      const data = await fetchClients(companyId);
-      setClients(data);
+      const [data, { data: balances }] = await Promise.all([
+        fetchClients(companyId),
+        supabase
+          .from("accounts_receivable")
+          .select("client_id, balance")
+          .eq("company_id", companyId)
+          .in("status", ["pending", "partial"]),
+      ]);
+
+      // Agrupar saldos por client_id
+      const balanceMap: Record<string, number> = {};
+      for (const row of balances ?? []) {
+        if (!row.client_id) continue;
+        balanceMap[row.client_id] = (balanceMap[row.client_id] ?? 0) + parseFloat(row.balance ?? "0");
+      }
+
+      // Merge saldo en cada cliente
+      const withBalances = data.map((c) => ({
+        ...c,
+        stats: {
+          ...(c.stats ?? { opportunities: 0, openOrders: 0, totalRevenue: 0, lastActivity: undefined, riskLevel: "LOW" as const }),
+          openBalance: balanceMap[c.id] ?? 0,
+        },
+      }));
+
+      setClients(withBalances);
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
   }, [companyId]);
