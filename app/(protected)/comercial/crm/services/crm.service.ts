@@ -36,12 +36,58 @@ export async function updateAccount(
 // ── CONTACTS ────────────────────────────────────────────────
 
 export async function fetchContacts(accountId: string): Promise<CrmContact[]> {
-  const { data } = await supabase
+  // 1. Contactos nativos del CRM
+  const { data: crmContacts } = await supabase
     .from("crm_contacts")
     .select("*")
     .eq("account_id", accountId)
     .order("created_at", { ascending: false });
-  return (data ?? []) as CrmContact[];
+
+  // 2. Buscar client_id vinculado a esta cuenta CRM
+  const { data: account } = await supabase
+    .from("crm_accounts")
+    .select("client_id")
+    .eq("id", accountId)
+    .maybeSingle();
+
+  // 3. Si hay cliente vinculado, traer también sus contactos del módulo Clientes
+  let clientContacts: CrmContact[] = [];
+  if (account?.client_id) {
+    const { data: cc } = await supabase
+      .from("client_contacts")
+      .select("*")
+      .eq("client_id", account.client_id)
+      .order("created_at", { ascending: false });
+
+    // Normalizar client_contacts al formato CrmContact
+    clientContacts = (cc ?? []).map((c: any) => ({
+      id:               c.id,
+      company_id:       c.company_id,
+      account_id:       accountId,
+      first_name:       c.name?.split(" ")[0] ?? c.name ?? "",
+      last_name:        c.name?.split(" ").slice(1).join(" ") ?? null,
+      name:             c.name,
+      job_title:        c.title  ?? null,
+      position:         c.title  ?? null,
+      department:       null,
+      email:            c.email  ?? null,
+      phone:            c.phone  ?? null,
+      mobile_phone:     null,
+      role_in_decision: c.role === "general_manager" ? "decision_maker" : "user",
+      influence_level:  c.is_primary ? 5 : 3,
+      notes:            c.notes ?? null,
+      created_at:       c.created_at,
+      source:           "clients_module",
+    }));
+  }
+
+  // 4. Mergear — CRM primero, luego los del módulo Clientes (sin duplicar por email)
+  const crmEmails = new Set((crmContacts ?? []).map((c: any) => c.email).filter(Boolean));
+  const uniqueClientContacts = clientContacts.filter(
+    (c) => !c.email || !crmEmails.has(c.email)
+  );
+
+  return [...(crmContacts ?? []), ...uniqueClientContacts] as CrmContact[];
 }
 
 export async function createContact(
