@@ -142,7 +142,7 @@ export default function ProductsSidebar({
       </div>{/* ← cierre del div flexShrink:0 del HEADER */}
 
       {/* LIST */}
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "grid", gap: "4px", alignContent: "start" }}>
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", minHeight: 0, display: "grid", gap: "4px", alignContent: "start" }}>
         {products.length === 0 ? (
           <div style={{ padding: "28px 12px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
             {tp.noProducts ?? "Sin productos"}
