@@ -8,11 +8,10 @@ const supabaseAdmin = createClient(
 
 const FACTURAPI_BASE = "https://www.facturapi.io/v2";
 
-// ── KEYS ────────────────────────────────────────────────────────────────────
-// FACTURAPI_LIVE_KEY  → timbre directo como Mobility Marine (tu cuenta)
-// FACTURAPI_USER_KEY  → crear/administrar orgs de clientes (SaaS futuro)
+// ── KEYS ─────────────────────────────────────────────────────────────────────
+// FACTURAPI_LIVE_KEY   → timbre directo como Mobility Marine (su cuenta propia)
+// FACTURAPI_USER_KEY   → crear/administrar orgs de clientes (modo SaaS Platform)
 // FACTURAPI_SECRET_KEY → test key (fallback para desarrollo)
-
 function getLiveKey(): string {
   const key = process.env.FACTURAPI_LIVE_KEY ?? process.env.FACTURAPI_SECRET_KEY;
   if (!key) throw new Error("FACTURAPI_LIVE_KEY no configurada en el servidor.");
@@ -23,26 +22,33 @@ function getUserKey(): string | null {
   return process.env.FACTURAPI_USER_KEY ?? null;
 }
 
-// ── HELPERS ─────────────────────────────────────────────────────────────────
-async function getCompanySettings(companyId: string) {
+// ── HELPERS ───────────────────────────────────────────────────────────────────
+async function getCompanySettingsFull(companyId: string) {
   const { data } = await supabaseAdmin
     .from("company_settings")
-    .select("facturapi_org_id, facturapi_api_key, pac_provider, fiscal_name, fiscal_rfc, fiscal_regime, fiscal_zip")
+    .select(
+      "facturapi_org_id, facturapi_api_key, pac_provider, " +
+      "fiscal_name, fiscal_rfc, fiscal_regime, fiscal_zip, " +
+      "logo_url, brand_color_dark, brand_color, brand_accent"
+    )
     .eq("company_id", companyId)
     .single();
   return data;
 }
 
+// getCompanySettings usa el helper completo para no duplicar queries
+async function getCompanySettings(companyId: string) {
+  return getCompanySettingsFull(companyId);
+}
+
 // Devuelve la API key correcta para esta empresa:
-// - Si tiene su propia key (cliente SaaS con org propia) → la suya
-// - Si no → usa la Live Key maestra (Mobility Marine)
+//   1. La empresa tiene su propia key (cliente SaaS avanzado) → la suya
+//   2. Empresa SaaS con org creada via User Key → User Key
+//   3. Mobility Marine directo → Live Key
 async function getApiKeyForCompany(companyId: string): Promise<string> {
   const settings = await getCompanySettings(companyId);
-  // 1. La empresa tiene su propia key (caso avanzado)
   if (settings?.facturapi_api_key) return settings.facturapi_api_key;
-  // 2. Empresa SaaS con org creada — usa User Key para timbrar
   if (settings?.facturapi_org_id && getUserKey()) return getUserKey()!;
-  // 3. Mobility Marine directo con Live Key
   return getLiveKey();
 }
 
@@ -51,20 +57,21 @@ async function getOrgId(companyId: string): Promise<string | null> {
   return settings?.facturapi_org_id ?? null;
 }
 
+// Helper para llamadas JSON a Facturapi
 async function facturapi(
   apiKey: string,
-  path: string,
-  method = "GET",
-  body?: object,
+  path:   string,
+  method  = "GET",
+  body?:  object,
   orgId?: string | null
 ) {
   const headers: Record<string, string> = {
     "Authorization": `Bearer ${apiKey}`,
-    "Content-Type": "application/json",
+    "Content-Type":  "application/json",
   };
   if (orgId) headers["X-Facturapi-Organization"] = orgId;
 
-  const res = await fetch(`${FACTURAPI_BASE}${path}`, {
+  const res  = await fetch(`${FACTURAPI_BASE}${path}`, {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
@@ -74,15 +81,16 @@ async function facturapi(
   return data;
 }
 
-// ── MAIN HANDLER ─────────────────────────────────────────────────────────────
+// ── MAIN HANDLER ──────────────────────────────────────────────────────────────
 export async function POST(req: NextRequest) {
   try {
     const { action, companyId, payload } = await req.json();
     if (!companyId) return NextResponse.json({ error: "companyId requerido" }, { status: 400 });
 
-    // ── SETUP ORG ────────────────────────────────────────────────────────────
+    // ── SETUP ORG ─────────────────────────────────────────────────────────────
     if (action === "setup_org") {
-      const settings = await getCompanySettings(companyId);
+      const settings = await getCompanySettingsFull(companyId);
+
       if (!settings?.fiscal_rfc) {
         return NextResponse.json(
           { error: "Configura primero los datos fiscales en Settings → Empresa (RFC, razón social y código postal)." },
@@ -95,35 +103,70 @@ export async function POST(req: NextRequest) {
       const userKey = getUserKey();
 
       if (userKey) {
-        // ── MODO SAAS: crear/sincronizar org para esta empresa ──────────
+        // ── MODO SAAS: crear/sincronizar org para esta empresa ────────────────
         if (settings.facturapi_org_id) {
-          // Ya tiene org — solo re-sincronizar datos
+          // Ya tiene org — solo re-sincronizar
           const org = await facturapi(userKey, `/organizations/${settings.facturapi_org_id}`);
           orgId   = org.id;
           orgName = org.legal?.name ?? settings.fiscal_name ?? "";
         } else {
-          // Nueva empresa — crear org en Facturapi Platform
+          // Nueva empresa — Paso 1: crear org
           const org = await facturapi(userKey, "/organizations", "POST", {
             name: settings.fiscal_name ?? settings.fiscal_rfc,
           });
-          orgId = org.id;
-          // Paso 2: actualizar datos fiscales
+          orgId   = org.id;
+          orgName = settings.fiscal_name ?? "";
+
+          // Paso 2: datos fiscales (legal)
           await facturapi(userKey, `/organizations/${orgId}/legal`, "PUT", {
             name:       settings.fiscal_name,
             tax_id:     settings.fiscal_rfc,
             tax_system: settings.fiscal_regime ?? "601",
             address:    { zip: settings.fiscal_zip ?? "00000" },
           });
-          orgName = settings.fiscal_name ?? "";
+
+          // Paso 3: subir logo desde Supabase Storage
+          if (settings.logo_url) {
+            try {
+              const logoRes  = await fetch(settings.logo_url);
+              const logoBlob = await logoRes.blob();
+              const logoForm = new FormData();
+              logoForm.append("file", logoBlob, "logo.png");
+              await fetch(`${FACTURAPI_BASE}/organizations/${orgId}/logo`, {
+                method:  "PUT",
+                headers: { "Authorization": `Bearer ${userKey}` },
+                body:    logoForm,
+              });
+            } catch (_) {
+              // Logo opcional — no bloquear el flujo si falla
+            }
+          }
+
+          // Paso 4: color de marca principal → personalización de PDF y email
+          const brandColor = settings.brand_color_dark ?? "#0a1628";
+          try {
+            await facturapi(userKey, `/organizations/${orgId}/customization`, "PUT", {
+              color:      brandColor,
+              pdf_extra: {
+                codes:          true,
+                ieps_breakdown: false,
+              },
+            });
+          } catch (_) {
+            // Personalización opcional — no bloquear si falla
+          }
         }
       } else {
-        // ── MODO DIRECTO: Mobility Marine con su propia Live Key ────────
+        // ── MODO DIRECTO: Mobility Marine con su propia Live Key ──────────────
         const org = await facturapi(getLiveKey(), "/organization");
-        if (!org?.id) throw new Error("No se pudo obtener la organización de Facturapi. Verifica tu FACTURAPI_LIVE_KEY.");
+        if (!org?.id) throw new Error(
+          "No se pudo obtener la organización de Facturapi. Verifica tu FACTURAPI_LIVE_KEY."
+        );
         orgId   = org.id;
         orgName = org.legal?.name ?? settings.fiscal_name ?? "";
       }
 
+      // Guardar org_id en BD
       await supabaseAdmin
         .from("company_settings")
         .update({ facturapi_org_id: orgId, pac_provider: "facturapi" })
@@ -133,13 +176,14 @@ export async function POST(req: NextRequest) {
     }
 
     // Para todos los demás actions: obtener key y org_id de esta empresa
-    const apiKey  = await getApiKeyForCompany(companyId);
-    const orgId   = await getOrgId(companyId);
-    // orgId solo aplica cuando usamos User Key (modo SaaS)
-    // Con Live Key directa (Mobility Marine), no se necesita
+    const apiKey = await getApiKeyForCompany(companyId);
+    const orgId  = await getOrgId(companyId);
+
+    // effectiveOrgId solo aplica en modo SaaS (User Key + org_id guardado)
+    // Con Live Key directa (Mobility Marine) no se necesita el header
     const effectiveOrgId = (getUserKey() && orgId) ? orgId : null;
 
-    // ── EMITIR CFDI ──────────────────────────────────────────────────────────
+    // ── EMITIR CFDI ───────────────────────────────────────────────────────────
     if (action === "emitir") {
       const FOLIO_MAP: Record<string, { s: string; f: string; def_s: string }> = {
         I: { s: "invoice_series",  f: "invoice_next_folio",  def_s: "A" },
@@ -149,17 +193,17 @@ export async function POST(req: NextRequest) {
         N: { s: "nomina_series",   f: "nomina_next_folio",   def_s: "N" },
       };
 
-      const cfdiType   = payload.invoice?.type ?? "I";
+      const cfdiType    = payload.invoice?.type ?? "I";
       const folioConfig = FOLIO_MAP[cfdiType] ?? FOLIO_MAP["I"];
 
-      const { data: settings } = await supabaseAdmin
+      const { data: folioSettings } = await supabaseAdmin
         .from("company_settings")
         .select(`${folioConfig.s}, ${folioConfig.f}, fiscal_rfc, fiscal_name, fiscal_regime`)
         .eq("company_id", companyId)
         .single();
 
-      const serie = (settings as any)?.[folioConfig.s] ?? folioConfig.def_s;
-      const folio = (settings as any)?.[folioConfig.f] ?? 1;
+      const serie = (folioSettings as any)?.[folioConfig.s] ?? folioConfig.def_s;
+      const folio = (folioSettings as any)?.[folioConfig.f] ?? 1;
 
       const invoicePayload = {
         ...payload.invoice,
@@ -180,24 +224,24 @@ export async function POST(req: NextRequest) {
           type:                 invoice.type,
           status:               invoice.status === "valid" ? "valid" : "draft",
           cfdi_date:            invoice.date,
-          issuer_rfc:           invoice.issuer?.tax_id           ?? (settings as any)?.fiscal_rfc     ?? null,
-          issuer_name:          invoice.issuer?.legal_name        ?? (settings as any)?.fiscal_name    ?? null,
-          issuer_fiscal_regime: invoice.issuer?.tax_system        ?? (settings as any)?.fiscal_regime  ?? null,
+          issuer_rfc:           invoice.issuer?.tax_id          ?? (folioSettings as any)?.fiscal_rfc    ?? null,
+          issuer_name:          invoice.issuer?.legal_name       ?? (folioSettings as any)?.fiscal_name   ?? null,
+          issuer_fiscal_regime: invoice.issuer?.tax_system       ?? (folioSettings as any)?.fiscal_regime ?? null,
           receiver_rfc:         invoice.customer?.tax_id,
           receiver_name:        invoice.customer?.legal_name,
-          receiver_email:       payload.receiver_email ?? null,
+          receiver_email:       payload.receiver_email    ?? null,
           receiver_cfdi_use:    invoice.use,
           subtotal:             invoice.subtotal,
-          discount:             invoice.discount ?? 0,
-          tax_amount:           invoice.total_taxes ?? 0,
+          discount:             invoice.discount           ?? 0,
+          tax_amount:           invoice.total_taxes        ?? 0,
           total:                invoice.total,
           currency:             invoice.currency,
-          exchange_rate:        invoice.exchange ?? 1,
+          exchange_rate:        invoice.exchange           ?? 1,
           payment_method:       invoice.payment_method,
           payment_form:         invoice.payment_form,
-          stamp_data:           invoice.stamp ?? null,
-          related_client_id:    payload.client_id ?? null,
-          related_quotation_id: payload.quotation_id ?? null,
+          stamp_data:           invoice.stamp              ?? null,
+          related_client_id:    payload.client_id          ?? null,
+          related_quotation_id: payload.quotation_id       ?? null,
           created_by:           payload.user_id,
         })
         .select()
@@ -216,12 +260,12 @@ export async function POST(req: NextRequest) {
             unit:        c.unit,
             quantity:    c.quantity,
             unit_price:  c.unit_price,
-            discount:    c.discount ?? 0,
+            discount:    c.discount    ?? 0,
             subtotal:    c.subtotal,
-            tax_rate:    c.tax_rate ?? 0.16,
-            tax_amount:  c.tax_amount ?? 0,
+            tax_rate:    c.tax_rate    ?? 0.16,
+            tax_amount:  c.tax_amount  ?? 0,
             total:       c.total,
-            product_id:  c.product_id ?? null,
+            product_id:  c.product_id  ?? null,
           }))
         );
       }
@@ -234,7 +278,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, cfdi: saved, invoice });
     }
 
-    // ── CANCELAR CFDI ────────────────────────────────────────────────────────
+    // ── CANCELAR CFDI ─────────────────────────────────────────────────────────
     if (action === "cancelar") {
       const { cfdi_id, facturapi_id, motive, substitution } = payload;
       const cancelPayload: any = { motive };
@@ -256,27 +300,29 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
-    // ── DESCARGAR XML ────────────────────────────────────────────────────────
+    // ── DESCARGAR XML ─────────────────────────────────────────────────────────
     if (action === "xml") {
       const { facturapi_id } = payload;
       const headers: Record<string, string> = { Authorization: `Bearer ${apiKey}` };
       if (effectiveOrgId) headers["X-Facturapi-Organization"] = effectiveOrgId;
-      const xml = await fetch(`${FACTURAPI_BASE}/invoices/${facturapi_id}/xml`, { headers });
+
+      const xml  = await fetch(`${FACTURAPI_BASE}/invoices/${facturapi_id}/xml`, { headers });
       const text = await xml.text();
       return new NextResponse(text, { headers: { "Content-Type": "application/xml" } });
     }
 
-    // ── DESCARGAR PDF ────────────────────────────────────────────────────────
+    // ── DESCARGAR PDF ─────────────────────────────────────────────────────────
     if (action === "pdf") {
       const { facturapi_id } = payload;
       const headers: Record<string, string> = { Authorization: `Bearer ${apiKey}` };
       if (effectiveOrgId) headers["X-Facturapi-Organization"] = effectiveOrgId;
-      const pdf = await fetch(`${FACTURAPI_BASE}/invoices/${facturapi_id}/pdf`, { headers });
+
+      const pdf    = await fetch(`${FACTURAPI_BASE}/invoices/${facturapi_id}/pdf`, { headers });
       const buffer = await pdf.arrayBuffer();
       return new NextResponse(buffer, { headers: { "Content-Type": "application/pdf" } });
     }
 
-    // ── ENVIAR EMAIL ─────────────────────────────────────────────────────────
+    // ── ENVIAR EMAIL ──────────────────────────────────────────────────────────
     if (action === "send_email") {
       const { facturapi_id, email } = payload;
       await facturapi(apiKey, `/invoices/${facturapi_id}/email`, "POST", { email }, effectiveOrgId);
