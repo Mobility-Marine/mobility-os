@@ -262,12 +262,12 @@ export async function fetchDeclaracionISR(
   const tasa_efectiva = calcTasaEfectiva(isr_causado, ingresos);
 
   // Acumulado del año
-  const ingresos_anio = (cfdisAnio ?? []).reduce((s, c) => s + (c.subtotal ?? 0), 0);
   const ingresos_anio = (cfdisAnio ?? []).reduce((s, c) => {
     const total    = c.total    ?? 0;
     const subtotal = c.subtotal ?? 0;
     return s + (subtotal > 0 ? subtotal : total / 1.16);
   }, 0);
+  const isr_anio      = Math.round(calcISR(ingresos_anio, regime, ingresos_anio) * 100) / 100;
 
   return {
     periodo: period, regimen: regime,
