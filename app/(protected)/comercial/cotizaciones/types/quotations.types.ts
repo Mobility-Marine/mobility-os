@@ -209,6 +209,7 @@ export type CreateServicePayload = {
   currency?:     string;
   price:         number;
   notes?:        string;
+  product_id?:   string;
 };
 
 // ── FILTERS ──────────────────────────────────────────────────
