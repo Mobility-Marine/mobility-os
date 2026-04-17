@@ -14,7 +14,7 @@ export async function fetchProducts(companyId: string): Promise<Product[]> {
     .from("products")
     .select("*")
     .eq("company_id", companyId)
-    .order("name", { ascending: true });
+    .order("sku", { ascending: true });
   return (data ?? []) as Product[];
 }
 
