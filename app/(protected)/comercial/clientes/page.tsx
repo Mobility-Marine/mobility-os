@@ -14,6 +14,7 @@ import ClientDocuments      from "./components/ClientDocuments";
 import ClientContacts       from "./components/ClientContacts";
 import ClientCreateDrawer   from "./components/ClientCreateDrawer";
 import ClientImportExport   from "./components/ClientImportExport";
+import ClientActivityPanel  from "./components/ClientActivityPanel";
 
 export default function ClientsPage() {
   const { t }  = useTranslation();
@@ -56,7 +57,7 @@ export default function ClientsPage() {
     <div style={{
       display: "grid",
       gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-      gridTemplateRows: "auto 560px",
+      gridTemplateRows: "auto 560px auto",
       gap: "16px",
       paddingBottom: "32px",
     }}>
@@ -136,7 +137,16 @@ export default function ClientsPage() {
           )}
         </div>
       </div>
-      <div style={{ gridColumn: "3 / 5", minHeight: 0, overflow: "auto" }}>
+      {/* ROW_L — Activity Panel + Import/Export */}
+      <div style={{ gridColumn: "1 / 3", minHeight: "280px" }}>
+        <ClientActivityPanel
+          client={selected}
+          contacts={contacts}
+          documents={documents}
+          loading={detailLoading}
+        />
+      </div>
+      <div style={{ gridColumn: "3 / 5", minHeight: "280px" }}>
         <ClientImportExport
           clients={clients}
           onImported={ctrl.reload}
