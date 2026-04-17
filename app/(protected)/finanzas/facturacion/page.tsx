@@ -89,15 +89,26 @@ async function handleFacturarEmbarque(shipment: any) {
       .select(`
         *, 
         client:clients(name, legal_name, rfc, email, tax_regime, zip_code),
-        services:shipment_services(description, price, currency)
+        services:shipment_services(
+          description, price, currency, product_id,
+          product:products(name, sat_product_code, sat_unit_code, unit)
+        )
       `)
       .eq("id", shipment.id)
       .single();
     if (!sh) return;
 
     // Si no hay líneas en shipment_services, buscar en quotation_services
-    let services = (sh.services ?? []) as any[];
-    if (services.length === 0 && sh.quotation_id) {
+    let services = (sh.services ?? []).map((s: any) => ({
+        description:      s.product?.name            ?? s.description,
+        price:            s.price,
+        currency:         s.currency,
+        product_id:       s.product_id               ?? null,
+        sat_product_code: s.product?.sat_product_code ?? "84111506",
+        sat_unit_code:    s.product?.sat_unit_code    ?? "E48",
+        unit:             s.product?.unit             ?? "Servicio",
+      }));
+      if (services.length === 0 && sh.quotation_id) {
       const { data: qsvcs } = await supabase
         .from("quotation_services")
         .select("description, price, currency, product_id, product:products(name, sat_product_code, sat_unit_code, unit)")
