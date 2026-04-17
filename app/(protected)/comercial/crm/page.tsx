@@ -10,6 +10,7 @@ import type { CrmAccountInsights, AiDirectorAdvice } from "./types/crm.types";
 import AccountsSidebar  from "./components/AccountsSidebar";
 import AccountWorkspace from "./components/AccountWorkspace";
 import AccountCopilot   from "./components/AccountCopilot";
+import Customer360Panel from "./components/Customer360Panel";
 
 export default function CRMPage() {
   const { t }  = useTranslation();
@@ -97,7 +98,7 @@ export default function CRMPage() {
     <div style={{
       display: "grid",
       gridTemplateColumns: "repeat(4, minmax(0, 1fr))",
-      gridTemplateRows: "auto 560px",
+      gridTemplateRows: "auto 560px auto",
       gap: "16px",
       paddingBottom: "32px",
     }}>
@@ -170,6 +171,10 @@ export default function CRMPage() {
           insights={insights}
           director={director}
         />
+      </div>
+      {/* ROW CUSTOMER 360 */}
+      <div style={{ gridColumn: "1 / -1", minHeight: "320px" }}>
+        <Customer360Panel account={selected} />
       </div>
     </div>
   );
