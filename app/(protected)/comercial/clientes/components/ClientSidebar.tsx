@@ -136,7 +136,7 @@ export default function ClientSidebar({
                   {initials}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.3 }}>
                     {c.name}
                   </div>
                   <div style={{ fontSize: "10px", color: "var(--color-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
