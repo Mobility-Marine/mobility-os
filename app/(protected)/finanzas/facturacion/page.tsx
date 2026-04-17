@@ -18,6 +18,7 @@ import CFDICreateDrawer        from "./components/CFDICreateDrawer";
 import CFDIComplementoPago     from "./components/CFDIComplementoPago";
 import CFDINotaCredito         from "./components/CFDINotaCredito";
 import CFDICancelModal         from "./components/CFDICancelModal";
+import CFDINominaDrawer        from "./components/CFDINominaDrawer";
 
 type Tab = "dashboard" | "emitir" | "historial" | "notas" | "calendario";
 
@@ -42,6 +43,7 @@ export default function FacturacionPage() {
   const [savingExtra,        setSavingExtra]         = useState(false);
   const [pendingShipments,   setPendingShipments]    = useState<any[]>([]);
   const [preloadShipment,    setPreloadShipment]     = useState<any | null>(null);
+  const [nominaDrawerOpen,   setNominaDrawerOpen]    = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? ""));
@@ -76,6 +78,7 @@ export default function FacturacionPage() {
   function handleSelectCFDIType(opt: CFDITypeOption) {
     if (opt.id === "complemento_pago") { setCompREPOpen(true); return; }
     if (opt.id === "nota_credito")     { setNotaCreditoOpen(true); return; }
+    if (opt.id === "nomina")           { setNominaDrawerOpen(true); return; }
     setSelectedCFDIType(opt);
   }
 
@@ -390,6 +393,12 @@ async function handleFacturarEmbarque(shipment: any) {
         cfdis={ctrl.cfdis}
         onClose={() => setNotaCreditoOpen(false)}
         onCreate={handleEmitirNotaCredito}
+      />
+
+      <CFDINominaDrawer
+        open={nominaDrawerOpen}
+        onClose={() => setNominaDrawerOpen(false)}
+        onDone={() => { ctrl.load(); setTab("historial"); }}
       />
 
       {cancelTarget && (
