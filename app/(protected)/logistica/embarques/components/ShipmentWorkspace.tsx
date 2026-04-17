@@ -714,15 +714,12 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
             </button>
           )}
 
-          {/* Facturar — cuando está completado/entregado */}
-          {shipment.status === "delivered" && !shipment.invoice_id && (
-            <button onClick={() => router.push("/finanzas/facturacion")} style={{
-              height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)",
-              background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)",
-              color: "var(--color-warning-text)", fontSize: "11px", fontWeight: 700, cursor: "pointer",
-            }}>
-              ⚡ {tl.generateInvoice ?? "Generar factura"}
-            </button>
+          {/* Badge factura emitida */}
+          {shipment.invoice_id && (
+            <span style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", color: "var(--color-success-text)", fontSize: "11px", fontWeight: 700, display: "flex", alignItems: "center", gap: "4px" }}>
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Factura emitida
+            </span>
           )}
 
           {/* Cancelar */}
