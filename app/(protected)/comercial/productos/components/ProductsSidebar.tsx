@@ -142,7 +142,7 @@ export default function ProductsSidebar({
       </div>{/* ← cierre del div flexShrink:0 del HEADER */}
 
       {/* LIST */}
-      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", minHeight: 0, display: "grid", gap: "4px", alignContent: "start" }}>
+      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "grid", gap: "4px", alignContent: "start" }}>
         {products.length === 0 ? (
           <div style={{ padding: "28px 12px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
             {tp.noProducts ?? "Sin productos"}
@@ -168,9 +168,9 @@ export default function ProductsSidebar({
                 <span style={{ fontSize: "9px", fontWeight: 800, padding: "1px 5px", borderRadius: "var(--radius-sm)", background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", color: "var(--color-text-muted)", flexShrink: 0, fontFamily: "monospace" }}>
                   {p.sku}
                 </span>
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {p.name}
-                </span>
+                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {p.name}
+              </span>
                 {!p.is_active && (
                   <span style={{ fontSize: "9px", color: "var(--color-text-muted)", background: "var(--color-bg-base)", padding: "1px 4px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-faint)", flexShrink: 0 }}>
                     OFF
