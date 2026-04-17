@@ -253,6 +253,25 @@ export async function fetchClientConnections(
     connections.push({ type: "prospect", id: p.id, label: p.company_name ?? p.name ?? "Prospecto", status: p.status, date: p.created_at });
   }
 
+  const { data: invoices } = await supabase
+    .from("cfdi_documents")
+    .select("id, folio, serie, total, status, cfdi_date")
+    .eq("company_id", companyId)
+    .eq("related_client_id", clientId)
+    .eq("type", "I")
+    .order("cfdi_date", { ascending: false })
+    .limit(5);
+  for (const inv of invoices ?? []) {
+    connections.push({
+      type:   "invoice",
+      id:     inv.id,
+      label:  `${inv.serie ?? ""}${inv.folio ?? "—"}`,
+      status: inv.status,
+      value:  inv.total,
+      date:   inv.cfdi_date,
+    });
+  }
+
   return connections;
 }
 
@@ -261,23 +280,34 @@ export async function fetchClientConnections(
 export async function fetchClientStats(
   companyId: string, clientId: string
 ) {
-  const { data: opps } = await supabase
-    .from("opportunities")
-    .select("id, value, stage")
-    .eq("company_id", companyId)
-    .eq("client_id", clientId)
-    .eq("archived", false);
+  const [{ data: opps }, { data: cxc }, { data: cfdis }] = await Promise.all([
+    supabase.from("opportunities")
+      .select("id, value, stage")
+      .eq("company_id", companyId)
+      .eq("client_id", clientId)
+      .eq("archived", false),
+    supabase.from("accounts_receivable")
+      .select("balance")
+      .eq("company_id", companyId)
+      .eq("client_id", clientId)
+      .in("status", ["pending", "partial"]),
+    supabase.from("cfdi_documents")
+      .select("total")
+      .eq("company_id", companyId)
+      .eq("related_client_id", clientId)
+      .eq("status", "valid")
+      .eq("type", "I"),
+  ]);
 
-  const totalRevenue = (opps ?? [])
-    .filter((o) => o.stage === "won")
-    .reduce((s, o) => s + (o.value ?? 0), 0);
+  const openBalance  = (cxc ?? []).reduce((s, r) => s + parseFloat(r.balance ?? "0"), 0);
+  const totalRevenue = (cfdis ?? []).reduce((s, r) => s + parseFloat(r.total ?? "0"), 0);
 
   return {
     opportunities: (opps ?? []).length,
     openOrders:    0,
     totalRevenue,
-    openBalance:   0,
-    riskLevel:     "LOW" as const,
+    openBalance,
+    riskLevel: openBalance > 0 ? "MEDIUM" as const : "LOW" as const,
   };
 }
 
