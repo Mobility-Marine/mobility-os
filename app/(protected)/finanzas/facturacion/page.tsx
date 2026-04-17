@@ -383,7 +383,14 @@ async function handleFacturarEmbarque(shipment: any) {
           // Vincular CFDI al embarque y marcarlo como facturado
           if (preloadShipment?.shipment_id && cfdi?.id) {
             await supabase.from("shipments")
-              .update({ invoice_id: cfdi.id, status: "invoiced", updated_at: new Date().toISOString() })
+              .update({
+                invoice_id: cfdi.id,
+                status:     "invoiced",
+                // Sincronizar total y moneda con el CFDI emitido
+                total:      cfdi.total    ?? preloadShipment.total,
+                currency:   cfdi.currency ?? preloadShipment.currency,
+                updated_at: new Date().toISOString(),
+              })
               .eq("id", preloadShipment.shipment_id)
               .eq("company_id", companyId!);
           }
