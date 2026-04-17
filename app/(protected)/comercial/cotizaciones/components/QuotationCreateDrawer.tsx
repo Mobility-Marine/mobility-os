@@ -528,17 +528,15 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
                 {/* Selector de producto del catálogo */}
                 <div>
                   <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                    Vincular a producto del catálogo
-                    <span style={{ marginLeft: "6px", fontSize: "9px", color: "var(--color-brand-blue)", fontWeight: 400, textTransform: "none" }}>(opcional — para facturación con clave SAT correcta)</span>
+                    Concepto de facturación (catálogo)
+                    <span style={{ marginLeft: "6px", fontSize: "9px", color: "var(--color-brand-blue)", fontWeight: 400, textTransform: "none" }}>(no aparece en PDF — solo para CFDI)</span>
                   </div>
                   <select
                     value={svcForm.product_id ?? ""}
                     onChange={(e) => {
-                      const prod = (productSuggestions.length > 0 ? productSuggestions : []).find((p: any) => p.id === e.target.value);
                       setSvcForm((p) => ({
                         ...p,
-                        product_id:  e.target.value || undefined,
-                        description: prod?.name ?? p.description,
+                        product_id: e.target.value || undefined,
                       }));
                     }}
                     style={SELECT}
@@ -548,6 +546,14 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
                       <option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ""}</option>
                     ))}
                   </select>
+                  {svcForm.product_id && (
+                    <div style={{ marginTop: "4px", display: "flex", alignItems: "center", gap: "6px", padding: "5px 10px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)" }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--color-info-text)" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>
+                      <span style={{ fontSize: "10px", color: "var(--color-info-text)", fontWeight: 600 }}>
+                        CFDI usará: {svcCatalog.find((p: any) => p.id === svcForm.product_id)?.name ?? "—"}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "10px" }}>
                   <Field label="Tipo de servicio *">
