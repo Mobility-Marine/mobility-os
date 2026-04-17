@@ -277,6 +277,9 @@ export default function ProductWorkspace({ product, onUpdate, onDelete, onToggle
                 {product.sku}
               </span>
               <span style={{ fontSize: "15px", fontWeight: 800, color: "var(--color-text-primary)" }}>{product.name}</span>
+              <span style={{ fontSize: "10px", padding: "2px 7px", borderRadius: "var(--radius-full)", background: product.product_type === "service" ? "rgba(59,130,246,0.1)" : "var(--color-bg-subtle)", border: `1px solid ${product.product_type === "service" ? "rgba(59,130,246,0.3)" : "var(--color-border-faint)"}`, color: product.product_type === "service" ? "var(--color-brand-blue)" : "var(--color-text-muted)", fontWeight: 600 }}>
+                {product.product_type === "service" ? "⚙️ Servicio" : "📦 Producto"}
+              </span>
               {product.category && (
                 <span style={{ fontSize: "10px", padding: "2px 7px", borderRadius: "var(--radius-full)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", color: "var(--color-info-text)" }}>
                   {product.category}
