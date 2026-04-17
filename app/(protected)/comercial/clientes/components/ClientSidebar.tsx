@@ -27,13 +27,13 @@ export default function ClientSidebar({
 
   const active    = clients.filter((c) => c.is_active).length;
   const customers = clients.filter((c) => c.is_customer).length;
-  const suppliers = clients.filter((c) => c.is_supplier).length;
+  const both      = clients.filter((c) => c.is_customer && c.is_supplier).length;
 
   const kpis = [
-    { label: (t.clients as any)?.active    ?? "Activos",    value: active,    color: "var(--color-brand-blue)"   },
-    { label: (t.clients as any)?.customersS ?? "Clientes",   value: customers, color: "var(--color-info-text)"   },
-    { label: (t.clients as any)?.suppliersS ?? "Proveed.",   value: suppliers, color: "var(--color-success-text)"},
-    { label: (t.clients as any)?.total     ?? "Total",      value: clients.length, color: "var(--color-text-second)" },
+    { label: (t.clients as any)?.active    ?? "Activos",  value: active,         color: "var(--color-brand-blue)"  },
+    { label: (t.clients as any)?.customersS ?? "Clientes", value: customers,      color: "var(--color-info-text)"  },
+    { label: (t.clients as any)?.both      ?? "Ambos",    value: both,           color: "#a78bfa"                 },
+    { label: (t.clients as any)?.total     ?? "Total",    value: clients.length, color: "var(--color-text-second)"},
   ];
 
   return (
@@ -86,7 +86,7 @@ export default function ClientSidebar({
       </div>
 
       {/* KPIS */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "6px", flexShrink: 0 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "6px", flexShrink: 0, overflow: "hidden" }}>
         {kpis.map((k) => (
           <div key={k.label} style={{
             background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)",
@@ -99,7 +99,7 @@ export default function ClientSidebar({
       </div>
 
       {/* LIST */}
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "grid", gap: "6px", alignContent: "start" }}>
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", minHeight: 0, display: "grid", gap: "6px", alignContent: "start" }}>
         {clients.length === 0 ? (
           <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
             {(t.clients as any)?.noClients ?? "Sin clientes registrados"}
