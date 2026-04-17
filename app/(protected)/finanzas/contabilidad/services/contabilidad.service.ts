@@ -102,7 +102,43 @@ export async function fetchEstadoResultados(
   const gastos_operativos   = sum(cxpOpe) + depreciacion_periodo;
   const utilidad_bruta      = ingresos_facturados - costo_ventas;
   const utilidad_operativa  = utilidad_bruta - gastos_operativos;
-  const isr_estimado        = Math.max(0, utilidad_operativa * 0.30);
+  // ISR según régimen fiscal de la empresa
+  const { data: companyData } = await supabase
+    .from("companies").select("tax_regime").eq("id", companyId).single();
+  const taxRegime = companyData?.tax_regime ?? "moral";
+
+  let isr_estimado = 0;
+  if (taxRegime === "moral") {
+    // 30% sobre utilidad
+    isr_estimado = Math.max(0, utilidad_operativa * 0.30);
+  } else if (taxRegime === "pfae") {
+    // Tarifa progresiva simplificada mensual (Art. 96 LISR)
+    const base = Math.max(0, utilidad_operativa);
+    if      (base <= 7735.00)   isr_estimado = base * 0.0192;
+    else if (base <= 65651.07)  isr_estimado = 148.51  + (base - 7735.00)  * 0.0640;
+    else if (base <= 115375.90) isr_estimado = 3855.14 + (base - 65651.07) * 0.1088;
+    else if (base <= 134003.90) isr_estimado = 9265.20 + (base - 115375.90)* 0.1600;
+    else if (base <= 160052.90) isr_estimado = 12264.16+ (base - 134003.90)* 0.1792;
+    else if (base <= 321507.73) isr_estimado = 16988.05+ (base - 160052.90)* 0.2136;
+    else if (base <= 482760.03) isr_estimado = 51491.82+ (base - 321507.73)* 0.2352;
+    else if (base <= 644013.00) isr_estimado = 89417.10+ (base - 482760.03)* 0.3000;
+    else                        isr_estimado = 137746.90+ (base - 644013.00)* 0.3200;
+  } else if (taxRegime === "resico_pm") {
+    // RESICO PM: tasa sobre ingresos directamente
+    isr_estimado = Math.max(0, ingresos_facturados * 0.01);
+  } else if (taxRegime === "resico_pf") {
+    // RESICO PF: tasa sobre ingresos
+    const base = Math.max(0, ingresos_facturados);
+    if      (base <= 300000)   isr_estimado = base * 0.010;
+    else if (base <= 600000)   isr_estimado = base * 0.011;
+    else if (base <= 1000000)  isr_estimado = base * 0.013;
+    else if (base <= 2000000)  isr_estimado = base * 0.015;
+    else if (base <= 3500000)  isr_estimado = base * 0.020;
+    else                       isr_estimado = base * 0.025;
+  } else {
+    // other: 0, el usuario lo configura manualmente en Impuestos
+    isr_estimado = 0;
+  }
   const utilidad_neta       = utilidad_operativa - isr_estimado;
   const margen_bruto_pct    = ingresos_facturados > 0 ? (utilidad_bruta / ingresos_facturados) * 100 : 0;
   const margen_neto_pct     = ingresos_facturados > 0 ? (utilidad_neta  / ingresos_facturados) * 100 : 0;
