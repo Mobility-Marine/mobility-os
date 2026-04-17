@@ -5,9 +5,10 @@ import { PRODUCT_UNITS, SERVICE_UNITS, CURRENCIES } from "../types/products.type
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type Props = {
-  open:     boolean;
-  onClose:  () => void;
-  onCreate: (payload: CreateProductPayload) => Promise<void>;
+  open:       boolean;
+  onClose:    () => void;
+  onCreate:   (payload: CreateProductPayload) => Promise<void>;
+  categories?: string[];
 };
 
 type Step = "basic" | "pricing" | "fiscal";
@@ -101,7 +102,7 @@ const EMPTY_FORM = (): Partial<CreateProductPayload> => ({
   notes: "",
 });
 
-export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) {
+export default function ProductCreateDrawer({ open, onClose, onCreate, categories = [] }: Props) {
   const { t, lang } = useTranslation();
   const tp          = (t.products as any) ?? {};
   const es          = lang !== "en";
@@ -267,9 +268,30 @@ export default function ProductCreateDrawer({ open, onClose, onCreate }: Props) 
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
                 <Field label={tp.category ?? "Categoría"}>
-                  <input value={form.category ?? ""} onChange={(e) => set("category", e.target.value)}
-                    placeholder={isService ? (es ? "Consultoría, Instalación…" : "Consulting, Installation…") : (es ? "Embalaje, Refacciones…" : "Packaging, Spare parts…")}
-                    style={INPUT} />
+                  {categories.length > 0 ? (
+                    <select
+                      value={form.category ?? ""}
+                      onChange={(e) => set("category", e.target.value)}
+                      style={{ ...INPUT, cursor: "pointer" }}
+                    >
+                      <option value="">— Sin categoría —</option>
+                      {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+                      <option value="__nueva__">+ Nueva categoría…</option>
+                    </select>
+                  ) : (
+                    <input value={form.category ?? ""} onChange={(e) => set("category", e.target.value)}
+                      placeholder={isService ? "Consultoría, Instalación…" : "Embalaje, Refacciones…"}
+                      style={INPUT} />
+                  )}
+                  {form.category === "__nueva__" && (
+                    <input
+                      autoFocus
+                      value=""
+                      onChange={(e) => set("category", e.target.value)}
+                      placeholder="Nombre de la nueva categoría"
+                      style={{ ...INPUT, marginTop: "5px" }}
+                    />
+                  )}
                 </Field>
                 <Field label={tp.unit ?? (isService ? "Unidad" : "Unidad de medida")}>
                   <select value={form.unit ?? (isService ? "servicio" : "pza")} onChange={(e) => set("unit", e.target.value)} style={{ ...INPUT, cursor: "pointer" }}>
