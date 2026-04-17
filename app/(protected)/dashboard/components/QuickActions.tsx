@@ -142,8 +142,8 @@ export default function QuickActions() {
             <div style={{
               width: "32px", height: "32px",
               borderRadius: "var(--radius-md)",
-              background: action.bg,
-              border: `1px solid ${action.color}30`,
+              background: `${action.color}18`,
+              border: `1px solid ${action.color}35`,
               display: "flex", alignItems: "center", justifyContent: "center",
               color: action.color, flexShrink: 0,
             }}>
