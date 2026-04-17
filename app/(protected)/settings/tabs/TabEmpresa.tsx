@@ -1,5 +1,4 @@
 "use client";
-
 import { useEffect, useState, useRef } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant } from "@/lib/tenant/TenantProvider";
@@ -49,10 +48,13 @@ export default function TabEmpresa() {
   const [saved,         setSaved]         = useState(false);
   const [error,         setError]         = useState<string | null>(null);
   const [logoUploading, setLogoUploading] = useState(false);
+  const [taxRegime,     setTaxRegime]     = useState("moral");
 
   useEffect(() => {
     if (!companyId) return;
     fetchCompanySettings(companyId).then((s) => { if (s) setForm(s); });
+    supabase.from("companies").select("tax_regime").eq("id", companyId).single()
+      .then(({ data }) => { if (data?.tax_regime) setTaxRegime(data.tax_regime); });
   }, [companyId]);
 
   function set(k: keyof CompanySettings, v: any) {
@@ -85,6 +87,10 @@ export default function TabEmpresa() {
     setError(null);
     try {
       await upsertCompanySettings(companyId, form);
+      await supabase.from("companies").update({
+        tax_regime: taxRegime,
+        updated_at: new Date().toISOString(),
+      }).eq("id", companyId);
       setSaved(true);
       setTimeout(() => setSaved(false), 2500);
     } catch (e: any) {
@@ -113,13 +119,15 @@ export default function TabEmpresa() {
             }
           </div>
           <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-            <button onClick={() => logoRef.current?.click()} disabled={logoUploading} style={{ height: "34px", padding: "0 16px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
+            <button onClick={() => logoRef.current?.click()} disabled={logoUploading}
+              style={{ height: "34px", padding: "0 16px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
               {logoUploading ? t.general.loading : "Subir logo"}
             </button>
             <input ref={logoRef} type="file" accept="image/png,image/svg+xml,image/jpeg,image/webp" style={{ display: "none" }} onChange={handleLogoUpload} />
             <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>PNG, SVG o JPG · Fondo transparente recomendado</span>
             {form.logo_url && (
-              <button onClick={() => set("logo_url", null)} style={{ height: "26px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)", fontSize: "11px", cursor: "pointer", alignSelf: "start" }}>
+              <button onClick={() => set("logo_url", null)}
+                style={{ height: "26px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)", fontSize: "11px", cursor: "pointer", alignSelf: "start" }}>
                 Quitar logo
               </button>
             )}
@@ -155,9 +163,7 @@ export default function TabEmpresa() {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "22px" }}>
-              Vista previa:
-            </div>
+            <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "22px" }}>Vista previa:</div>
             <div style={{ marginTop: "22px", display: "flex", gap: "6px" }}>
               {[form.brand_color_dark ?? "#0a1628", form.brand_accent ?? "#c9a227", form.brand_color ?? "#1d4ed8"].map((c, i) => (
                 <div key={i} style={{ width: "28px", height: "28px", borderRadius: "var(--radius-sm)", background: c, border: "1px solid var(--color-border-faint)" }} />
@@ -182,7 +188,7 @@ export default function TabEmpresa() {
             <input value={form.fiscal_rfc ?? ""} onChange={(e) => set("fiscal_rfc", e.target.value.toUpperCase())} placeholder="EMP123456ABC" style={INPUT} />
           </div>
           <div style={{ gridColumn: "1 / -1" }}>
-            <FieldLabel>Régimen fiscal</FieldLabel>
+            <FieldLabel>Régimen fiscal (SAT)</FieldLabel>
             <select value={form.fiscal_regime ?? ""} onChange={(e) => set("fiscal_regime", e.target.value)} style={{ ...INPUT, cursor: "pointer" }}>
               <option value="">Seleccionar…</option>
               {TAX_REGIMES.map((r) => <option key={r.value} value={r.value}>{r.value} — {r.label}</option>)}
@@ -201,7 +207,6 @@ export default function TabEmpresa() {
             <input value={form.fiscal_website ?? ""} onChange={(e) => set("fiscal_website" as any, e.target.value)} placeholder="www.empresa.com" style={INPUT} />
           </div>
         </Grid2>
-
         <div style={{ borderTop: "1px solid var(--color-border-faint)", paddingTop: "14px" }}>
           <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "12px" }}>Dirección fiscal</div>
           <Grid2>
@@ -226,6 +231,31 @@ export default function TabEmpresa() {
               <input value={form.fiscal_country ?? "México"} onChange={(e) => set("fiscal_country", e.target.value)} style={INPUT} />
             </div>
           </Grid2>
+        </div>
+      </Section>
+
+      {/* ── RÉGIMEN FISCAL PARA IMPUESTOS ── */}
+      <Section
+        title="Régimen fiscal para cálculo de impuestos"
+        desc="Define cómo se calcula el ISR en los módulos de Contabilidad e Impuestos."
+      >
+        <div>
+          <FieldLabel>Tipo de régimen fiscal</FieldLabel>
+          <select value={taxRegime} onChange={e => setTaxRegime(e.target.value)}
+            style={{ ...INPUT, cursor: "pointer" }}>
+            <option value="moral">Persona Moral — ISR 30% sobre utilidad</option>
+            <option value="pfae">Persona Física con Actividad Empresarial — Tarifa progresiva</option>
+            <option value="resico_pm">RESICO Persona Moral — 1%-2% sobre ingresos</option>
+            <option value="resico_pf">RESICO Persona Física — 1%-2.5% sobre ingresos</option>
+            <option value="other">Otro / Configurable manualmente</option>
+          </select>
+          <div style={{ marginTop: "10px", padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-brand-blue)", lineHeight: 1.6 }}>
+            {taxRegime === "moral"     && "📋 Persona Moral: ISR provisional mensual = Utilidad del período × 30% − pagos previos."}
+            {taxRegime === "pfae"      && "📋 PFAE: ISR según tarifa progresiva mensual del Art. 96 LISR. Tasa efectiva varía según ingresos."}
+            {taxRegime === "resico_pm" && "📋 RESICO PM: ISR = Ingresos del período × tasa RESICO (1% al 2%). Sin deducción de gastos."}
+            {taxRegime === "resico_pf" && "📋 RESICO PF: ISR = Ingresos del período × tasa RESICO (1% al 2.5%). Declaración simplificada."}
+            {taxRegime === "other"     && "📋 Régimen especial: El ISR se configurará manualmente en el módulo de Impuestos."}
+          </div>
         </div>
       </Section>
 
@@ -254,7 +284,8 @@ export default function TabEmpresa() {
 
       {/* GUARDAR */}
       <div>
-        <button onClick={handleSave} disabled={saving} style={{ height: "40px", padding: "0 28px", borderRadius: "var(--radius-md)", background: saved ? "var(--color-success-text)" : "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+        <button onClick={handleSave} disabled={saving}
+          style={{ height: "40px", padding: "0 28px", borderRadius: "var(--radius-md)", background: saved ? "var(--color-success-text)" : "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
           {saving ? t.general.loading : saved ? "✓ Guardado" : t.general.save}
         </button>
       </div>
