@@ -78,8 +78,6 @@ export async function POST(req: NextRequest) {
 
     // ── SETUP ORG ────────────────────────────────────────────────────────────
     if (action === "setup_org") {
-      const settings = await getCompanySettings(companyId);
-
       if (!settings?.fiscal_rfc) {
         return NextResponse.json(
           { error: "Configura primero los datos fiscales en Settings → Empresa (RFC, razón social y código postal)." },
@@ -87,47 +85,59 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      const userKey  = getUserKey();
-      const liveKey  = getLiveKey();
-      let   orgId:   string;
-      let   orgName: string;
+      let orgId:   string;
+      let orgName: string;
 
-      if (userKey) {
-        // ── MODO SAAS (producción) ──────────────────────────────────────────
-        // User Key → crear organización propia para esta empresa cliente
-        // Si ya existe org_id, solo re-sincroniza
-        if (settings.facturapi_org_id) {
-          // Ya registrada — solo refrescar nombre
-          const org = await facturapi(userKey, `/organizations/${settings.facturapi_org_id}`);
-          orgId   = org.id;
-          orgName = org.legal?.name ?? settings.fiscal_name;
-        } else {
-          // Crear nueva organización para este cliente
-          // Paso 1: crear org solo con nombre
-          const org = await facturapi(userKey, "/organizations", "POST", {
-            name: settings.fiscal_name ?? "Mi empresa",
-          });
-          // Paso 2: actualizar datos fiscales (legal)
-          if (settings.fiscal_rfc) {
-            await facturapi(userKey, `/organizations/${org.id}/legal`, "PUT", {
-              name:       settings.fiscal_name,
-              tax_id:     settings.fiscal_rfc,
-              tax_system: settings.fiscal_regime ?? "601",
-              address:    { zip: settings.fiscal_zip ?? "00000" },
-            });
-          }
-          orgId   = org.id;
-          orgName = org.legal?.name ?? settings.fiscal_name;
+      // ── PASO 1: intentar vincular org existente con Live Key ──
+      // (para Mobility Marine que ya tiene cuenta propia en Facturapi)
+      try {
+        const existingOrg = await facturapi(getLiveKey(), "/organization");
+        if (existingOrg?.id) {
+          orgId   = existingOrg.id;
+          orgName = existingOrg.legal?.name ?? settings.fiscal_name ?? "";
+          // Guardar y retornar directo — no necesitamos User Key
+          await supabaseAdmin
+            .from("company_settings")
+            .update({ facturapi_org_id: orgId, pac_provider: "facturapi" })
+            .eq("company_id", companyId);
+          return NextResponse.json({ org_id: orgId, legal_name: orgName });
         }
-      } else {
-        // ── MODO DIRECTO (Mobility Marine factura con su propia cuenta) ─────
-        // Live Key → obtener la organización de esta cuenta
-        const org = await facturapi(liveKey, "/organization");
-        orgId   = org.id;
-        orgName = org.legal?.name ?? settings.fiscal_name;
+      } catch (_) {
+        // Live Key no funcionó o no hay org — continuar con User Key (modo SaaS)
       }
 
-      // Guardar org_id y marcar PAC como Facturapi
+      // ── PASO 2: modo SaaS — crear org con User Key ────────────
+      const userKey = getUserKey();
+      if (!userKey) {
+        return NextResponse.json(
+          { error: "No se encontró FACTURAPI_USER_KEY. Configura la variable de entorno en Vercel." },
+          { status: 500 }
+        );
+      }
+
+      if (settings.facturapi_org_id) {
+        // Ya existe — solo re-sincronizar
+        const org = await facturapi(userKey, `/organizations/${settings.facturapi_org_id}`);
+        orgId   = org.id;
+        orgName = org.legal?.name ?? settings.fiscal_name ?? "";
+      } else {
+        // Crear nueva organización para este cliente
+        const org = await facturapi(userKey, "/organizations", "POST", {
+          name: settings.fiscal_name ?? "Mi empresa",
+        });
+        orgId = org.id;
+        // Actualizar datos fiscales en paso separado
+        if (settings.fiscal_rfc) {
+          await facturapi(userKey, `/organizations/${orgId}/legal`, "PUT", {
+            name:       settings.fiscal_name,
+            tax_id:     settings.fiscal_rfc,
+            tax_system: settings.fiscal_regime ?? "601",
+            address:    { zip: settings.fiscal_zip ?? "00000" },
+          });
+        }
+        orgName = settings.fiscal_name ?? "";
+      }
+
       await supabaseAdmin
         .from("company_settings")
         .update({ facturapi_org_id: orgId, pac_provider: "facturapi" })
