@@ -48,6 +48,7 @@ export async function createProduct(
       name:                payload.name.trim(),
       description:         payload.description         || null,
       category:            payload.category            || null,
+      product_type:        payload.product_type        || "product",
       unit:                payload.unit                || "pza",
       unit_price:          payload.unit_price          || 0,
       cost:                payload.cost                || 0,
