@@ -11,12 +11,11 @@ const opsTrend       = [58, 64, 61, 72, 78, 74, 84];
 const revenueTrend   = [42, 48, 51, 56, 60, 58, 67];
 const logisticsTrend = [70, 68, 66, 74, 73, 79, 82];
 
-const MONTHLY_GOAL = 100;
-
 export default function HeroPanel({ metrics }: HeroPanelProps) {
   const { t, lang } = useTranslation();
-
-  const pct = Math.min(Math.round((metrics.pendingInvoices / MONTHLY_GOAL) * 100), 100);
+  const pct = metrics.monthlyGoal > 0
+    ? Math.min(Math.round((metrics.pendingInvoices / metrics.monthlyGoal) * 100), 100)
+    : 0;
   const barColor = pct >= 80 ? "var(--color-success-text)"
     : pct >= 50 ? "var(--color-warning-text)"
     : "var(--color-brand-blue)";
@@ -59,7 +58,7 @@ export default function HeroPanel({ metrics }: HeroPanelProps) {
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{metrics.pendingInvoices} {t.dashboard.invoicesIssued}</span>
-            <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{t.dashboard.goal}: {MONTHLY_GOAL}</span>
+            <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{t.dashboard.goal}: {metrics.monthlyGoal}</span>
           </div>
         </div>
         <div style={{ flexShrink: 0, textAlign: "right" }}>
