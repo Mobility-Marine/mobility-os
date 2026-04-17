@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useEffect } from "react";
 import NotificationsButton from "./NotificationsButton";
 import LanguageSelector from "@/lib/i18n/LanguageSelector";
@@ -7,9 +6,9 @@ import { useTranslation } from "@/lib/i18n/useTranslation";
 
 interface AppHeaderProps {
   section: string;
-  title: string;
+  title:   string;
   onOpenHub: () => void;
-  onSearch: (query: string) => void;
+  onSearch:  (query: string) => void;
 }
 
 function SunIcon() {
@@ -33,12 +32,12 @@ function MoonIcon() {
 }
 
 export default function AppHeader({ section, title, onOpenHub, onSearch }: AppHeaderProps) {
-  const { t }    = useTranslation();
+  const { t }   = useTranslation();
   const [query, setQuery]   = useState("");
   const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem("mos-theme");
+    const saved       = localStorage.getItem("mos-theme");
     const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
     setIsDark((saved ?? (prefersDark ? "dark" : "light")) === "dark");
   }, []);
@@ -58,25 +57,32 @@ export default function AppHeader({ section, title, onOpenHub, onSearch }: AppHe
   return (
     <header style={{
       height: "var(--header-height)",
-      background: "var(--color-bg-base)",
-      borderBottom: "1px solid var(--color-border-faint)",
+      background:   "var(--color-header-bg)",
+      borderBottom: "1px solid var(--color-header-border)",
       display: "flex", alignItems: "center", justifyContent: "space-between",
       padding: "0 24px", gap: "16px", flexShrink: 0,
     }}>
+      {/* Título del módulo */}
       <div style={{ flexShrink: 0 }}>
         <div style={{
           fontSize: "10px", fontWeight: 600,
           letterSpacing: "1px", textTransform: "uppercase",
-          color: "var(--color-text-muted)",
+          color: "var(--color-header-text-muted)",
         }}>
           {section}
         </div>
-        <div style={{ fontSize: "20px", fontWeight: 700, color: "var(--color-text-primary)", lineHeight: 1.2 }}>
+        <div style={{
+          fontSize: "20px", fontWeight: 700,
+          color: "var(--color-header-text)",
+          lineHeight: 1.2,
+        }}>
           {title}
         </div>
       </div>
 
+      {/* Controles derecha */}
       <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, justifyContent: "flex-end" }}>
+        {/* Buscador */}
         <form onSubmit={handleSearch} style={{ flex: "1 1 0", maxWidth: "280px" }}>
           <input
             value={query}
@@ -85,27 +91,27 @@ export default function AppHeader({ section, title, onOpenHub, onSearch }: AppHe
             style={{
               width: "100%", height: "34px", padding: "0 12px",
               borderRadius: "var(--radius-md)",
-              border: "1px solid var(--color-border)",
-              background: "var(--color-bg-subtle)",
-              color: "var(--color-text-primary)",
+              border: "1px solid var(--color-header-input-border)",
+              background: "var(--color-header-input-bg)",
+              color: "var(--color-header-text)",
               fontSize: "13px", outline: "none",
             }}
           />
         </form>
 
         <NotificationsButton />
-
         <LanguageSelector />
 
+        {/* Toggle tema */}
         <button
           onClick={toggleTheme}
           title={isDark ? "Modo claro" : "Modo oscuro"}
           style={{
             width: "34px", height: "34px",
             borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border)",
-            background: "var(--color-bg-subtle)",
-            color: "var(--color-text-second)",
+            border: "1px solid var(--color-header-input-border)",
+            background: "var(--color-header-input-bg)",
+            color: "var(--color-header-text)",
             cursor: "pointer",
             display: "flex", alignItems: "center", justifyContent: "center",
             flexShrink: 0,
@@ -114,16 +120,21 @@ export default function AppHeader({ section, title, onOpenHub, onSearch }: AppHe
           {isDark ? <SunIcon /> : <MoonIcon />}
         </button>
 
+        {/* Command Hub */}
         <button
           onClick={onOpenHub}
           style={{
             height: "34px", padding: "0 16px",
             borderRadius: "var(--radius-md)",
-            background: "var(--color-brand-blue)",
-            color: "#ffffff", border: "none",
+            background: "rgba(255,255,255,0.15)",
+            border: "1px solid rgba(255,255,255,0.25)",
+            color: "#ffffff",
             fontSize: "12px", fontWeight: 600,
             cursor: "pointer", flexShrink: 0,
+            backdropFilter: "blur(4px)",
           }}
+          onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.22)")}
+          onMouseLeave={e => (e.currentTarget.style.background = "rgba(255,255,255,0.15)")}
         >
           {t.dashboard.ia}
         </button>
