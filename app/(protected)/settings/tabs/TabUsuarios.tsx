@@ -39,10 +39,14 @@ export default function TabUsuarios() {
   const [inviting, setInviting] = useState(false);
   const [error,    setError]    = useState<string | null>(null);
   const [success,  setSuccess]  = useState<string | null>(null);
+  const [invitations,     setInvitations]     = useState<any[]>([]);
+  const [loadingInvites,  setLoadingInvites]  = useState(false);
+  const [inviteLink,      setInviteLink]      = useState<string | null>(null);
 
   useEffect(() => {
     if (!companyId) return;
     loadUsers();
+    loadInvitations();
   }, [companyId]);
 
   async function loadUsers() {
@@ -95,9 +99,16 @@ export default function TabUsuarios() {
         expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
       });
       if (error) throw error;
-      setSuccess(`Invitación enviada a ${invEmail}`);
+      const { data: inv } = await supabase.from("company_invitations")
+        .select("token").eq("company_id", companyId!).eq("email", invEmail.trim().toLowerCase())
+        .order("created_at", { ascending: false }).limit(1).single();
+      const link = inv?.token ? `${window.location.origin}/accept-invitation?token=${inv.token}` : null;
+      setInviteLink(link);
+      setSuccess(`Invitación creada para ${invEmail}`);
       setInvEmail("");
-      setTimeout(() => setSuccess(null), 3000);
+      await loadInvitations();
+      setTimeout(() => setSuccess(null), 5000);
+      
     } catch (e: any) { setError(e.message); }
     finally { setInviting(false); }
   }
@@ -113,6 +124,22 @@ export default function TabUsuarios() {
     if (!window.confirm("¿Eliminar este usuario del equipo?")) return;
     await supabase.from("company_users").delete().eq("user_id", userId).eq("company_id", companyId);
     setUsers((prev) => prev.filter((u) => u.user_id !== userId));
+  }
+
+  async function loadInvitations() {
+    if (!companyId) return;
+    setLoadingInvites(true);
+    const { data } = await supabase.from("company_invitations")
+      .select("*").eq("company_id", companyId!)
+      .neq("status", "cancelled").order("created_at", { ascending: false });
+    setInvitations(data ?? []);
+    setLoadingInvites(false);
+  }
+
+  async function cancelInvitation(id: string) {
+    if (!companyId) return;
+    await supabase.from("company_invitations").update({ status: "cancelled" }).eq("id", id).eq("company_id", companyId!);
+    setInvitations(p => p.filter(i => i.id !== id));
   }
 
   const INPUT: React.CSSProperties = {
@@ -244,6 +271,65 @@ export default function TabUsuarios() {
         ))}
       </div>
 
+{/* INVITACIONES PENDIENTES */}
+      {invitations.length > 0 && (
+        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+          <div style={{ padding: "14px 24px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+            <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
+              Invitaciones pendientes
+            </div>
+            <span style={{ fontSize: "11px", padding: "2px 8px", borderRadius: "var(--radius-full)", background: "var(--color-warning-bg)", color: "var(--color-warning-text)", border: "1px solid var(--color-warning-border)" }}>
+              {invitations.filter(i => i.status === "pending").length} pendientes
+            </span>
+          </div>
+          {invitations.map((inv, i) => {
+            const isExpired = new Date(inv.expires_at) < new Date();
+            const link = `${typeof window !== "undefined" ? window.location.origin : ""}/accept-invitation?token=${inv.token}`;
+            return (
+              <div key={inv.id} style={{ padding: "12px 24px", display: "flex", alignItems: "center", gap: "12px", borderBottom: i < invitations.length - 1 ? "1px solid var(--color-border-faint)" : "none" }}>
+                <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: "13px", fontWeight: 600, color: "var(--color-text-primary)" }}>{inv.email}</div>
+                  <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "1px" }}>
+                    Rol: <strong>{inv.role}</strong> · {isExpired ? "Expirada" : `Expira ${new Date(inv.expires_at).toLocaleDateString("es-MX")}`}
+                  </div>
+                </div>
+                <button onClick={() => { navigator.clipboard.writeText(link); }}
+                  title="Copiar link de invitación"
+                  style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-sm)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", color: "var(--color-brand-blue)", fontSize: "10px", fontWeight: 700, cursor: "pointer" }}>
+                  Copiar link
+                </button>
+                <span style={{ fontSize: "10px", padding: "2px 7px", borderRadius: "var(--radius-full)", background: isExpired ? "var(--color-danger-bg)" : inv.status === "accepted" ? "var(--color-success-bg)" : "var(--color-warning-bg)", color: isExpired ? "var(--color-danger-text)" : inv.status === "accepted" ? "var(--color-success-text)" : "var(--color-warning-text)", fontWeight: 700 }}>
+                  {isExpired ? "Expirada" : inv.status === "accepted" ? "Aceptada" : "Pendiente"}
+                </span>
+                {inv.status !== "accepted" && (
+                  <button onClick={() => cancelInvitation(inv.id)}
+                    style={{ width: "28px", height: "28px", borderRadius: "var(--radius-sm)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "var(--color-danger-text)", flexShrink: 0 }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Link copiado */}
+      {inviteLink && (
+        <div style={{ padding: "12px 16px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", display: "flex", gap: "10px", alignItems: "center" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-blue)" strokeWidth="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+          <div style={{ flex: 1, fontSize: "11px", color: "var(--color-brand-blue)", fontFamily: "monospace", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {inviteLink}
+          </div>
+          <button onClick={() => { navigator.clipboard.writeText(inviteLink); setInviteLink(null); }}
+            style={{ height: "26px", padding: "0 10px", borderRadius: "var(--radius-sm)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", flexShrink: 0 }}>
+            Copiar
+          </button>
+        </div>
+      )}
+      
       {/* ROLES INFO */}
       <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "20px 24px" }}>
         <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "12px" }}>
