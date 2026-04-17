@@ -412,16 +412,41 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
 
   // Services
   const [addingSvc, setAddingSvc] = useState(false);
-  const [svcForm,   setSvcForm]   = useState<Partial<ShipmentService>>({
-    service_type: "terrestre", currency: "USD", price: 0, cost: 0,
+  const [svcForm, setSvcForm] = useState<Partial<ShipmentService> & { product_id?: string }>({
+    service_type: "terrestre", currency: "USD", price: 0,
   });
   const [savingSvc,   setSavingSvc]   = useState(false);
-  const [providers,   setProviders]   = useState<{ id: string; name: string }[]>([]);
+  const [providers,       setProviders]       = useState<{ id: string; name: string }[]>([]);
+  const [serviceProducts, setServiceProducts] = useState<{
+    id: string; name: string; unit_price: number; currency: string;
+    sat_product_code: string; sat_unit_code: string; unit: string;
+  }[]>([]);
 
   useEffect(() => {
     if (!companyId) return;
     fetchLogisticsProviders(companyId).then(setProviders);
+    // Cargar servicios del catálogo (product_type = 'service')
+    sb.from("products")
+      .select("id, name, unit_price, currency, sat_product_code, sat_unit_code, unit")
+      .eq("company_id", companyId)
+      .eq("product_type", "service")
+      .eq("is_active", true)
+      .order("name")
+      .then(({ data }) => setServiceProducts(data ?? []));
   }, [companyId]);
+
+function selectServiceProduct(productId: string) {
+    const p = serviceProducts.find(x => x.id === productId);
+    if (!p) return;
+    setSvcForm(prev => ({
+      ...prev,
+      product_id:  p.id,
+      description: p.name,
+      price:       p.unit_price,
+      currency:    p.currency,
+    }));
+  }
+  
   // Documents
   const [docs,         setDocs]         = useState<ShipmentDocument[]>([]);
   const [loadingDocs,  setLoadingDocs]  = useState(false);
@@ -542,10 +567,13 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
     if (!companyId || !svcForm.description?.trim()) return;
     setSavingSvc(true);
     try {
-      await upsertShipmentService(companyId, shipment.id, svcForm as any);
+      await upsertShipmentService(companyId, shipment.id, {
+        ...svcForm,
+        product_id: (svcForm as any).product_id ?? null,
+      } as any);
       await onReload();
       setAddingSvc(false);
-      setSvcForm({ service_type: "terrestre", currency: "USD", price: 0, cost: 0 });
+      setSvcForm({ service_type: "terrestre", currency: "USD", price: 0 });
     } finally { setSavingSvc(false); }
   }
 
@@ -588,6 +616,12 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
               </span>
               {shipment.quotation?.quote_number && (
                 <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>← {shipment.quotation.quote_number}</span>
+              )}
+              {shipment.invoice_id && (
+                <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 8px", borderRadius: "var(--radius-full)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", color: "var(--color-success-text)", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                  Factura emitida
+                </span>
               )}
             </div>
             <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "3px" }}>
@@ -929,15 +963,30 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
             {addingSvc && (
               <div style={{ padding: "14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", display: "grid", gap: "10px" }}>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                  {/* Selector desde catálogo de servicios */}
                   <div style={{ gridColumn: "1 / -1" }}>
-                    <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Tipo *</div>
-                    <select value={svcForm.service_type ?? "terrestre"} onChange={(e) => setSvcForm((p) => ({ ...p, service_type: e.target.value as ServiceLineType }))} style={{ ...INPUT, cursor: "pointer" }}>
-                      {SERVICE_LINE_TYPES.map((type) => <option key={type} value={type} style={{ textTransform: "capitalize" }}>{type}</option>)}
+                    <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>
+                      Servicio del catálogo
+                    </div>
+                    <select
+                      value={(svcForm as any).product_id ?? ""}
+                      onChange={(e) => selectServiceProduct(e.target.value)}
+                      style={{ ...INPUT, cursor: "pointer" }}
+                    >
+                      <option value="">— Seleccionar servicio del catálogo —</option>
+                      {serviceProducts.map(p => (
+                        <option key={p.id} value={p.id}>{p.name}</option>
+                      ))}
                     </select>
+                    {serviceProducts.length === 0 && (
+                      <div style={{ fontSize: "10px", color: "var(--color-warning-text)", marginTop: "3px" }}>
+                        No hay servicios en el catálogo. Agrégalos en Comercial → Productos (tipo: Servicio).
+                      </div>
+                    )}
                   </div>
                   <div style={{ gridColumn: "1 / -1" }}>
                     <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Descripción *</div>
-                    <input value={svcForm.description ?? ""} onChange={(e) => setSvcForm((p) => ({ ...p, description: e.target.value }))} placeholder={isConsulting ? "Ej: Póliza de seguro de carga…" : "Flete terrestre GDL-CDMX…"} style={INPUT} />
+                    <input value={svcForm.description ?? ""} onChange={(e) => setSvcForm((p) => ({ ...p, description: e.target.value }))} placeholder="Se auto-rellena al seleccionar del catálogo, o escribe manualmente" style={INPUT} />
                   </div>
                   {!isConsulting && [
                     { k: "origin",       label: "Origen"            },
@@ -955,10 +1004,6 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
                     <input type="number" min="0" value={svcForm.price ?? 0} onChange={(e) => setSvcForm((p) => ({ ...p, price: parseFloat(e.target.value) || 0 }))} style={INPUT} />
                   </div>
                   <div>
-                    <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Costo proveedor</div>
-                    <input type="number" min="0" value={svcForm.cost ?? 0} onChange={(e) => setSvcForm((p) => ({ ...p, cost: parseFloat(e.target.value) || 0 }))} style={INPUT} />
-                  </div>
-                  <div>
                     <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Moneda</div>
                     <select value={svcForm.currency ?? "USD"} onChange={(e) => setSvcForm((p) => ({ ...p, currency: e.target.value }))} style={{ ...INPUT, cursor: "pointer" }}>
                       {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
@@ -969,7 +1014,7 @@ export default function ShipmentWorkspace({ shipment, onStatusChange, onUpdate, 
                   <button onClick={handleSaveService} disabled={savingSvc || !svcForm.description?.trim()} style={{ height: "32px", padding: "0 16px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
                     {savingSvc ? t.general.loading : t.general.save}
                   </button>
-                  <button onClick={() => { setAddingSvc(false); setSvcForm({ service_type: "terrestre", currency: "USD", price: 0, cost: 0 }); }} style={{ height: "32px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", fontSize: "12px", cursor: "pointer" }}>
+                  <button onClick={() => { setAddingSvc(false); setSvcForm({ service_type: "terrestre", currency: "USD", price: 0 }); }} style={{ height: "32px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", fontSize: "12px", cursor: "pointer" }}>
                     {t.general.cancel}
                   </button>
                 </div>
