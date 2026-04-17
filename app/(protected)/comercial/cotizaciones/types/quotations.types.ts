@@ -145,9 +145,10 @@ export type CompanySettings = {
   quote_terms_services?: string | null;
   quote_terms_products?: string | null;
   // Comercial
-  margin_minimum_pct:    number;
-  monthly_goal:          number;
-  goal_currency:         string;
+  margin_minimum_pct:       number;
+  monthly_goal:             number;
+  goal_currency:            string;
+  monthly_goal_metric?:     string | null;
   // SAT / Sellos & Facturapi
   cer_file_url?:        string | null;
   key_file_url?:        string | null;
