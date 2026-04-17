@@ -9,10 +9,10 @@ export default function PipelineFunnel({ metrics }: PipelineFunnelProps) {
   const { t, lang } = useTranslation();
 
   const stages = [
-    { label: t.navItems.prospects,   value: metrics.activeProspects, color: "var(--color-brand-blue)",   bg: "var(--color-brand-blue-light)", pct: 100 },
-    { label: t.navItems.quotations,  value: metrics.openQuotations,  color: "var(--color-info-text)",    bg: "var(--color-info-bg)",          pct: 82  },
-    { label: t.navItems.shipments,   value: metrics.activeShipments, color: "var(--color-warning-text)", bg: "var(--color-warning-bg)",       pct: 64  },
-    { label: t.navItems.billing,     value: metrics.pendingInvoices, color: "var(--color-success-text)", bg: "var(--color-success-bg)",       pct: 46  },
+    { label: t.navItems.prospects,   value: metrics.activeProspects, color: "var(--color-brand-blue)",   bg: "var(--color-bg-active)",   pct: 100 },
+    { label: t.navItems.quotations,  value: metrics.openQuotations,  color: "var(--color-info-text)",    bg: "var(--color-info-bg)",     pct: 82  },
+    { label: t.navItems.shipments,   value: metrics.activeShipments, color: "var(--color-warning-text)", bg: "var(--color-warning-bg)",  pct: 64  },
+    { label: t.navItems.billing,     value: metrics.pendingInvoices, color: "var(--color-success-text)", bg: "var(--color-success-bg)",  pct: 46  },
   ];
 
   const maxVal     = Math.max(...stages.map((s) => s.value), 1);
