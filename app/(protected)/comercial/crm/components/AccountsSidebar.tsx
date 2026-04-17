@@ -142,7 +142,7 @@ export default function AccountsSidebar({
       </div>
 
       {/* LIST */}
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "grid", gap: "6px", alignContent: "start" }}>
+      <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", minHeight: 0, display: "grid", gap: "6px", alignContent: "start" }}>
         {filteredByStage.length === 0 ? (
           <div style={{ padding: "32px 16px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
             {(t.crm as any)?.noAccounts ?? "Sin cuentas registradas"}
@@ -176,7 +176,7 @@ export default function AccountsSidebar({
                   {initials}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", whiteSpace: "normal", wordBreak: "break-word", lineHeight: 1.3 }}>
                     {a.name}
                   </div>
                   <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
