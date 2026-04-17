@@ -11,7 +11,6 @@ export default function ClientCommandCenter({ clients, onSelect }: Props) {
 
   const active    = clients.filter((c) => c.is_active);
   const customers = clients.filter((c) => c.is_customer && c.is_active);
-  const suppliers = clients.filter((c) => c.is_supplier && c.is_active);
   const both      = clients.filter((c) => c.is_customer && c.is_supplier && c.is_active);
   const incomplete = active.filter((c) => !hasCompleteProfile(c));
 
@@ -33,22 +32,6 @@ export default function ClientCommandCenter({ clients, onSelect }: Props) {
         </svg>
       ),
       first: customers[0],
-    },
-    {
-      key:    "suppliers",
-      label:  (t.clients as any)?.suppliers ?? "Proveedores",
-      hint:   (t.clients as any)?.suppliersHint ?? "Proveedores activos",
-      value:  suppliers.length,
-      color:  "var(--color-success-text)",
-      bg:     "var(--color-success-bg)",
-      border: "var(--color-success-border)",
-      icon: (
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
-          <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
-        </svg>
-      ),
-      first: suppliers[0],
     },
     {
       key:    "both",
