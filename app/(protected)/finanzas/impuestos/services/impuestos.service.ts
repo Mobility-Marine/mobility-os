@@ -180,7 +180,11 @@ export async function fetchDeclaracionIVA(
 
   let iva_cobrado = 0;
   for (const c of (cfdis ?? [])) {
-    const iva = (c.total ?? 0) - (c.subtotal ?? 0);
+    const total    = c.total    ?? 0;
+    const subtotal = c.subtotal ?? 0;
+    // Si subtotal es 0 o nulo, calcularlo desde total / 1.16
+    const realSub  = subtotal > 0 ? subtotal : total / 1.16;
+    const iva      = total - realSub;
     iva_cobrado += iva;
     const cur = c.currency ?? "MXN";
     if (!por_moneda[cur]) por_moneda[cur] = { cobrado: 0, pagado: 0, neto: 0 };
@@ -243,7 +247,11 @@ export async function fetchDeclaracionISR(
       .gte("cfdi_date", desdeAnio).lte("cfdi_date", hasta),
   ]);
 
-  const ingresos     = (cfdis ?? []).reduce((s, c) => s + (c.subtotal ?? 0), 0);
+  const ingresos     = (cfdis ?? []).reduce((s, c) => {
+    const total    = c.total    ?? 0;
+    const subtotal = c.subtotal ?? 0;
+    return s + (subtotal > 0 ? subtotal : total / 1.16);
+  }, 0);
   const gastos       = (cxpItems ?? []).reduce((s, a) => s + (a.subtotal ?? 0), 0);
   const depreciacion = (depEntries ?? []).reduce((s, d) => s + (d.depreciation_amount ?? 0), 0);
   const deducciones  = gastos + depreciacion;
@@ -255,7 +263,11 @@ export async function fetchDeclaracionISR(
 
   // Acumulado del año
   const ingresos_anio = (cfdisAnio ?? []).reduce((s, c) => s + (c.subtotal ?? 0), 0);
-  const isr_anio      = Math.round(calcISR(ingresos_anio, regime, ingresos_anio) * 100) / 100;
+  const ingresos_anio = (cfdisAnio ?? []).reduce((s, c) => {
+    const total    = c.total    ?? 0;
+    const subtotal = c.subtotal ?? 0;
+    return s + (subtotal > 0 ? subtotal : total / 1.16);
+  }, 0);
 
   return {
     periodo: period, regimen: regime,
