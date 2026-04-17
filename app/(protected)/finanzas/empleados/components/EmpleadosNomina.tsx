@@ -5,6 +5,7 @@ import type { PayrollPeriod, PayrollEntry, Employee } from "../types/empleados.t
 import { PERIOD_STATUS_CONFIG, SALARY_TYPE_CONFIG } from "../types/empleados.types";
 import ReciboNominaButton     from "./ReciboNominaButton";
 import ReciboNominaLoteButton from "./ReciboNominaLoteButton";
+import CFDINominaButton       from "./CFDINominaButton";
 
 type Props = {
   periods:        PayrollPeriod[];
@@ -235,13 +236,14 @@ export default function EmpleadosNomina({
               </div>
             ) : (
               <>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 110px 110px 110px 110px 110px", padding: "7px 18px", background: "var(--color-bg-subtle)", borderBottom: "1px solid var(--color-border-faint)", fontSize: "9px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", position: "sticky", top: 0 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 110px 90px 90px 110px 90px 140px", padding: "7px 18px", background: "var(--color-bg-subtle)", borderBottom: "1px solid var(--color-border-faint)", fontSize: "9px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", position: "sticky", top: 0 }}>
                   <span>Empleado</span>
                   <span style={{ textAlign: "right" }}>Percepciones</span>
                   <span style={{ textAlign: "right" }}>ISR</span>
                   <span style={{ textAlign: "right" }}>IMSS</span>
                   <span style={{ textAlign: "right" }}>Neto</span>
                   <span style={{ textAlign: "right" }}>Recibo</span>
+                  <span style={{ textAlign: "right" }}>CFDI</span>
                 </div>
                 {entries.map((e, i) => {
                   const emp        = e.employee;
@@ -249,7 +251,7 @@ export default function EmpleadosNomina({
                   const costoPatron = e.total_perceptions + e.imss_employer + e.infonavit;
                   return (
                     <div key={e.id}
-                      style={{ display: "grid", gridTemplateColumns: "1fr 110px 110px 110px 110px 110px", padding: "10px 18px", borderBottom: i < entries.length - 1 ? "1px solid var(--color-border-faint)" : "none", alignItems: "center" }}
+                      style={{ display: "grid", gridTemplateColumns: "1fr 110px 90px 90px 110px 90px 140px", padding: "10px 18px", borderBottom: i < entries.length - 1 ? "1px solid var(--color-border-faint)" : "none", alignItems: "center" }}
                       onMouseEnter={ev => (ev.currentTarget.style.background = "var(--color-bg-subtle)")}
                       onMouseLeave={ev => (ev.currentTarget.style.background = "transparent")}>
                       <div>
@@ -285,6 +287,22 @@ export default function EmpleadosNomina({
                             period={selectedPeriod}
                             employee={fullEmp}
                             variant="icon"
+                          />
+                        ) : (
+                          <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>—</span>
+                        )}
+                      </div>
+                      {/* Botón CFDI nómina */}
+                      <div style={{ textAlign: "right", display: "flex", alignItems: "center", justifyContent: "flex-end" }}>
+                        {fullEmp && (e.status === "paid" || e.status === "approved") ? (
+                          <CFDINominaButton
+                            employee={fullEmp}
+                            entry={e}
+                            period={selectedPeriod}
+                            onSuccess={(uuid) => {
+                              // Refrescar entradas localmente
+                              e.cfdi_uuid = uuid;
+                            }}
                           />
                         ) : (
                           <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>—</span>
