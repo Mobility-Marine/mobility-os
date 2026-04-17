@@ -897,10 +897,10 @@ useEffect(() => {
                     { label: "Entrega est.",   value: shipment.estimated_delivery ? new Date(shipment.estimated_delivery).toLocaleDateString(locale) : null },
                     { label: "No. rastreo",    value: shipment.tracking_number },
                   ] : []),
-                  { label: "Proveedor principal", value: shipment.provider?.name },
+                  { label: "Proveedor", value: shipment.provider?.name },
                   ...apProviders.map((ap, i) => ({
-                    label: `Proveedor facturado${apProviders.length > 1 ? ` ${i + 1}` : ""}`,
-                    value: `${ap.supplier_name} — ${ap.currency} $${Number(ap.total).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`,
+                    label: `Proveedor${apProviders.length > 1 ? ` ${i + 1}` : ""}`,
+                    value: `${ap.supplier_name} — ${ap.currency ?? shipment.currency} $${Number(ap.total).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`,
                   })),
                   { label: "Cotización",   value: shipment.quotation?.quote_number },
                 ].map((r) => r.value ? (
@@ -914,18 +914,51 @@ useEffect(() => {
 
             {/* FINANCIERO */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
-              {[
-                { label: "Ingreso",  value: shipment.total,         color: "var(--color-success-text)" },
-                { label: "Costo",    value: shipment.provider_cost, color: "var(--color-danger-text)"  },
-                { label: "Ganancia", value: shipment.profit ?? 0,   color: (shipment.profit ?? 0) >= 0 ? "var(--color-success-text)" : "var(--color-danger-text)" },
-              ].map((r) => (
-                <div key={r.label} style={{ padding: "10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", textAlign: "center" }}>
-                  <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>{r.label}</div>
-                  <div style={{ fontSize: "15px", fontWeight: 800, color: r.color, fontVariantNumeric: "tabular-nums" }}>
-                    {shipment.currency} ${Number(r.value ?? 0).toLocaleString(locale, { minimumFractionDigits: 2 })}
-                  </div>
+              {/* Ingreso */}
+              <div style={{ padding: "10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", textAlign: "center" }}>
+                <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Ingreso</div>
+                <div style={{ fontSize: "15px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
+                  {shipment.currency} ${Number(shipment.total ?? 0).toLocaleString(locale, { minimumFractionDigits: 2 })}
                 </div>
-              ))}
+              </div>
+
+              {/* Costo — separado por moneda desde AP */}
+              <div style={{ padding: "10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", textAlign: "center" }}>
+                <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Costo</div>
+                {apProviders.length === 0 ? (
+                  <div style={{ fontSize: "15px", fontWeight: 800, color: "var(--color-danger-text)", fontVariantNumeric: "tabular-nums" }}>
+                    {shipment.currency} ${Number(shipment.provider_cost ?? 0).toLocaleString(locale, { minimumFractionDigits: 2 })}
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                    {Object.entries(
+                      apProviders.reduce((acc, ap) => {
+                        const cur = ap.currency ?? shipment.currency;
+                        acc[cur] = (acc[cur] ?? 0) + Number(ap.total ?? 0);
+                        return acc;
+                      }, {} as Record<string, number>)
+                    ).map(([cur, total]) => (
+                      <div key={cur} style={{ fontSize: "13px", fontWeight: 800, color: "var(--color-danger-text)", fontVariantNumeric: "tabular-nums" }}>
+                        {cur} ${Number(total).toLocaleString(locale, { minimumFractionDigits: 2 })}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Ganancia — solo cuando la moneda coincide */}
+              <div style={{ padding: "10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", textAlign: "center" }}>
+                <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Ganancia</div>
+                {apProviders.length > 0 && apProviders.some(ap => (ap.currency ?? shipment.currency) !== shipment.currency) ? (
+                  <div style={{ fontSize: "11px", color: "var(--color-text-muted)", lineHeight: 1.4 }}>
+                    Monedas mixtas —<br/>ver desglose
+                  </div>
+                ) : (
+                  <div style={{ fontSize: "15px", fontWeight: 800, fontVariantNumeric: "tabular-nums", color: (shipment.profit ?? 0) >= 0 ? "var(--color-success-text)" : "var(--color-danger-text)" }}>
+                    {shipment.currency} ${Number(shipment.profit ?? 0).toLocaleString(locale, { minimumFractionDigits: 2 })}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Barra de margen */}
