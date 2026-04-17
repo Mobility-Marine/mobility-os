@@ -87,6 +87,7 @@ export default function TabEmpresa() {
   const [csdPassword,    setCsdPassword]    = useState("");
   const [showPass,       setShowPass]       = useState(false);
   const [uploadingCSD,   setUploadingCSD]   = useState(false);
+  const [manifestoSigned, setManifestoSigned] = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
@@ -96,6 +97,7 @@ export default function TabEmpresa() {
         setCerUrl(s.cer_file_url ?? null);
         setKeyUrl(s.key_file_url ?? null);
         setFacturApiOrg((s as any).facturapi_org_id ?? "");
+        setManifestoSigned(!!(s as any).manifesto_signed);
       }
     });
     supabase.from("companies").select("tax_regime").eq("id", companyId).single()
@@ -179,6 +181,18 @@ export default function TabEmpresa() {
     finally { setSellosReg(false); }
   }
 
+async function handleMarcarManifiesto() {
+    if (!companyId) return;
+    try {
+      await supabase.from("company_settings")
+        .update({ manifesto_signed: true })
+        .eq("company_id", companyId);
+      setManifestoSigned(true);
+      setSellosSuccess("✓ Carta Manifiesto marcada como firmada.");
+      setTimeout(() => setSellosSuccess(null), 3000);
+    } catch (e: any) { setSellosError(e.message); }
+  }
+  
   async function handleUploadCSD() {
     if (!companyId || !cerFile || !keyFile || !csdPassword) { setSellosError("Se requieren los archivos .cer, .key y la contraseña del CSD."); return; }
     setUploadingCSD(true); setSellosError(null);
@@ -226,10 +240,28 @@ export default function TabEmpresa() {
   }
 
   const sellosChecks = [
-    { label: "Organización registrada en Facturapi", done: !!facturApiOrg },
-    { label: "CSD subido en Facturapi",              done: !!cerUrl || !!facturApiOrg, note: "Subido desde aquí o directamente en app.facturapi.io" },
-    { label: "Suscripción activa",                   done: true, note: "Plan Platform activo" },
-    { label: "Carta Manifiesto SAT firmada",         done: false, action: { label: "Firmar →", url: "https://www.facturapi.io/manifiesto" }, note: "Con e.firma (FIEL) — diferente al CSD" },
+    {
+      label: "Organización registrada en Facturapi",
+      done:  !!facturApiOrg || manifestoSigned, // si ya firmó manifiesto, la org ya existe
+      note:  facturApiOrg ? `ID: ${facturApiOrg.substring(0,8)}…` : undefined,
+    },
+    {
+      label: "CSD subido en Facturapi",
+      done:  !!cerUrl || !!facturApiOrg || manifestoSigned,
+      note:  "Subido desde aquí o directamente en app.facturapi.io",
+    },
+    {
+      label: "Suscripción activa",
+      done:  true,
+      note:  "Plan Platform activo",
+    },
+    {
+      label:  "Carta Manifiesto SAT firmada",
+      done:   manifestoSigned,
+      note:   manifestoSigned ? "Firmada con e.firma" : "Con e.firma (FIEL) — diferente al CSD",
+      action: manifestoSigned ? undefined : { label: "Firmar →", url: "https://www.facturapi.io/manifiesto" },
+      toggle: !manifestoSigned,
+    },
   ];
 
   return (
@@ -423,6 +455,12 @@ export default function TabEmpresa() {
                   style={{ height: "26px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", fontSize: "11px", fontWeight: 700, textDecoration: "none", display: "flex", alignItems: "center", flexShrink: 0 }}>
                   {(c as any).action.label}
                 </a>
+              )}
+              {(c as any).toggle && (
+                <button onClick={handleMarcarManifiesto}
+                  style={{ height: "26px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", color: "var(--color-success-text)", fontSize: "10px", fontWeight: 700, cursor: "pointer", flexShrink: 0, whiteSpace: "nowrap" }}>
+                  ✓ Ya la firmé
+                </button>
               )}
             </div>
           ))}
