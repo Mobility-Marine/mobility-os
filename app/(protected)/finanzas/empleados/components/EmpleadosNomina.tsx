@@ -3,6 +3,8 @@ import { useState } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { PayrollPeriod, PayrollEntry, Employee } from "../types/empleados.types";
 import { PERIOD_STATUS_CONFIG, SALARY_TYPE_CONFIG } from "../types/empleados.types";
+import ReciboNominaButton      from "./ReciboNominaButton";
+import ReciboNominaLoteButton  from "./ReciboNominaLoteButton";
 
 type Props = {
   periods:         PayrollPeriod[];
@@ -141,6 +143,14 @@ export default function EmpleadosNomina({ periods, entries, employees, saving, o
                   {new Date(selectedPeriod.start_date).toLocaleDateString("es-MX")} — {new Date(selectedPeriod.end_date).toLocaleDateString("es-MX")} · Pago: {new Date(selectedPeriod.payment_date).toLocaleDateString("es-MX")}
                 </div>
               </div>
+              <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
+                {entries.length > 0 && (
+                  <ReciboNominaLoteButton
+                    entries={entries}
+                    period={selectedPeriod}
+                    employees={employees}
+                  />
+                )}
               <div style={{ display: "flex", gap: "8px" }}>
                 {selectedPeriod.status === "draft" && (
                   <button onClick={() => onCalculate(selectedPeriod.id)} disabled={saving}
@@ -232,7 +242,17 @@ export default function EmpleadosNomina({ periods, entries, employees, saving, o
                       <div style={{ textAlign: "right", fontSize: "11px", color: "var(--color-danger-text)", fontVariantNumeric: "tabular-nums" }}>${fmt(e.isr_withheld)}</div>
                       <div style={{ textAlign: "right", fontSize: "11px", color: "var(--color-danger-text)", fontVariantNumeric: "tabular-nums" }}>${fmt(e.imss_employee)}</div>
                       <div style={{ textAlign: "right", fontSize: "12px", fontWeight: 800, color: "var(--color-brand-blue)", fontVariantNumeric: "tabular-nums" }}>${fmt(e.net_salary)}</div>
-                      <div style={{ textAlign: "right", fontSize: "10px", color: "var(--color-text-muted)", fontVariantNumeric: "tabular-nums" }}>${fmt0(costoPatron)}</div>
+                      <div style={{ textAlign: "right", display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "6px" }}>
+                        <span style={{ fontSize: "10px", color: "var(--color-text-muted)", fontVariantNumeric: "tabular-nums" }}>${fmt0(costoPatron)}</span>
+                        {(e.status === "paid" || e.status === "approved") && (
+                          <ReciboNominaButton
+                            entry={e}
+                            period={selectedPeriod}
+                            employee={employees.find(emp => emp.id === e.employee_id) ?? { id: e.employee_id, first_name: e.employee?.first_name ?? "", last_name: e.employee?.last_name ?? "" } as any}
+                            variant="icon"
+                          />
+                        )}
+                      </div>
                     </div>
                   );
                 })}
