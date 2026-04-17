@@ -32,6 +32,19 @@ async function getCompanySettingsFull(companyId: string) {
       "logo_url, brand_color_dark, brand_color, brand_accent"
     )
     .eq("company_id", companyId)
+    .returns<{
+      facturapi_org_id:  string | null;
+      facturapi_api_key: string | null;
+      pac_provider:      string | null;
+      fiscal_name:       string | null;
+      fiscal_rfc:        string | null;
+      fiscal_regime:     string | null;
+      fiscal_zip:        string | null;
+      logo_url:          string | null;
+      brand_color_dark:  string | null;
+      brand_color:       string | null;
+      brand_accent:      string | null;
+    }[]>()
     .single();
   return data;
 }
