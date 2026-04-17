@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
 
     // ── SETUP ORG ────────────────────────────────────────────────────────────
     if (action === "setup_org") {
+      const settings = await getCompanySettings(companyId);
       if (!settings?.fiscal_rfc) {
         return NextResponse.json(
           { error: "Configura primero los datos fiscales en Settings → Empresa (RFC, razón social y código postal)." },
