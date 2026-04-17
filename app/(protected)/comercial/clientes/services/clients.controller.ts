@@ -136,6 +136,14 @@ export function useClientsController() {
     if (selected?.id === id) setSelected((prev) => prev ? { ...prev, ...updates } : prev);
     try {
       await updateSvc(companyId, id, updates);
+      // Sincronizar nombre en crm_accounts si cambió
+      if (updates.name) {
+        await supabase
+          .from("crm_accounts")
+          .update({ name: updates.name, updated_at: new Date().toISOString() })
+          .eq("client_id", id)
+          .eq("company_id", companyId);
+      }
       await load();
     } catch (e: any) { setError(e.message); await load(); }
   }
