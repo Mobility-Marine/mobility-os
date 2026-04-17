@@ -406,7 +406,7 @@ export async function fetchReportRH(companyId: string, desde: string, hasta: str
 // ── ABASTECIMIENTO ────────────────────────────────────────────
 export async function fetchReportAbastecimiento(companyId: string, desde: string, hasta: string): Promise<ReportAbastecimiento> {
   const [{ data: orders }, { data: suppliers }, { data: inventory }] = await Promise.all([
-    supabase.from("purchase_orders").select("id, status, total, currency, supplier:suppliers(name)").eq("company_id", companyId).gte("order_date", desde).lte("order_date", hasta),
+    supabase.from("purchase_orders").select("id, status, total, currency, supplier:suppliers(name)").eq("company_id", companyId).neq("status","cancelled").gte("order_date", desde).lte("order_date", hasta),
     supabase.from("suppliers").select("id").eq("company_id", companyId).eq("is_active", true),
     supabase.from("inventory_items").select("id, unit_cost, quantity").eq("company_id", companyId),
   ]);
