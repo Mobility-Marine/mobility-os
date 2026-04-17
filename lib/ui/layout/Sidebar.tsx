@@ -1,5 +1,4 @@
 "use client";
-
 import { useState, useMemo, useEffect } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { getNavForRole } from "./navConfig";
@@ -25,7 +24,6 @@ export default function Sidebar({
 
   const visibleSections = useMemo(() => getNavForRole(userRole), [userRole]);
 
-  // ── AUTO-COLLAPSE: solo mantiene abierta la sección activa ──
   const getActiveSection = (path: string) =>
     visibleSections.find((s) => s.items.some((i) => path.startsWith(i.path)))?.key ?? "general";
 
@@ -53,14 +51,12 @@ export default function Sidebar({
       display: "flex", flexDirection: "column",
       overflow: "hidden", flexShrink: 0,
     }}>
-
       {/* LOGO + EMPRESA */}
       <div style={{
         padding: "16px",
         borderBottom: "1px solid var(--color-sidebar-border)",
         flexShrink: 0,
       }}>
-        {/* FIX: display block + margin auto para centrar */}
         <img
           src="/logo.png"
           alt="Mobility OS"
@@ -70,8 +66,21 @@ export default function Sidebar({
             maxWidth: "160px",
             height: "auto",
             margin: "0 auto 12px",
+            // Filtro para logo blanco sobre fondo azul en modo claro
+            filter: "brightness(0) invert(1)",
           }}
         />
+
+        {/* Workspace label */}
+        <div style={{
+          fontSize: "9px", fontWeight: 600, letterSpacing: "1px",
+          textTransform: "uppercase",
+          color: "var(--color-sidebar-muted, rgba(255,255,255,0.5))",
+          textAlign: "center", marginBottom: "4px",
+        }}>
+          WORKSPACE
+        </div>
+
         {memberships.length > 1 ? (
           <select
             value={activeCompanyId ?? ""}
@@ -79,20 +88,25 @@ export default function Sidebar({
             style={{
               width: "100%", height: "32px", padding: "0 8px",
               borderRadius: "var(--radius-md)",
-              border: "1px solid var(--color-border)",
-              background: "var(--color-bg-subtle)",
-              color: "var(--color-text-primary)",
+              border: "1px solid var(--color-sidebar-border)",
+              background: "rgba(255,255,255,0.12)",
+              color: "var(--color-sidebar-active-text)",
               fontSize: "13px", fontWeight: 500, cursor: "pointer",
             }}
           >
             {memberships.map((m) => (
-              <option key={m.company_id} value={m.company_id}>
+              <option key={m.company_id} value={m.company_id}
+                style={{ background: "#274B97", color: "#fff" }}>
                 {m.company_name ?? "Empresa"}
               </option>
             ))}
           </select>
         ) : (
-          <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-text-primary)", textAlign: "center" }}>
+          <div style={{
+            fontSize: "14px", fontWeight: 600,
+            color: "var(--color-sidebar-active-text)",
+            textAlign: "center",
+          }}>
             {companyName}
           </div>
         )}
@@ -108,8 +122,7 @@ export default function Sidebar({
 
           return (
             <div key={section.key} style={{ marginBottom: "2px" }}>
-
-              {/* CABECERA */}
+              {/* CABECERA SECCIÓN */}
               <button
                 onClick={() => toggleSection(section.key)}
                 style={{
@@ -121,20 +134,32 @@ export default function Sidebar({
                   cursor: "pointer", textAlign: "left",
                   transition: "var(--transition-fast)",
                 }}
+                onMouseEnter={e => (e.currentTarget.style.background = "rgba(255,255,255,0.08)")}
+                onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
               >
                 <div>
                   <div style={{
-                    fontSize: "11px", fontWeight: 600, letterSpacing: "0.5px",
-                    color: hasActive ? "var(--color-sidebar-active-text)" : "var(--color-text-muted)",
+                    fontSize: "11px", fontWeight: 700, letterSpacing: "0.5px",
+                    color: hasActive
+                      ? "var(--color-sidebar-active-text)"
+                      : "var(--color-sidebar-text)",
                     textTransform: "uppercase",
                   }}>
                     {title}
                   </div>
-                  <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "1px" }}>
+                  <div style={{
+                    fontSize: "10px",
+                    color: "var(--color-sidebar-muted, rgba(255,255,255,0.45))",
+                    marginTop: "1px",
+                  }}>
                     {subtitle}
                   </div>
                 </div>
-                <span style={{ fontSize: "12px", color: "var(--color-text-muted)", fontWeight: 600 }}>
+                <span style={{
+                  fontSize: "14px", fontWeight: 400,
+                  color: "var(--color-sidebar-text)",
+                  opacity: 0.6,
+                }}>
                   {isOpen ? "−" : "+"}
                 </span>
               </button>
@@ -145,7 +170,6 @@ export default function Sidebar({
                   {section.items.map((item) => {
                     const active   = pathname === item.path || pathname.startsWith(item.path + "/");
                     const itemName = (t.navItems as any)[item.nameKey] ?? item.nameKey;
-
                     return (
                       <button
                         key={item.path}
@@ -154,15 +178,25 @@ export default function Sidebar({
                           width: "100%", textAlign: "left",
                           padding: "7px 12px", border: "none",
                           borderLeft: active
-                            ? "3px solid var(--color-brand-blue)"
+                            ? "3px solid rgba(255,255,255,0.9)"
                             : "3px solid transparent",
-                          background: active ? "var(--color-sidebar-active-bg)" : "transparent",
-                          color:      active ? "var(--color-sidebar-active-text)" : "var(--color-sidebar-text)",
+                          background: active
+                            ? "var(--color-sidebar-active-bg)"
+                            : "transparent",
+                          color: active
+                            ? "var(--color-sidebar-active-text)"
+                            : "var(--color-sidebar-text)",
                           fontSize: "13px", fontWeight: active ? 600 : 400,
                           cursor: "pointer",
                           transition: "var(--transition-fast)",
                           marginBottom: "1px",
                           borderRadius: "0 var(--radius-md) var(--radius-md) 0",
+                        }}
+                        onMouseEnter={e => {
+                          if (!active) e.currentTarget.style.background = "rgba(255,255,255,0.08)";
+                        }}
+                        onMouseLeave={e => {
+                          if (!active) e.currentTarget.style.background = "transparent";
                         }}
                       >
                         {itemName}
@@ -185,24 +219,31 @@ export default function Sidebar({
         <div style={{
           display: "flex", alignItems: "center", gap: "10px",
           padding: "8px 10px", borderRadius: "var(--radius-md)",
-          background: "var(--color-bg-subtle)",
+          background: "rgba(255,255,255,0.10)",
         }}>
           <div style={{
             width: "32px", height: "32px", borderRadius: "var(--radius-full)",
-            background: "var(--color-brand-blue)", color: "#ffffff",
+            background: "rgba(255,255,255,0.25)",
+            color: "#ffffff",
             display: "flex", alignItems: "center", justifyContent: "center",
             fontSize: "13px", fontWeight: 700, flexShrink: 0,
+            border: "1px solid rgba(255,255,255,0.3)",
           }}>
             {initial}
           </div>
           <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
-              fontSize: "12px", fontWeight: 500, color: "var(--color-text-primary)",
+              fontSize: "12px", fontWeight: 500,
+              color: "var(--color-sidebar-active-text)",
               overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
             }}>
               {userEmail}
             </div>
-            <div style={{ fontSize: "11px", color: "var(--color-text-muted)", textTransform: "capitalize" }}>
+            <div style={{
+              fontSize: "11px",
+              color: "var(--color-sidebar-text)",
+              textTransform: "capitalize",
+            }}>
               {userRole ?? t.navItems.user}
             </div>
           </div>
@@ -211,10 +252,13 @@ export default function Sidebar({
             title={t.navItems.signOut}
             style={{
               background: "transparent", border: "none",
-              color: "var(--color-text-muted)", cursor: "pointer",
-              fontSize: "16px", padding: "4px",
-              borderRadius: "var(--radius-sm)", flexShrink: 0,
+              color: "var(--color-sidebar-text)",
+              cursor: "pointer", fontSize: "16px",
+              padding: "4px", borderRadius: "var(--radius-sm)",
+              flexShrink: 0, opacity: 0.7,
             }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = "1")}
+            onMouseLeave={e => (e.currentTarget.style.opacity = "0.7")}
           >
             ↪
           </button>
