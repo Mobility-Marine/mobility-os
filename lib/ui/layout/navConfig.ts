@@ -92,7 +92,6 @@ export const navSections: NavSection[] = [
     roles:       ["*"],
     items: [
       { nameKey: "reports",  path: "/reports" },
-      { nameKey: "company",  path: "/company" },
       { nameKey: "settings", path: "/settings" },
       { nameKey: "help",     path: "/help" },
     ],
