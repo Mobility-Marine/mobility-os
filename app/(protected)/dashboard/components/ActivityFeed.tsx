@@ -167,9 +167,6 @@ export default function ActivityFeed() {
                 </div>
               ))}
             </div>
-            <div style={{ textAlign: "center", fontSize: "11px", color: "var(--color-brand-blue)", cursor: "pointer", fontWeight: 500, borderTop: "1px solid var(--color-border-faint)", paddingTop: "10px", marginTop: "10px" }}>
-              {t.dashboard.viewFullHistory}
-            </div>
           </div>
         )}
       </div>
