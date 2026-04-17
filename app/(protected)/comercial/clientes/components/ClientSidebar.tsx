@@ -29,6 +29,7 @@ export default function ClientSidebar({
   const customers = clients.filter((c) => c.is_customer).length;
   const both      = clients.filter((c) => c.is_customer && c.is_supplier).length;
   const withBalance = clients.filter((c) => (c.stats?.openBalance ?? 0) > 0).length;
+  // Ya cargado desde el controller via load()
 
   const kpis = [
     { label: (t.clients as any)?.active    ?? "Activos",  value: active,         color: "var(--color-brand-blue)"  },
