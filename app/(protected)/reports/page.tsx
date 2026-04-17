@@ -2,167 +2,134 @@
 import { useEffect, useState, useCallback } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant } from "@/lib/tenant/TenantProvider";
+import { usePermissions } from "@/lib/auth/usePermissions";
 import { supabase } from "@/lib/supabaseClient";
+import {
+  fetchReportEjecutivo, fetchReportComercial, fetchReportLogistica,
+  fetchReportFinanzas, fetchReportRH, fetchReportAbastecimiento,
+  getPeriodRange,
+} from "./services/reports.service";
+import type {
+  ReportEjecutivo, ReportComercial, ReportLogistica,
+  ReportFinanzas, ReportRH, ReportAbastecimiento,
+} from "./types/reports.types";
+import ReportsEjecutivo      from "./components/ReportsEjecutivo";
+import ReportsComercial      from "./components/ReportsComercial";
+import ReportsLogistica      from "./components/ReportsLogistica";
+import ReportsFinanzas       from "./components/ReportsFinanzas";
+import ReportsRH             from "./components/ReportsRH";
+import ReportsAbastecimiento from "./components/ReportsAbastecimiento";
 
-type ReportPeriod = "month" | "quarter" | "year";
-type ReportModule = "comercial" | "logistica" | "finanzas" | "operaciones";
+type TabKey = "ejecutivo" | "comercial" | "logistica" | "finanzas" | "rh" | "abastecimiento";
+type Period  = "month" | "quarter" | "year" | "custom";
 
-type ReportData = {
-  // Comercial
-  prospectos_nuevos:    number;
-  cotizaciones_emitidas:number;
-  cotizaciones_monto:   number;
-  clientes_activos:     number;
-  // Logística
-  embarques_total:      number;
-  embarques_entregados: number;
-  embarques_pendientes: number;
-  ingresos_logistica:   number;
-  // Finanzas
-  facturado:            number;
-  cobrado:              number;
-  por_cobrar:           number;
-  por_pagar:            number;
-  // Empleados
-  empleados_activos:    number;
-  nomina_periodo:       number;
+const PERIOD_LABELS: Record<Period, string> = {
+  month:   "Este mes",
+  quarter: "Este trimestre",
+  year:    "Este año",
+  custom:  "Personalizado",
 };
 
-function getDateRange(period: ReportPeriod): { desde: string; hasta: string } {
-  const now  = new Date();
-  let desde: Date, hasta: Date;
-  if (period === "month") {
-    desde = new Date(now.getFullYear(), now.getMonth(), 1);
-    hasta = new Date(now.getFullYear(), now.getMonth() + 1, 0);
-  } else if (period === "quarter") {
-    const q   = Math.floor(now.getMonth() / 3);
-    desde = new Date(now.getFullYear(), q * 3, 1);
-    hasta = new Date(now.getFullYear(), q * 3 + 3, 0);
-  } else {
-    desde = new Date(now.getFullYear(), 0, 1);
-    hasta = new Date(now.getFullYear(), 11, 31);
-  }
-  return {
-    desde: desde.toISOString().split("T")[0],
-    hasta: hasta.toISOString().split("T")[0],
-  };
-}
+// Tabs visibles por rol
+const ROLE_TABS: Record<string, TabKey[]> = {
+  owner:    ["ejecutivo","comercial","logistica","finanzas","rh","abastecimiento"],
+  admin:    ["ejecutivo","comercial","logistica","finanzas","rh","abastecimiento"],
+  manager:  ["ejecutivo","comercial","logistica","finanzas","rh","abastecimiento"],
+  comercial:["ejecutivo","comercial"],
+  logistica:["ejecutivo","logistica"],
+  finanzas: ["ejecutivo","finanzas"],
+  compras:  ["ejecutivo","abastecimiento"],
+  user:     ["ejecutivo"],
+  viewer:   ["ejecutivo"],
+};
 
-const fmt0 = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 0 });
-const fmt  = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2 });
+const ALL_TABS: { key: TabKey; label: string; icon: string }[] = [
+  { key: "ejecutivo",      label: "Ejecutivo",       icon: "🎯" },
+  { key: "comercial",      label: "Comercial",        icon: "💼" },
+  { key: "logistica",      label: "Logística",        icon: "🚢" },
+  { key: "finanzas",       label: "Finanzas",         icon: "💰" },
+  { key: "rh",             label: "Recursos Humanos", icon: "👥" },
+  { key: "abastecimiento", label: "Abastecimiento",   icon: "🏭" },
+];
 
 export default function ReportsPage() {
-  const { lang }      = useTranslation();
-  const { companyId } = useTenant();
+  const { lang }            = useTranslation();
+  const { companyId }       = useTenant();
+  const { canManageCompany} = usePermissions();
   const es = lang !== "en";
 
-  const [period,  setPeriod]  = useState<ReportPeriod>("month");
-  const [module,  setModule]  = useState<ReportModule>("finanzas");
-  const [loading, setLoading] = useState(false);
-  const [data,    setData]    = useState<ReportData | null>(null);
-  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
+  const [role,         setRole]         = useState<string>("user");
+  const [tab,          setTab]          = useState<TabKey>("ejecutivo");
+  const [period,       setPeriod]       = useState<Period>("month");
+  const [customDesde,  setCustomDesde]  = useState("");
+  const [customHasta,  setCustomHasta]  = useState("");
+  const [loading,      setLoading]      = useState(false);
+  const [lastUpdate,   setLastUpdate]   = useState<Date | null>(null);
+
+  const [ejecutivo,      setEjecutivo]      = useState<ReportEjecutivo | null>(null);
+  const [comercial,      setComercial]      = useState<ReportComercial | null>(null);
+  const [logistica,      setLogistica]      = useState<ReportLogistica | null>(null);
+  const [finanzas,       setFinanzas]       = useState<ReportFinanzas  | null>(null);
+  const [rh,             setRH]             = useState<ReportRH        | null>(null);
+  const [abastecimiento, setAbastecimiento] = useState<ReportAbastecimiento | null>(null);
+
+  // Obtener rol real
+  useEffect(() => {
+    if (!companyId) return;
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!data.user) return;
+      const { data: cu } = await supabase.from("company_users").select("role")
+        .eq("company_id", companyId).eq("user_id", data.user.id).single();
+      if (cu?.role) setRole(cu.role);
+    });
+  }, [companyId]);
+
+  const visibleTabs = ALL_TABS.filter(t => (ROLE_TABS[role] ?? ["ejecutivo"]).includes(t.key));
+
+  // Si el tab actual no está permitido, ir al primero
+  useEffect(() => {
+    const allowed = ROLE_TABS[role] ?? ["ejecutivo"];
+    if (!allowed.includes(tab)) setTab(allowed[0] as TabKey);
+  }, [role]);
 
   const load = useCallback(async () => {
     if (!companyId) return;
     setLoading(true);
-    const { desde, hasta } = getDateRange(period);
+    const { desde, hasta } = getPeriodRange(period, customDesde, customHasta);
+    if (!desde || !hasta) { setLoading(false); return; }
+
+    const allowed = ROLE_TABS[role] ?? ["ejecutivo"];
     try {
-      const [
-        { data: prospectos },
-        { data: cotizaciones },
-        { data: clientes },
-        { data: embarques },
-        { data: cfdis },
-        { data: cxc },
-        { data: cxp },
-        { data: empleados },
-        { data: nomina },
-      ] = await Promise.all([
-        supabase.from("prospects").select("id").eq("company_id", companyId).gte("created_at", desde).lte("created_at", hasta),
-        supabase.from("quotations").select("total").eq("company_id", companyId).gte("created_at", desde).lte("created_at", hasta),
-        supabase.from("clients").select("id").eq("company_id", companyId).eq("is_active", true),
-        supabase.from("shipments").select("status, total").eq("company_id", companyId).gte("created_at", desde).lte("created_at", hasta),
-        supabase.from("cfdi_documents").select("total").eq("company_id", companyId).eq("type", "I").eq("status", "valid").gte("cfdi_date", desde).lte("cfdi_date", hasta),
-        supabase.from("accounts_receivable").select("balance").eq("company_id", companyId).in("status", ["pending","partial"]),
-        supabase.from("accounts_payable").select("balance").eq("company_id", companyId).in("status", ["pending","partial"]),
-        supabase.from("employees").select("id").eq("company_id", companyId).eq("status", "active"),
-        supabase.from("payroll_periods").select("total_net").eq("company_id", companyId).eq("status", "paid").gte("payment_date", desde).lte("payment_date", hasta),
-      ]);
+      const promises: Promise<void>[] = [];
 
-      const embarquesArr     = embarques    ?? [];
-      const cotizacionesArr  = cotizaciones ?? [];
+      if (allowed.includes("ejecutivo"))
+        promises.push(fetchReportEjecutivo(companyId, desde, hasta).then(setEjecutivo));
+      if (allowed.includes("comercial"))
+        promises.push(fetchReportComercial(companyId, desde, hasta).then(setComercial));
+      if (allowed.includes("logistica"))
+        promises.push(fetchReportLogistica(companyId, desde, hasta).then(setLogistica));
+      if (allowed.includes("finanzas"))
+        promises.push(fetchReportFinanzas(companyId, desde, hasta).then(setFinanzas));
+      if (allowed.includes("rh"))
+        promises.push(fetchReportRH(companyId, desde, hasta).then(setRH));
+      if (allowed.includes("abastecimiento"))
+        promises.push(fetchReportAbastecimiento(companyId, desde, hasta).then(setAbastecimiento));
 
-      setData({
-        prospectos_nuevos:    (prospectos    ?? []).length,
-        cotizaciones_emitidas:(cotizacionesArr).length,
-        cotizaciones_monto:   cotizacionesArr.reduce((s, c) => s + (c.total ?? 0), 0),
-        clientes_activos:     (clientes      ?? []).length,
-        embarques_total:      embarquesArr.length,
-        embarques_entregados: embarquesArr.filter(e => e.status === "delivered").length,
-        embarques_pendientes: embarquesArr.filter(e => !["delivered","cancelled"].includes(e.status)).length,
-        ingresos_logistica:   embarquesArr.filter(e => e.status === "delivered").reduce((s, e) => s + (e.total ?? 0), 0),
-        facturado:            (cfdis ?? []).reduce((s, c) => s + (c.total ?? 0), 0),
-        cobrado:              0,
-        por_cobrar:           (cxc   ?? []).reduce((s, c) => s + (c.balance ?? 0), 0),
-        por_pagar:            (cxp   ?? []).reduce((s, c) => s + (c.balance ?? 0), 0),
-        empleados_activos:    (empleados ?? []).length,
-        nomina_periodo:       (nomina    ?? []).reduce((s, n) => s + (n.total_net ?? 0), 0),
-      });
+      await Promise.all(promises);
       setLastUpdate(new Date());
     } finally { setLoading(false); }
-  }, [companyId, period]);
+  }, [companyId, period, customDesde, customHasta, role]);
 
-  useEffect(() => { if (companyId) load(); }, [companyId, period]);
+  useEffect(() => { if (companyId && role) load(); }, [companyId, period, role]);
 
-  function exportCSV() {
-    if (!data) return;
-    const rows = [
-      ["Reporte", "Valor"],
-      ["Período", period],
-      ["",""],
-      ["── COMERCIAL ──",""],
-      ["Prospectos nuevos", data.prospectos_nuevos],
-      ["Cotizaciones emitidas", data.cotizaciones_emitidas],
-      ["Monto cotizaciones", data.cotizaciones_monto],
-      ["Clientes activos", data.clientes_activos],
-      ["",""],
-      ["── LOGÍSTICA ──",""],
-      ["Embarques totales", data.embarques_total],
-      ["Embarques entregados", data.embarques_entregados],
-      ["Embarques pendientes", data.embarques_pendientes],
-      ["Ingresos logística", data.ingresos_logistica],
-      ["",""],
-      ["── FINANZAS ──",""],
-      ["Facturado", data.facturado],
-      ["Por cobrar (CXC)", data.por_cobrar],
-      ["Por pagar (CXP)", data.por_pagar],
-      ["",""],
-      ["── RH ──",""],
-      ["Empleados activos", data.empleados_activos],
-      ["Nómina del período", data.nomina_periodo],
-    ];
-    const csv = rows.map(r => r.join(",")).join("\n");
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement("a");
-    a.href     = url;
-    a.download = `reporte_${period}_${new Date().toISOString().split("T")[0]}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
-  const PERIOD_LABELS: Record<ReportPeriod, string> = {
-    month:   es ? "Este mes"      : "This month",
-    quarter: es ? "Este trimestre": "This quarter",
-    year:    es ? "Este año"      : "This year",
+  const INPUT_S: React.CSSProperties = {
+    height: "32px", padding: "0 8px", borderRadius: "var(--radius-md)",
+    border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)",
+    color: "var(--color-text-primary)", fontSize: "12px", outline: "none",
   };
 
-  const MODULES: { key: ReportModule; label: string; icon: string }[] = [
-    { key: "comercial",   label: es ? "Comercial"   : "Commercial",  icon: "💼" },
-    { key: "logistica",   label: es ? "Logística"   : "Logistics",   icon: "🚢" },
-    { key: "finanzas",    label: es ? "Finanzas"    : "Finance",     icon: "💰" },
-    { key: "operaciones", label: es ? "Operaciones" : "Operations",  icon: "⚙️" },
-  ];
+  // Solo el reporte ejecutivo se muestra limitado para roles no-admin
+  const esLimitado = !["owner","admin","manager"].includes(role);
 
   return (
     <div style={{ padding: "24px 32px", display: "flex", flexDirection: "column", gap: "20px", minHeight: "100vh" }}>
@@ -174,112 +141,82 @@ export default function ReportsPage() {
             📊 {es ? "Reportes" : "Reports"}
           </h1>
           <p style={{ fontSize: "13px", color: "var(--color-text-muted)", margin: "4px 0 0" }}>
-            {es ? "Métricas ejecutivas consolidadas de todos los módulos." : "Consolidated executive metrics from all modules."}
+            {es ? "Análisis ejecutivo por módulo con separación por moneda." : "Executive analysis per module with currency breakdown."}
           </p>
         </div>
-        <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-          {lastUpdate && <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{lastUpdate.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}</span>}
-          <button onClick={exportCSV} disabled={!data}
-            style={{ height: "32px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", fontSize: "11px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            CSV
-          </button>
-          <button onClick={load} disabled={loading}
-            style={{ height: "32px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px", opacity: loading ? 0.6 : 1 }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: loading ? "spin 1s linear infinite" : "none" }}><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            {loading ? (es ? "Cargando…" : "Loading…") : (es ? "Actualizar" : "Refresh")}
-          </button>
-        </div>
-      </div>
-
-      {/* Selector período */}
-      <div style={{ display: "flex", gap: "6px" }}>
-        {(Object.keys(PERIOD_LABELS) as ReportPeriod[]).map(p => (
-          <button key={p} onClick={() => setPeriod(p)}
-            style={{ height: "32px", padding: "0 16px", borderRadius: "var(--radius-md)", background: period === p ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: period === p ? "#fff" : "var(--color-text-muted)", border: period === p ? "none" : "1px solid var(--color-border-faint)", fontSize: "12px", fontWeight: period === p ? 700 : 400, cursor: "pointer" }}>
-            {PERIOD_LABELS[p]}
-          </button>
-        ))}
-      </div>
-
-      {/* KPIs Globales */}
-      {data && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: "12px" }}>
-          {[
-            { label: es ? "Facturado"      : "Billed",         value: `$${fmt0(data.facturado)}`,           color: "var(--color-success-text)", bg: "var(--color-success-bg)", icon: "🧾" },
-            { label: es ? "Por cobrar"     : "Receivable",     value: `$${fmt0(data.por_cobrar)}`,          color: "var(--color-warning-text)", bg: "var(--color-warning-bg)", icon: "📥" },
-            { label: es ? "Por pagar"      : "Payable",        value: `$${fmt0(data.por_pagar)}`,           color: "var(--color-danger-text)",  bg: "var(--color-danger-bg)",  icon: "📤" },
-            { label: es ? "Embarques activos":"Active shipments",value: String(data.embarques_pendientes), color: "var(--color-brand-blue)",   bg: "var(--color-info-bg)",    icon: "🚢" },
-          ].map(c => (
-            <div key={c.label} style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between" }}>
-                <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{c.label}</div>
-                <div style={{ width: "34px", height: "34px", borderRadius: "var(--radius-md)", background: c.bg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: "16px" }}>{c.icon}</div>
-              </div>
-              <div style={{ fontSize: "22px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{c.value}</div>
-            </div>
+        <div style={{ display: "flex", gap: "8px", alignItems: "center", flexWrap: "wrap" }}>
+          {/* Selector período */}
+          {(Object.keys(PERIOD_LABELS) as Period[]).filter(p => p !== "custom").map(p => (
+            <button key={p} onClick={() => setPeriod(p)}
+              style={{ height: "32px", padding: "0 12px", borderRadius: "var(--radius-md)", background: period === p ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: period === p ? "#fff" : "var(--color-text-muted)", border: period === p ? "none" : "1px solid var(--color-border-faint)", fontSize: "11px", fontWeight: period === p ? 700 : 400, cursor: "pointer" }}>
+              {PERIOD_LABELS[p]}
+            </button>
           ))}
+          {/* Fecha personalizada */}
+          <button onClick={() => setPeriod("custom")}
+            style={{ height: "32px", padding: "0 12px", borderRadius: "var(--radius-md)", background: period === "custom" ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: period === "custom" ? "#fff" : "var(--color-text-muted)", border: period === "custom" ? "none" : "1px solid var(--color-border-faint)", fontSize: "11px", fontWeight: period === "custom" ? 700 : 400, cursor: "pointer" }}>
+            📅 {PERIOD_LABELS.custom}
+          </button>
+          {period === "custom" && (
+            <>
+              <input type="date" value={customDesde} onChange={e => setCustomDesde(e.target.value)} style={INPUT_S} />
+              <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>—</span>
+              <input type="date" value={customHasta} onChange={e => setCustomHasta(e.target.value)} style={INPUT_S} />
+              <button onClick={load} style={{ height: "32px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
+                Aplicar
+              </button>
+            </>
+          )}
+          {lastUpdate && <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{lastUpdate.toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}</span>}
+          <button onClick={load} disabled={loading}
+            style={{ height: "32px", padding: "0 14px", borderRadius: "var(--radius-md)", background: loading ? "var(--color-bg-subtle)" : "var(--color-brand-blue)", color: loading ? "var(--color-text-muted)" : "#fff", border: loading ? "1px solid var(--color-border)" : "none", fontSize: "11px", fontWeight: 700, cursor: loading ? "not-allowed" : "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" style={{ animation: loading ? "spin 1s linear infinite" : "none" }}>
+              <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+            </svg>
+            {loading ? "Calculando…" : "Actualizar"}
+          </button>
         </div>
-      )}
+      </div>
 
-      {/* Tabs módulo */}
+      {/* Badge rol */}
+      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+        <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{es ? "Viendo como:" : "Viewing as:"}</span>
+        <span style={{ fontSize: "11px", fontWeight: 700, padding: "2px 8px", borderRadius: "var(--radius-full)", background: "var(--color-info-bg)", color: "var(--color-brand-blue)", border: "1px solid var(--color-info-border)", textTransform: "capitalize" }}>
+          {role}
+        </span>
+        <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
+          · {visibleTabs.length} {es ? "módulos disponibles" : "modules available"}
+        </span>
+      </div>
+
+      {/* Tabs por rol */}
       <div style={{ display: "flex", gap: "2px", borderBottom: "1px solid var(--color-border-faint)" }}>
-        {MODULES.map(m => (
-          <button key={m.key} onClick={() => setModule(m.key)}
-            style={{ height: "36px", padding: "0 16px", borderRadius: "var(--radius-md) var(--radius-md) 0 0", background: module === m.key ? "var(--color-bg-base)" : "transparent", border: module === m.key ? "1px solid var(--color-border-faint)" : "none", borderBottom: module === m.key ? "1px solid var(--color-bg-base)" : "none", color: module === m.key ? "var(--color-text-primary)" : "var(--color-text-muted)", fontSize: "12px", fontWeight: module === m.key ? 700 : 400, cursor: "pointer", marginBottom: module === m.key ? "-1px" : "0" }}>
-            {m.icon} {m.label}
+        {visibleTabs.map(t => (
+          <button key={t.key} onClick={() => setTab(t.key)}
+            style={{ height: "36px", padding: "0 16px", borderRadius: "var(--radius-md) var(--radius-md) 0 0", background: tab === t.key ? "var(--color-bg-base)" : "transparent", border: tab === t.key ? "1px solid var(--color-border-faint)" : "none", borderBottom: tab === t.key ? "1px solid var(--color-bg-base)" : "none", color: tab === t.key ? "var(--color-text-primary)" : "var(--color-text-muted)", fontSize: "12px", fontWeight: tab === t.key ? 700 : 400, cursor: "pointer", marginBottom: tab === t.key ? "-1px" : "0" }}>
+            {t.icon} {t.label}
           </button>
         ))}
       </div>
 
-      {/* Contenido por módulo */}
-      {loading ? (
-        <div style={{ padding: "60px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
-          {es ? "Cargando reportes…" : "Loading reports…"}
-        </div>
-      ) : data ? (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: "16px" }}>
-
-          {module === "comercial" && <>
-            {[
-              { label: es ? "Prospectos nuevos"     : "New prospects",       value: data.prospectos_nuevos,    unit: "", color: "var(--color-brand-blue)"  },
-              { label: es ? "Cotizaciones emitidas" : "Quotes issued",       value: data.cotizaciones_emitidas,unit: "", color: "var(--color-success-text)" },
-              { label: es ? "Monto cotizaciones"    : "Quotes amount",       value: data.cotizaciones_monto,   unit: "$",color: "var(--color-warning-text)" },
-              { label: es ? "Clientes activos"      : "Active clients",      value: data.clientes_activos,     unit: "", color: "var(--color-text-primary)" },
-            ].map(r => <ReportCard key={r.label} {...r} />)}
-          </>}
-
-          {module === "logistica" && <>
-            {[
-              { label: es ? "Embarques totales"   : "Total shipments",    value: data.embarques_total,      unit: "", color: "var(--color-brand-blue)"  },
-              { label: es ? "Entregados"          : "Delivered",          value: data.embarques_entregados, unit: "", color: "var(--color-success-text)" },
-              { label: es ? "En tránsito"         : "In transit",         value: data.embarques_pendientes, unit: "", color: "var(--color-warning-text)" },
-              { label: es ? "Ingresos logística"  : "Logistics revenue",  value: data.ingresos_logistica,   unit: "$",color: "var(--color-success-text)" },
-            ].map(r => <ReportCard key={r.label} {...r} />)}
-          </>}
-
-          {module === "finanzas" && <>
-            {[
-              { label: es ? "Facturado (CFDI)"  : "Billed (CFDI)",   value: data.facturado,    unit: "$", color: "var(--color-success-text)" },
-              { label: es ? "Por cobrar (CXC)"  : "Receivable (AR)", value: data.por_cobrar,   unit: "$", color: "var(--color-warning-text)" },
-              { label: es ? "Por pagar (CXP)"   : "Payable (AP)",    value: data.por_pagar,    unit: "$", color: "var(--color-danger-text)"  },
-              { label: es ? "Nómina del período": "Period payroll",  value: data.nomina_periodo,unit: "$", color: "var(--color-brand-blue)"  },
-            ].map(r => <ReportCard key={r.label} {...r} />)}
-          </>}
-
-          {module === "operaciones" && <>
-            {[
-              { label: es ? "Empleados activos"  : "Active employees", value: data.empleados_activos, unit: "",  color: "var(--color-brand-blue)"  },
-              { label: es ? "Nómina del período" : "Period payroll",   value: data.nomina_periodo,    unit: "$", color: "var(--color-warning-text)" },
-              { label: es ? "Embarques activos"  : "Active shipments", value: data.embarques_pendientes,unit:"", color: "var(--color-text-primary)" },
-              { label: es ? "Clientes activos"   : "Active clients",   value: data.clientes_activos,  unit: "",  color: "var(--color-success-text)" },
-            ].map(r => <ReportCard key={r.label} {...r} />)}
-          </>}
-        </div>
-      ) : (
-        <div style={{ padding: "60px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
-          {es ? "Sin datos disponibles" : "No data available"}
-        </div>
+      {/* Contenido */}
+      {tab === "ejecutivo" && (
+        <ReportsEjecutivo data={ejecutivo ?? getEmptyEjecutivo()} loading={loading && !ejecutivo} limitado={esLimitado} />
+      )}
+      {tab === "comercial" && (
+        <ReportsComercial data={comercial ?? getEmptyComercial()} loading={loading && !comercial} />
+      )}
+      {tab === "logistica" && (
+        <ReportsLogistica data={logistica ?? getEmptyLogistica()} loading={loading && !logistica} />
+      )}
+      {tab === "finanzas" && (
+        <ReportsFinanzas data={finanzas ?? getEmptyFinanzas()} loading={loading && !finanzas} />
+      )}
+      {tab === "rh" && (
+        <ReportsRH data={rh ?? getEmptyRH()} loading={loading && !rh} />
+      )}
+      {tab === "abastecimiento" && (
+        <ReportsAbastecimiento data={abastecimiento ?? getEmptyAbastecimiento()} loading={loading && !abastecimiento} />
       )}
 
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
@@ -287,15 +224,25 @@ export default function ReportsPage() {
   );
 }
 
-function ReportCard({ label, value, unit, color }: { label: string; value: number; unit: string; color: string }) {
-  const fmt0 = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 0 });
-  const fmt  = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2 });
-  return (
-    <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "24px", display: "flex", flexDirection: "column", gap: "12px" }}>
-      <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{label}</div>
-      <div style={{ fontSize: "32px", fontWeight: 900, color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>
-        {unit === "$" ? `$${fmt(value)}` : fmt0(value)}
-      </div>
-    </div>
-  );
+// ── Empty states ──────────────────────────────────────────────
+const emptyCurrency = () => ({ mxn: 0, usd: 0, total_mxn_equiv: 0 });
+const emptyAging    = () => ({ total: 0, c0_30: 0, c31_60: 0, c61_90: 0, c90plus: 0 });
+
+function getEmptyEjecutivo(): ReportEjecutivo {
+  return { periodo: "", facturado: emptyCurrency(), cobrado: emptyCurrency(), por_cobrar: emptyCurrency(), por_pagar: emptyCurrency(), nomina_mes: 0, efectivo_bancos: emptyCurrency(), embarques_activos: 0, clientes_activos: 0, empleados_activos: 0, tendencia: [] };
+}
+function getEmptyComercial(): ReportComercial {
+  return { prospectos_total: 0, prospectos_calificados: 0, cotizaciones_emitidas: 0, cotizaciones_ganadas: 0, pedidos_generados: 0, facturas_emitidas: 0, tasa_cotizacion: 0, tasa_cierre: 0, pipeline_valor: emptyCurrency(), cotizaciones_monto: emptyCurrency(), facturado: emptyCurrency(), por_estado: [], top_clientes: [], tendencia: [] };
+}
+function getEmptyLogistica(): ReportLogistica {
+  return { embarques_total: 0, embarques_entregados: 0, embarques_transito: 0, embarques_cancelados: 0, tasa_entrega: 0, ingresos: emptyCurrency(), costo_total: emptyCurrency(), margen: emptyCurrency(), margen_pct: 0, top_clientes: [], por_servicio: [], tendencia: [] };
+}
+function getEmptyFinanzas(): ReportFinanzas {
+  return { ingresos: emptyCurrency(), costo_ventas: emptyCurrency(), utilidad_bruta: emptyCurrency(), gastos_operativos: emptyCurrency(), utilidad_neta: emptyCurrency(), margen_neto_pct: 0, cxc_aging: { mxn: emptyAging(), usd: emptyAging() }, cxp_aging: { mxn: emptyAging(), usd: emptyAging() }, bancos: [], efectivo_total: emptyCurrency(), iva_posicion: 0, isr_estimado: 0, tendencia: [] };
+}
+function getEmptyRH(): ReportRH {
+  return { headcount: 0, activos: 0, en_vacaciones: 0, bajas_ytd: 0, nomina_periodo: 0, costo_total_patron: 0, imss_patron: 0, infonavit: 0, por_departamento: [], por_contrato: [], historial: [] };
+}
+function getEmptyAbastecimiento(): ReportAbastecimiento {
+  return { ordenes_total: 0, ordenes_abiertas: 0, ordenes_recibidas: 0, monto_oc: emptyCurrency(), proveedores_activos: 0, top_proveedores: [], por_categoria: [], items_inventario: 0, valor_inventario: 0 };
 }
