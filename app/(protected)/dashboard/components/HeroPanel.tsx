@@ -13,9 +13,21 @@ const logisticsTrend = [70, 68, 66, 74, 73, 79, 82];
 
 export default function HeroPanel({ metrics }: HeroPanelProps) {
   const { t, lang } = useTranslation();
+  const currentValue = metrics.monthlyCurrentValue ?? 0;
   const pct = metrics.monthlyGoal > 0
-    ? Math.min(Math.round((metrics.pendingInvoices / metrics.monthlyGoal) * 100), 100)
+    ? Math.min(Math.round((currentValue / metrics.monthlyGoal) * 100), 100)
     : 0;
+
+  const metricLabel: Record<string, string> = {
+    invoices:   lang === "en" ? "invoices issued"    : "facturas emitidas",
+    amount_mxn: lang === "en" ? "MXN invoiced"       : "facturado MXN",
+    amount_usd: lang === "en" ? "USD invoiced"       : "facturado USD",
+    quotations: lang === "en" ? "quotations sent"    : "cotizaciones enviadas",
+    shipments:  lang === "en" ? "shipments completed": "embarques completados",
+    prospects:  lang === "en" ? "prospects converted": "prospectos convertidos",
+  };
+  const currentLabel = metricLabel[metrics.monthlyGoalMetric] ?? metricLabel.invoices;
+  const isAmount = metrics.monthlyGoalMetric?.startsWith("amount");
   const barColor = pct >= 80 ? "var(--color-success-text)"
     : pct >= 50 ? "var(--color-warning-text)"
     : "var(--color-brand-blue)";
@@ -57,8 +69,12 @@ export default function HeroPanel({ metrics }: HeroPanelProps) {
             <div style={{ width: `${pct}%`, height: "100%", borderRadius: "var(--radius-full)", background: barColor, transition: "width 0.6s ease" }} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{metrics.pendingInvoices} {t.dashboard.invoicesIssued}</span>
-            <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{t.dashboard.goal}: {metrics.monthlyGoal}</span>
+            <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
+              {isAmount ? `$${Math.round(currentValue).toLocaleString("es-MX")}` : currentValue} {currentLabel}
+            </span>
+            <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>
+              {t.dashboard.goal}: {isAmount ? `$${metrics.monthlyGoal.toLocaleString("es-MX")}` : metrics.monthlyGoal}
+            </span>
           </div>
         </div>
         <div style={{ flexShrink: 0, textAlign: "right" }}>
