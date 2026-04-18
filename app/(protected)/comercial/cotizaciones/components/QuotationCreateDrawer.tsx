@@ -236,7 +236,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
         )}
 
         {/* CONTENT */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "grid", gap: "14px", alignContent: "start", minHeight: 0 }}>
+        <div style={{ flex: 1, overflowY: "auto", overflowX: "hidden", padding: "20px 24px", display: "grid", gap: "14px", alignContent: "start", minHeight: 0, maxHeight: "100%" }}>
 
           {currentStep === "type" && (
             <StepType quotType={quotType} setQuotType={(t) => { setQuotType(t); setServiceSubtype(null); }} />
