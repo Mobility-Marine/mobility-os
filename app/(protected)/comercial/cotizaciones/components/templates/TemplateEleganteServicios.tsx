@@ -171,8 +171,11 @@ export default function TemplateEleganteServicios({ quotation, settings }: Props
     </View>
   );
 
-  // ── Determinar qué renderizar: conceptos agrupados o líneas legacy ──
+  // ── Aplanar todas las líneas para renderizar flat ──────────
   const hasConceptos = billingConcepts.length > 0;
+  const allLines = hasConceptos
+    ? billingConcepts.flatMap((c: any) => (c.lines ?? []).map((l: any) => ({ ...l, currency: l.currency ?? c.currency })))
+    : services;
 
   return (
     <Document>
@@ -212,105 +215,97 @@ export default function TemplateEleganteServicios({ quotation, settings }: Props
             </View>
           </View>
 
-          {/* SERVICIOS — con conceptos agrupados o legacy */}
+          {/* SERVICIOS — líneas flat sin agrupador */}
           <View style={s.section}>
             <Text style={s.sectionTitle}>Servicios incluidos</Text>
-
-            {hasConceptos ? (
-              // ── NUEVO: Conceptos agrupados con líneas de detalle ──
-              billingConcepts.map((concept) => {
-                const lines       = concept.lines ?? [];
-                const conceptTotal = lines.reduce((sum, l) => sum + (l.price ?? 0), 0);
-                const displayTotal = concept.total > 0 ? concept.total : conceptTotal;
-                return (
-                  <View key={concept.id} style={s.conceptBlock}>
-                    {/* Header del concepto */}
-                    <View style={s.conceptHeader}>
-                      <Text style={s.conceptName}>{concept.description}</Text>
-                      <Text style={s.conceptTotal}>
-                        {concept.currency} ${fmt(displayTotal)}
-                      </Text>
-                    </View>
-                    {/* Líneas de detalle */}
-                    {lines.length > 0 && (
-                      <View style={s.linesContainer}>
-                        {lines.map((line, li) => {
-                          const isLast = li === lines.length - 1;
-                          return (
-                            <View key={line.id ?? li} style={[s.lineRow, isLast ? { borderBottomWidth: 0 } : {}]}>
-                              <View style={{ flex: 1, paddingRight: 10 }}>
-                                <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 2 }}>
-                                  <View style={s.lineBadge}>
-                                    <Text style={s.lineBadgeTxt}>{line.service_type}</Text>
-                                  </View>
-                                  <Text style={s.lineDesc}>{line.description}</Text>
-                                </View>
-                                <View style={s.lineMeta}>
-                                  {line.origin      ? <View style={s.lineMetaItem}><Text style={s.lineMetaLbl}>De: </Text><Text style={s.lineMetaVal}>{line.origin}</Text></View>       : null}
-                                  {line.destination ? <View style={s.lineMetaItem}><Text style={s.lineMetaLbl}>A: </Text><Text style={s.lineMetaVal}>{line.destination}</Text></View>   : null}
-                                  {line.incoterm    ? <View style={s.lineMetaItem}><Text style={s.lineMetaLbl}>Incoterm: </Text><Text style={s.lineMetaVal}>{line.incoterm}</Text></View> : null}
-                                  {line.transit_time ? <View style={s.lineMetaItem}><Text style={s.lineMetaLbl}>Tránsito: </Text><Text style={s.lineMetaVal}>{line.transit_time}</Text></View> : null}
-                                </View>
-                                {line.notes ? <Text style={s.lineNotes}>{line.notes}</Text> : null}
-                              </View>
-                              <View style={{ alignItems: "flex-end", flexShrink: 0 }}>
-                                <Text style={s.linePrice}>${fmt(line.price ?? 0)}</Text>
-                                <Text style={s.lineCurrency}>{line.currency ?? concept.currency}</Text>
-                              </View>
-                            </View>
-                          );
-                        })}
+            {allLines.map((line: any, li: number) => {
+              const taxRate    = line.tax_rate;
+              const isExento   = taxRate === -1;
+              const isTasa0    = taxRate === 0;
+              const taxLabel   = isExento ? "Exento" : isTasa0 ? "Tasa 0%" : `IVA ${taxRate ?? 16}%`;
+              const taxAmt     = isExento || isTasa0 ? 0 : Number(line.price ?? 0) * ((taxRate ?? 16) / 100);
+              const lineCur    = line.currency ?? quotation.currency ?? "MXN";
+              return (
+                <View key={line.id ?? li} style={{ backgroundColor: LIGHT, borderLeftWidth: 3, borderLeftColor: BRAND_COLOR, padding: "10 14", marginBottom: 6, borderRadius: 3 }}>
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <View style={{ flex: 1, paddingRight: 10 }}>
+                      <View style={{ flexDirection: "row", alignItems: "center", marginBottom: 3, gap: 6 }}>
+                        <View style={{ backgroundColor: BRAND_COLOR + "30", borderRadius: 2, padding: "2 5" }}>
+                          <Text style={{ fontSize: 6.5, color: BRAND_COLOR, fontWeight: "bold", textTransform: "uppercase" }}>{line.service_type}</Text>
+                        </View>
+                        <View style={{ backgroundColor: isExento ? "#e2e8f0" : isTasa0 ? "#dcfce7" : "#fef9c3", borderRadius: 2, padding: "2 5" }}>
+                          <Text style={{ fontSize: 6.5, color: isExento ? TEXT_MUTED : isTasa0 ? "#166534" : "#854d0e", fontWeight: "bold" }}>{taxLabel}</Text>
+                        </View>
                       </View>
-                    )}
-                  </View>
-                );
-              })
-            ) : (
-              // ── LEGACY: Líneas sueltas (cotizaciones antiguas) ──
-              services.map((svc) => (
-                <View key={svc.id} style={{ backgroundColor: LIGHT, borderLeftWidth: 3, borderLeftColor: BRAND_COLOR, padding: "12 16", marginBottom: 8, borderRadius: 3 }}>
-                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 }}>
-                    <View style={{ backgroundColor: BRAND_COLOR, borderRadius: 3, padding: "3 8" }}>
-                      <Text style={{ color: BRAND_TEXT, fontSize: 7.5, fontWeight: "bold", textTransform: "uppercase" }}>{svc.service_type}</Text>
+                      <Text style={{ fontSize: 9.5, color: TEXT_DARK, fontWeight: "bold", marginBottom: 3 }}>{line.description}</Text>
+                      <View style={{ flexDirection: "row", gap: 10, flexWrap: "wrap" }}>
+                        {line.origin      ? <View style={{ flexDirection: "row", gap: 3 }}><Text style={{ fontSize: 7, color: TEXT_MUTED }}>De: </Text><Text style={{ fontSize: 7, color: TEXT_MEDIUM, fontWeight: "bold" }}>{line.origin}</Text></View>       : null}
+                        {line.destination ? <View style={{ flexDirection: "row", gap: 3 }}><Text style={{ fontSize: 7, color: TEXT_MUTED }}>A: </Text><Text style={{ fontSize: 7, color: TEXT_MEDIUM, fontWeight: "bold" }}>{line.destination}</Text></View>   : null}
+                        {line.incoterm    ? <View style={{ flexDirection: "row", gap: 3 }}><Text style={{ fontSize: 7, color: TEXT_MUTED }}>Incoterm: </Text><Text style={{ fontSize: 7, color: TEXT_MEDIUM, fontWeight: "bold" }}>{line.incoterm}</Text></View> : null}
+                        {line.transit_time? <View style={{ flexDirection: "row", gap: 3 }}><Text style={{ fontSize: 7, color: TEXT_MUTED }}>Tránsito: </Text><Text style={{ fontSize: 7, color: TEXT_MEDIUM, fontWeight: "bold" }}>{line.transit_time}</Text></View> : null}
+                      </View>
+                      {line.notes ? <Text style={{ fontSize: 7, color: TEXT_MUTED, marginTop: 3, fontStyle: "italic" }}>{line.notes}</Text> : null}
                     </View>
-                    <Text style={{ fontSize: 14, color: ACCENT, fontWeight: "bold" }}>
-                      {(svc.currency ?? quotation.currency) + " $" + fmt(svc.price)}
-                    </Text>
+                    <View style={{ alignItems: "flex-end", flexShrink: 0, minWidth: 80 }}>
+                      <Text style={{ fontSize: 11, fontWeight: "bold", color: TEXT_DARK }}>{lineCur} ${fmt(Number(line.price ?? 0))}</Text>
+                      {!isExento && !isTasa0 && <Text style={{ fontSize: 7, color: TEXT_MUTED, marginTop: 2 }}>+ IVA ${fmt(taxAmt)}</Text>}
+                    </View>
                   </View>
-                  <Text style={{ fontSize: 9.5, color: TEXT_DARK, fontWeight: "bold", marginBottom: 6 }}>{svc.description}</Text>
-                  <View style={{ flexDirection: "row", gap: 16, flexWrap: "wrap" }}>
-                    {svc.origin      ? <View style={{ flexDirection: "row", gap: 4 }}><Text style={{ fontSize: 7.5, color: TEXT_MUTED }}>De:</Text><Text style={{ fontSize: 7.5, color: TEXT_DARK, fontWeight: "bold" }}>{svc.origin}</Text></View>      : null}
-                    {svc.destination ? <View style={{ flexDirection: "row", gap: 4 }}><Text style={{ fontSize: 7.5, color: TEXT_MUTED }}>A:</Text><Text style={{ fontSize: 7.5, color: TEXT_DARK, fontWeight: "bold" }}>{svc.destination}</Text></View>  : null}
-                    {svc.incoterm    ? <View style={{ flexDirection: "row", gap: 4 }}><Text style={{ fontSize: 7.5, color: TEXT_MUTED }}>Incoterm:</Text><Text style={{ fontSize: 7.5, color: TEXT_DARK, fontWeight: "bold" }}>{svc.incoterm}</Text></View> : null}
-                    {svc.transit_time ? <View style={{ flexDirection: "row", gap: 4 }}><Text style={{ fontSize: 7.5, color: TEXT_MUTED }}>Tránsito:</Text><Text style={{ fontSize: 7.5, color: TEXT_DARK, fontWeight: "bold" }}>{svc.transit_time}</Text></View> : null}
-                  </View>
-                  {svc.notes ? <Text style={{ fontSize: 7.5, color: TEXT_MUTED, marginTop: 6, fontStyle: "italic" }}>{svc.notes}</Text> : null}
                 </View>
-              ))
-            )}
+              );
+            })}
           </View>
 
-          {/* TOTALES */}
-          <View style={s.totalBox}>
-            <View style={s.totalRow}>
-              <Text style={s.totalLabel}>Subtotal</Text>
-              <Text style={s.totalValue}>{quotation.currency + " $" + fmt(quotation.subtotal)}</Text>
-            </View>
-            {(quotation.discount_amount ?? 0) > 0 ? (
-              <View style={s.totalRow}>
-                <Text style={s.totalLabel}>Descuento</Text>
-                <Text style={[s.totalValue, { color: ACCENT }]}>{"- " + quotation.currency + " $" + fmt(quotation.discount_amount)}</Text>
+          {/* TOTALES POR MONEDA */}
+          {(() => {
+            // Recalcular por moneda
+            const totByC: Record<string, { subtotal: number; tax: number; total: number }> = {};
+            for (const line of allLines as any[]) {
+              const cur     = line.currency ?? quotation.currency ?? "MXN";
+              const price   = Number(line.price ?? 0);
+              const taxRate = line.tax_rate;
+              const taxAmt  = (taxRate === -1 || taxRate === 0) ? 0 : price * ((taxRate ?? 16) / 100);
+              if (!totByC[cur]) totByC[cur] = { subtotal: 0, tax: 0, total: 0 };
+              totByC[cur].subtotal += price;
+              totByC[cur].tax      += taxAmt;
+              totByC[cur].total    += price + taxAmt;
+            }
+            const currencies = Object.keys(totByC);
+            return (
+              <View style={{ alignSelf: "flex-end", gap: 8 }}>
+                {currencies.map((cur) => {
+                  const ct = totByC[cur];
+                  return (
+                    <View key={cur} style={[s.totalBox, { minWidth: 200 }]}>
+                      {currencies.length > 1 && (
+                        <View style={[s.totalRow, { marginBottom: 8 }]}>
+                          <Text style={{ fontSize: 9, color: ACCENT, fontWeight: "bold" }}>{cur}</Text>
+                        </View>
+                      )}
+                      <View style={s.totalRow}>
+                        <Text style={s.totalLabel}>Subtotal</Text>
+                        <Text style={s.totalValue}>{cur} ${fmt(ct.subtotal)}</Text>
+                      </View>
+                      {(quotation.discount_amount ?? 0) > 0 && cur === quotation.currency && (
+                        <View style={s.totalRow}>
+                          <Text style={s.totalLabel}>Descuento</Text>
+                          <Text style={[s.totalValue, { color: ACCENT }]}>- {cur} ${fmt(quotation.discount_amount ?? 0)}</Text>
+                        </View>
+                      )}
+                      <View style={s.totalRow}>
+                        <Text style={s.totalLabel}>IVA</Text>
+                        <Text style={s.totalValue}>{cur} ${fmt(ct.tax)}</Text>
+                      </View>
+                      <View style={[s.totalRow, { borderTopWidth: 1, borderTopColor: BORDER_COLOR, paddingTop: 7, marginTop: 4 }]}>
+                        <Text style={s.grandLabel}>TOTAL</Text>
+                        <Text style={s.grandValue}>{cur} ${fmt(ct.total)}</Text>
+                      </View>
+                    </View>
+                  );
+                })}
               </View>
-            ) : null}
-            <View style={s.totalRow}>
-              <Text style={s.totalLabel}>{"IVA " + String(quotation.tax_rate ?? 16) + "%"}</Text>
-              <Text style={s.totalValue}>{quotation.currency + " $" + fmt(quotation.tax_amount)}</Text>
-            </View>
-            <View style={[s.totalRow, { borderTopWidth: 1, borderTopColor: BORDER_COLOR, paddingTop: 7, marginTop: 4 }]}>
-              <Text style={s.grandLabel}>TOTAL</Text>
-              <Text style={s.grandValue}>{quotation.currency + " $" + fmt(quotation.total)}</Text>
-            </View>
-          </View>
+            );
+          })()}
 
           {/* NOTAS */}
           {quotation.notes ? (
