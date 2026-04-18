@@ -14,10 +14,16 @@ type Props = {
 
 const EMPTY_LINE = (currency: string) => ({
   service_type: "terrestre" as ServiceType,
-  description: "", origin: "", destination: "",
-  incoterm: "", transit_time: "", currency,
+  description: "", currency,
   price: "", notes: "", tax_rate: 16,
+  unit_label: "",
 });
+
+const UNIT_LABELS = [
+  "Por servicio", "Por contenedor", "Por BL", "Por pedimento",
+  "Por factura", "Por kg", "Por tonelada", "Por m³", "Por W/M",
+  "Por pieza", "Por embarque", "Por trámite",
+];
 
 export default function StepConceptos({ billingConcepts, setBillingConcepts, svcCatalog }: Props) {
   const { t } = useTranslation();
@@ -45,13 +51,14 @@ export default function StepConceptos({ billingConcepts, setBillingConcepts, svc
     if (!lineForm.description.trim() || !lineForm.price) return;
     setBillingConcepts(p => p.map((c, i) => i === ci ? {
       ...c,
-      lines: [...c.lines, {
+     lines: [...c.lines, {
         service_type: lineForm.service_type,
         description:  lineForm.description,
         currency:     lineForm.currency,
         price:        Number(lineForm.price),
         tax_rate:     lineForm.tax_rate,
-        notes:        lineForm.notes || undefined,
+        notes:        lineForm.notes   || undefined,
+        unit_label:   lineForm.unit_label || undefined,
       }],
     } : c));
     setLineForm(EMPTY_LINE(concept.currency));
@@ -108,7 +115,10 @@ export default function StepConceptos({ billingConcepts, setBillingConcepts, svc
                     <div key={li} style={{ display: "flex", gap: "8px", padding: "8px 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", alignItems: "center" }}>
                       <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)" }}>{line.description}</div>
-                        <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{line.service_type} · {taxLabel} · {line.currency}</div>
+                        <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
+                        {line.service_type} · {taxLabel} · {line.currency}
+                        {(line as any).unit_label && <span style={{ marginLeft: "4px", padding: "1px 5px", borderRadius: "var(--radius-full)", background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)" }}>{(line as any).unit_label}</span>}
+                      </div>
                       </div>
                       <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-success-text)", flexShrink: 0 }}>
                         ${Number(line.price).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
@@ -167,9 +177,17 @@ export default function StepConceptos({ billingConcepts, setBillingConcepts, svc
                       </select>
                     </Field>
                   </div>
-                  <Field label="Notas">
-                    <input value={lineForm.notes} onChange={(e) => setLineForm((p: any) => ({ ...p, notes: e.target.value }))} placeholder="Observaciones…" style={INPUT} />
-                  </Field>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                    <Field label="Notas">
+                      <input value={lineForm.notes} onChange={(e) => setLineForm((p: any) => ({ ...p, notes: e.target.value }))} placeholder="Observaciones…" style={INPUT} />
+                    </Field>
+                    <Field label="Unidad de cotización" hint="Cómo se cobra este concepto">
+                      <select value={lineForm.unit_label ?? ""} onChange={(e) => setLineForm((p: any) => ({ ...p, unit_label: e.target.value }))} style={SELECT}>
+                        <option value="">— Sin especificar —</option>
+                        {UNIT_LABELS.map(u => <option key={u} value={u}>{u}</option>)}
+                      </select>
+                    </Field>
+                  </div>
                   <button
                     onClick={() => addLine(ci, concept)}
                     disabled={!lineForm.description.trim() || !lineForm.price}
