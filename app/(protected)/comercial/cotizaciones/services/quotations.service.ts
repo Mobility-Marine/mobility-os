@@ -238,7 +238,8 @@ export async function addService(
       currency:     payload.currency     ?? "USD",
       price:        payload.price,
       notes:        payload.notes        ?? null,
-      product_id:   payload.product_id   ?? null,
+      product_id:          payload.product_id          ?? null,
+      billing_concept_id:  payload.billing_concept_id  ?? null,
     })
     .select("*").single();
   if (error) throw error;
@@ -505,6 +506,90 @@ export async function fetchQuotationServices(quotationId: string) {
     .eq("quotation_id", quotationId)
     .order("sort_order");
   return data ?? [];
+}
+
+// ── BILLING CONCEPTS ──────────────────────────────────────────
+export async function fetchBillingConcepts(
+  quotationId: string
+): Promise<any[]> {
+  const { data: concepts } = await supabase
+    .from("quotation_billing_concepts")
+    .select(`
+      *,
+      product:products(name, sat_product_code, sat_unit_code, unit),
+      lines:quotation_services(*)
+    `)
+    .eq("quotation_id", quotationId)
+    .order("sort_order");
+  // Calcular total de cada concepto sumando sus líneas
+  return (concepts ?? []).map((c: any) => ({
+    ...c,
+    lines: (c.lines ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order),
+    total: (c.lines ?? []).reduce((s: number, l: any) => s + (l.price ?? 0), 0),
+  }));
+}
+
+export async function createBillingConcept(
+  companyId: string,
+  payload:   CreateBillingConceptPayload
+): Promise<any> {
+  const { data: existing } = await supabase
+    .from("quotation_billing_concepts")
+    .select("sort_order")
+    .eq("quotation_id", payload.quotation_id)
+    .order("sort_order", { ascending: false })
+    .limit(1);
+  const sort_order = (existing?.[0]?.sort_order ?? -1) + 1;
+
+  const { data, error } = await supabase
+    .from("quotation_billing_concepts")
+    .insert({
+      company_id:   companyId,
+      quotation_id: payload.quotation_id,
+      sort_order:   payload.sort_order ?? sort_order,
+      product_id:   payload.product_id ?? null,
+      description:  payload.description,
+      currency:     payload.currency ?? "USD",
+      total:        0,
+    })
+    .select("*")
+    .single();
+  if (error) throw error;
+  return data;
+}
+
+export async function deleteBillingConcept(
+  companyId: string,
+  id:        string,
+  quotationId: string
+): Promise<void> {
+  // Eliminar líneas asociadas primero
+  await supabase.from("quotation_services")
+    .delete()
+    .eq("billing_concept_id", id)
+    .eq("company_id", companyId);
+  await supabase.from("quotation_billing_concepts")
+    .delete()
+    .eq("id", id)
+    .eq("company_id", companyId);
+  await recalcTotals(companyId, quotationId);
+}
+
+export async function recalcBillingConceptTotal(
+  companyId:  string,
+  conceptId:  string,
+  quotationId:string
+): Promise<void> {
+  const { data: lines } = await supabase
+    .from("quotation_services")
+    .select("price")
+    .eq("billing_concept_id", conceptId);
+  const total = (lines ?? []).reduce((s: number, l: any) => s + (l.price ?? 0), 0);
+  await supabase.from("quotation_billing_concepts")
+    .update({ total })
+    .eq("id", conceptId)
+    .eq("company_id", companyId);
+  await recalcTotals(companyId, quotationId);
 }
 
 export async function deleteQuotation(
