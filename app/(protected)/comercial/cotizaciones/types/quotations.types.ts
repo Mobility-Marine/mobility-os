@@ -227,7 +227,8 @@ export type CreateServicePayload = {
   currency?:     string;
   price:         number;
   notes?:        string;
-  product_id?:   string;
+  product_id?:         string;
+  billing_concept_id?: string;
 };
 
 export type CreateBillingConceptPayload = {
