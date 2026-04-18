@@ -103,7 +103,8 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
   const [svcForm,        setSvcForm]        = useState<{
     service_type: ServiceType; description: string; origin: string; destination: string;
     incoterm: string; transit_time: string; currency: string; price: string; notes: string;
-  }>({ service_type: "terrestre", description: "", origin: "", destination: "", incoterm: "", transit_time: "", currency: "USD", price: "", notes: "" });
+    tax_rate: number;
+  }>({ service_type: "terrestre", description: "", origin: "", destination: "", incoterm: "", transit_time: "", currency: "USD", price: "", notes: "", tax_rate: 16 });
   const [routeHint,   setRouteHint]   = useState<any | null>(null);
   const [svcCatalog,  setSvcCatalog]  = useState<any[]>([]);
 
@@ -276,7 +277,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
     setConceptForm({ product_id: "", description: "", currency: "USD" });
     setAddingConcept(false);
     setItemForm({ sku: "", description: "", details: "", quantity: "1", unit: "pza", unit_price: "", discount_pct: "0" });
-    setSvcForm({ service_type: "terrestre", description: "", origin: "", destination: "", incoterm: "", transit_time: "", currency: "USD", price: "", notes: "" });
+    setSvcForm({ service_type: "terrestre", description: "", origin: "", destination: "", incoterm: "", transit_time: "", currency: "USD", price: "", notes: "", tax_rate: 16 });
     setConfig({ currency: "MXN", discount_amount: "0", tax_rate: "16", valid_until: "", incoterm: "", origin: "", destination: "", notes: "", terms: "" });
     setError(null);
     onClose();
@@ -620,9 +621,17 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
                                 {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.value}</option>)}
                               </select>
                             </Field>
-                            <Field label="Precio *"><input type="number" value={svcForm.price} onChange={(e) => setSvcForm(p => ({ ...p, price: e.target.value }))} placeholder="1200.00" style={INPUT} /></Field>
+                           <Field label="Precio *"><input type="number" value={svcForm.price} onChange={(e) => setSvcForm(p => ({ ...p, price: e.target.value }))} placeholder="1200.00" style={INPUT} /></Field>
+                            <Field label="IVA">
+                              <select value={String(svcForm.tax_rate)} onChange={(e) => setSvcForm(p => ({ ...p, tax_rate: Number(e.target.value) }))} style={SELECT}>
+                                <option value="16">IVA 16%</option>
+                                <option value="0">Tasa 0%</option>
+                                <option value="-1">Exento</option>
+                                <option value="8">IVA 8%</option>
+                              </select>
+                            </Field>
                           </div>
-                          <Field label="Notas"><input value={svcForm.notes} onChange={(e) => setSvcForm(p => ({ ...p, notes: e.target.value }))} placeholder="Incluye…" style={INPUT} /></Field>
+                          <Field label="Notas"><input value={svcForm.notes}
                           <button
                             onClick={() => {
                               if (!svcForm.description.trim() || !svcForm.price) return;
@@ -637,10 +646,11 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
                                   transit_time: svcForm.transit_time || undefined,
                                   currency:     svcForm.currency,
                                   price:        Number(svcForm.price),
+                                  tax_rate:     svcForm.tax_rate,
                                   notes:        svcForm.notes        || undefined,
                                 }]
                               } : c));
-                              setSvcForm({ service_type: "terrestre", description: "", origin: "", destination: "", incoterm: "", transit_time: "", currency: concept.currency, price: "", notes: "" });
+                              setSvcForm({ service_type: "terrestre", description: "", origin: "", destination: "", incoterm: "", transit_time: "", currency: concept.currency, price: "", notes: "", tax_rate: 16 });
                             }}
                             disabled={!svcForm.description.trim() || !svcForm.price}
                             style={{ height: "34px", padding: "0 16px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "12px", fontWeight: 700, cursor: "pointer", alignSelf: "start" }}
