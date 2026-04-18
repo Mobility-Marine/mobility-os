@@ -804,7 +804,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
               </div>
               <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "12px" }}>
                 <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>
-                  {quotType === "products" ? `${items.length} productos` : `${services.length} servicios`}
+                  {quotType === "products" ? `${items.length} productos` : `${billingConcepts.length} concepto${billingConcepts.length !== 1 ? "s" : ""}`}
                 </div>
                 {quotType === "products" && items.map((item, i) => (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
