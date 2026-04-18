@@ -363,6 +363,24 @@ function ActionsStep({ contactEmail, ccEmails, setCcEmails, sendingEmail, setSen
 // ── PREVIEW ───────────────────────────────────────────────────
 function QuotPreview({ quotType, serviceSubtype, clientState, items, billingConcepts, config, subtotal, taxAmt, total, discount }: any) {
   const clientName = clientState.useManual ? clientState.manualClient.name : clientState.selectedClient?.name;
+
+  // Calcular totales por moneda para servicios
+  const byCurrency: Record<string, { subtotal: number; tax: number; total: number }> = {};
+  if (quotType === "services") {
+    for (const concept of billingConcepts) {
+      for (const line of concept.lines) {
+        const cur   = (line as any).currency ?? concept.currency ?? "MXN";
+        const price = Number(line.price ?? 0);
+        const rate  = (line as any).tax_rate;
+        const tax   = (rate === -1 || rate === 0) ? 0 : price * ((rate ?? 16) / 100);
+        if (!byCurrency[cur]) byCurrency[cur] = { subtotal: 0, tax: 0, total: 0 };
+        byCurrency[cur].subtotal += price;
+        byCurrency[cur].tax      += tax;
+        byCurrency[cur].total    += price + tax;
+      }
+    }
+  }
+
   return (
     <>
       <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Resumen de la cotización</div>
@@ -373,7 +391,7 @@ function QuotPreview({ quotType, serviceSubtype, clientState, items, billingConc
           { label: "Nombre",   value: clientName },
           { label: "RFC",      value: clientState.useManual ? clientState.manualClient.rfc : clientState.selectedClient?.rfc },
           { label: "Contacto", value: clientState.contactName },
-          { label: "Subtipo",  value: serviceSubtype ? serviceSubtype.replace(/_/g, " ").toUpperCase() : quotType === "products" ? "Productos" : null },
+          { label: "Subtipo",  value: serviceSubtype ? serviceSubtype.replace(/_/g, " ").toUpperCase() : "Productos" },
           { label: "Idioma",   value: config.language === "en" ? "🇺🇸 English" : "🇲🇽 Español" },
         ].filter(r => r.value).map((row) => (
           <div key={row.label} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
@@ -385,7 +403,7 @@ function QuotPreview({ quotType, serviceSubtype, clientState, items, billingConc
 
       <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "12px" }}>
         <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>
-          {quotType === "products" ? `${items.length} producto${items.length !== 1 ? "s" : ""}` : `${billingConcepts.length} concepto${billingConcepts.length !== 1 ? "s" : ""} de facturación`}
+          {quotType === "products" ? `${items.length} producto${items.length !== 1 ? "s" : ""}` : `${billingConcepts.length} concepto${billingConcepts.length !== 1 ? "s" : ""}`}
         </div>
         {quotType === "products" && items.map((item: any, i: number) => (
           <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
@@ -404,7 +422,7 @@ function QuotPreview({ quotType, serviceSubtype, clientState, items, billingConc
               {c.lines.map((l: any, j: number) => (
                 <div key={j} style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", paddingLeft: "10px", marginTop: "2px", color: "var(--color-text-muted)" }}>
                   <span>↳ {l.description?.substring(0, 42)}</span>
-                  <span>{l.currency} ${Number(l.price).toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+                  <span>{(l as any).currency} ${Number(l.price).toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
                 </div>
               ))}
             </div>
@@ -412,26 +430,52 @@ function QuotPreview({ quotType, serviceSubtype, clientState, items, billingConc
         })}
       </div>
 
-      <div style={{ background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", borderRadius: "var(--radius-md)", padding: "12px 16px", display: "grid", gap: "4px" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-          <span style={{ color: "var(--color-text-muted)" }}>Subtotal</span>
-          <span>${subtotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+      {/* Totales por moneda */}
+      {quotType === "services" ? (
+        <div style={{ background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", borderRadius: "var(--radius-md)", padding: "12px 16px", display: "grid", gap: "8px" }}>
+          {Object.entries(byCurrency).map(([cur, ct], i) => (
+            <div key={cur}>
+              {Object.keys(byCurrency).length > 1 && (
+                <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-success-text)", textTransform: "uppercase", marginBottom: "4px" }}>{cur}</div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "2px" }}>
+                <span style={{ color: "var(--color-text-muted)" }}>Subtotal</span>
+                <span>{cur} ${ct.subtotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "2px" }}>
+                <span style={{ color: "var(--color-text-muted)" }}>IVA</span>
+                <span>{cur} ${ct.tax.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: 800, paddingTop: "4px", borderTop: "1px solid var(--color-success-border)" }}>
+                <span style={{ color: "var(--color-success-text)" }}>TOTAL {cur}</span>
+                <span style={{ color: "var(--color-success-text)" }}>{cur} ${ct.total.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+              </div>
+              {i < Object.keys(byCurrency).length - 1 && <div style={{ borderTop: "1px dashed var(--color-success-border)", marginTop: "8px" }} />}
+            </div>
+          ))}
         </div>
-        {discount > 0 && (
+      ) : (
+        <div style={{ background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", borderRadius: "var(--radius-md)", padding: "12px 16px", display: "grid", gap: "4px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-            <span style={{ color: "var(--color-warning-text)" }}>Descuento</span>
-            <span style={{ color: "var(--color-warning-text)" }}>- ${discount.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+            <span style={{ color: "var(--color-text-muted)" }}>Subtotal</span>
+            <span>${subtotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
           </div>
-        )}
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-          <span style={{ color: "var(--color-text-muted)" }}>IVA (calculado por línea)</span>
-          <span>${taxAmt.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+          {discount > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+              <span style={{ color: "var(--color-warning-text)" }}>Descuento</span>
+              <span style={{ color: "var(--color-warning-text)" }}>- ${discount.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+            <span style={{ color: "var(--color-text-muted)" }}>IVA</span>
+            <span>${taxAmt.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "16px", fontWeight: 800, marginTop: "4px", paddingTop: "6px", borderTop: "1px solid var(--color-success-border)" }}>
+            <span style={{ color: "var(--color-success-text)" }}>TOTAL</span>
+            <span style={{ color: "var(--color-success-text)" }}>${total.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+          </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "space-between", fontSize: "16px", fontWeight: 800, marginTop: "4px", paddingTop: "6px", borderTop: "1px solid var(--color-success-border)" }}>
-          <span style={{ color: "var(--color-success-text)" }}>TOTAL</span>
-          <span style={{ color: "var(--color-success-text)" }}>${total.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
-        </div>
-      </div>
+      )}
     </>
   );
 }
