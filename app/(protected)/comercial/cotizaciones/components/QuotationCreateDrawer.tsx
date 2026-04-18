@@ -30,9 +30,10 @@ type Props = {
     services?:        Omit<CreateServicePayload, "quotation_id">[],
     billingConcepts?: BillingConceptDraft[],
   ) => Promise<void>;
+  onDownloadPDF?: () => void;
 };
 
-export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props) {
+export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownloadPDF }: Props) {
   const { companyId } = useTenant();
 
   const [quotType,       setQuotType]       = useState<QuotationType>("services");
@@ -283,6 +284,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
               sendingEmail={sendingEmail}
               setSendingEmail={setSendingEmail}
               onClose={onClose}
+              onDownloadPDF={onDownloadPDF}
             />
           )}
         </div>
@@ -295,7 +297,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
             </button>
           )}
           {currentStep === "actions" ? (
-            <button onClick={onClose} style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+            <button onClick={onClose} style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", border: "1px solid var(--color-border)", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
               Ir al Workspace
             </button>
           ) : currentStep === "preview" ? (
@@ -319,7 +321,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
 }
 
 // ── ACTIONS ───────────────────────────────────────────────────
-function ActionsStep({ contactEmail, ccEmails, setCcEmails, sendingEmail, setSendingEmail, onClose }: any) {
+function ActionsStep({ contactEmail, ccEmails, setCcEmails, sendingEmail, setSendingEmail, onClose, onDownloadPDF }: any) {
   return (
     <>
       <div style={{ textAlign: "center", padding: "16px 0" }}>
@@ -343,6 +345,20 @@ function ActionsStep({ contactEmail, ccEmails, setCcEmails, sendingEmail, setSen
           <input value={ccEmails} onChange={(e) => setCcEmails(e.target.value)} placeholder="correo1@empresa.com, correo2@empresa.com"
             style={{ width: "100%", height: "36px", padding: "0 12px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-base)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" as any }} />
         </div>
+        {/* Botón descargar PDF */}
+        {onDownloadPDF && (
+          <button
+            onClick={onDownloadPDF}
+            style={{ height: "44px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "14px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Descargar PDF
+          </button>
+        )}
         <button disabled={sendingEmail || !contactEmail} onClick={() => setSendingEmail(true)}
           style={{ height: "38px", borderRadius: "var(--radius-md)", background: contactEmail ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: contactEmail ? "#fff" : "var(--color-text-muted)", border: contactEmail ? "none" : "1px solid var(--color-border)", fontSize: "13px", fontWeight: 600, cursor: contactEmail ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
