@@ -631,7 +631,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
                               </select>
                             </Field>
                           </div>
-                          <Field label="Notas"><input value={svcForm.notes}
+                          <Field label="Notas"><input value={svcForm.notes} onChange={(e) => setSvcForm(p => ({ ...p, notes: e.target.value }))} placeholder="Incluye…" style={INPUT} /></Field>
                           <button
                             onClick={() => {
                               if (!svcForm.description.trim() || !svcForm.price) return;
