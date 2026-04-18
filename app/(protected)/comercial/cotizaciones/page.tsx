@@ -36,6 +36,7 @@ export default function CotizacionesPage() {
 
   const [showCreate,    setShowCreate]    = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
+  const [lastCreated,   setLastCreated]   = useState<typeof selected>(null);
 
  async function handleCreate(
     payload:          CreateQuotationPayload,
@@ -46,6 +47,7 @@ export default function CotizacionesPage() {
     const q = await createQuotation(payload, items, services, billingConcepts);
     if (!q) return;
     setSelected(q);
+    setLastCreated(q);
   }
 
  async function handleOpenPDF(q: typeof selected) {
@@ -128,10 +130,11 @@ onUpdateService={updateServiceFn}
 
       {/* DRAWER */}
       <QuotationCreateDrawer
-  open={showCreate}
-  onClose={() => setShowCreate(false)}
-  onCreate={handleCreate}
-/>
+        open={showCreate}
+        onClose={() => { setShowCreate(false); setLastCreated(null); }}
+        onCreate={handleCreate}
+        onDownloadPDF={() => lastCreated && handleOpenPDF(lastCreated)}
+      />
     </div>
   );
 }
