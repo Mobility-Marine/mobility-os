@@ -142,7 +142,16 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
           contact_email:    clientState.contactEmail || undefined,
           contact_title:    clientState.contactTitle || undefined,
           template:         "elegante",
-          currency:         config.currency,
+          currency:         (() => {
+            // Auto-detectar moneda principal desde las líneas de conceptos
+            if (billingConcepts.length > 0) {
+              const currencies = billingConcepts.flatMap(c => c.lines.map(l => (l as any).currency ?? c.currency));
+              const mxn = currencies.filter(c => c === "MXN").length;
+              const usd = currencies.filter(c => c === "USD").length;
+              return usd >= mxn ? "USD" : "MXN";
+            }
+            return config.currency;
+          })(),
           discount_amount:  discount        || undefined,
           tax_rate:         Number(config.tax_rate) || 16,
           valid_until:      config.valid_until || undefined,
