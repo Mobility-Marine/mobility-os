@@ -18,6 +18,8 @@ import StepConfig      from "./drawer/steps/StepConfig";
 import StepConceptos   from "./drawer/steps/StepConceptos";
 import StepGeneralInfo from "./drawer/generalInfo/StepGeneralInfo";
 import StepItems       from "./drawer/steps/StepItems";
+import ContentTerrestre, { EMPTY_TERRESTRE_INFO } from "./drawer/byType/ContentTerrestre";
+import type { TerrestreInfo } from "./drawer/byType/ContentTerrestre";
 
 type Props = {
   open:    boolean;
@@ -40,6 +42,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
   const [items,          setItems]          = useState<Omit<CreateItemPayload, "quotation_id">[]>([]);
   const [billingConcepts,setBillingConcepts]= useState<BillingConceptDraft[]>([]);
   const [svcCatalog,     setSvcCatalog]     = useState<any[]>([]);
+  const [terrestreInfo, setTerrestreInfo] = useState<TerrestreInfo>(EMPTY_TERRESTRE_INFO());
   const [config,         setConfig]         = useState<ConfigState>(EMPTY_CONFIG());
   const [stepIdx,        setStepIdx]        = useState(0);
   const [saving,         setSaving]         = useState(false);
@@ -76,6 +79,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
     setError(null);
     setCcEmails("");
     setSendingEmail(false);
+    setTerrestreInfo(EMPTY_TERRESTRE_INFO());
   }, [open]);
 
   function canAdvance(): boolean {
@@ -84,6 +88,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
       case "subtype":   return !!serviceSubtype;
       case "client":    return !!(clientState.useManual ? clientState.manualClient.name.trim() : clientState.selectedClient);
       case "general":   return true;
+      case "content":   return billingConcepts.length > 0 && billingConcepts.every(c => c.lines.length > 0);
       case "conceptos": return quotType === "products"
         ? items.length > 0
         : billingConcepts.length > 0 && billingConcepts.every(c => c.lines.length > 0);
@@ -116,7 +121,12 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
           type:            quotType,
           service_subtype: serviceSubtype ?? undefined,
           language:        config.language,
-          general_info:    Object.keys(generalInfo).length > 0 ? generalInfo as GeneralInfo : undefined,
+          general_info:    (() => {
+            if (serviceSubtype === "terrestre_ltl" || serviceSubtype === "terrestre_ftl") {
+              return terrestreInfo as any;
+            }
+            return Object.keys(generalInfo).length > 0 ? generalInfo as GeneralInfo : undefined;
+          })(),
           client_id:       !clientState.useManual ? clientState.selectedClient?.id : undefined,
           client_name:     clientName,
           client_email:    clientEmail    || undefined,
@@ -226,22 +236,27 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
           {currentStep === "client" && (
             <StepClient state={clientState} onChange={(u) => setClientState(p => ({ ...p, ...u }))} />
           )}
-          {currentStep === "general" && serviceSubtype && (
-            <StepGeneralInfo
-              subtype={serviceSubtype}
-              info={generalInfo}
-              onChange={(u) => setGeneralInfo(p => ({ ...p, ...u }))}
-            />
-          )}
-          {currentStep === "conceptos" && quotType === "products" && (
-            <StepItems items={items} setItems={setItems} companyId={companyId ?? ""} />
-          )}
-          {currentStep === "conceptos" && quotType === "services" && (
-            <StepConceptos
-              billingConcepts={billingConcepts}
-              setBillingConcepts={setBillingConcepts}
-              svcCatalog={svcCatalog}
-            />
+          {currentStep === "content" && (
+            <>
+              {(serviceSubtype === "terrestre_ltl" || serviceSubtype === "terrestre_ftl") && (
+                <ContentTerrestre
+                  info={terrestreInfo}
+                  setInfo={setTerrestreInfo}
+                  billingConcepts={billingConcepts}
+                  setBillingConcepts={setBillingConcepts}
+                  svcCatalog={svcCatalog}
+                />
+              )}
+              {serviceSubtype && !["terrestre_ltl","terrestre_ftl"].includes(serviceSubtype) && (
+                <div style={{ padding: "32px", textAlign: "center", borderRadius: "var(--radius-md)", border: "1px dashed var(--color-border)", color: "var(--color-text-muted)" }}>
+                  <div style={{ fontSize: "24px", marginBottom: "8px" }}>🚧</div>
+                  <div style={{ fontSize: "14px", fontWeight: 700 }}>En construcción</div>
+                  <div style={{ fontSize: "12px", marginTop: "4px" }}>
+                    {serviceSubtype.replace(/_/g, " ").toUpperCase()} — próximamente
+                  </div>
+                </div>
+              )}
+            </>
           )}
           {currentStep === "config" && (
             <StepConfig state={config} onChange={(u) => setConfig(p => ({ ...p, ...u }))} />
