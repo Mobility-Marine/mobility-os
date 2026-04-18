@@ -70,9 +70,10 @@ export type Quotation = {
   created_at:      string;
   updated_at?:     string;
   // Joined
-  items?:          QuotationItem[];
-  services?:       QuotationService[];
-  client?:         { name: string; email?: string; rfc?: string } | null;
+  items?:             QuotationItem[];
+  services?:          QuotationService[];
+  billing_concepts?:  QuotationBillingConcept[];
+  client?:            { name: string; email?: string; rfc?: string } | null;
 };
 
 // ── QUOTATION ITEM (Productos) ────────────────────────────────
@@ -97,11 +98,12 @@ export type QuotationItem = {
 // ── QUOTATION SERVICE (Servicios Logísticos) ──────────────────
 
 export type QuotationService = {
-  id:            string;
-  company_id:    string;
-  quotation_id:  string;
-  sort_order:    number;
-  service_type:  ServiceType;
+  id:                  string;
+  company_id:          string;
+  quotation_id:        string;
+  billing_concept_id?: string | null;
+  sort_order:          number;
+  service_type:        ServiceType;
   description:   string;
   origin?:       string | null;
   destination?:  string | null;
@@ -111,6 +113,22 @@ export type QuotationService = {
   price:         number;
   notes?:        string | null;
   created_at:    string;
+};
+
+// ── BILLING CONCEPT (Concepto de facturación) ─────────────────
+export type QuotationBillingConcept = {
+  id:           string;
+  company_id:   string;
+  quotation_id: string;
+  sort_order:   number;
+  product_id?:  string | null;
+  description:  string;
+  total:        number;
+  currency:     string;
+  created_at:   string;
+  // Joined
+  product?:     { name: string; sat_product_code?: string; sat_unit_code?: string; unit?: string } | null;
+  lines?:       QuotationService[];
 };
 
 // ── COMPANY SETTINGS ─────────────────────────────────────────
@@ -210,6 +228,14 @@ export type CreateServicePayload = {
   price:         number;
   notes?:        string;
   product_id?:   string;
+};
+
+export type CreateBillingConceptPayload = {
+  quotation_id: string;
+  sort_order?:  number;
+  product_id?:  string;
+  description:  string;
+  currency:     string;
 };
 
 // ── FILTERS ──────────────────────────────────────────────────
