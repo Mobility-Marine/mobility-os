@@ -569,7 +569,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
 
                     {/* Líneas de detalle */}
                     {isActive && (
-                      <div style={{ padding: "12px 14px", borderTop: "1px solid var(--color-border-faint)", display: "grid", gap: "8px" }}>
+                      <div style={{ padding: "12px 14px", borderTop: "1px solid var(--color-border-faint)", display: "grid", gap: "8px", maxHeight: "420px", overflowY: "auto" }}>
                         {concept.lines.map((line, li) => (
                           <div key={li} style={{ display: "flex", gap: "8px", padding: "8px 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", alignItems: "center" }}>
                             <div style={{ flex: 1, minWidth: 0 }}>
