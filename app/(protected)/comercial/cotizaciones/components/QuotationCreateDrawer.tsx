@@ -22,9 +22,6 @@ import StepConceptos   from "./drawer/steps/StepConceptos";
 import StepGeneralInfo from "./drawer/generalInfo/StepGeneralInfo";
 import StepItems       from "./drawer/steps/StepItems";
 
-// Items (productos) — inline ya que es simple
-import StepItems from "./drawer/steps/StepItems";
-
 type Props = {
   open:    boolean;
   onClose: () => void;
