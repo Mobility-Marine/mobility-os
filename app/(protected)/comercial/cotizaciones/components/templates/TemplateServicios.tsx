@@ -1,5 +1,5 @@
 import { Document, Page, View, Text } from "@react-pdf/renderer";
-import type { Quotation, CompanySettings } from "../types/quotations.types";
+import type { Quotation, CompanySettings } from "../../types/quotations.types";
 import type { PDFLang } from "./shared/pdfTranslations";
 import { tx } from "./shared/pdfTranslations";
 import {
