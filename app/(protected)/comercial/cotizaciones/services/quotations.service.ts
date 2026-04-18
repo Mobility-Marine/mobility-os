@@ -57,7 +57,7 @@ export async function fetchQuotations(companyId: string): Promise<Quotation[]> {
 export async function fetchQuotation(
   companyId: string, id: string
 ): Promise<Quotation | null> {
-  const [{ data: quot }, { data: items }, { data: services }] = await Promise.all([
+  const [{ data: quot }, { data: items }, { data: services }, concepts] = await Promise.all([
     supabase.from("quotations").select(`
       *,
       client:clients(
@@ -69,6 +69,7 @@ export async function fetchQuotation(
       .eq("company_id", companyId).eq("quotation_id", id).order("sort_order"),
     supabase.from("quotation_services").select("*")
       .eq("company_id", companyId).eq("quotation_id", id).order("sort_order"),
+    fetchBillingConcepts(id),
   ]);
   if (!quot) return null;
   const contacts       = (quot as any)?.client?.contacts ?? [];
@@ -76,8 +77,9 @@ export async function fetchQuotation(
   return {
     ...quot,
     client_contact_name: primaryContact?.name ?? null,
-    items:    items    ?? [],
-    services: services ?? [],
+    items:              items    ?? [],
+    services:           services ?? [],
+    billing_concepts:   concepts ?? [],
   } as Quotation;
 }
 
