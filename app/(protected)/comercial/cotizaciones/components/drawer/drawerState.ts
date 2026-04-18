@@ -48,6 +48,7 @@ export type DrawerStep =
   | "subtype"
   | "client"
   | "general"
+  | "content"      // ← nuevo paso unificado para servicios
   | "conceptos"
   | "config"
   | "preview"
@@ -55,11 +56,9 @@ export type DrawerStep =
 
 export function getSteps(quotType: string): DrawerStep[] {
   if (quotType === "products") {
-    // Productos: no necesita subtipo ni info general
     return ["type", "client", "conceptos", "config", "preview", "actions"];
   }
-  // Servicios: subtipo + info general obligatorios
-  return ["type", "subtype", "client", "general", "conceptos", "config", "preview", "actions"];
+  return ["type", "subtype", "client", "content", "config", "preview", "actions"];
 }
 
 export const STEP_LABELS_ES: Record<DrawerStep, string> = {
@@ -67,6 +66,7 @@ export const STEP_LABELS_ES: Record<DrawerStep, string> = {
   subtype:   "Subtipo",
   client:    "Cliente",
   general:   "Información",
+  content:   "Contenido",
   conceptos: "Conceptos",
   config:    "Configuración",
   preview:   "Resumen",
@@ -78,6 +78,7 @@ export const STEP_LABELS_EN: Record<DrawerStep, string> = {
   subtype:   "Subtype",
   client:    "Client",
   general:   "Information",
+  content:   "Content",
   conceptos: "Concepts",
   config:    "Configuration",
   preview:   "Summary",
