@@ -614,14 +614,14 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
                               </select>
                             </Field>
                           </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px" }}>
                             <Field label="Tránsito"><input value={svcForm.transit_time} onChange={(e) => setSvcForm(p => ({ ...p, transit_time: e.target.value }))} placeholder="25-30 días" style={INPUT} /></Field>
                             <Field label="Moneda">
                               <select value={svcForm.currency} onChange={(e) => setSvcForm(p => ({ ...p, currency: e.target.value }))} style={SELECT}>
                                 {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.value}</option>)}
                               </select>
                             </Field>
-                           <Field label="Precio *"><input type="number" value={svcForm.price} onChange={(e) => setSvcForm(p => ({ ...p, price: e.target.value }))} placeholder="1200.00" style={INPUT} /></Field>
+                            <Field label="Precio *"><input type="number" value={svcForm.price} onChange={(e) => setSvcForm(p => ({ ...p, price: e.target.value }))} placeholder="1200.00" style={INPUT} /></Field>
                             <Field label="IVA">
                               <select value={String(svcForm.tax_rate)} onChange={(e) => setSvcForm(p => ({ ...p, tax_rate: Number(e.target.value) }))} style={SELECT}>
                                 <option value="16">IVA 16%</option>
