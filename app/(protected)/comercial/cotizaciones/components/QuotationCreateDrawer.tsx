@@ -206,24 +206,6 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
     setProdSearch(""); setProductSuggestions([]);
   }
 
-  function addService() {
-    if (!svcForm.description.trim() || !svcForm.price) return;
-    setServices((p) => [...p, {
-      service_type: svcForm.service_type,
-      description:  svcForm.description,
-      origin:       svcForm.origin       || undefined,
-      destination:  svcForm.destination  || undefined,
-      incoterm:     svcForm.incoterm     || undefined,
-      transit_time: svcForm.transit_time || undefined,
-      currency:     svcForm.currency,
-      price:        Number(svcForm.price),
-      notes:        svcForm.notes        || undefined,
-      product_id:   svcForm.product_id   || undefined,
-    }]);
-    setSvcForm({ service_type: "terrestre", description: "", origin: "", destination: "", incoterm: "", transit_time: "", currency: "USD", price: "", notes: "", product_id: undefined });
-    setRouteHint(null);
-  }
-
   // ── TOTALS ─────────────────────────────────────────────────
   const subtotal = quotType === "products"
     ? items.reduce((s, i) => s + i.quantity * i.unit_price * (1 - (i.discount_pct ?? 0) / 100), 0)
