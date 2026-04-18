@@ -17,7 +17,9 @@ import {
   addService, updateService, deleteService,
   fetchCompanySettings, acceptQuotation as acceptSvc,
   deleteQuotation as deleteSvc,
+  createBillingConcept, deleteBillingConcept, recalcBillingConceptTotal,
 } from "./quotations.service";
+import type { CreateBillingConceptPayload } from "../types/quotations.types";
 
 export function useQuotationsController() {
   const { companyId } = useTenant();
@@ -85,11 +87,62 @@ async function removeQuotation(id: string) {
   } finally { setSaving(false); }
 }
   
-  async function createQuotation(payload: CreateQuotationPayload): Promise<Quotation | undefined> {
+  async function createQuotation(
+    payload:          CreateQuotationPayload,
+    items?:           Omit<CreateItemPayload,    "quotation_id">[],
+    services?:        Omit<CreateServicePayload, "quotation_id">[],
+    billingConcepts?: {
+      tempId:      string;
+      product_id?: string;
+      description: string;
+      currency:    string;
+      lines:       Omit<CreateServicePayload, "quotation_id">[];
+    }[],
+  ): Promise<Quotation | undefined> {
     if (!companyId || !user) return;
     setSaving(true);
     try {
+      // 1. Crear la cotización base
       const q = await createSvc(companyId, user.id, payload);
+
+      // 2. Agregar items de productos
+      if (items?.length) {
+        for (const item of items) {
+          await addItem(companyId, { ...item, quotation_id: q.id });
+        }
+      }
+
+      // 3. Agregar conceptos de facturación + líneas de detalle
+      if (billingConcepts?.length) {
+        for (let ci = 0; ci < billingConcepts.length; ci++) {
+          const concept = billingConcepts[ci];
+          // Crear el concepto
+          const created = await createBillingConcept(companyId, {
+            quotation_id: q.id,
+            sort_order:   ci,
+            product_id:   concept.product_id,
+            description:  concept.description,
+            currency:     concept.currency,
+          });
+          // Crear las líneas de detalle vinculadas al concepto
+          for (let li = 0; li < concept.lines.length; li++) {
+            await addService(companyId, {
+              ...concept.lines[li],
+              quotation_id:       q.id,
+              sort_order:         li,
+              billing_concept_id: created.id,
+            });
+          }
+          // Recalcular total del concepto
+          await recalcBillingConceptTotal(companyId, created.id, q.id);
+        }
+      } else if (services?.length) {
+        // Flujo legacy sin conceptos (por si acaso)
+        for (let i = 0; i < services.length; i++) {
+          await addService(companyId, { ...services[i], quotation_id: q.id, sort_order: i });
+        }
+      }
+
       await load();
       return q;
     } finally { setSaving(false); }
@@ -213,6 +266,9 @@ async function removeQuotation(id: string) {
     createItem, updateItem: handleUpdateItem, removeItem,
     // Services
     createService, updateService: handleUpdateService, removeService,
+    // Billing concepts
+    createBillingConcept: (p: CreateBillingConceptPayload) => createBillingConcept(companyId ?? "", p),
+    deleteBillingConcept: (id: string, quotationId: string) => deleteBillingConcept(companyId ?? "", id, quotationId),
     // Utils
     reload:       load,
     reloadDetail: loadDetail,
