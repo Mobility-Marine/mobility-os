@@ -344,7 +344,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
         )}
 
         {/* CONTENT */}
-        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "grid", gap: "14px", alignContent: "start" }}>
+        <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "grid", gap: "14px", alignContent: "start", minHeight: 0 }}>
 
           {/* ── STEP 1: TIPO ── */}
           {step === "type" && (
@@ -569,23 +569,55 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
 
                     {/* Líneas de detalle */}
                     {isActive && (
-                      <div style={{ padding: "12px 14px", borderTop: "1px solid var(--color-border-faint)", display: "grid", gap: "8px", maxHeight: "420px", overflowY: "auto" }}>
-                        {concept.lines.map((line, li) => (
-                          <div key={li} style={{ display: "flex", gap: "8px", padding: "8px 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", alignItems: "center" }}>
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)" }}>{line.description}</div>
-                              {(line.origin || line.destination) && (
-                                <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{line.origin} → {line.destination}</div>
-                              )}
+                      <div style={{ padding: "12px 14px", borderTop: "1px solid var(--color-border-faint)", display: "grid", gap: "8px" }}>
+                        {concept.lines.map((line, li) => {
+                          const taxLabel = (line as any).tax_rate === -1 ? "Exento" : (line as any).tax_rate === 0 ? "0%" : `${(line as any).tax_rate ?? 16}%`;
+                          return (
+                            <div key={li} style={{ borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", overflow: "hidden" }}>
+                              {/* Vista normal */}
+                              <div style={{ display: "flex", gap: "8px", padding: "8px 10px", alignItems: "center" }}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)" }}>{line.description}</div>
+                                  <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "1px" }}>
+                                    {line.service_type} · IVA {taxLabel} · {line.currency}
+                                  </div>
+                                </div>
+                                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
+                                  ${Number(line.price).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                                </span>
+                                {/* Botón editar */}
+                                <button
+                                  onClick={() => {
+                                    setSvcForm({
+                                      service_type: line.service_type,
+                                      description:  line.description,
+                                      origin:       (line as any).origin       ?? "",
+                                      destination:  (line as any).destination  ?? "",
+                                      incoterm:     (line as any).incoterm     ?? "",
+                                      transit_time: (line as any).transit_time ?? "",
+                                      currency:     line.currency ?? concept.currency,
+                                      price:        String(line.price),
+                                      notes:        (line as any).notes        ?? "",
+                                      tax_rate:     (line as any).tax_rate     ?? 16,
+                                    });
+                                    // Eliminar la línea para re-agregarla editada
+                                    setBillingConcepts(p => p.map((c, i) => i === ci ? { ...c, lines: c.lines.filter((_, j) => j !== li) } : c));
+                                  }}
+                                  style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", cursor: "pointer", color: "var(--color-info-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                                >
+                                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                </button>
+                                {/* Botón eliminar */}
+                                <button
+                                  onClick={() => setBillingConcepts(p => p.map((c, i) => i === ci ? { ...c, lines: c.lines.filter((_, j) => j !== li) } : c))}
+                                  style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", cursor: "pointer", color: "var(--color-danger-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                                >
+                                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
+                              </div>
                             </div>
-                            <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
-                              {line.currency} ${Number(line.price).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
-                            </span>
-                            <button onClick={() => setBillingConcepts(p => p.map((c, i) => i === ci ? { ...c, lines: c.lines.filter((_, j) => j !== li) } : c))} style={{ width: "20px", height: "20px", borderRadius: "var(--radius-sm)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", cursor: "pointer", color: "var(--color-danger-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                            </button>
-                          </div>
-                        ))}
+                          );
+                        })}
 
                         {/* Formulario nueva línea */}
                         <div style={{ background: "var(--color-bg-base)", border: "1px dashed var(--color-border)", borderRadius: "var(--radius-md)", padding: "12px", display: "grid", gap: "8px" }}>
@@ -605,17 +637,6 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
                             </Field>
                           </div>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-                            <Field label="Origen"><input value={svcForm.origin} onChange={(e) => setSvcForm(p => ({ ...p, origin: e.target.value }))} placeholder="Shanghai" style={INPUT} /></Field>
-                            <Field label="Destino"><input value={svcForm.destination} onChange={(e) => setSvcForm(p => ({ ...p, destination: e.target.value }))} placeholder="Manzanillo" style={INPUT} /></Field>
-                            <Field label="Incoterm">
-                              <select value={svcForm.incoterm} onChange={(e) => setSvcForm(p => ({ ...p, incoterm: e.target.value }))} style={SELECT}>
-                                <option value="">—</option>
-                                {INCOTERMS.map(inc => <option key={inc} value={inc}>{inc}</option>)}
-                              </select>
-                            </Field>
-                          </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px" }}>
-                            <Field label="Tránsito"><input value={svcForm.transit_time} onChange={(e) => setSvcForm(p => ({ ...p, transit_time: e.target.value }))} placeholder="25-30 días" style={INPUT} /></Field>
                             <Field label="Moneda">
                               <select value={svcForm.currency} onChange={(e) => setSvcForm(p => ({ ...p, currency: e.target.value }))} style={SELECT}>
                                 {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.value}</option>)}
