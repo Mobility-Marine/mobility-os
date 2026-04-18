@@ -243,6 +243,7 @@ export async function addService(
       notes:        payload.notes        ?? null,
       product_id:          payload.product_id          ?? null,
       billing_concept_id:  payload.billing_concept_id  ?? null,
+      tax_rate:            payload.tax_rate             ?? 16,
     })
     .select("*").single();
   if (error) throw error;
@@ -267,17 +268,33 @@ export async function deleteService(companyId: string, id: string, quotationId: 
 async function recalcTotals(companyId: string, quotationId: string): Promise<void> {
   const [{ data: quot }, { data: items }, { data: services }] = await Promise.all([
     supabase.from("quotations").select("discount_amount, tax_rate").eq("id", quotationId).single(),
-    supabase.from("quotation_items").select("subtotal").eq("quotation_id", quotationId),
-    supabase.from("quotation_services").select("price, currency").eq("quotation_id", quotationId),
+    supabase.from("quotation_items").select("subtotal, tax_rate").eq("quotation_id", quotationId),
+    supabase.from("quotation_services").select("price, currency, tax_rate").eq("quotation_id", quotationId),
   ]);
-  const itemsTotal    = (items    ?? []).reduce((s: number, i:  any) => s + (i.subtotal ?? 0), 0);
-  const servicesTotal = (services ?? []).reduce((s: number, sv: any) => s + (sv.price   ?? 0), 0);
-  const subtotal      = itemsTotal + servicesTotal;
-  const discount      = quot?.discount_amount ?? 0;
-  const taxRate       = quot?.tax_rate        ?? 16;
-  const taxBase       = Math.max(0, subtotal - discount);
-  const taxAmount     = taxBase * (taxRate / 100);
-  const total         = taxBase + taxAmount;
+
+  const discount = quot?.discount_amount ?? 0;
+
+  // Items: usan tasa global de la cotización
+  const globalTaxRate = quot?.tax_rate ?? 16;
+  const itemsSubtotal = (items ?? []).reduce((s: number, i: any) => s + (i.subtotal ?? 0), 0);
+  const itemsTax      = itemsSubtotal * (globalTaxRate / 100);
+
+  // Servicios: cada línea tiene su propia tasa
+  // -1 = exento (sin IVA), 0 = tasa 0%, >0 = porcentaje real
+  const servicesTax = (services ?? []).reduce((s: number, sv: any) => {
+    const rate = sv.tax_rate;
+    if (rate === -1 || rate === 0) return s;
+    return s + (sv.price ?? 0) * ((rate ?? 16) / 100);
+  }, 0);
+
+  const servicesSubtotal = (services ?? []).reduce((s: number, sv: any) => s + (sv.price ?? 0), 0);
+  const subtotal         = itemsSubtotal + servicesSubtotal;
+  const taxBase          = Math.max(0, subtotal - discount);
+  // Para servicios con tasas mixtas, recalculamos el IVA descontando proporcionalmente
+  const discountRatio    = subtotal > 0 ? (taxBase / subtotal) : 1;
+  const taxAmount        = (itemsTax + servicesTax) * discountRatio;
+  const total            = taxBase + taxAmount;
+
   await supabase.from("quotations")
     .update({ subtotal, tax_amount: taxAmount, total, updated_at: new Date().toISOString() })
     .eq("id", quotationId).eq("company_id", companyId);
