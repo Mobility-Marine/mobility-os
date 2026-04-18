@@ -71,6 +71,8 @@ export default function GeneralInfoOpCompleta({ info, onChange }: Props) {
           <GeneralInfoImpoExpo
             info={{ ...(info.aduanal_info as any ?? {}), modalidad }}
             onChange={updateAduanal}
+            hidePuerto={true}
+            hideIncoterm={true}
           />
         </div>
       </div>
