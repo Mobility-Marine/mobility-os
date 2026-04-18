@@ -69,26 +69,6 @@ export const STEP_LABELS_ES: Record<DrawerStep, string> = {
   conceptos: "Conceptos",
   config:    "Configuración",
   preview:   "Resumen",
-};
-
-export const STEP_LABELS_EN: Record<DrawerStep, string> = {
-  type:      "Type",
-  subtype:   "Subtype",
-  client:    "Client",
-  general:   "Information",
-  conceptos: "Concepts",
-  config:    "Configuration",
-  preview:   "Summary",
-};
-
-export const STEP_LABELS_ES: Record<DrawerStep, string> = {
-  type:      "Tipo",
-  subtype:   "Subtipo",
-  client:    "Cliente",
-  general:   "Información",
-  conceptos: "Conceptos",
-  config:    "Configuración",
-  preview:   "Resumen",
   actions:   "Listo",
 };
 
