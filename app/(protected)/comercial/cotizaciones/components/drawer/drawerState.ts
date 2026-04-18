@@ -43,7 +43,6 @@ export const EMPTY_CLIENT = (): ClientState => ({
   contactId: "", contactName: "", contactEmail: "", contactTitle: "",
 });
 
-// Steps dinámicos según tipo
 export type DrawerStep =
   | "type"
   | "subtype"
@@ -54,11 +53,13 @@ export type DrawerStep =
   | "preview"
   | "actions";
 
-export function getSteps(quotType: string, hasSubtype: boolean): DrawerStep[] {
+export function getSteps(quotType: string): DrawerStep[] {
   if (quotType === "products") {
-    return ["type", "subtype", "client", "general", "conceptos", "config", "preview", "actions"];
+    // Productos: no necesita subtipo ni info general
+    return ["type", "client", "conceptos", "config", "preview", "actions"];
   }
-  return ["type", "client", "conceptos", "config", "preview", "actions"];
+  // Servicios: subtipo + info general obligatorios
+  return ["type", "subtype", "client", "general", "conceptos", "config", "preview", "actions"];
 }
 
 export const STEP_LABELS_ES: Record<DrawerStep, string> = {
