@@ -8,6 +8,7 @@ import type {
   CreateItemPayload, CreateServicePayload, CreateQuotationPayload,
   Quotation, QuotationItem, QuotationService,
 } from "./types/quotations.types";
+import type { BillingConceptDraft } from "./components/drawer/drawerState";
 import { updateQuotation, updateItem, updateService } from "./services/quotations.service";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 
@@ -36,23 +37,14 @@ export default function CotizacionesPage() {
   const [showCreate,    setShowCreate]    = useState(false);
   const [generatingPDF, setGeneratingPDF] = useState(false);
 
-  async function handleCreate(
-    payload:   CreateQuotationPayload,
-    items?:    Omit<CreateItemPayload,    "quotation_id">[],
-    services?: Omit<CreateServicePayload, "quotation_id">[],
+ async function handleCreate(
+    payload:          CreateQuotationPayload,
+    items?:           Omit<CreateItemPayload,    "quotation_id">[],
+    services?:        Omit<CreateServicePayload, "quotation_id">[],
+    billingConcepts?: BillingConceptDraft[],
   ) {
-    const q = await createQuotation(payload);
+    const q = await createQuotation(payload, items, services, billingConcepts);
     if (!q) return;
-
-    if (items?.length) {
-      await Promise.all(items.map((item) => createItem({ ...item, quotation_id: q.id })));
-    }
-    if (services?.length) {
-      for (let i = 0; i < services.length; i++) {
-        await createService({ ...services[i], quotation_id: q.id, sort_order: i });
-      }
-    }
-
     setSelected(q);
   }
 
