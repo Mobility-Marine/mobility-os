@@ -278,28 +278,26 @@ async function recalcTotals(companyId: string, quotationId: string): Promise<voi
     supabase.from("quotation_services").select("price, currency, tax_rate").eq("quotation_id", quotationId),
   ]);
 
-  const discount = quot?.discount_amount ?? 0;
+  const discount      = quot?.discount_amount ?? 0;
+  const globalTaxRate = quot?.tax_rate        ?? 16;
 
   // Items: usan tasa global de la cotización
-  const globalTaxRate = quot?.tax_rate ?? 16;
   const itemsSubtotal = (items ?? []).reduce((s: number, i: any) => s + (i.subtotal ?? 0), 0);
   const itemsTax      = itemsSubtotal * (globalTaxRate / 100);
 
-  // Servicios: cada línea tiene su propia tasa
-  // -1 = exento (sin IVA), 0 = tasa 0%, >0 = porcentaje real
-  const servicesTax = (services ?? []).reduce((s: number, sv: any) => {
+  // Servicios: cada línea tiene su propia tasa — NO se aplica la tasa global
+  const servicesSubtotal = (services ?? []).reduce((s: number, sv: any) => s + (sv.price ?? 0), 0);
+  const servicesTax      = (services ?? []).reduce((s: number, sv: any) => {
     const rate = sv.tax_rate;
-    if (rate === -1 || rate === 0) return s;
-    return s + (sv.price ?? 0) * ((rate ?? 16) / 100);
+    if (rate === null || rate === undefined || rate === -1 || rate === 0) return s;
+    return s + (sv.price ?? 0) * (rate / 100);
   }, 0);
 
-  const servicesSubtotal = (services ?? []).reduce((s: number, sv: any) => s + (sv.price ?? 0), 0);
-  const subtotal         = itemsSubtotal + servicesSubtotal;
-  const taxBase          = Math.max(0, subtotal - discount);
-  // Para servicios con tasas mixtas, recalculamos el IVA descontando proporcionalmente
-  const discountRatio    = subtotal > 0 ? (taxBase / subtotal) : 1;
-  const taxAmount        = (itemsTax + servicesTax) * discountRatio;
-  const total            = taxBase + taxAmount;
+  const subtotal  = itemsSubtotal + servicesSubtotal;
+  const taxBase   = Math.max(0, subtotal - discount);
+  const ratio     = subtotal > 0 ? taxBase / subtotal : 1;
+  const taxAmount = (itemsTax + servicesTax) * ratio;
+  const total     = taxBase + taxAmount;
 
   await supabase.from("quotations")
     .update({ subtotal, tax_amount: taxAmount, total, updated_at: new Date().toISOString() })
