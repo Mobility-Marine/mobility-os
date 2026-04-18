@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type {
   Quotation, QuotationItem, QuotationService, CompanySettings,
   CreateQuotationPayload, CreateItemPayload, CreateServicePayload,
+  CreateBillingConceptPayload,
 } from "../types/quotations.types";
 import type { ShipmentServiceType } from "../../../logistica/embarques/types/shipments.types";
 
