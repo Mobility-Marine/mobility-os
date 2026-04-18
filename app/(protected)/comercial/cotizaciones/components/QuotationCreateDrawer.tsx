@@ -287,19 +287,8 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
             <StepConfig state={config} onChange={(u) => setConfig(p => ({ ...p, ...u }))} />
           )}
 
-          {currentStep === "actions" && createdQuotation === null && (
-            <ActionsStep
-              companyId={companyId ?? ""}
-              quotationId={null}
-              contactEmail={clientState.contactEmail}
-              ccEmails={ccEmails}
-              setCcEmails={setCcEmails}
-              sendingEmail={sendingEmail}
-              setSendingEmail={setSendingEmail}
-              settings={null}
-              onClose={onClose}
-            />
-          )}
+         {currentStep === "preview" && (
+            <QuotPreview
               quotType={quotType}
               serviceSubtype={serviceSubtype}
               clientState={clientState}
@@ -310,6 +299,19 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
               taxAmt={taxAmt}
               total={total}
               discount={discount}
+            />
+          )}
+          {currentStep === "actions" && (
+            <ActionsStep
+              companyId={companyId ?? ""}
+              quotationId={null}
+              contactEmail={clientState.contactEmail}
+              ccEmails={ccEmails}
+              setCcEmails={setCcEmails}
+              sendingEmail={sendingEmail}
+              setSendingEmail={setSendingEmail}
+              settings={null}
+              onClose={onClose}
             />
           )}
         </div>
@@ -406,7 +408,7 @@ function ActionsStep({ companyId, contactEmail, ccEmails, setCcEmails, sendingEm
 }
 
 // ── PREVIEW COMPONENT (inline — solo para este drawer) ────────
-function Preview({ quotType, serviceSubtype, clientState, items, billingConcepts, config, subtotal, taxAmt, total, discount }: any) {
+function QuotPreview({ quotType, serviceSubtype, clientState, items, billingConcepts, config, subtotal, taxAmt, total, discount }: any) {
   const clientName = clientState.useManual ? clientState.manualClient.name : clientState.selectedClient?.name;
 
   return (
