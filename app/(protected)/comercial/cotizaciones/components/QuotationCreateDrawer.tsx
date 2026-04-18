@@ -165,8 +165,9 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
         undefined,
         quotType === "services" ? billingConcepts : undefined,
       );
-      setStepIdx(steps.length - 1); // ir a "actions"
-      // La cotización recién creada se seleccionará via reload
+      // La cotización se obtiene via reload en el controller
+      // Avanzar a actions
+      setStepIdx(steps.length - 1);
     } catch (e: any) {
       setError(e?.message ?? "Error al crear la cotización");
     } finally {
@@ -304,13 +305,11 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
           {currentStep === "actions" && (
             <ActionsStep
               companyId={companyId ?? ""}
-              quotationId={null}
               contactEmail={clientState.contactEmail}
               ccEmails={ccEmails}
               setCcEmails={setCcEmails}
               sendingEmail={sendingEmail}
               setSendingEmail={setSendingEmail}
-              settings={null}
               onClose={onClose}
             />
           )}
@@ -362,12 +361,12 @@ function ActionsStep({ companyId, contactEmail, ccEmails, setCcEmails, sendingEm
           ¡Cotización creada!
         </div>
         <div style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
-          Puedes descargarla o enviarla al cliente desde el Workspace.
+          Selecciona la cotización en el Workspace para descargar el PDF o enviarla.
         </div>
       </div>
 
-      {/* Acciones */}
       <div style={{ display: "grid", gap: "10px" }}>
+        {/* Envío por correo */}
         <div style={{ padding: "14px 16px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", display: "grid", gap: "8px" }}>
           <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase" }}>
             Enviar por correo
@@ -387,20 +386,20 @@ function ActionsStep({ companyId, contactEmail, ccEmails, setCcEmails, sendingEm
             />
           </div>
           <button
-            disabled={sendingEmail}
+            disabled={sendingEmail || !contactEmail}
             onClick={() => setSendingEmail(true)}
-            style={{ height: "38px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", opacity: sendingEmail ? 0.7 : 1 }}
+            style={{ height: "38px", borderRadius: "var(--radius-md)", background: contactEmail ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: contactEmail ? "#fff" : "var(--color-text-muted)", border: contactEmail ? "none" : "1px solid var(--color-border)", fontSize: "13px", fontWeight: 600, cursor: contactEmail ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", opacity: sendingEmail ? 0.7 : 1 }}
           >
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
               <polyline points="22,6 12,13 2,6"/>
             </svg>
-            {sendingEmail ? "Enviando…" : "Enviar cotización por correo"}
+            {sendingEmail ? "Enviando…" : contactEmail ? "Enviar cotización por correo" : "Sin correo de contacto"}
           </button>
         </div>
 
-        <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)" }}>
-          Para descargar el PDF ve al Workspace → selecciona la cotización → botón Descargar PDF.
+        <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.6 }}>
+          💡 Para descargar el PDF: cierra este drawer → selecciona la cotización en la lista → botón <strong>Descargar PDF</strong> en el Workspace.
         </div>
       </div>
     </>
