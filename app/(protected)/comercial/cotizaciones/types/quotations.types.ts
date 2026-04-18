@@ -229,6 +229,7 @@ export type CreateServicePayload = {
   notes?:        string;
   product_id?:         string;
   billing_concept_id?: string;
+  tax_rate?:           number;
 };
 
 export type CreateBillingConceptPayload = {
