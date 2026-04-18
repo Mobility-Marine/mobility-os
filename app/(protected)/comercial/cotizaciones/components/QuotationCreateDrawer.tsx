@@ -63,8 +63,11 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
   const stepLabels = config.language === "en" ? STEP_LABELS_EN : STEP_LABELS_ES;
 
   // ── ESTADO ─────────────────────────────────────────────────
-  const [saving, setSaving] = useState(false);
-  const [error,  setError]  = useState<string | null>(null);
+  const [saving,         setSaving]         = useState(false);
+  const [error,          setError]          = useState<string | null>(null);
+  const [createdQuotation, setCreatedQuotation] = useState<any | null>(null);
+  const [ccEmails,       setCcEmails]       = useState("");
+  const [sendingEmail,   setSendingEmail]   = useState(false);
 
   // ── CARGAR CATÁLOGO SERVICIOS ──────────────────────────────
   useEffect(() => {
@@ -162,7 +165,8 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
         undefined,
         quotType === "services" ? billingConcepts : undefined,
       );
-      onClose();
+      setStepIdx(steps.length - 1); // ir a "actions"
+      // La cotización recién creada se seleccionará via reload
     } catch (e: any) {
       setError(e?.message ?? "Error al crear la cotización");
     } finally {
@@ -283,8 +287,19 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
             <StepConfig state={config} onChange={(u) => setConfig(p => ({ ...p, ...u }))} />
           )}
 
-          {currentStep === "preview" && (
-            <Preview
+          {currentStep === "actions" && createdQuotation === null && (
+            <ActionsStep
+              companyId={companyId ?? ""}
+              quotationId={null}
+              contactEmail={clientState.contactEmail}
+              ccEmails={ccEmails}
+              setCcEmails={setCcEmails}
+              sendingEmail={sendingEmail}
+              setSendingEmail={setSendingEmail}
+              settings={null}
+              onClose={onClose}
+            />
+          )}
               quotType={quotType}
               serviceSubtype={serviceSubtype}
               clientState={clientState}
@@ -306,7 +321,11 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
               ← Atrás
             </button>
           )}
-          {currentStep !== "preview" ? (
+          {currentStep === "actions" ? (
+            <button onClick={onClose} style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: "pointer" }}>
+              Cerrar
+            </button>
+          ) : currentStep !== "preview" ? (
             <button
               onClick={next}
               disabled={!canAdvance()}
@@ -315,17 +334,71 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
               Siguiente →
             </button>
           ) : (
-            <button
-              onClick={handleCreate}
-              disabled={saving}
-              style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}
-            >
+            <button onClick={handleCreate} disabled={saving} style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
               {saving ? "Creando…" : "Crear cotización"}
             </button>
           )}
           <button onClick={onClose} style={{ height: "40px", padding: "0 16px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-muted)", fontSize: "13px", cursor: "pointer" }}>
             Cancelar
           </button>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function ActionsStep({ companyId, contactEmail, ccEmails, setCcEmails, sendingEmail, setSendingEmail, onClose }: any) {
+  return (
+    <>
+      <div style={{ textAlign: "center", padding: "16px 0" }}>
+        <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "var(--color-success-bg)", border: "2px solid var(--color-success-border)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-text)" strokeWidth="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--color-text-primary)", marginBottom: "6px" }}>
+          ¡Cotización creada!
+        </div>
+        <div style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
+          Puedes descargarla o enviarla al cliente desde el Workspace.
+        </div>
+      </div>
+
+      {/* Acciones */}
+      <div style={{ display: "grid", gap: "10px" }}>
+        <div style={{ padding: "14px 16px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", display: "grid", gap: "8px" }}>
+          <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase" }}>
+            Enviar por correo
+          </div>
+          {contactEmail && (
+            <div style={{ fontSize: "12px", color: "var(--color-text-second)" }}>
+              Para: <strong>{contactEmail}</strong>
+            </div>
+          )}
+          <div>
+            <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "4px" }}>CC (opcional, separar con comas)</div>
+            <input
+              value={ccEmails}
+              onChange={(e) => setCcEmails(e.target.value)}
+              placeholder="correo1@empresa.com, correo2@empresa.com"
+              style={{ width: "100%", height: "36px", padding: "0 12px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-base)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" as any }}
+            />
+          </div>
+          <button
+            disabled={sendingEmail}
+            onClick={() => setSendingEmail(true)}
+            style={{ height: "38px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px", opacity: sendingEmail ? 0.7 : 1 }}
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+            {sendingEmail ? "Enviando…" : "Enviar cotización por correo"}
+          </button>
+        </div>
+
+        <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)" }}>
+          Para descargar el PDF ve al Workspace → selecciona la cotización → botón Descargar PDF.
         </div>
       </div>
     </>
