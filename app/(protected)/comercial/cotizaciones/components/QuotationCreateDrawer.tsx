@@ -56,7 +56,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
   const [config, setConfig] = useState<ConfigState>(EMPTY_CONFIG());
 
   // ── NAVEGACIÓN ─────────────────────────────────────────────
-  const steps   = getSteps(quotType, !!serviceSubtype);
+  const steps   = getSteps(quotType);
   const [stepIdx, setStepIdx] = useState(0);
   const currentStep = steps[stepIdx];
 
