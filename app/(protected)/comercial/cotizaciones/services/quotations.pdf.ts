@@ -1,22 +1,23 @@
 // ============================================================
-// QUOTATIONS PDF — Plantilla única Mobility OS
+// QUOTATIONS PDF — Mobility OS
+// Template universal por tipo de cotización
 // ============================================================
 import { pdf } from "@react-pdf/renderer";
 import type { Quotation, CompanySettings } from "../types/quotations.types";
 
-async function getTemplate(type: "products" | "services") {
-  if (type === "products") {
+async function getTemplate(quotation: Quotation) {
+  if (quotation.type === "products") {
     return (await import("../components/templates/TemplateEleganteProductos")).default;
-  } else {
-    return (await import("../components/templates/TemplateEleganteServicios")).default;
   }
+  // Servicios — template universal con soporte para todos los subtipos
+  return (await import("../components/templates/TemplateServicios")).default;
 }
 
 export async function generateAndDownloadPDF(
   quotation: Quotation,
   settings?: CompanySettings | null
 ): Promise<void> {
-  const Template = await getTemplate(quotation.type);
+  const Template = await getTemplate(quotation);
   const { createElement } = await import("react");
   const doc  = createElement(Template, { quotation, settings });
   const blob = await pdf(doc as any).toBlob();
