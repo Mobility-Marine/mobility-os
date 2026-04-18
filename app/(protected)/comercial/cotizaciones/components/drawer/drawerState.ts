@@ -51,13 +51,14 @@ export type DrawerStep =
   | "general"
   | "conceptos"
   | "config"
-  | "preview";
+  | "preview"
+  | "actions";
 
 export function getSteps(quotType: string, hasSubtype: boolean): DrawerStep[] {
   if (quotType === "products") {
-    return ["type", "client", "conceptos", "config", "preview"];
+    return ["type", "subtype", "client", "general", "conceptos", "config", "preview", "actions"];
   }
-  return ["type", "subtype", "client", "general", "conceptos", "config", "preview"];
+  return ["type", "client", "conceptos", "config", "preview", "actions"];
 }
 
 export const STEP_LABELS_ES: Record<DrawerStep, string> = {
@@ -78,4 +79,26 @@ export const STEP_LABELS_EN: Record<DrawerStep, string> = {
   conceptos: "Concepts",
   config:    "Configuration",
   preview:   "Summary",
+};
+
+export const STEP_LABELS_ES: Record<DrawerStep, string> = {
+  type:      "Tipo",
+  subtype:   "Subtipo",
+  client:    "Cliente",
+  general:   "Información",
+  conceptos: "Conceptos",
+  config:    "Configuración",
+  preview:   "Resumen",
+  actions:   "Listo",
+};
+
+export const STEP_LABELS_EN: Record<DrawerStep, string> = {
+  type:      "Type",
+  subtype:   "Subtype",
+  client:    "Client",
+  general:   "Information",
+  conceptos: "Concepts",
+  config:    "Configuration",
+  preview:   "Summary",
+  actions:   "Done",
 };
