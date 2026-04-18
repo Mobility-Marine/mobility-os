@@ -22,9 +22,16 @@ type Props = {
   open:    boolean;
   onClose: () => void;
   onCreate:(
-    payload:   CreateQuotationPayload,
-    items?:    Omit<CreateItemPayload,    "quotation_id">[],
-    services?: Omit<CreateServicePayload, "quotation_id">[],
+    payload:          CreateQuotationPayload,
+    items?:           Omit<CreateItemPayload,    "quotation_id">[],
+    services?:        Omit<CreateServicePayload, "quotation_id">[],
+    billingConcepts?: {
+      tempId:      string;
+      product_id?: string;
+      description: string;
+      currency:    string;
+      lines:       Omit<CreateServicePayload, "quotation_id">[];
+    }[],
   ) => Promise<void>;
 };
 
@@ -255,7 +262,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
         {
           type:            quotType,
           client_id:       !useManual ? selectedClient?.id : undefined,
-          template:        "elegante",   // ← siempre Mobility OS
+          template:        "elegante",
           currency:        config.currency,
           client_name:     clientName,
           client_email:    clientEmail    || undefined,
@@ -269,10 +276,9 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate }: Props
           discount_amount: discount || undefined,
           tax_rate:        Number(config.tax_rate) || 16,
         },
-        quotType === "products" ? items : undefined,
-        quotType === "services" ? billingConcepts.flatMap(c =>
-          c.lines.map(l => ({ ...l, billing_concept_product_id: c.product_id, billing_concept_desc: c.description }))
-        ) : undefined,
+        quotType === "products" ? items    : undefined,
+        undefined,
+        quotType === "services" ? billingConcepts : undefined,
       );
       handleClose();
     } catch { setError("Error al crear la cotización"); }
