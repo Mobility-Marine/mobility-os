@@ -1,6 +1,5 @@
 "use client";
 import { Field, SectionTitle, SELECT, INPUT, TEXTAREA } from "../drawerShared";
-import { CURRENCIES, INCOTERMS } from "../../../types/quotations.types";
 import type { ConfigState } from "../drawerState";
 
 type Props = {
@@ -13,7 +12,7 @@ export default function StepConfig({ state, onChange }: Props) {
     <>
       <SectionTitle>Configuración de la cotización</SectionTitle>
 
-      {/* Plantilla — informativo */}
+      {/* Plantilla */}
       <div style={{ padding: "12px 16px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", display: "flex", alignItems: "center", gap: "12px" }}>
         <div style={{ width: "36px", height: "36px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", display: "flex", alignItems: "center", justifyContent: "center" }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-blue)" strokeWidth="2">
@@ -28,25 +27,17 @@ export default function StepConfig({ state, onChange }: Props) {
       </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-        <Field label="Moneda">
-          <select value={state.currency} onChange={(e) => onChange({ currency: e.target.value })} style={SELECT}>
-            {CURRENCIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
-          </select>
-        </Field>
         <Field label="Vigencia">
           <input type="date" value={state.valid_until} onChange={(e) => onChange({ valid_until: e.target.value })} style={INPUT} />
-        </Field>
-        <Field label="Descuento global ($)">
-          <input type="number" value={state.discount_amount} onChange={(e) => onChange({ discount_amount: e.target.value })} placeholder="0" min="0" style={INPUT} />
-        </Field>
-        <Field label="IVA global (%)">
-          <input type="number" value={state.tax_rate} onChange={(e) => onChange({ tax_rate: e.target.value })} placeholder="16" style={INPUT} />
         </Field>
         <Field label="Idioma del PDF">
           <select value={state.language} onChange={(e) => onChange({ language: e.target.value as any })} style={SELECT}>
             <option value="es">🇲🇽 Español</option>
             <option value="en">🇺🇸 English</option>
           </select>
+        </Field>
+        <Field label="Descuento global ($)">
+          <input type="number" value={state.discount_amount} onChange={(e) => onChange({ discount_amount: e.target.value })} placeholder="0" min="0" style={INPUT} />
         </Field>
       </div>
 
