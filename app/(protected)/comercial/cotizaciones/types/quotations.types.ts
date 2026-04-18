@@ -74,6 +74,13 @@ export type Quotation = {
   services?:          QuotationService[];
   billing_concepts?:  QuotationBillingConcept[];
   client?:            { name: string; email?: string; rfc?: string } | null;
+  // Nuevos
+  service_subtype?:   ServiceSubtype | null;
+  language?:          QuotationLanguage;
+  general_info?:      GeneralInfo | null;
+  contact_name?:      string | null;
+  contact_email?:     string | null;
+  contact_title?:     string | null;
 };
 
 // ── QUOTATION ITEM (Productos) ────────────────────────────────
@@ -201,6 +208,12 @@ export type CreateQuotationPayload = {
   destination?:    string;
   discount_amount?: number;
   tax_rate?:       number;
+  service_subtype?:   ServiceSubtype;
+  language?:          QuotationLanguage;
+  general_info?:      GeneralInfo;
+  contact_name?:      string;
+  contact_email?:     string;
+  contact_title?:     string;
 };
 
 export type CreateItemPayload = {
@@ -240,6 +253,154 @@ export type CreateBillingConceptPayload = {
   currency:     string;
 };
 
+// ── SERVICE SUBTYPES ──────────────────────────────────────────
+export type ServiceSubtype =
+  | "terrestre_ltl"
+  | "terrestre_ftl"
+  | "maritimo_fcl"
+  | "maritimo_lcl"
+  | "aereo_carga"
+  | "aereo_courier"
+  | "impo_integral"
+  | "expo_integral"
+  | "comercializadora"
+  | "op_completa"
+  | "consultoria";
+
+export type QuotationLanguage = "es" | "en";
+
+// ── GENERAL INFO por subtipo (JSONB en BD) ────────────────────
+export interface GeneralInfoTerrestre {
+  subtipo:         "ltl" | "ftl";
+  rutas:           { origen: string; destino: string; incoterm?: string }[];
+  mercancia:       string;
+  valor_comercial?: number;
+  valor_moneda?:   string;
+  peso_kg?:        number;
+  // LTL
+  volumen_m3?:     number;
+  piezas?:         number;
+  largo_cm?:       number;
+  ancho_cm?:       number;
+  alto_cm?:        number;
+  // FTL
+  tipo_unidad?:    string;
+  cantidad_unidades?: number;
+}
+
+export interface BultoItem {
+  largo_cm:  number;
+  ancho_cm:  number;
+  alto_cm:   number;
+  peso_kg:   number;
+  cantidad:  number;
+}
+
+export interface GeneralInfoMaritimo {
+  subtipo:          "fcl" | "lcl";
+  puerto_origen:    string;
+  puerto_destino:   string;
+  incoterm?:        string;
+  mercancia:        string;
+  valor_comercial?: number;
+  valor_moneda?:    string;
+  peso_kg?:         number;
+  // FCL
+  contenedores?:    { tipo: string; cantidad: number }[];
+  // LCL
+  bultos?:          BultoItem[];
+  cbm_total?:       number;
+  wm_total?:        number;
+}
+
+export interface GeneralInfoAereo {
+  subtipo:            "carga" | "courier";
+  aeropuerto_origen:  string;
+  aeropuerto_destino: string;
+  incoterm?:          string;
+  mercancia:          string;
+  valor_comercial?:   number;
+  valor_moneda?:      string;
+  // Carga
+  bultos?:            BultoItem[];
+  peso_real_kg?:      number;
+  peso_dimensional_kg?: number;
+  peso_cobrable_kg?:  number;
+  // Courier
+  carrier?:           string;
+}
+
+export interface GeneralInfoImpoExpo {
+  modalidad:           "impo" | "expo";
+  aduana_nombre:       string;
+  aduana_clave_sat:    string;
+  aduana_tipo:         string;
+  fraccion_arancelaria: string;
+  descripcion_mercancia: string;
+  pais_origen_destino: string;
+  incoterm?:           string;
+  puerto_aduana?:      string;
+  // Impo
+  valor_aduana_usd?:   number;
+  tipo_cambio?:        number;
+  arancel_pct?:        number;
+  igi_calculado?:      number;
+  dta?:                number;
+  iva_importacion?:    number;
+  // Expo
+  valor_comercial?:    number;
+  valor_moneda?:       string;
+  requiere_cert_origen?: boolean;
+}
+
+export interface SKUComercializadora {
+  descripcion:        string;
+  fraccion:           string;
+  cantidad:           number;
+  unidad:             string;
+  precio_venta_unit:  number;
+  moneda:             string;
+  iva_pct:            number;
+}
+
+export interface GeneralInfoComercializadora {
+  pais_origen:         string;
+  incoterm?:           string;
+  mercancia:           string;
+  skus:                SKUComercializadora[];
+}
+
+export interface GeneralInfoOpCompleta {
+  tipo_transporte:    "terrestre" | "maritimo" | "aereo";
+  modalidad:          "impo" | "expo";
+  // Copia los campos del tipo de transporte + impo/expo
+  flete_info:         GeneralInfoTerrestre | GeneralInfoMaritimo | GeneralInfoAereo;
+  aduanal_info:       GeneralInfoImpoExpo;
+}
+
+export interface GeneralInfoConsultoria {
+  descripcion_general?: string;
+  notas_generales?:     string;
+}
+
+export type GeneralInfo =
+  | GeneralInfoTerrestre
+  | GeneralInfoMaritimo
+  | GeneralInfoAereo
+  | GeneralInfoImpoExpo
+  | GeneralInfoComercializadora
+  | GeneralInfoOpCompleta
+  | GeneralInfoConsultoria;
+
+// ── Contacto de la cotización ─────────────────────────────────
+export interface QuotationContact {
+  id:    string;
+  name:  string;
+  title?: string;
+  email?: string;
+  phone?: string;
+}
+
 // ── FILTERS ──────────────────────────────────────────────────
 
 export type QuotationFilters = {
@@ -272,3 +433,37 @@ export const UNITS = [
 export const SERVICE_TYPES: ServiceType[] = [
   "terrestre","aereo","maritimo","almacenaje","comercializadora","aduanal","seguro","courier","otro",
 ];
+
+// ── CUSTOMS CONFIG ────────────────────────────────────────────
+export const CONTAINER_TYPES = [
+  "20'ST", "40'ST", "40'HC", "45'HC",
+  "20'Reefer", "40'Reefer", "20'Open Top", "40'Open Top",
+  "20'Flat Rack", "40'Flat Rack",
+] as const;
+
+export const TRUCK_TYPES = [
+  "Caja seca 48'", "Caja seca 53'", "Plataforma 48'",
+  "Plataforma 53'", "Torton", "Rabón", "Camioneta 3.5T",
+  "Refrigerado 48'", "Refrigerado 53'", "Full (doble remolque)",
+] as const;
+
+export const SERVICE_SUBTYPE_CONFIG: Record<ServiceSubtype, {
+  label: string;
+  labelEn: string;
+  icon: string;
+  description: string;
+  descriptionEn: string;
+  group: string;
+}> = {
+  terrestre_ltl:    { label: "Terrestre LTL",         labelEn: "LTL Trucking",           icon: "🚛", description: "Carga parcial — múltiples rutas",          descriptionEn: "Less than truckload — multiple routes",    group: "Terrestre"    },
+  terrestre_ftl:    { label: "Terrestre FTL",         labelEn: "FTL Trucking",           icon: "🚛", description: "Carga completa — unidad dedicada",           descriptionEn: "Full truckload — dedicated unit",          group: "Terrestre"    },
+  maritimo_fcl:     { label: "Marítimo FCL",          labelEn: "FCL Ocean Freight",      icon: "🚢", description: "Contenedor completo",                        descriptionEn: "Full container load",                      group: "Marítimo"     },
+  maritimo_lcl:     { label: "Marítimo LCL",          labelEn: "LCL Ocean Freight",      icon: "🚢", description: "Carga consolidada — por W/M",                descriptionEn: "Less than container load — W/M rate",      group: "Marítimo"     },
+  aereo_carga:      { label: "Aéreo Carga",           labelEn: "Air Freight",            icon: "✈️", description: "Carga aérea — peso real o dimensional",       descriptionEn: "Air cargo — actual or volumetric weight",  group: "Aéreo"        },
+  aereo_courier:    { label: "Aéreo Courier",         labelEn: "Courier / Express",      icon: "📦", description: "Paquetería express",                          descriptionEn: "Express parcel delivery",                  group: "Aéreo"        },
+  impo_integral:    { label: "Importación Integral",  labelEn: "Import Customs",         icon: "🏛️", description: "Despacho aduanal de importación",             descriptionEn: "Import customs clearance",                 group: "Aduanal"      },
+  expo_integral:    { label: "Exportación Integral",  labelEn: "Export Customs",         icon: "🏛️", description: "Despacho aduanal de exportación",             descriptionEn: "Export customs clearance",                 group: "Aduanal"      },
+  comercializadora: { label: "Comercializadora",      labelEn: "Trading Company",        icon: "🏪", description: "Importación + venta nacionalizada",           descriptionEn: "Import + nationalized resale",             group: "Comercial"    },
+  op_completa:      { label: "Operación Completa",    labelEn: "Full Operation",         icon: "🔄", description: "Flete internacional + despacho aduanal",      descriptionEn: "International freight + customs clearance",group: "Integral"     },
+  consultoria:      { label: "Consultoría",           labelEn: "Consulting",             icon: "📋", description: "Asesoría en comercio exterior y logística",   descriptionEn: "Foreign trade and logistics consulting",   group: "Consultoría"  },
+};
