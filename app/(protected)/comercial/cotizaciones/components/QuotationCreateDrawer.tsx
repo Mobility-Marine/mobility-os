@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabaseClient";
 import type {
   QuotationType, ServiceSubtype, GeneralInfo,
   CreateQuotationPayload, CreateItemPayload, CreateServicePayload,
-} from "./types/quotations.types";
+} from "../types/quotations.types";
 import {
   getSteps, STEP_LABELS_ES, STEP_LABELS_EN,
   EMPTY_CONFIG, EMPTY_CLIENT,
@@ -20,6 +20,7 @@ import StepClient      from "./drawer/steps/StepClient";
 import StepConfig      from "./drawer/steps/StepConfig";
 import StepConceptos   from "./drawer/steps/StepConceptos";
 import StepGeneralInfo from "./drawer/generalInfo/StepGeneralInfo";
+import StepItems       from "./drawer/steps/StepItems";
 
 // Items (productos) — inline ya que es simple
 import StepItems from "./drawer/steps/StepItems";
