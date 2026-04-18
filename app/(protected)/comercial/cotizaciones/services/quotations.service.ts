@@ -127,6 +127,12 @@ export async function createQuotation(
       discount_amount: payload.discount_amount ?? 0,
       tax_rate:        payload.tax_rate        ?? 16,
       subtotal:        0, tax_amount: 0, total: 0,
+      service_subtype:  payload.service_subtype  ?? null,
+      language:         payload.language          ?? "es",
+      general_info:     payload.general_info      ?? null,
+      contact_name:     payload.contact_name      ?? null,
+      contact_email:    payload.contact_email     ?? null,
+      contact_title:    payload.contact_title     ?? null,
       created_by:      userId,
     })
     .select("*")
