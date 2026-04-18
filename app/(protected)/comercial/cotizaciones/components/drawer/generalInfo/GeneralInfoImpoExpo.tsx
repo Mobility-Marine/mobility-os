@@ -6,11 +6,13 @@ import { INCOTERMS } from "../../../types/quotations.types";
 import type { GeneralInfoImpoExpo } from "../../../types/quotations.types";
 
 type Props = {
-  info:     Partial<GeneralInfoImpoExpo>;
-  onChange: (u: Partial<GeneralInfoImpoExpo>) => void;
+  info:        Partial<GeneralInfoImpoExpo>;
+  onChange:    (u: Partial<GeneralInfoImpoExpo>) => void;
+  hidePuerto?: boolean;
+  hideIncoterm?: boolean;
 };
 
-export default function GeneralInfoImpoExpo({ info, onChange }: Props) {
+export default function GeneralInfoImpoExpo({ info, onChange, hidePuerto, hideIncoterm }: Props) {
   const [aduanas, setAduanas] = useState<any[]>([]);
   const modalidad = info.modalidad ?? "impo";
 
@@ -68,18 +70,22 @@ export default function GeneralInfoImpoExpo({ info, onChange }: Props) {
             <div style={{ fontSize: "11px", color: "var(--color-info-text)", textTransform: "capitalize" }}>{info.aduana_tipo}</div>
           </div>
         )}
-        <Field label="Puerto / Aeropuerto de carga/descarga">
-          <input value={info.puerto_aduana ?? ""} onChange={(e) => onChange({ puerto_aduana: e.target.value })} placeholder="Ej: Puerto Manzanillo, AICM T2…" style={INPUT} />
-        </Field>
+        {!hidePuerto && (
+          <Field label="Puerto / Aeropuerto de carga/descarga">
+            <input value={info.puerto_aduana ?? ""} onChange={(e) => onChange({ puerto_aduana: e.target.value })} placeholder="Ej: Puerto Manzanillo, AICM T2…" style={INPUT} />
+          </Field>
+        )}
         <Field label="País de origen/destino">
           <input value={info.pais_origen_destino ?? ""} onChange={(e) => onChange({ pais_origen_destino: e.target.value })} placeholder="China, USA, Alemania…" style={INPUT} />
         </Field>
-        <Field label="Incoterm">
-          <select value={info.incoterm ?? ""} onChange={(e) => onChange({ incoterm: e.target.value })} style={SELECT}>
-            <option value="">—</option>
-            {INCOTERMS.map(inc => <option key={inc} value={inc}>{inc}</option>)}
-          </select>
-        </Field>
+        {!hideIncoterm && (
+          <Field label="Incoterm">
+            <select value={info.incoterm ?? ""} onChange={(e) => onChange({ incoterm: e.target.value })} style={SELECT}>
+              <option value="">—</option>
+              {INCOTERMS.map(inc => <option key={inc} value={inc}>{inc}</option>)}
+            </select>
+          </Field>
+        )}
       </Grid2>
 
       {/* MERCANCÍA */}
