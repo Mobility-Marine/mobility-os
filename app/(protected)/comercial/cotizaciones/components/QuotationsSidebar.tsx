@@ -1,22 +1,40 @@
 "use client";
-
-import { useState } from "react";
 import type { Quotation, QuotationStatus, QuotationType } from "../types/quotations.types";
 import { STATUS_CONFIG } from "../types/quotations.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
 type Props = {
-  quotations:    Quotation[];
-  selected:      Quotation | null;
-  setSelected:   (q: Quotation) => void;
-  search:        string;
-  setSearch:     (v: string) => void;
-  onNew:         () => void;
-  filterType:    QuotationType | "all";
-  setFilterType: (v: QuotationType | "all") => void;
-  filterStatus:  QuotationStatus | "all";
+  quotations:     Quotation[];
+  selected:       Quotation | null;
+  setSelected:    (q: Quotation) => void;
+  search:         string;
+  setSearch:      (v: string) => void;
+  onNew:          () => void;
+  filterType:     QuotationType | "all";
+  setFilterType:  (v: QuotationType | "all") => void;
+  filterStatus:   QuotationStatus | "all";
   setFilterStatus:(v: QuotationStatus | "all") => void;
 };
+
+// Obtener totales por moneda desde billing_concepts o fallback a q.total
+function getQuotationTotals(q: Quotation): Record<string, number> {
+  const concepts = (q as any).billing_concepts ?? [];
+  if (concepts.length > 0) {
+    const totals: Record<string, number> = {};
+    for (const concept of concepts) {
+      for (const line of (concept.lines ?? [])) {
+        const cur   = line.currency ?? concept.currency ?? q.currency ?? "MXN";
+        const price = Number(line.price ?? 0);
+        const rate  = line.tax_rate;
+        const tax   = (rate === null || rate === undefined || rate === -1 || rate === 0) ? 0 : price * (rate / 100);
+        totals[cur] = (totals[cur] ?? 0) + price + tax;
+      }
+    }
+    return totals;
+  }
+  // Fallback: cotizaciones sin billing_concepts
+  return { [q.currency ?? "MXN"]: q.total ?? 0 };
+}
 
 export default function QuotationsSidebar({
   quotations, selected, setSelected, search, setSearch,
@@ -26,18 +44,18 @@ export default function QuotationsSidebar({
   const locale = lang === "en" ? "en-US" : "es-MX";
 
   const TYPE_FILTERS = [
-    { value: "all",      label: (t.quot as any)?.filterAll      ?? "Todas"      },
-    { value: "products", label: (t.quot as any)?.filterProducts ?? "Productos"  },
-    { value: "services", label: (t.quot as any)?.filterServices ?? "Servicios"  },
+    { value: "all",      label: (t.quot as any)?.filterAll      ?? "Todas"     },
+    { value: "products", label: (t.quot as any)?.filterProducts ?? "Productos" },
+    { value: "services", label: (t.quot as any)?.filterServices ?? "Servicios" },
   ];
 
   const STATUS_FILTERS: { value: QuotationStatus | "all"; label: string }[] = [
-    { value: "all",      label: (t.quot as any)?.filterAll      ?? "Todas"      },
-    { value: "draft",    label: (t.quot as any)?.statusDraft    ?? "Borrador"   },
-    { value: "sent",     label: (t.quot as any)?.statusSent     ?? "Enviada"    },
-    { value: "accepted", label: (t.quot as any)?.statusAccepted ?? "Aceptada"   },
-    { value: "rejected", label: (t.quot as any)?.statusRejected ?? "Rechazada"  },
-    { value: "expired",  label: (t.quot as any)?.statusExpired  ?? "Expirada"   },
+    { value: "all",      label: (t.quot as any)?.filterAll      ?? "Todas"    },
+    { value: "draft",    label: (t.quot as any)?.statusDraft    ?? "Borrador" },
+    { value: "sent",     label: (t.quot as any)?.statusSent     ?? "Enviada"  },
+    { value: "accepted", label: (t.quot as any)?.statusAccepted ?? "Aceptada" },
+    { value: "rejected", label: (t.quot as any)?.statusRejected ?? "Rechazada"},
+    { value: "expired",  label: (t.quot as any)?.statusExpired  ?? "Expirada" },
   ];
 
   return (
@@ -133,9 +151,14 @@ export default function QuotationsSidebar({
         ) : quotations.map((q) => {
           const isSelected = selected?.id === q.id;
           const cfg        = STATUS_CONFIG[q.status] ?? STATUS_CONFIG.draft;
-          const statusLabel= (t.quot as any)?.[cfg.labelKey.replace("quot.", "")] ?? q.status;
-          const clientName = q.client?.name ?? q.client_name ?? "—";
-          const isServices = q.type === "services";
+          const statusLabel = (t.quot as any)?.[cfg.labelKey.replace("quot.", "")] ?? q.status;
+          const clientName  = q.client?.name ?? q.client_name ?? "—";
+          const isServices  = q.type === "services";
+          const subtype     = (q as any).service_subtype as string | undefined;
+
+          // Totales por moneda
+          const totals  = getQuotationTotals(q);
+          const entries = Object.entries(totals).filter(([, v]) => v > 0);
 
           return (
             <div
@@ -149,9 +172,8 @@ export default function QuotationsSidebar({
                 transition: "var(--transition-fast)",
               }}
             >
-              {/* ROW 1 */}
+              {/* ROW 1 — número, cliente, status */}
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                {/* Tipo icon */}
                 <div style={{
                   width: "22px", height: "22px", borderRadius: "var(--radius-sm)", flexShrink: 0,
                   background: isServices ? "var(--color-info-bg)" : "var(--color-success-bg)",
@@ -160,12 +182,15 @@ export default function QuotationsSidebar({
                 }}>
                   {isServices ? (
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--color-info-text)" strokeWidth="2">
-                      <rect x="1" y="3" width="15" height="13"/><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
-                      <circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/>
+                      <rect x="1" y="3" width="15" height="13"/>
+                      <polygon points="16 8 20 8 23 11 23 16 16 16 16 8"/>
+                      <circle cx="5.5" cy="18.5" r="2.5"/>
+                      <circle cx="18.5" cy="18.5" r="2.5"/>
                     </svg>
                   ) : (
                     <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-text)" strokeWidth="2">
-                      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/>
+                      <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/>
+                      <line x1="3" y1="6" x2="21" y2="6"/>
                       <path d="M16 10a4 4 0 0 1-8 0"/>
                     </svg>
                   )}
@@ -188,15 +213,33 @@ export default function QuotationsSidebar({
                 </span>
               </div>
 
-              {/* ROW 2 */}
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+              {/* ROW 2 — subtipo badge si es servicio */}
+              {isServices && subtype && (
+                <div style={{ paddingLeft: "28px" }}>
+                  <span style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-info-text)", background: "var(--color-info-bg)", padding: "1px 5px", borderRadius: "var(--radius-full)", border: "1px solid var(--color-info-border)" }}>
+                    {subtype.replace(/_/g, " ").toUpperCase()}
+                  </span>
+                </div>
+              )}
+
+              {/* ROW 3 — fecha + totales por moneda */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", fontSize: "10px" }}>
                 <span style={{ color: "var(--color-text-muted)" }}>
                   {new Date(q.created_at).toLocaleDateString(locale, { day: "numeric", month: "short" })}
-                  {q.valid_until && ` · Vence: ${new Date(q.valid_until).toLocaleDateString(locale, { day: "numeric", month: "short" })}`}
+                  {q.valid_until && ` · ${new Date(q.valid_until).toLocaleDateString(locale, { day: "numeric", month: "short" })}`}
                 </span>
-                <span style={{ fontWeight: 700, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
-                  {q.currency} ${Number(q.total ?? 0).toLocaleString(locale, { maximumFractionDigits: 0 })}
-                </span>
+
+                {/* Totales — una línea por moneda */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                  {entries.length > 0 ? entries.map(([cur, val]) => (
+                    <span key={cur} style={{ fontWeight: 700, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums", fontSize: "10px" }}>
+                      {cur !== "MXN" && <span style={{ fontSize: "9px", opacity: 0.7, marginRight: "2px" }}>{cur}</span>}
+                      ${val.toLocaleString(locale, { maximumFractionDigits: 0 })}
+                    </span>
+                  )) : (
+                    <span style={{ color: "var(--color-text-muted)" }}>—</span>
+                  )}
+                </div>
               </div>
             </div>
           );
