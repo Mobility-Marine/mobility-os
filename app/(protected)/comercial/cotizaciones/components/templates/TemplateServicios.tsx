@@ -2,7 +2,7 @@ import { Document, Page, View, Text } from "@react-pdf/renderer";
 import type { Quotation, CompanySettings } from "../../types/quotations.types";
 import type { PDFLang } from "./shared/pdfTranslations";
 import { tx } from "./shared/pdfTranslations";
-import { getBrandColors, PDFHeader, PDFFooter, PDFClientBlock, PDFInfoRow, PDFSectionTitle, PDFTermsPage } from "./shared/PDFShared";
+import { getBrandColors, PDFHeader, PDFFooter, PDFClientBlock, PDFSectionTitle, PDFTermsPage } from "./shared/PDFShared";
 
 type Props = { quotation: Quotation; settings?: CompanySettings | null };
 
@@ -82,7 +82,7 @@ export default function TemplateServicios({ quotation, settings }: Props) {
             const lines        = concept.lines ?? [];
             const conceptTotal = lines.reduce((s: number, l: any) => s + Number(l.price ?? 0), 0);
             return (
-              <View key={ci} style={{ marginBottom: 10 }}>
+              <View key={ci} style={{ marginBottom: 10 }} wrap={false}>
                 {/* Título del concepto agrupador */}
                 <View style={{ backgroundColor: c.BRAND_COLOR + "20", borderRadius: 3, padding: "5 10", marginBottom: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
                   <Text style={{ fontSize: 9.5, fontWeight: "bold", color: c.BRAND_COLOR }}>{concept.description}</Text>
@@ -128,8 +128,8 @@ export default function TemplateServicios({ quotation, settings }: Props) {
             );
           })}
 
-          {/* TOTALES POR MONEDA */}
-          <View style={{ alignSelf: "flex-end", marginTop: 12, minWidth: 260 }}>
+          {/* TOTALES POR MONEDA — wrap={false} asegura que no se parta y se mueva entero a la siguiente página si no cabe */}
+          <View wrap={false} style={{ alignSelf: "flex-end", marginTop: 12, minWidth: 260 }}>
             <View style={{ backgroundColor: c.BRAND_COLOR, borderRadius: 6, padding: "14 18" }}>
               {currencies.map((cur, i) => {
                 const ct = byCurrency[cur];
@@ -163,7 +163,7 @@ export default function TemplateServicios({ quotation, settings }: Props) {
 
           {/* NOTAS */}
           {quotation.notes && (
-            <View style={{ marginTop: 14 }}>
+            <View style={{ marginTop: 14 }} wrap={false}>
               <PDFSectionTitle title={tx(lang, "notes")} c={c} />
               <View style={{ backgroundColor: "#f1f5f9", borderRadius: 4, padding: "10 14", borderLeftWidth: 3, borderLeftColor: c.BRAND_COLOR }}>
                 <Text style={{ fontSize: 8, color: c.TEXT_MEDIUM, lineHeight: 1.7 }}>{quotation.notes}</Text>
@@ -191,8 +191,11 @@ export default function TemplateServicios({ quotation, settings }: Props) {
   );
 }
 
-// ── Info General por subtipo ──────────────────────────────────
-function GeneralInfoBlock({ gi, subtype, lang, c, fmt }: any) {
+// ── Info General por subtipo — DISEÑO PREMIUM UNIFICADO ──────────
+// Todas las subsecciones (ruta, carga, equipo, dimensiones, etc.) se renderizan
+// dentro de un único "card" con divisores sutiles entre filas. Mismos labels,
+// mismos tamaños, misma tipografía para todos los subtipos.
+function GeneralInfoBlock({ gi, subtype, lang, c }: any) {
   const isTerrestre = subtype.startsWith("terrestre");
   const isMaritimo  = subtype.startsWith("maritimo");
   const isAereo     = subtype.startsWith("aereo");
@@ -206,131 +209,187 @@ function GeneralInfoBlock({ gi, subtype, lang, c, fmt }: any) {
     ? volLTL * Number(gi.piezas)
     : volLTL;
 
+  // ── Estilos unificados ───────────────────────────────────────
+  const cardStyle: any = {
+    backgroundColor: c.LIGHT,
+    borderWidth: 1,
+    borderColor: c.BRAND_COLOR + "30",
+    borderRadius: 5,
+  };
+  const rowStyle: any = {
+    flexDirection: "row",
+    padding: "9 14",
+    gap: 14,
+    alignItems: "flex-start",
+  };
+  const labelStyle: any = {
+    fontSize: 7,
+    color: c.TEXT_MUTED,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  };
+  const valueStyle: any = {
+    fontSize: 9,
+    color: c.TEXT_DARK,
+    fontWeight: "bold",
+  };
+  const dividerStyle: any = {
+    height: 1,
+    backgroundColor: c.BRAND_COLOR + "20",
+  };
+
+  // ── Helper: campo individual ─────────────────────────────────
+  const Field = ({ label, value, flex = 1, width, accent }: { label: string; value: any; flex?: number; width?: number; accent?: boolean }) => (
+    <View style={width ? { width } : { flex }}>
+      <Text style={labelStyle}>{label}</Text>
+      <Text style={accent ? { ...valueStyle, color: c.BRAND_COLOR } : valueStyle}>{value}</Text>
+    </View>
+  );
+
   return (
-    <View style={{ marginBottom: 12 }}>
+    <View style={{ marginBottom: 12 }} wrap={false}>
 
-      {/* TERRESTRE */}
+      {/* ═══════════════ TERRESTRE ═══════════════ */}
       {isTerrestre && gi.rutas?.length > 0 && (
-        <View>
-          <PDFSectionTitle title={subtype === "terrestre_ltl" ? "Rutas — LTL" : "Rutas — FTL"} c={c} />
-          {gi.rutas.map((r: any, i: number) => (
-            <View key={i} style={{ flexDirection: "row", gap: 12, padding: "5 8", backgroundColor: c.LIGHT, borderRadius: 3, marginBottom: 3 }}>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 7, color: c.TEXT_MUTED, textTransform: "uppercase" }}>{tx(lang, "origin")}</Text>
-                <Text style={{ fontSize: 8.5, color: c.TEXT_DARK, fontWeight: "bold" }}>{r.origen}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 7, color: c.TEXT_MUTED, textTransform: "uppercase" }}>{tx(lang, "destination")}</Text>
-                <Text style={{ fontSize: 8.5, color: c.TEXT_DARK, fontWeight: "bold" }}>{r.destino}</Text>
-              </View>
-              {r.incoterm ? (
-                <View style={{ width: 60 }}>
-                  <Text style={{ fontSize: 7, color: c.TEXT_MUTED, textTransform: "uppercase" }}>{tx(lang, "incoterm")}</Text>
-                  <Text style={{ fontSize: 8.5, color: c.TEXT_DARK, fontWeight: "bold" }}>{r.incoterm}</Text>
+        <>
+          <PDFSectionTitle title={subtype === "terrestre_ltl" ? (lang === "en" ? "Routes — LTL" : "Rutas — LTL") : (lang === "en" ? "Routes — FTL" : "Rutas — FTL")} c={c} />
+          <View style={cardStyle}>
+            {/* Rutas */}
+            {gi.rutas.map((r: any, i: number) => (
+              <View key={`ruta-${i}`}>
+                {i > 0 && <View style={dividerStyle} />}
+                <View style={rowStyle}>
+                  <Field label={tx(lang, "origin")} value={r.origen} />
+                  <Field label={tx(lang, "destination")} value={r.destino} />
+                  {r.incoterm ? <Field label={tx(lang, "incoterm")} value={r.incoterm} width={70} /> : null}
                 </View>
-              ) : null}
-            </View>
-          ))}
+              </View>
+            ))}
 
-          {/* Mercancía, peso, unidad */}
-          <View style={{ flexDirection: "row", gap: 16, marginTop: 6, flexWrap: "wrap", padding: "6 8", backgroundColor: "#f1f5f9", borderRadius: 3 }}>
-            {gi.mercancia ? (
-              <View style={{ flex: 2 }}>
-                <Text style={{ fontSize: 7, color: c.TEXT_MUTED, textTransform: "uppercase" }}>{tx(lang, "cargo")}</Text>
-                <Text style={{ fontSize: 8, color: c.TEXT_DARK }}>{gi.mercancia}</Text>
-              </View>
+            {/* Mercancía / Peso / Unidad */}
+            {(gi.mercancia || gi.peso_kg || gi.tipo_unidad) ? (
+              <>
+                <View style={dividerStyle} />
+                <View style={rowStyle}>
+                  {gi.mercancia  ? <Field label={tx(lang, "cargo")}    value={gi.mercancia} flex={2} /> : null}
+                  {gi.peso_kg    ? <Field label={tx(lang, "weight")}   value={`${Number(gi.peso_kg).toLocaleString()} kg`} /> : null}
+                  {gi.tipo_unidad? <Field label={tx(lang, "unitType")} value={`${gi.tipo_unidad}${gi.cantidad_unidades && Number(gi.cantidad_unidades) > 1 ? ` × ${gi.cantidad_unidades}` : ""}`} /> : null}
+                </View>
+              </>
             ) : null}
-            {gi.peso_kg ? (
-              <View>
-                <Text style={{ fontSize: 7, color: c.TEXT_MUTED, textTransform: "uppercase" }}>{tx(lang, "weight")}</Text>
-                <Text style={{ fontSize: 8, color: c.TEXT_DARK, fontWeight: "bold" }}>{Number(gi.peso_kg).toLocaleString()} kg</Text>
-              </View>
-            ) : null}
-            {gi.tipo_unidad ? (
-              <View>
-                <Text style={{ fontSize: 7, color: c.TEXT_MUTED, textTransform: "uppercase" }}>{tx(lang, "unitType")}</Text>
-                <Text style={{ fontSize: 8, color: c.TEXT_DARK, fontWeight: "bold" }}>
-                  {gi.tipo_unidad}{gi.cantidad_unidades && Number(gi.cantidad_unidades) > 1 ? ` × ${gi.cantidad_unidades}` : ""}
-                </Text>
-              </View>
+
+            {/* LTL — Dimensiones y volumen */}
+            {subtype === "terrestre_ltl" && (gi.largo_cm || gi.ancho_cm || gi.alto_cm || gi.piezas) ? (
+              <>
+                <View style={dividerStyle} />
+                <View style={rowStyle}>
+                  {gi.largo_cm ? <Field label={lang === "en" ? "Length" : "Largo"} value={`${gi.largo_cm} cm`} /> : null}
+                  {gi.ancho_cm ? <Field label={lang === "en" ? "Width"  : "Ancho"} value={`${gi.ancho_cm} cm`} /> : null}
+                  {gi.alto_cm  ? <Field label={lang === "en" ? "Height" : "Alto"}  value={`${gi.alto_cm} cm`}  /> : null}
+                  {gi.piezas   ? <Field label={tx(lang, "pieces")} value={gi.piezas} /> : null}
+                  {volLTL      ? <Field label={tx(lang, "volume")} value={`${volLTL.toFixed(3)} m³${volTotal && Number(gi.piezas) > 1 ? ` × ${gi.piezas} = ${volTotal.toFixed(3)} m³` : ""}`} flex={2} accent /> : null}
+                </View>
+              </>
             ) : null}
           </View>
-
-          {/* LTL: Dimensiones y volumen */}
-          {subtype === "terrestre_ltl" && (gi.largo_cm || gi.ancho_cm || gi.alto_cm || gi.piezas) ? (
-            <View style={{ marginTop: 6, padding: "6 8", backgroundColor: c.BRAND_COLOR + "10", borderRadius: 3, borderLeftWidth: 3, borderLeftColor: c.BRAND_COLOR }}>
-              <Text style={{ fontSize: 7, color: c.BRAND_COLOR, fontWeight: "bold", textTransform: "uppercase", marginBottom: 4 }}>
-                {lang === "en" ? "Dimensions & Volume" : "Dimensiones y Volumen"}
-              </Text>
-              <View style={{ flexDirection: "row", gap: 16, flexWrap: "wrap" }}>
-                {gi.largo_cm ? <View><Text style={{ fontSize: 7, color: c.TEXT_MUTED, textTransform: "uppercase" }}>{lang === "en" ? "L" : "Largo"}</Text><Text style={{ fontSize: 8, color: c.TEXT_DARK, fontWeight: "bold" }}>{gi.largo_cm} cm</Text></View> : null}
-                {gi.ancho_cm ? <View><Text style={{ fontSize: 7, color: c.TEXT_MUTED, textTransform: "uppercase" }}>{lang === "en" ? "W" : "Ancho"}</Text><Text style={{ fontSize: 8, color: c.TEXT_DARK, fontWeight: "bold" }}>{gi.ancho_cm} cm</Text></View> : null}
-                {gi.alto_cm  ? <View><Text style={{ fontSize: 7, color: c.TEXT_MUTED, textTransform: "uppercase" }}>{lang === "en" ? "H" : "Alto"}</Text><Text style={{ fontSize: 8, color: c.TEXT_DARK, fontWeight: "bold" }}>{gi.alto_cm} cm</Text></View> : null}
-                {gi.piezas   ? <View><Text style={{ fontSize: 7, color: c.TEXT_MUTED, textTransform: "uppercase" }}>{tx(lang, "pieces")}</Text><Text style={{ fontSize: 8, color: c.TEXT_DARK, fontWeight: "bold" }}>{gi.piezas}</Text></View> : null}
-                {volLTL ? (
-                  <View>
-                    <Text style={{ fontSize: 7, color: c.TEXT_MUTED, textTransform: "uppercase" }}>{tx(lang, "volume")}</Text>
-                    <Text style={{ fontSize: 8, color: c.BRAND_COLOR, fontWeight: "bold" }}>
-                      {volLTL.toFixed(3)} m³{volTotal && Number(gi.piezas) > 1 ? ` × ${gi.piezas} = ${volTotal.toFixed(3)} m³` : ""}
-                    </Text>
-                  </View>
-                ) : null}
-              </View>
-            </View>
-          ) : null}
-        </View>
+        </>
       )}
 
-      {/* MARÍTIMO */}
+      {/* ═══════════════ MARÍTIMO ═══════════════ */}
       {isMaritimo ? (
-        <View>
+        <>
           <PDFSectionTitle title={subtype === "maritimo_fcl" ? `FCL — ${tx(lang, "containers")}` : "LCL"} c={c} />
-          <View style={{ flexDirection: "row", gap: 16, flexWrap: "wrap", marginBottom: 6, padding: "6 8", backgroundColor: "#f1f5f9", borderRadius: 3 }}>
-            {gi.puerto_origen  ? <PDFInfoRow label={tx(lang, "originPort")} value={gi.puerto_origen}  c={c} /> : null}
-            {gi.puerto_destino ? <PDFInfoRow label={tx(lang, "destPort")}   value={gi.puerto_destino} c={c} /> : null}
-            {gi.incoterm       ? <PDFInfoRow label={tx(lang, "incoterm")}   value={gi.incoterm}       c={c} /> : null}
-            {gi.mercancia      ? <PDFInfoRow label={tx(lang, "cargo")}      value={gi.mercancia}      c={c} /> : null}
-            {gi.peso_kg        ? <PDFInfoRow label={tx(lang, "weight")}     value={`${Number(gi.peso_kg).toLocaleString()} kg`} c={c} /> : null}
-          </View>
-          {subtype === "maritimo_fcl" && gi.contenedores?.length > 0 ? (
-            <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap" }}>
-              {gi.contenedores.map((ct: any, i: number) => (
-                <View key={i} style={{ backgroundColor: c.BRAND_COLOR, borderRadius: 4, padding: "3 8" }}>
-                  <Text style={{ fontSize: 8, color: c.BRAND_TEXT, fontWeight: "bold" }}>{ct.cantidad} × {ct.tipo}</Text>
-                </View>
-              ))}
+          <View style={cardStyle}>
+            {/* Puertos + Incoterm */}
+            <View style={rowStyle}>
+              {gi.puerto_origen  ? <Field label={tx(lang, "originPort")} value={gi.puerto_origen}  /> : null}
+              {gi.puerto_destino ? <Field label={tx(lang, "destPort")}   value={gi.puerto_destino} /> : null}
+              {gi.incoterm       ? <Field label={tx(lang, "incoterm")}   value={gi.incoterm} width={70} /> : null}
             </View>
-          ) : null}
-        </View>
+
+            {/* Mercancía / Peso */}
+            {(gi.mercancia || gi.peso_kg) ? (
+              <>
+                <View style={dividerStyle} />
+                <View style={rowStyle}>
+                  {gi.mercancia ? <Field label={tx(lang, "cargo")}  value={gi.mercancia} flex={2} /> : null}
+                  {gi.peso_kg   ? <Field label={tx(lang, "weight")} value={`${Number(gi.peso_kg).toLocaleString()} kg`} /> : null}
+                </View>
+              </>
+            ) : null}
+
+            {/* Contenedores FCL */}
+            {subtype === "maritimo_fcl" && gi.contenedores?.length > 0 ? (
+              <>
+                <View style={dividerStyle} />
+                <View style={{ padding: "9 14" }}>
+                  <Text style={labelStyle}>{tx(lang, "containers")}</Text>
+                  <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
+                    {gi.contenedores.map((ct: any, i: number) => (
+                      <View key={i} style={{ backgroundColor: c.BRAND_COLOR, borderRadius: 3, padding: "3 8" }}>
+                        <Text style={{ fontSize: 8, color: c.BRAND_TEXT, fontWeight: "bold" }}>{ct.cantidad} × {ct.tipo}</Text>
+                      </View>
+                    ))}
+                  </View>
+                </View>
+              </>
+            ) : null}
+          </View>
+        </>
       ) : null}
 
-      {/* AÉREO */}
+      {/* ═══════════════ AÉREO ═══════════════ */}
       {isAereo ? (
-        <View>
+        <>
           <PDFSectionTitle title={subtype === "aereo_carga" ? (lang === "en" ? "Air Freight" : "Flete Aéreo") : "Courier"} c={c} />
-          <View style={{ flexDirection: "row", gap: 16, flexWrap: "wrap", padding: "6 8", backgroundColor: "#f1f5f9", borderRadius: 3 }}>
-            {gi.aeropuerto_origen  ? <PDFInfoRow label={tx(lang, "originAirport")}    value={gi.aeropuerto_origen}  c={c} /> : null}
-            {gi.aeropuerto_destino ? <PDFInfoRow label={tx(lang, "destAirport")}      value={gi.aeropuerto_destino} c={c} /> : null}
-            {gi.mercancia          ? <PDFInfoRow label={tx(lang, "cargo")}            value={gi.mercancia}          c={c} /> : null}
-            {gi.incoterm           ? <PDFInfoRow label={tx(lang, "incoterm")}         value={gi.incoterm}           c={c} /> : null}
-            {gi.carrier            ? <PDFInfoRow label={tx(lang, "carrier")}          value={gi.carrier}            c={c} /> : null}
-            {gi.peso_cobrable_kg   ? <PDFInfoRow label={tx(lang, "chargeableWeight")} value={`${Number(gi.peso_cobrable_kg).toFixed(2)} kg`} c={c} /> : null}
+          <View style={cardStyle}>
+            {/* Aeropuertos + Incoterm */}
+            <View style={rowStyle}>
+              {gi.aeropuerto_origen  ? <Field label={tx(lang, "originAirport")} value={gi.aeropuerto_origen}  /> : null}
+              {gi.aeropuerto_destino ? <Field label={tx(lang, "destAirport")}   value={gi.aeropuerto_destino} /> : null}
+              {gi.incoterm           ? <Field label={tx(lang, "incoterm")}      value={gi.incoterm} width={70} /> : null}
+            </View>
+
+            {/* Mercancía / Carrier / Peso cobrable */}
+            {(gi.mercancia || gi.carrier || gi.peso_cobrable_kg) ? (
+              <>
+                <View style={dividerStyle} />
+                <View style={rowStyle}>
+                  {gi.mercancia        ? <Field label={tx(lang, "cargo")}            value={gi.mercancia} flex={2} /> : null}
+                  {gi.carrier          ? <Field label={tx(lang, "carrier")}          value={gi.carrier} /> : null}
+                  {gi.peso_cobrable_kg ? <Field label={tx(lang, "chargeableWeight")} value={`${Number(gi.peso_cobrable_kg).toFixed(2)} kg`} /> : null}
+                </View>
+              </>
+            ) : null}
           </View>
-        </View>
+        </>
       ) : null}
 
-      {/* ADUANAL */}
+      {/* ═══════════════ ADUANAL ═══════════════ */}
       {isAduanal ? (
-        <View>
+        <>
           <PDFSectionTitle title={tx(lang, "customs")} c={c} />
-          <View style={{ flexDirection: "row", gap: 16, flexWrap: "wrap", padding: "6 8", backgroundColor: "#f1f5f9", borderRadius: 3 }}>
-            {gi.aduana_nombre        ? <PDFInfoRow label={tx(lang, "customsOffice")} value={`${gi.aduana_nombre} (${gi.aduana_clave_sat})`} c={c} /> : null}
-            {gi.fraccion_arancelaria ? <PDFInfoRow label={tx(lang, "tariffCode")}    value={gi.fraccion_arancelaria}   c={c} /> : null}
-            {gi.descripcion_mercancia? <PDFInfoRow label={tx(lang, "mercDesc")}      value={gi.descripcion_mercancia}  c={c} /> : null}
-            {gi.incoterm             ? <PDFInfoRow label={tx(lang, "incoterm")}      value={gi.incoterm}               c={c} /> : null}
-            {gi.pais_origen_destino  ? <PDFInfoRow label={tx(lang, "countryOrigin")} value={gi.pais_origen_destino}    c={c} /> : null}
+          <View style={cardStyle}>
+            {/* Aduana / Fracción / Incoterm */}
+            <View style={rowStyle}>
+              {gi.aduana_nombre        ? <Field label={tx(lang, "customsOffice")} value={`${gi.aduana_nombre} (${gi.aduana_clave_sat})`} flex={2} /> : null}
+              {gi.fraccion_arancelaria ? <Field label={tx(lang, "tariffCode")}    value={gi.fraccion_arancelaria} /> : null}
+              {gi.incoterm             ? <Field label={tx(lang, "incoterm")}      value={gi.incoterm} width={70} /> : null}
+            </View>
+
+            {/* Descripción + País */}
+            {(gi.descripcion_mercancia || gi.pais_origen_destino) ? (
+              <>
+                <View style={dividerStyle} />
+                <View style={rowStyle}>
+                  {gi.descripcion_mercancia ? <Field label={tx(lang, "mercDesc")}      value={gi.descripcion_mercancia} flex={2} /> : null}
+                  {gi.pais_origen_destino   ? <Field label={tx(lang, "countryOrigin")} value={gi.pais_origen_destino} /> : null}
+                </View>
+              </>
+            ) : null}
           </View>
-        </View>
+        </>
       ) : null}
     </View>
   );
