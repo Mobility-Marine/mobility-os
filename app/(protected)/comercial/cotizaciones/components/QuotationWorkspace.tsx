@@ -1,5 +1,4 @@
 "use client";
-
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import type { Quotation, QuotationItem, QuotationService } from "../types/quotations.types";
@@ -35,7 +34,42 @@ const INPUT: React.CSSProperties = {
   fontSize: "12px", outline: "none", boxSizing: "border-box",
 };
 
-const EMPTY_ITEM = { sku: "", description: "", details: "", quantity: "1", unit: "pza", unit_price: "", discount_pct: "0" };
+const EMPTY_ITEM = {
+  sku: "", description: "", details: "",
+  quantity: "1", unit: "pza", unit_price: "", discount_pct: "0",
+};
+
+// ── Helpers multi-moneda ───────────────────────────────────────
+function getBillingTotals(quotation: Quotation): Record<string, { subtotal: number; tax: number; total: number }> {
+  const concepts = (quotation as any).billing_concepts ?? [];
+  const byCurrency: Record<string, { subtotal: number; tax: number; total: number }> = {};
+
+  if (concepts.length > 0) {
+    for (const concept of concepts) {
+      for (const line of (concept.lines ?? [])) {
+        const cur   = line.currency ?? concept.currency ?? quotation.currency ?? "MXN";
+        const price = Number(line.price ?? 0);
+        const rate  = line.tax_rate;
+        const tax   = (rate === null || rate === undefined || rate === -1 || rate === 0) ? 0 : price * (rate / 100);
+        if (!byCurrency[cur]) byCurrency[cur] = { subtotal: 0, tax: 0, total: 0 };
+        byCurrency[cur].subtotal += price;
+        byCurrency[cur].tax      += tax;
+        byCurrency[cur].total    += price + tax;
+      }
+    }
+    return byCurrency;
+  }
+
+  // Fallback: sin billing_concepts
+  const cur = quotation.currency ?? "MXN";
+  return {
+    [cur]: {
+      subtotal: quotation.subtotal   ?? 0,
+      tax:      quotation.tax_amount ?? 0,
+      total:    quotation.total      ?? 0,
+    },
+  };
+}
 
 export default function QuotationWorkspace({
   quotation, detailLoading, onUpdateStatus, onUpdateFields, onAccept,
@@ -44,23 +78,25 @@ export default function QuotationWorkspace({
 }: Props) {
   const { t, lang }   = useTranslation();
   const { companyId } = useTenant();
-  const router         = useRouter();
-  const locale         = lang === "en" ? "en-US" : "es-MX";
+  const router        = useRouter();
+  const locale        = lang === "en" ? "en-US" : "es-MX";
 
-  const [tab,            setTab]           = useState<Tab>("detail");
-  const [accepting,      setAccepting]     = useState(false);
-  const [editingDetail,  setEditingDetail] = useState(false);
-  const [detailForm,     setDetailForm]    = useState<Partial<Quotation>>({});
-  const [editingItemId,  setEditingItemId] = useState<string | null>(null);
-  const [itemForm,       setItemForm]      = useState<Partial<QuotationItem>>({});
-  const [confirmAccept,  setConfirmAccept] = useState(false);
-  const [confirmReject,  setConfirmReject] = useState(false);
-  const [confirmDelete,  setConfirmDelete] = useState(false);
-  // Agregar producto
-  const [showAddItem,    setShowAddItem]   = useState(false);
-  const [newItem,        setNewItem]       = useState(EMPTY_ITEM);
+  const [tab,             setTab]            = useState<Tab>("detail");
+  const [accepting,       setAccepting]      = useState(false);
+  const [editingDetail,   setEditingDetail]  = useState(false);
+  const [detailForm,      setDetailForm]     = useState<Partial<Quotation>>({});
+  const [editingItemId,   setEditingItemId]  = useState<string | null>(null);
+  const [itemForm,        setItemForm]       = useState<Partial<QuotationItem>>({});
+  const [confirmAccept,   setConfirmAccept]  = useState(false);
+  const [confirmReject,   setConfirmReject]  = useState(false);
+  const [confirmDelete,   setConfirmDelete]  = useState(false);
+  const [showAddItem,     setShowAddItem]    = useState(false);
+  const [newItem,         setNewItem]        = useState(EMPTY_ITEM);
   const [prodSuggestions, setProdSuggestions] = useState<any[]>([]);
-  const [addingItem,     setAddingItem]    = useState(false);
+  const [addingItem,      setAddingItem]     = useState(false);
+  // Email en tab PDF
+  const [ccEmails,        setCcEmails]       = useState("");
+  const [sendingEmail,    setSendingEmail]   = useState(false);
 
   if (!quotation) {
     return (
@@ -83,14 +119,19 @@ export default function QuotationWorkspace({
   const isSent     = quotation.status === "sent" || quotation.status === "viewed";
   const isOpen     = isDraft || isSent;
   const clientName = quotation.client?.name ?? quotation.client_name ?? "—";
+  const contactEmail = quotation.contact_email ?? quotation.client?.email ?? quotation.client_email;
   const items      = quotation.items    ?? [];
   const services   = quotation.services ?? [];
+
+  // Totales multi-moneda
+  const billingTotals = getBillingTotals(quotation);
+  const currencyEntries = Object.entries(billingTotals).filter(([, v]) => v.total > 0);
 
   const TABS = [
     { key: "detail"  as Tab, label: "Detalle" },
     { key: "items"   as Tab, label: isServices ? "Servicios" : `Productos (${items.length})` },
     { key: "totals"  as Tab, label: "Totales" },
-    { key: "preview" as Tab, label: "PDF" },
+    { key: "preview" as Tab, label: "PDF / Envío" },
   ];
 
   async function handleAccept() {
@@ -105,7 +146,15 @@ export default function QuotationWorkspace({
   }
 
   function startEditDetail() {
-    setDetailForm({ notes: quotation.notes ?? "", terms: quotation.terms ?? "", valid_until: quotation.valid_until ?? "", discount_amount: quotation.discount_amount ?? 0, tax_rate: quotation.tax_rate ?? 16, currency: quotation.currency ?? "MXN", incoterm: quotation.incoterm ?? "", origin: quotation.origin ?? "", destination: quotation.destination ?? "" });
+    setDetailForm({
+      notes: quotation.notes ?? "", terms: quotation.terms ?? "",
+      valid_until: quotation.valid_until ?? "",
+      discount_amount: quotation.discount_amount ?? 0,
+      tax_rate: quotation.tax_rate ?? 16,
+      currency: quotation.currency ?? "MXN",
+      incoterm: quotation.incoterm ?? "",
+      origin: quotation.origin ?? "", destination: quotation.destination ?? "",
+    });
     setEditingDetail(true);
   }
 
@@ -125,7 +174,6 @@ export default function QuotationWorkspace({
     setEditingItemId(null); setItemForm({});
   }
 
-  // Agregar producto nuevo
   async function searchProducts(q: string) {
     if (!q.trim() || !companyId) { setProdSuggestions([]); return; }
     const prods = await fetchProductBySearch(companyId, q);
@@ -133,7 +181,7 @@ export default function QuotationWorkspace({
   }
 
   function selectSuggestion(prod: any) {
-    setNewItem((p) => ({ ...p, sku: prod.sku ?? "", description: prod.name, unit: prod.unit ?? "pza", unit_price: String(prod.unit_price ?? "") }));
+    setNewItem(p => ({ ...p, sku: prod.sku ?? "", description: prod.name, unit: prod.unit ?? "pza", unit_price: String(prod.unit_price ?? "") }));
     setProdSuggestions([]);
   }
 
@@ -155,6 +203,11 @@ export default function QuotationWorkspace({
     } finally { setAddingItem(false); }
   }
 
+  const fmtCur = (val: number, cur: string) => {
+    const prefix = cur === "MXN" ? "$" : `${cur} $`;
+    return `${prefix}${val.toLocaleString(locale, { minimumFractionDigits: 2 })}`;
+  };
+
   return (
     <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden" }}>
 
@@ -168,7 +221,7 @@ export default function QuotationWorkspace({
                 {(t.quot as any)?.[cfg.labelKey.replace("quot.", "")] ?? quotation.status}
               </span>
               <span style={{ padding: "2px 8px", borderRadius: "var(--radius-full)", background: isServices ? "var(--color-info-bg)" : "var(--color-success-bg)", border: isServices ? "1px solid var(--color-info-border)" : "1px solid var(--color-success-border)", fontSize: "10px", fontWeight: 700, color: isServices ? "var(--color-info-text)" : "var(--color-success-text)", textTransform: "uppercase" }}>
-                {isServices ? "Servicios" : "Productos"}
+                {isServices ? ((quotation as any).service_subtype?.replace(/_/g, " ").toUpperCase() ?? "Servicios") : "Productos"}
               </span>
             </div>
             <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "3px" }}>
@@ -176,8 +229,16 @@ export default function QuotationWorkspace({
               {quotation.valid_until && ` · Vence: ${new Date(quotation.valid_until).toLocaleDateString(locale)}`}
             </div>
           </div>
-          <div style={{ fontSize: "20px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>
-            {quotation.currency} ${Number(quotation.total ?? 0).toLocaleString(locale, { maximumFractionDigits: 0 })}
+
+          {/* Totales multi-moneda en header */}
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px", flexShrink: 0 }}>
+            {currencyEntries.length > 0 ? currencyEntries.map(([cur, vals]) => (
+              <div key={cur} style={{ fontSize: currencyEntries.length > 1 ? "16px" : "20px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums", lineHeight: 1.2 }}>
+                {fmtCur(vals.total, cur)}
+              </div>
+            )) : (
+              <div style={{ fontSize: "20px", fontWeight: 800, color: "var(--color-success-text)" }}>$0</div>
+            )}
           </div>
         </div>
 
@@ -189,21 +250,18 @@ export default function QuotationWorkspace({
               Editar
             </button>
           )}
-
           {isDraft && (
             <button onClick={() => onUpdateStatus(quotation.id, "sent")} style={{ height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "5px" }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               Marcar enviada
             </button>
           )}
-
           {isOpen && !confirmAccept && !confirmReject && !confirmDelete && (
             <button onClick={() => setConfirmAccept(true)} style={{ height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", color: "var(--color-success-text)", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               Aceptada →{isServices ? " Embarque" : " Pedido"}
             </button>
           )}
-
           {confirmAccept && (
             <>
               <span style={{ fontSize: "11px", color: "var(--color-text-muted)", alignSelf: "center" }}>¿Confirmar?</span>
@@ -213,13 +271,11 @@ export default function QuotationWorkspace({
               <button onClick={() => setConfirmAccept(false)} style={{ height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer" }}>No</button>
             </>
           )}
-
           {isOpen && !confirmReject && !confirmAccept && !confirmDelete && (
             <button onClick={() => setConfirmReject(true)} style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
               Rechazada
             </button>
           )}
-
           {confirmReject && (
             <>
               <span style={{ fontSize: "11px", color: "var(--color-text-muted)", alignSelf: "center" }}>¿Confirmar rechazo?</span>
@@ -229,13 +285,11 @@ export default function QuotationWorkspace({
               <button onClick={() => setConfirmReject(false)} style={{ height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer" }}>No</button>
             </>
           )}
-
-          {/* PDF */}
-          <button onClick={() => onOpenPDF(quotation)} style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", fontSize: "11px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          {/* PDF rápido */}
+          <button onClick={() => { onOpenPDF(quotation); }} style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", fontSize: "11px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             PDF
           </button>
-
           {/* Eliminar */}
           {!confirmDelete && !confirmAccept && !confirmReject && (
             <button onClick={() => setConfirmDelete(true)} style={{ height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)", background: "transparent", border: "1px solid var(--color-border-faint)", color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
@@ -243,7 +297,6 @@ export default function QuotationWorkspace({
               Eliminar
             </button>
           )}
-
           {confirmDelete && (
             <>
               <span style={{ fontSize: "11px", color: "var(--color-danger-text)", fontWeight: 600, alignSelf: "center" }}>¿Eliminar permanentemente?</span>
@@ -253,7 +306,6 @@ export default function QuotationWorkspace({
               <button onClick={() => setConfirmDelete(false)} style={{ height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer" }}>No</button>
             </>
           )}
-
           {quotation.order_id && (
             <button onClick={() => router.push("/comercial/pedidos")} style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", color: "var(--color-success-text)", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
               → Ver pedido
@@ -288,8 +340,9 @@ export default function QuotationWorkspace({
               {[
                 { label: "Cliente",   value: clientName },
                 { label: "Email",     value: quotation.client?.email ?? quotation.client_email },
-                { label: "RFC",       value: quotation.client?.rfc   ?? quotation.client_rfc   },
-                { label: "Moneda",    value: quotation.currency },
+                { label: "RFC",       value: quotation.client?.rfc   ?? quotation.client_rfc },
+                { label: "Contacto",  value: quotation.contact_name  ?? null },
+                { label: "Email contacto", value: contactEmail ?? null },
                 { label: "Plantilla", value: "Mobility OS" },
                 { label: "Vigencia",  value: quotation.valid_until ? new Date(quotation.valid_until).toLocaleDateString(locale) : null },
                 { label: "Descuento", value: (quotation.discount_amount ?? 0) > 0 ? `${quotation.currency} $${quotation.discount_amount}` : null },
@@ -330,27 +383,27 @@ export default function QuotationWorkspace({
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
               <div>
                 <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Moneda</div>
-                <select value={(detailForm.currency as string) ?? "MXN"} onChange={(e) => setDetailForm((p) => ({ ...p, currency: e.target.value }))} style={{ ...INPUT, height: "32px", cursor: "pointer" }}>
+                <select value={(detailForm.currency as string) ?? "MXN"} onChange={(e) => setDetailForm(p => ({ ...p, currency: e.target.value }))} style={{ ...INPUT, height: "32px", cursor: "pointer" }}>
                   {CURRENCIES.map((c: any) => <option key={c.value} value={c.value}>{c.value}</option>)}
                 </select>
               </div>
               <div>
                 <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Vigencia</div>
-                <input type="date" value={(detailForm.valid_until as string) ?? ""} onChange={(e) => setDetailForm((p) => ({ ...p, valid_until: e.target.value }))} style={INPUT} />
+                <input type="date" value={(detailForm.valid_until as string) ?? ""} onChange={(e) => setDetailForm(p => ({ ...p, valid_until: e.target.value }))} style={INPUT} />
               </div>
               <div>
                 <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Descuento global ($)</div>
-                <input type="number" min="0" value={(detailForm.discount_amount as number) ?? 0} onChange={(e) => setDetailForm((p) => ({ ...p, discount_amount: Number(e.target.value) }))} style={INPUT} />
+                <input type="number" min="0" value={(detailForm.discount_amount as number) ?? 0} onChange={(e) => setDetailForm(p => ({ ...p, discount_amount: Number(e.target.value) }))} style={INPUT} />
               </div>
               <div>
                 <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>IVA (%)</div>
-                <input type="number" min="0" max="100" value={(detailForm.tax_rate as number) ?? 16} onChange={(e) => setDetailForm((p) => ({ ...p, tax_rate: Number(e.target.value) }))} style={INPUT} />
+                <input type="number" min="0" max="100" value={(detailForm.tax_rate as number) ?? 16} onChange={(e) => setDetailForm(p => ({ ...p, tax_rate: Number(e.target.value) }))} style={INPUT} />
               </div>
               {isServices && (
                 <>
                   <div>
                     <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Incoterm</div>
-                    <select value={(detailForm.incoterm as string) ?? ""} onChange={(e) => setDetailForm((p) => ({ ...p, incoterm: e.target.value }))} style={{ ...INPUT, cursor: "pointer" }}>
+                    <select value={(detailForm.incoterm as string) ?? ""} onChange={(e) => setDetailForm(p => ({ ...p, incoterm: e.target.value }))} style={{ ...INPUT, cursor: "pointer" }}>
                       <option value="">—</option>
                       {INCOTERMS.map((inc: string) => <option key={inc} value={inc}>{inc}</option>)}
                     </select>
@@ -358,22 +411,22 @@ export default function QuotationWorkspace({
                   <div />
                   <div>
                     <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Origen</div>
-                    <input value={(detailForm.origin as string) ?? ""} onChange={(e) => setDetailForm((p) => ({ ...p, origin: e.target.value }))} style={INPUT} />
+                    <input value={(detailForm.origin as string) ?? ""} onChange={(e) => setDetailForm(p => ({ ...p, origin: e.target.value }))} style={INPUT} />
                   </div>
                   <div>
                     <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Destino</div>
-                    <input value={(detailForm.destination as string) ?? ""} onChange={(e) => setDetailForm((p) => ({ ...p, destination: e.target.value }))} style={INPUT} />
+                    <input value={(detailForm.destination as string) ?? ""} onChange={(e) => setDetailForm(p => ({ ...p, destination: e.target.value }))} style={INPUT} />
                   </div>
                 </>
               )}
             </div>
             <div>
               <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Notas</div>
-              <textarea rows={3} value={(detailForm.notes as string) ?? ""} onChange={(e) => setDetailForm((p) => ({ ...p, notes: e.target.value }))} style={{ ...INPUT, height: "auto", padding: "8px 10px", resize: "vertical", lineHeight: 1.5 }} />
+              <textarea rows={3} value={(detailForm.notes as string) ?? ""} onChange={(e) => setDetailForm(p => ({ ...p, notes: e.target.value }))} style={{ ...INPUT, height: "auto", padding: "8px 10px", resize: "vertical", lineHeight: 1.5 }} />
             </div>
             <div>
               <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Términos y condiciones</div>
-              <textarea rows={4} value={(detailForm.terms as string) ?? ""} onChange={(e) => setDetailForm((p) => ({ ...p, terms: e.target.value }))} style={{ ...INPUT, height: "auto", padding: "8px 10px", resize: "vertical", lineHeight: 1.5 }} />
+              <textarea rows={4} value={(detailForm.terms as string) ?? ""} onChange={(e) => setDetailForm(p => ({ ...p, terms: e.target.value }))} style={{ ...INPUT, height: "auto", padding: "8px 10px", resize: "vertical", lineHeight: 1.5 }} />
             </div>
             <div style={{ display: "flex", gap: "8px" }}>
               <button onClick={saveDetail} disabled={saving} style={{ height: "34px", padding: "0 18px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
@@ -389,7 +442,6 @@ export default function QuotationWorkspace({
         {/* ── PRODUCTOS ── */}
         {tab === "items" && !isServices && (
           <>
-            {/* Botón agregar + formulario */}
             {isOpen && (
               <div style={{ marginBottom: "4px" }}>
                 {!showAddItem ? (
@@ -399,19 +451,14 @@ export default function QuotationWorkspace({
                   </button>
                 ) : (
                   <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-brand-blue)40", borderRadius: "var(--radius-md)", padding: "12px", display: "grid", gap: "8px" }}>
-                    {/* Búsqueda catálogo */}
                     <div style={{ position: "relative" }}>
                       <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Buscar en catálogo (opcional)</div>
-                      <input
-                        placeholder="SKU o nombre del producto…"
-                        style={INPUT}
-                        onChange={(e) => searchProducts(e.target.value)}
-                      />
+                      <input placeholder="SKU o nombre del producto…" style={INPUT} onChange={(e) => searchProducts(e.target.value)} />
                       {prodSuggestions.length > 0 && (
                         <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10, background: "var(--color-bg-base)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", overflow: "hidden", boxShadow: "var(--shadow-lg)" }}>
                           {prodSuggestions.map((p) => (
                             <div key={p.id} onClick={() => selectSuggestion(p)} style={{ padding: "8px 12px", cursor: "pointer", borderBottom: "1px solid var(--color-border-faint)", display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-                              <span style={{ fontWeight: 600 }}>{p.name} {p.sku ? <span style={{ color: "var(--color-text-muted)", fontSize: "10px" }}>({p.sku})</span> : null}</span>
+                              <span style={{ fontWeight: 600 }}>{p.name} {p.sku && <span style={{ color: "var(--color-text-muted)", fontSize: "10px" }}>({p.sku})</span>}</span>
                               <span style={{ color: "var(--color-success-text)", fontWeight: 700 }}>${Number(p.unit_price).toLocaleString()}</span>
                             </div>
                           ))}
@@ -421,31 +468,31 @@ export default function QuotationWorkspace({
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 2fr", gap: "8px" }}>
                       <div>
                         <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>SKU</div>
-                        <input value={newItem.sku} onChange={(e) => setNewItem((p) => ({ ...p, sku: e.target.value }))} placeholder="SKU-001" style={INPUT} />
+                        <input value={newItem.sku} onChange={(e) => setNewItem(p => ({ ...p, sku: e.target.value }))} placeholder="SKU-001" style={INPUT} />
                       </div>
                       <div>
                         <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Descripción *</div>
-                        <input value={newItem.description} onChange={(e) => setNewItem((p) => ({ ...p, description: e.target.value }))} placeholder="Nombre del producto" style={INPUT} />
+                        <input value={newItem.description} onChange={(e) => setNewItem(p => ({ ...p, description: e.target.value }))} placeholder="Nombre del producto" style={INPUT} />
                       </div>
                     </div>
                     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr", gap: "8px" }}>
                       <div>
                         <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Cant.</div>
-                        <input type="number" min="0.001" value={newItem.quantity} onChange={(e) => setNewItem((p) => ({ ...p, quantity: e.target.value }))} style={INPUT} />
+                        <input type="number" min="0.001" value={newItem.quantity} onChange={(e) => setNewItem(p => ({ ...p, quantity: e.target.value }))} style={INPUT} />
                       </div>
                       <div>
                         <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Unidad</div>
-                        <select value={newItem.unit} onChange={(e) => setNewItem((p) => ({ ...p, unit: e.target.value }))} style={{ ...INPUT, cursor: "pointer" }}>
+                        <select value={newItem.unit} onChange={(e) => setNewItem(p => ({ ...p, unit: e.target.value }))} style={{ ...INPUT, cursor: "pointer" }}>
                           {UNITS.map((u: string) => <option key={u} value={u}>{u}</option>)}
                         </select>
                       </div>
                       <div>
                         <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>P. Unit. *</div>
-                        <input type="number" min="0" step="0.01" value={newItem.unit_price} onChange={(e) => setNewItem((p) => ({ ...p, unit_price: e.target.value }))} placeholder="0.00" style={INPUT} />
+                        <input type="number" min="0" step="0.01" value={newItem.unit_price} onChange={(e) => setNewItem(p => ({ ...p, unit_price: e.target.value }))} placeholder="0.00" style={INPUT} />
                       </div>
                       <div>
                         <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Desc. %</div>
-                        <input type="number" min="0" max="100" value={newItem.discount_pct} onChange={(e) => setNewItem((p) => ({ ...p, discount_pct: e.target.value }))} style={INPUT} />
+                        <input type="number" min="0" max="100" value={newItem.discount_pct} onChange={(e) => setNewItem(p => ({ ...p, discount_pct: e.target.value }))} style={INPUT} />
                       </div>
                     </div>
                     <div style={{ display: "flex", gap: "8px" }}>
@@ -460,7 +507,6 @@ export default function QuotationWorkspace({
                 )}
               </div>
             )}
-
             {items.length === 0 ? (
               <div style={{ padding: "24px", borderRadius: "var(--radius-md)", border: "1px dashed var(--color-border)", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>Sin productos</div>
             ) : (
@@ -480,19 +526,19 @@ export default function QuotationWorkspace({
                         <tr key={item.id} style={{ borderBottom: "1px solid var(--color-border-faint)", background: isEditingThis ? "var(--color-info-bg)" : "transparent" }}>
                           <td style={{ padding: "7px 8px", color: "var(--color-text-muted)" }}>{item.sku ?? "—"}</td>
                           <td style={{ padding: "7px 8px", maxWidth: "160px" }}>
-                            {isEditingThis ? <input value={(itemForm.description as string) ?? ""} onChange={(e) => setItemForm((p) => ({ ...p, description: e.target.value }))} style={{ ...INPUT, height: "28px" }} /> : <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600, color: "var(--color-text-primary)" }}>{item.description}</div>}
+                            {isEditingThis ? <input value={(itemForm.description as string) ?? ""} onChange={(e) => setItemForm(p => ({ ...p, description: e.target.value }))} style={{ ...INPUT, height: "28px" }} /> : <div style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontWeight: 600, color: "var(--color-text-primary)" }}>{item.description}</div>}
                           </td>
                           <td style={{ padding: "7px 8px", textAlign: "right" }}>
-                            {isEditingThis ? <input type="number" min="0.001" value={(itemForm.quantity as number) ?? 1} onChange={(e) => setItemForm((p) => ({ ...p, quantity: Number(e.target.value) }))} style={{ ...INPUT, height: "28px", width: "70px" }} /> : item.quantity}
+                            {isEditingThis ? <input type="number" min="0.001" value={(itemForm.quantity as number) ?? 1} onChange={(e) => setItemForm(p => ({ ...p, quantity: Number(e.target.value) }))} style={{ ...INPUT, height: "28px", width: "70px" }} /> : item.quantity}
                           </td>
                           <td style={{ padding: "7px 8px" }}>
-                            {isEditingThis ? <select value={(itemForm.unit as string) ?? "pza"} onChange={(e) => setItemForm((p) => ({ ...p, unit: e.target.value }))} style={{ ...INPUT, height: "28px", width: "70px", cursor: "pointer" }}>{UNITS.map((u: string) => <option key={u} value={u}>{u}</option>)}</select> : item.unit}
+                            {isEditingThis ? <select value={(itemForm.unit as string) ?? "pza"} onChange={(e) => setItemForm(p => ({ ...p, unit: e.target.value }))} style={{ ...INPUT, height: "28px", width: "70px", cursor: "pointer" }}>{UNITS.map((u: string) => <option key={u} value={u}>{u}</option>)}</select> : item.unit}
                           </td>
                           <td style={{ padding: "7px 8px", textAlign: "right" }}>
-                            {isEditingThis ? <input type="number" min="0" step="0.01" value={(itemForm.unit_price as number) ?? 0} onChange={(e) => setItemForm((p) => ({ ...p, unit_price: Number(e.target.value) }))} style={{ ...INPUT, height: "28px", width: "90px" }} /> : `$${Number(item.unit_price).toLocaleString(locale, { minimumFractionDigits: 2 })}`}
+                            {isEditingThis ? <input type="number" min="0" step="0.01" value={(itemForm.unit_price as number) ?? 0} onChange={(e) => setItemForm(p => ({ ...p, unit_price: Number(e.target.value) }))} style={{ ...INPUT, height: "28px", width: "90px" }} /> : `$${Number(item.unit_price).toLocaleString(locale, { minimumFractionDigits: 2 })}`}
                           </td>
                           <td style={{ padding: "7px 8px", textAlign: "right" }}>
-                            {isEditingThis ? <input type="number" min="0" max="100" value={(itemForm.discount_pct as number) ?? 0} onChange={(e) => setItemForm((p) => ({ ...p, discount_pct: Number(e.target.value) }))} style={{ ...INPUT, height: "28px", width: "60px" }} /> : (item.discount_pct > 0 ? `${item.discount_pct}%` : "—")}
+                            {isEditingThis ? <input type="number" min="0" max="100" value={(itemForm.discount_pct as number) ?? 0} onChange={(e) => setItemForm(p => ({ ...p, discount_pct: Number(e.target.value) }))} style={{ ...INPUT, height: "28px", width: "60px" }} /> : (item.discount_pct > 0 ? `${item.discount_pct}%` : "—")}
                           </td>
                           <td style={{ padding: "7px 8px", fontWeight: 700, color: "var(--color-success-text)", textAlign: "right", fontVariantNumeric: "tabular-nums" }}>
                             ${Number(item.subtotal).toLocaleString(locale, { minimumFractionDigits: 2 })}
@@ -528,102 +574,209 @@ export default function QuotationWorkspace({
           </>
         )}
 
-        {/* ── SERVICIOS ── */}
+        {/* ── SERVICIOS (billing_concepts con líneas de detalle) ── */}
         {tab === "items" && isServices && (
           <>
-            {services.length === 0 ? (
-              <div style={{ padding: "24px", borderRadius: "var(--radius-md)", border: "1px dashed var(--color-border)", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>Sin servicios</div>
-            ) : services.map((svc) => {
-              const svcCfg   = SERVICE_TYPE_CONFIG[svc.service_type] ?? SERVICE_TYPE_CONFIG.otro;
-              const svcLabel = (t.quot as any)?.[svcCfg.labelKey.replace("quot.", "")] ?? svc.service_type;
-              const isEditingThis = editingItemId === svc.id;
-              return (
-                <div key={svc.id} style={{ padding: "12px", borderRadius: "var(--radius-md)", background: isEditingThis ? "var(--color-info-bg)" : "var(--color-bg-subtle)", border: `1px solid ${isEditingThis ? "var(--color-info-border)" : "var(--color-border-faint)"}`, display: "grid", gap: "8px" }}>
-                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
-                    <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 7px", borderRadius: "var(--radius-full)", background: svcCfg.color + "20", color: svcCfg.color, border: `1px solid ${svcCfg.color}40` }}>{svcLabel}</span>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      {isEditingThis ? (
-                        <input type="number" min="0" step="0.01" value={(itemForm as any).price ?? svc.price} onChange={(e) => setItemForm((p: any) => ({ ...p, price: Number(e.target.value) }))} style={{ ...INPUT, height: "28px", width: "120px" }} />
-                      ) : (
-                        <span style={{ fontSize: "14px", fontWeight: 800, color: "var(--color-success-text)" }}>{svc.currency} ${Number(svc.price).toLocaleString(locale, { minimumFractionDigits: 2 })}</span>
-                      )}
-                      {isOpen && (
-                        <div style={{ display: "flex", gap: "3px" }}>
-                          {isEditingThis ? (
-                            <>
-                              <button onClick={async () => { await onUpdateService(svc.id, itemForm as any, quotation.id); setEditingItemId(null); setItemForm({}); }} style={{ width: "24px", height: "24px", borderRadius: "var(--radius-sm)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", cursor: "pointer", color: "var(--color-success-text)", fontSize: "11px", display: "flex", alignItems: "center", justifyContent: "center" }}>✓</button>
-                              <button onClick={() => { setEditingItemId(null); setItemForm({}); }} style={{ width: "24px", height: "24px", borderRadius: "var(--radius-sm)", background: "var(--color-bg-base)", border: "1px solid var(--color-border)", cursor: "pointer", color: "var(--color-text-muted)", fontSize: "11px", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
-                            </>
-                          ) : (
-                            <>
-                              <button onClick={() => { setEditingItemId(svc.id); setItemForm({ price: svc.price, notes: svc.notes, description: svc.description } as any); }} style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", cursor: "pointer", color: "var(--color-brand-blue)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                              </button>
-                              <button onClick={() => onRemoveService(svc.id, quotation.id)} style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", cursor: "pointer", color: "var(--color-danger-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                              </button>
-                            </>
-                          )}
+            {(() => {
+              const concepts = (quotation as any).billing_concepts ?? [];
+              if (concepts.length > 0) {
+                return concepts.map((concept: any, ci: number) => {
+                  const conceptTotal: Record<string, number> = {};
+                  (concept.lines ?? []).forEach((l: any) => {
+                    const cur = l.currency ?? concept.currency ?? "MXN";
+                    conceptTotal[cur] = (conceptTotal[cur] ?? 0) + Number(l.price ?? 0);
+                  });
+                  return (
+                    <div key={ci} style={{ borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-faint)", overflow: "hidden" }}>
+                      {/* Header concepto */}
+                      <div style={{ padding: "10px 14px", background: "var(--color-bg-subtle)", borderBottom: "1px solid var(--color-border-faint)", display: "flex", alignItems: "center", gap: "8px" }}>
+                        <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-full)", background: "var(--color-brand-blue)20", color: "var(--color-brand-blue)", border: "1px solid var(--color-brand-blue)30" }}>CFDI</span>
+                        <span style={{ flex: 1, fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>{concept.description}</span>
+                        <div style={{ display: "flex", gap: "6px" }}>
+                          {Object.entries(conceptTotal).map(([cur, val]) => (
+                            <span key={cur} style={{ fontSize: "12px", fontWeight: 800, color: "var(--color-success-text)" }}>
+                              {fmtCur(val, cur)}
+                            </span>
+                          ))}
                         </div>
-                      )}
+                      </div>
+                      {/* Líneas de detalle */}
+                      <div style={{ padding: "8px 14px", display: "flex", flexDirection: "column", gap: "4px" }}>
+                        {(concept.lines ?? []).map((line: any, li: number) => {
+                          const taxLabel = line.tax_rate === -1 ? "Exento" : line.tax_rate === 0 ? "0%" : `IVA ${line.tax_rate ?? 16}%`;
+                          return (
+                            <div key={li} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "5px 8px", borderRadius: "var(--radius-sm)", background: "var(--color-bg-subtle)" }}>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-primary)" }}>{line.description}</div>
+                                <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "1px" }}>
+                                  {line.quantity} {line.unit_label} × {line.currency} ${Number(line.unit_price).toLocaleString(locale, { minimumFractionDigits: 2 })} · {taxLabel}
+                                  {line.notes && ` · ${line.notes}`}
+                                </div>
+                              </div>
+                              <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-success-text)", flexShrink: 0, marginLeft: "12px" }}>
+                                {fmtCur(Number(line.price), line.currency ?? "MXN")}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
                     </div>
-                  </div>
-                  {isEditingThis ? (
-                    <input value={(itemForm as any).description ?? svc.description} onChange={(e) => setItemForm((p: any) => ({ ...p, description: e.target.value }))} style={INPUT} />
-                  ) : (
+                  );
+                });
+              }
+              // Fallback: servicios viejos
+              if (services.length === 0) {
+                return <div style={{ padding: "24px", borderRadius: "var(--radius-md)", border: "1px dashed var(--color-border)", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>Sin servicios</div>;
+              }
+              return services.map((svc) => {
+                const svcCfg   = SERVICE_TYPE_CONFIG[svc.service_type] ?? SERVICE_TYPE_CONFIG.otro;
+                const svcLabel = (t.quot as any)?.[svcCfg.labelKey.replace("quot.", "")] ?? svc.service_type;
+                const isEditingThis = editingItemId === svc.id;
+                return (
+                  <div key={svc.id} style={{ padding: "12px", borderRadius: "var(--radius-md)", background: isEditingThis ? "var(--color-info-bg)" : "var(--color-bg-subtle)", border: `1px solid ${isEditingThis ? "var(--color-info-border)" : "var(--color-border-faint)"}`, display: "grid", gap: "8px" }}>
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "8px" }}>
+                      <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 7px", borderRadius: "var(--radius-full)", background: svcCfg.color + "20", color: svcCfg.color, border: `1px solid ${svcCfg.color}40` }}>{svcLabel}</span>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        {isEditingThis ? (
+                          <input type="number" min="0" step="0.01" value={(itemForm as any).price ?? svc.price} onChange={(e) => setItemForm((p: any) => ({ ...p, price: Number(e.target.value) }))} style={{ ...INPUT, height: "28px", width: "120px" }} />
+                        ) : (
+                          <span style={{ fontSize: "14px", fontWeight: 800, color: "var(--color-success-text)" }}>{svc.currency} ${Number(svc.price).toLocaleString(locale, { minimumFractionDigits: 2 })}</span>
+                        )}
+                        {isOpen && (
+                          <div style={{ display: "flex", gap: "3px" }}>
+                            {isEditingThis ? (
+                              <>
+                                <button onClick={async () => { await onUpdateService(svc.id, itemForm as any, quotation.id); setEditingItemId(null); setItemForm({}); }} style={{ width: "24px", height: "24px", borderRadius: "var(--radius-sm)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", cursor: "pointer", color: "var(--color-success-text)", fontSize: "11px", display: "flex", alignItems: "center", justifyContent: "center" }}>✓</button>
+                                <button onClick={() => { setEditingItemId(null); setItemForm({}); }} style={{ width: "24px", height: "24px", borderRadius: "var(--radius-sm)", background: "var(--color-bg-base)", border: "1px solid var(--color-border)", cursor: "pointer", color: "var(--color-text-muted)", fontSize: "11px", display: "flex", alignItems: "center", justifyContent: "center" }}>✕</button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => { setEditingItemId(svc.id); setItemForm({ price: svc.price, notes: svc.notes, description: svc.description } as any); }} style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", cursor: "pointer", color: "var(--color-brand-blue)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                                </button>
+                                <button onClick={() => onRemoveService(svc.id, quotation.id)} style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", cursor: "pointer", color: "var(--color-danger-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                                </button>
+                              </>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </div>
                     <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)" }}>{svc.description}</div>
-                  )}
-                  {!isEditingThis && (
-                    <div style={{ display: "flex", gap: "12px", fontSize: "11px", color: "var(--color-text-muted)", flexWrap: "wrap" }}>
-                      {svc.origin && <span>📍 {svc.origin} → {svc.destination}</span>}
-                      {svc.incoterm && <span>📄 {svc.incoterm}</span>}
-                      {svc.transit_time && <span>⏱ {svc.transit_time}</span>}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+                    {!isEditingThis && (
+                      <div style={{ display: "flex", gap: "12px", fontSize: "11px", color: "var(--color-text-muted)", flexWrap: "wrap" }}>
+                        {svc.origin && <span>📍 {svc.origin} → {svc.destination}</span>}
+                        {svc.incoterm && <span>📄 {svc.incoterm}</span>}
+                        {svc.transit_time && <span>⏱ {svc.transit_time}</span>}
+                      </div>
+                    )}
+                  </div>
+                );
+              });
+            })()}
           </>
         )}
 
         {/* ── TOTALES ── */}
         {tab === "totals" && (
-          <div style={{ maxWidth: "380px", marginLeft: "auto", display: "grid", gap: "6px" }}>
-            {[
-              { label: "Subtotal",                                                value: quotation.subtotal,          color: "var(--color-text-primary)" },
-              { label: "Descuento", hide: !((quotation.discount_amount ?? 0) > 0), value: -(quotation.discount_amount ?? 0), color: "var(--color-warning-text)" },
-              { label: `IVA ${quotation.tax_rate ?? 16}%`,                        value: quotation.tax_amount,         color: "var(--color-text-muted)"   },
-            ].map((row: any) => row.hide ? null : (
-              <div key={row.label} style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", fontSize: "13px" }}>
-                <span style={{ color: "var(--color-text-muted)" }}>{row.label}</span>
-                <span style={{ color: row.color, fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>
-                  {quotation.currency} ${Number(Math.abs(row.value ?? 0)).toLocaleString(locale, { minimumFractionDigits: 2 })}
-                </span>
+          <div style={{ maxWidth: "420px", marginLeft: "auto", display: "grid", gap: "8px" }}>
+            {currencyEntries.map(([cur, vals], i) => (
+              <div key={cur}>
+                {currencyEntries.length > 1 && (
+                  <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>
+                    {cur}
+                  </div>
+                )}
+                <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", overflow: "hidden" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", borderBottom: "1px solid var(--color-border-faint)", fontSize: "13px" }}>
+                    <span style={{ color: "var(--color-text-muted)" }}>Subtotal</span>
+                    <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{fmtCur(vals.subtotal, cur)}</span>
+                  </div>
+                  {(quotation.discount_amount ?? 0) > 0 && (
+                    <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", borderBottom: "1px solid var(--color-border-faint)", fontSize: "13px" }}>
+                      <span style={{ color: "var(--color-warning-text)" }}>Descuento</span>
+                      <span style={{ color: "var(--color-warning-text)", fontWeight: 600 }}>- {fmtCur(quotation.discount_amount ?? 0, cur)}</span>
+                    </div>
+                  )}
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 12px", borderBottom: "1px solid var(--color-border-faint)", fontSize: "13px" }}>
+                    <span style={{ color: "var(--color-text-muted)" }}>IVA</span>
+                    <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{fmtCur(vals.tax, cur)}</span>
+                  </div>
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", background: "var(--color-success-bg)", fontSize: "16px" }}>
+                    <span style={{ color: "var(--color-success-text)", fontWeight: 800 }}>TOTAL {currencyEntries.length > 1 ? cur : ""}</span>
+                    <span style={{ color: "var(--color-success-text)", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{fmtCur(vals.total, cur)}</span>
+                  </div>
+                </div>
+                {i < currencyEntries.length - 1 && <div style={{ height: "8px" }} />}
               </div>
             ))}
-            <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", fontSize: "16px" }}>
-              <span style={{ color: "var(--color-success-text)", fontWeight: 800 }}>TOTAL</span>
-              <span style={{ color: "var(--color-success-text)", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>
-                {quotation.currency} ${Number(quotation.total ?? 0).toLocaleString(locale, { minimumFractionDigits: 2 })}
-              </span>
-            </div>
           </div>
         )}
 
-        {/* ── PDF ── */}
+        {/* ── PDF / ENVÍO ── */}
         {tab === "preview" && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
-            <div style={{ padding: "16px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.6, maxWidth: "380px", textAlign: "center" }}>
-              El PDF se genera con los datos actuales usando la plantilla configurada.
-            </div>
-            <button onClick={() => onOpenPDF(quotation)} style={{ height: "44px", padding: "0 28px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "14px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "8px" }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", maxWidth: "420px" }}>
+
+            {/* Botón descargar */}
+            <button onClick={() => onOpenPDF(quotation)} style={{ height: "48px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "15px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+              </svg>
               Descargar PDF
             </button>
-            <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", fontSize: "11px", color: "var(--color-text-muted)", display: "grid", gap: "4px" }}>
+
+            {/* Info plantilla */}
+            <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", fontSize: "11px", color: "var(--color-text-muted)", display: "grid", gap: "3px" }}>
               <div><strong>Plantilla:</strong> Mobility OS</div>
-              <div><strong>Tipo:</strong> {isServices ? "Servicios logísticos" : "Productos"}</div>
-              <div><strong>Items:</strong> {isServices ? services.length : items.length}</div>
+              <div><strong>Tipo:</strong> {isServices ? ((quotation as any).service_subtype?.replace(/_/g, " ").toUpperCase() ?? "Servicios") : "Productos"}</div>
+              <div><strong>Items:</strong> {isServices ? (((quotation as any).billing_concepts ?? services).length) : items.length}</div>
+              {currencyEntries.map(([cur, vals]) => (
+                <div key={cur}><strong>Total {cur}:</strong> {fmtCur(vals.total, cur)}</div>
+              ))}
+            </div>
+
+            {/* Envío por correo */}
+            <div style={{ padding: "14px 16px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", display: "flex", flexDirection: "column", gap: "10px" }}>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase" }}>Enviar por correo</div>
+
+              {contactEmail ? (
+                <div style={{ display: "flex", alignItems: "center", gap: "6px", padding: "6px 10px", borderRadius: "var(--radius-sm)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)" }}>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-info-text)" strokeWidth="2">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                    <polyline points="22,6 12,13 2,6"/>
+                  </svg>
+                  <span style={{ fontSize: "12px", color: "var(--color-info-text)", fontWeight: 600 }}>Para: {contactEmail}</span>
+                </div>
+              ) : (
+                <div style={{ padding: "6px 10px", borderRadius: "var(--radius-sm)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", fontSize: "11px", color: "var(--color-warning-text)" }}>
+                  ⚠ Sin correo de contacto asignado en esta cotización
+                </div>
+              )}
+
+              <div>
+                <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "4px" }}>CC (opcional, separar con comas)</div>
+                <input
+                  value={ccEmails}
+                  onChange={(e) => setCcEmails(e.target.value)}
+                  placeholder="correo1@empresa.com, correo2@empresa.com"
+                  style={{ ...INPUT, height: "34px" }}
+                />
+              </div>
+
+              <button
+                disabled={sendingEmail || !contactEmail}
+                onClick={() => setSendingEmail(true)}
+                style={{ height: "40px", borderRadius: "var(--radius-md)", background: contactEmail ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: contactEmail ? "#fff" : "var(--color-text-muted)", border: contactEmail ? "none" : "1px solid var(--color-border)", fontSize: "13px", fontWeight: 700, cursor: contactEmail ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+                {sendingEmail ? "Enviando…" : "Enviar cotización por correo"}
+              </button>
+            </div>
+
+            <div style={{ padding: "8px 12px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "11px", color: "var(--color-info-text)", lineHeight: 1.6 }}>
+              💡 El PDF se genera con los datos actuales. Puedes reenviar la cotización en cualquier momento desde esta pantalla.
             </div>
           </div>
         )}
