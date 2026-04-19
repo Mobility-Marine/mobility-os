@@ -286,7 +286,7 @@ export function PDFTermsPage({
     : ((settings as any)?.quote_terms_services ?? null);
   if (!termsText) return null;
   return (
-    <View style={{ paddingTop: 16, paddingBottom: 16, paddingLeft: 36, paddingRight: 36 }}>
+    <View style={{ paddingTop: 28, paddingBottom: 16, paddingLeft: 36, paddingRight: 36 }}>
       <Text style={{ fontSize: 11, fontWeight: "bold", color: c.ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10, paddingBottom: 6, borderBottomWidth: 2, borderBottomColor: c.BRAND_COLOR }}>
         {tx(lang, "terms")}
       </Text>
