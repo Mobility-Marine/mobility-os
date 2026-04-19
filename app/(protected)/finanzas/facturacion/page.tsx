@@ -135,27 +135,39 @@ async function handleFacturarEmbarque(shipment: any) {
       }];
     }
 
+        // Detectar si hay servicios en múltiples monedas
+    const mappedServices = services.map((s: any) => ({
+      description:      s.description,
+      price:            s.price,
+      currency:         s.currency         ?? sh.currency ?? "MXN",
+      product_id:       s.product_id       ?? null,
+      sat_product_code: s.sat_product_code ?? "84111506",
+      sat_unit_code:    s.sat_unit_code    ?? "E48",
+      unit:             s.unit             ?? "Servicio",
+    }));
+    const uniqueCurrencies = [...new Set(mappedServices.map((s: any) => s.currency))];
+    const hasMultiCurrency = uniqueCurrencies.length > 1;
+    const servicesByCurrency = uniqueCurrencies.reduce((acc, cur) => {
+      acc[cur] = mappedServices.filter((s: any) => s.currency === cur);
+      return acc;
+    }, {} as Record<string, any[]>);
+
     setPreloadShipment({
-      shipment_id:     sh.id,
-      reference:       sh.reference,
-      client_id:       sh.client_id,
-      receiver_rfc:    (sh.client as any)?.rfc           ?? "",
-      receiver_name:   (sh.client as any)?.legal_name    ?? (sh.client as any)?.name ?? "",
-      receiver_email:  (sh.client as any)?.email         ?? "",
-      receiver_zip:    (sh.client as any)?.zip_code      ?? "",
-      receiver_regime: (sh.client as any)?.tax_regime    ?? "601",
-      currency:        sh.currency ?? "MXN",
-      total:           sh.total,
-      services:        services.map((s: any) => ({
-        description:      s.description,
-        price:            s.price,
-        currency:         s.currency         ?? sh.currency ?? "MXN",
-        product_id:       s.product_id       ?? null,
-        sat_product_code: s.sat_product_code ?? "84111506",
-        sat_unit_code:    s.sat_unit_code    ?? "E48",
-        unit:             s.unit             ?? "Servicio",
-      })),
+      shipment_id:        sh.id,
+      reference:          sh.reference,
+      client_id:          sh.client_id,
+      receiver_rfc:       (sh.client as any)?.rfc           ?? "",
+      receiver_name:      (sh.client as any)?.legal_name    ?? (sh.client as any)?.name ?? "",
+      receiver_email:     (sh.client as any)?.email         ?? "",
+      receiver_zip:       (sh.client as any)?.zip_code      ?? "",
+      receiver_regime:    (sh.client as any)?.tax_regime    ?? "601",
+      currency:           sh.currency ?? "MXN",
+      total:              sh.total,
+      services:           mappedServices,
+      hasMultiCurrency,
+      servicesByCurrency,
     });
+
     setSelectedCFDIType({ id: "factura" } as any);
   }
   
