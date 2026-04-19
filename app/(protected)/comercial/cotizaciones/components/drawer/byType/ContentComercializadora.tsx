@@ -389,7 +389,7 @@ export default function ContentComercializadora({ info, setInfo, billingConcepts
       {/* ══════════════ SECCIÓN ADUANAL ══════════════ */}
       <div style={{ borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-faint)", overflow: "hidden" }}>
         <div style={{ padding: "10px 14px", background: "rgba(167,139,250,0.1)", borderBottom: "1px solid rgba(167,139,250,0.2)" }}>
-          <span style={{ fontSize: "12px", fontWeight: 700, color: "#a78bfa" }}>🏛️ Despacho Aduanal — Importación (Padrón Mobility)</span>
+          <span style={{ fontSize: "12px", fontWeight: 700, color: "#a78bfa" }}>🏛️ Despacho Aduanal — Importación (Padrón Propio)</span>
         </div>
         <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "10px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr", gap: "8px" }}>
