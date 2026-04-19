@@ -122,6 +122,8 @@ export type QuotationService = {
   created_at:    string;
   tax_rate?:     number | null;
   unit_label?:   string | null;
+  quantity?:     number | null;
+  unit_price?:   number | null;
 };
 
 // ── BILLING CONCEPT (Concepto de facturación) ─────────────────
@@ -242,6 +244,8 @@ export type CreateServicePayload = {
   currency?:     string;
   price:         number;
   notes?:        string;
+  quantity?:           number;
+  unit_price?:         number;
   product_id?:         string;
   billing_concept_id?: string;
   tax_rate?:           number;
