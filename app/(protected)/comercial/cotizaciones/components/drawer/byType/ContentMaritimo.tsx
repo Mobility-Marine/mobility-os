@@ -1,11 +1,9 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
-import { INCOTERMS, CONTAINER_TYPES, CURRENCIES, SERVICE_TYPES, SERVICE_TYPE_CONFIG } from "../../../types/quotations.types";
-import type { ServiceType } from "../../../types/quotations.types";
+import { INCOTERMS, CONTAINER_TYPES, CURRENCIES } from "../../../types/quotations.types";
 import type { BillingConceptDraft } from "../drawerState";
 
-// ── Tipos ──────────────────────────────────────────────────────
 type Contenedor = { tipo: string; cantidad: number };
 type Bulto      = { largo_cm: string; ancho_cm: string; alto_cm: string; peso_kg: string; cantidad: string };
 
@@ -31,45 +29,25 @@ export const EMPTY_MARITIMO_INFO = (): MaritimoInfo => ({
   contenedores: [EMPTY_CONTENEDOR()], bultos: [],
 });
 
-// ── Tipos de cargos marítimos comunes ──────────────────────────
-const FCL_CARGO_TYPES = [
-  "Ocean Freight", "THC Origen", "THC Destino", "BL Fee",
-  "Seal Fee", "VGM", "AMS/ISF", "Cargo Insurance",
-  "Origin Handling", "Destination Handling", "Chassis Fee", "Otros",
-];
-const LCL_CARGO_TYPES = [
-  "Ocean Freight", "Origin CFS", "Destination CFS", "BL Fee",
-  "AMS/ISF", "Cargo Insurance", "Handling", "Otros",
-];
+// Unidades de cobro por subtipo
+const UNITS_FCL = ["Por contenedor", "Por BL", "Por embarque", "Por servicio", "Por factura", "Por trámite"];
+const UNITS_LCL = ["Por W/M", "Por CBM", "Por tonelada", "Por BL", "Por embarque", "Por servicio", "Por factura"];
 
-// ── Línea draft con cantidad y precio unitario ─────────────────
 interface LineDraft {
-  service_type: ServiceType;
-  description:  string;
-  currency:     string;
-  quantity:     string;
-  unit_label:   string;
-  unit_price:   string;
-  tax_rate:     number;
-  notes:        string;
+  description: string;
+  quantity:    string;
+  unit_label:  string;
+  unit_price:  string;
+  currency:    string;
+  tax_rate:    number;
+  notes:       string;
 }
 
-function calcPrice(line: LineDraft): number {
-  return (Number(line.quantity) || 0) * (Number(line.unit_price) || 0);
-}
-
-const EMPTY_LINE_FCL = (currency: string): LineDraft => ({
-  service_type: "maritimo", description: "Ocean Freight",
-  currency, quantity: "1", unit_label: "Por contenedor",
-  unit_price: "", tax_rate: 0, notes: "",
-});
-const EMPTY_LINE_LCL = (currency: string): LineDraft => ({
-  service_type: "maritimo", description: "Ocean Freight",
-  currency, quantity: "", unit_label: "Por W/M",
-  unit_price: "", tax_rate: 0, notes: "",
+const EMPTY_LINE = (currency: string, unit: string, qty: string): LineDraft => ({
+  description: "", quantity: qty, unit_label: unit,
+  unit_price: "", currency, tax_rate: 0, notes: "",
 });
 
-// ── Props ──────────────────────────────────────────────────────
 type Props = {
   info:               MaritimoInfo;
   setInfo:            React.Dispatch<React.SetStateAction<MaritimoInfo>>;
@@ -82,77 +60,70 @@ export default function ContentMaritimo({ info, setInfo, billingConcepts, setBil
   const [activeConcept, setActiveConcept] = useState<string | null>(null);
   const [addingConcept, setAddingConcept] = useState(false);
   const [conceptForm,   setConceptForm]   = useState({ product_id: "", description: "", currency: "USD" });
-  const [lineForm,      setLineForm]      = useState<LineDraft>(EMPTY_LINE_FCL("USD"));
+  const [lineForm,      setLineForm]      = useState<LineDraft>(EMPTY_LINE("USD", "Por contenedor", "1"));
 
-  // Cálculos LCL
-  const cbmTotal  = info.bultos.reduce((s, b) => {
-    const vol = (Number(b.largo_cm) * Number(b.ancho_cm) * Number(b.alto_cm)) / 1_000_000;
-    return s + vol * Number(b.cantidad || 1);
-  }, 0);
+  // Cálculos automáticos
+  const totalContenedores = info.contenedores.reduce((s, c) => s + c.cantidad, 0);
+  const cbmTotal  = info.bultos.reduce((s, b) => s + (Number(b.largo_cm) * Number(b.ancho_cm) * Number(b.alto_cm) / 1_000_000) * Number(b.cantidad || 1), 0);
   const pesoTotal = info.bultos.reduce((s, b) => s + Number(b.peso_kg) * Number(b.cantidad || 1), 0);
   const wmTotal   = Math.max(cbmTotal, pesoTotal / 1000);
 
-  // Total contenedores FCL
-  const totalContenedores = info.contenedores.reduce((s, c) => s + c.cantidad, 0);
-
-  // Cuando cambia subtipo, resetear lineForm con defaults apropiados
+  // Al cambiar subtipo, actualizar defaults del lineForm
   useEffect(() => {
     if (info.subtipo === "fcl") {
-      setLineForm({ ...EMPTY_LINE_FCL("USD"), quantity: String(totalContenedores) });
+      setLineForm(EMPTY_LINE("USD", "Por contenedor", String(totalContenedores || 1)));
     } else {
-      setLineForm({ ...EMPTY_LINE_LCL("USD"), quantity: wmTotal > 0 ? wmTotal.toFixed(3) : "" });
+      setLineForm(EMPTY_LINE("USD", "Por W/M", wmTotal > 0 ? wmTotal.toFixed(3) : ""));
     }
   }, [info.subtipo]);
 
-  // Cuando cambia W/M o contenedores, actualizar quantity en lineForm si es la primera línea
+  // Actualizar cantidad automática cuando cambian contenedores o W/M
   useEffect(() => {
-    if (info.subtipo === "fcl") {
+    if (info.subtipo === "fcl" && totalContenedores > 0) {
       setLineForm(p => ({ ...p, quantity: String(totalContenedores) }));
-    } else if (info.subtipo === "lcl" && wmTotal > 0) {
+    }
+  }, [totalContenedores]);
+
+  useEffect(() => {
+    if (info.subtipo === "lcl" && wmTotal > 0) {
       setLineForm(p => ({ ...p, quantity: wmTotal.toFixed(3) }));
     }
-  }, [totalContenedores, wmTotal]);
+  }, [wmTotal]);
+
+  const autoTotal = (Number(lineForm.quantity) || 0) * (Number(lineForm.unit_price) || 0);
+  const unitOptions = info.subtipo === "fcl" ? UNITS_FCL : UNITS_LCL;
 
   function addLine(ci: number, concept: BillingConceptDraft) {
-    const price = calcPrice(lineForm);
     if (!lineForm.description.trim() || !lineForm.unit_price) return;
+    const price = autoTotal;
     setBillingConcepts(p => p.map((c, i) => i === ci ? {
       ...c, lines: [...c.lines, {
-        service_type: lineForm.service_type,
+        service_type: "maritimo" as any,
         description:  lineForm.description,
         currency:     lineForm.currency,
         price,
         quantity:     Number(lineForm.quantity) || 1,
         unit_price:   Number(lineForm.unit_price),
-        tax_rate:     lineForm.tax_rate,
         unit_label:   lineForm.unit_label || undefined,
-        notes:        lineForm.notes      || undefined,
+        tax_rate:     lineForm.tax_rate,
+        notes:        lineForm.notes || undefined,
       }],
     } : c));
-    // Reset con defaults del subtipo
-    if (info.subtipo === "fcl") {
-      setLineForm({ ...EMPTY_LINE_FCL(concept.currency), quantity: String(totalContenedores) });
-    } else {
-      setLineForm({ ...EMPTY_LINE_LCL(concept.currency), quantity: wmTotal > 0 ? wmTotal.toFixed(3) : "" });
-    }
+    setLineForm(EMPTY_LINE(
+      concept.currency,
+      info.subtipo === "fcl" ? "Por contenedor" : "Por W/M",
+      info.subtipo === "fcl" ? String(totalContenedores) : wmTotal > 0 ? wmTotal.toFixed(3) : "",
+    ));
   }
 
   function createConcept() {
     if (!conceptForm.description.trim()) return;
     const tempId = Date.now().toString();
-    setBillingConcepts(p => [...p, {
-      tempId,
-      product_id:  conceptForm.product_id || undefined,
-      description: conceptForm.description,
-      currency:    conceptForm.currency,
-      lines:       [],
-    }]);
+    setBillingConcepts(p => [...p, { tempId, product_id: conceptForm.product_id || undefined, description: conceptForm.description, currency: conceptForm.currency, lines: [] }]);
     setActiveConcept(tempId);
     setConceptForm({ product_id: "", description: "", currency: "USD" });
     setAddingConcept(false);
   }
-
-  const cargoTypes = info.subtipo === "fcl" ? FCL_CARGO_TYPES : LCL_CARGO_TYPES;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -162,7 +133,7 @@ export default function ContentMaritimo({ info, setInfo, billingConcepts, setBil
         <SectionTitle>Tipo de servicio marítimo</SectionTitle>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "8px" }}>
           {(["fcl","lcl"] as const).map(sub => (
-            <button key={sub} onClick={() => setInfo(p => ({ ...p, subtipo: sub, bultos: sub === "lcl" && p.bultos.length === 0 ? [] : p.bultos }))}
+            <button key={sub} onClick={() => setInfo(p => ({ ...p, subtipo: sub }))}
               style={{ padding: "14px", borderRadius: "var(--radius-md)", cursor: "pointer", textAlign: "left", background: info.subtipo === sub ? "var(--color-info-bg)" : "var(--color-bg-subtle)", border: `2px solid ${info.subtipo === sub ? "var(--color-brand-blue)" : "var(--color-border-faint)"}` }}>
               <div style={{ fontSize: "13px", fontWeight: 700, color: info.subtipo === sub ? "var(--color-brand-blue)" : "var(--color-text-primary)" }}>
                 {sub === "fcl" ? "FCL — Full Container Load" : "LCL — Less than Container Load"}
@@ -245,9 +216,9 @@ export default function ContentMaritimo({ info, setInfo, billingConcepts, setBil
               + Agregar tipo de contenedor
             </button>
             {totalContenedores > 0 && (
-              <div style={{ padding: "8px 12px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)" }}>
-                Total: <strong>{totalContenedores} contenedor{totalContenedores !== 1 ? "es" : ""}</strong> — los conceptos de flete usarán esta cantidad automáticamente
-              </div>
+              <InfoBox type="info">
+                Total: <strong>{totalContenedores} contenedor{totalContenedores !== 1 ? "es" : ""}</strong> — la cantidad en los conceptos se asignará automáticamente
+              </InfoBox>
             )}
           </div>
         </div>
@@ -307,8 +278,8 @@ export default function ContentMaritimo({ info, setInfo, billingConcepts, setBil
         <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
           <InfoBox type="info">
             {info.subtipo === "fcl"
-              ? <>Cada cargo se cotiza <strong>por contenedor</strong>. La cantidad se determina por los contenedores ingresados arriba (<strong>{totalContenedores} total</strong>).</>
-              : <>El Ocean Freight y otros cargos se cotizan <strong>por W/M</strong>. La cantidad calculada es <strong>{wmTotal.toFixed(3)} W/M</strong>.</>
+              ? <>Cargos cotizados <strong>por contenedor</strong>. Cantidad automática: <strong>{totalContenedores} contenedor{totalContenedores !== 1 ? "es" : ""}</strong>.</>
+              : <>Cargos cotizados <strong>por W/M</strong>. W/M calculado: <strong>{wmTotal.toFixed(3)}</strong>.</>
             }
           </InfoBox>
 
@@ -318,7 +289,6 @@ export default function ContentMaritimo({ info, setInfo, billingConcepts, setBil
             const prodName     = svcCatalog.find((p: any) => p.id === concept.product_id)?.name;
             return (
               <div key={concept.tempId} style={{ borderRadius: "var(--radius-md)", border: `2px solid ${isActive ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`, overflow: "hidden" }}>
-                {/* Header concepto */}
                 <div onClick={() => setActiveConcept(isActive ? null : concept.tempId)}
                   style={{ padding: "10px 14px", background: isActive ? "var(--color-info-bg)" : "var(--color-bg-subtle)", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
                   <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-full)", background: "var(--color-brand-blue)20", color: "var(--color-brand-blue)", border: "1px solid var(--color-brand-blue)30" }}>CFDI</span>
@@ -334,23 +304,22 @@ export default function ContentMaritimo({ info, setInfo, billingConcepts, setBil
 
                 {isActive && (
                   <div style={{ padding: "12px 14px", borderTop: "1px solid var(--color-border-faint)", display: "flex", flexDirection: "column", gap: "8px" }}>
+
                     {/* Líneas existentes */}
                     {concept.lines.map((line, li) => {
+                      const qty    = (line as any).quantity ?? 1;
+                      const uPrice = (line as any).unit_price;
                       const taxLabel = (line as any).tax_rate === -1 ? "Exento" : (line as any).tax_rate === 0 ? "0%" : `IVA ${(line as any).tax_rate ?? 16}%`;
-                      const qty      = (line as any).quantity ?? 1;
-                      const uPrice   = (line as any).unit_price;
                       return (
                         <div key={li} style={{ padding: "8px 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)" }}>
                           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                             <div style={{ flex: 1 }}>
                               <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)" }}>{line.description}</div>
                               <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "2px" }}>
-                                {uPrice ? `${qty} × ${(line as any).currency} $${Number(uPrice).toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : ""}
-                                {(line as any).unit_label ? ` · ${(line as any).unit_label}` : ""}
-                                {` · ${taxLabel}`}
+                                {qty} {(line as any).unit_label} × {(line as any).currency} ${Number(uPrice ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })} · {taxLabel}
                               </div>
                             </div>
-                            <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-success-text)" }}>
+                            <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-success-text)", flexShrink: 0 }}>
                               {(line as any).currency} ${Number(line.price).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                             </span>
                             <button onClick={() => setBillingConcepts(p => p.map((c, i) => i === ci ? { ...c, lines: c.lines.filter((_, j) => j !== li) } : c))}
@@ -363,29 +332,25 @@ export default function ContentMaritimo({ info, setInfo, billingConcepts, setBil
                     })}
 
                     {/* Form nueva línea */}
-                    <div style={{ background: "var(--color-bg-base)", border: "1px dashed var(--color-border)", borderRadius: "var(--radius-md)", padding: "12px", display: "flex", flexDirection: "column", gap: "8px" }}>
-                      <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase" }}>+ Nueva línea de cargo</div>
+                    <div style={{ background: "var(--color-bg-base)", border: "1px dashed var(--color-border)", borderRadius: "var(--radius-md)", padding: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
+                      <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase" }}>+ Nueva línea de detalle</div>
 
-                      {/* Descripción con sugerencias rápidas */}
-                      <Field label="Tipo de cargo *">
-                        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", marginBottom: "6px" }}>
-                          {cargoTypes.slice(0, 6).map(ct => (
-                            <button key={ct} onClick={() => setLineForm(p => ({ ...p, description: ct }))}
-                              style={{ padding: "3px 8px", borderRadius: "var(--radius-full)", fontSize: "11px", cursor: "pointer", background: lineForm.description === ct ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: lineForm.description === ct ? "#fff" : "var(--color-text-muted)", border: `1px solid ${lineForm.description === ct ? "var(--color-brand-blue)" : "var(--color-border-faint)"}` }}>
-                              {ct}
-                            </button>
-                          ))}
-                        </div>
-                        <input value={lineForm.description} onChange={e => setLineForm(p => ({ ...p, description: e.target.value }))} placeholder="O escribe una descripción…" style={INPUT} />
+                      {/* Fila 1: Descripción */}
+                      <Field label="Descripción *">
+                        <input value={lineForm.description} onChange={e => setLineForm(p => ({ ...p, description: e.target.value }))} placeholder="Ocean Freight, THC, BL Fee, Seguro…" style={INPUT} />
                       </Field>
 
-                      {/* Cantidad × Precio unitario */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-                        <Field label={info.subtipo === "fcl" ? "Cantidad (contenedores)" : "Cantidad (W/M)"} hint={info.subtipo === "fcl" ? `Auto: ${totalContenedores}` : `Auto: ${wmTotal.toFixed(3)}`}>
+                      {/* Fila 2: Cantidad · Unidad · Precio unitario · Total */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1fr 1fr", gap: "8px" }}>
+                        <Field label="Cantidad" hint={info.subtipo === "fcl" ? `Auto: ${totalContenedores}` : `Auto: ${wmTotal.toFixed(3)}`}>
                           <input type="number" value={lineForm.quantity}
                             onChange={e => setLineForm(p => ({ ...p, quantity: e.target.value }))}
-                            placeholder={info.subtipo === "fcl" ? String(totalContenedores) : wmTotal.toFixed(3)}
                             style={{ ...INPUT, background: "var(--color-info-bg)" }} />
+                        </Field>
+                        <Field label="Unidad de cobro *">
+                          <select value={lineForm.unit_label} onChange={e => setLineForm(p => ({ ...p, unit_label: e.target.value }))} style={SELECT}>
+                            {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
+                          </select>
                         </Field>
                         <Field label="Precio unitario *">
                           <input type="number" value={lineForm.unit_price}
@@ -393,27 +358,17 @@ export default function ContentMaritimo({ info, setInfo, billingConcepts, setBil
                             placeholder="0.00" style={INPUT} />
                         </Field>
                         <Field label="Total (auto)">
-                          <div style={{ ...INPUT, display: "flex", alignItems: "center", background: "var(--color-bg-subtle)", color: "var(--color-success-text)", fontWeight: 700 }}>
-                            {lineForm.currency} ${calcPrice(lineForm).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                          <div style={{ height: "36px", padding: "0 12px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-success-text)", fontWeight: 700, fontSize: "13px", display: "flex", alignItems: "center" }}>
+                            ${autoTotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                           </div>
                         </Field>
                       </div>
 
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
+                      {/* Fila 3: Moneda · IVA · Notas */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: "8px" }}>
                         <Field label="Moneda">
                           <select value={lineForm.currency} onChange={e => setLineForm(p => ({ ...p, currency: e.target.value }))} style={SELECT}>
                             {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.value}</option>)}
-                          </select>
-                        </Field>
-                        <Field label="Unidad de cobro">
-                          <select value={lineForm.unit_label} onChange={e => setLineForm(p => ({ ...p, unit_label: e.target.value }))} style={SELECT}>
-                            <option value="Por contenedor">Por contenedor</option>
-                            <option value="Por W/M">Por W/M</option>
-                            <option value="Por BL">Por BL</option>
-                            <option value="Por embarque">Por embarque</option>
-                            <option value="Por pedimento">Por pedimento</option>
-                            <option value="Por kg">Por kg</option>
-                            <option value="Por servicio">Por servicio</option>
                           </select>
                         </Field>
                         <Field label="IVA">
@@ -424,15 +379,14 @@ export default function ContentMaritimo({ info, setInfo, billingConcepts, setBil
                             <option value="8">IVA 8%</option>
                           </select>
                         </Field>
+                        <Field label="Notas">
+                          <input value={lineForm.notes} onChange={e => setLineForm(p => ({ ...p, notes: e.target.value }))} placeholder="Observaciones…" style={INPUT} />
+                        </Field>
                       </div>
-
-                      <Field label="Notas">
-                        <input value={lineForm.notes} onChange={e => setLineForm(p => ({ ...p, notes: e.target.value }))} placeholder="Observaciones…" style={INPUT} />
-                      </Field>
 
                       <button onClick={() => addLine(ci, concept)} disabled={!lineForm.description.trim() || !lineForm.unit_price}
                         style={{ height: "36px", padding: "0 20px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: "pointer", alignSelf: "flex-start" }}>
-                        + Agregar cargo
+                        + Agregar línea
                       </button>
                     </div>
                   </div>
