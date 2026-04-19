@@ -1,5 +1,4 @@
 "use client";
-
 import type { Shipment, ShipmentFilters, ShipmentServiceType, ShipmentStatus } from "../types/shipments.types";
 import { SHIPMENT_STATUS_CONFIG, SERVICE_TYPE_CONFIG, SHIPMENT_SERVICE_TYPES } from "../types/shipments.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
@@ -13,24 +12,50 @@ type Props = {
   onNew:       () => void;
 };
 
+// Totales por moneda desde shipment_services
+function getShipmentTotals(s: Shipment): Record<string, number> {
+  // Usar totals_by_currency si está disponible (calculado en el service)
+  if (s.totals_by_currency) {
+    const result: Record<string, number> = {};
+    for (const [cur, vals] of Object.entries(s.totals_by_currency)) {
+      if (vals.total > 0) result[cur] = vals.total;
+    }
+    if (Object.keys(result).length > 0) return result;
+  }
+  // Fallback: usar services directamente
+  const services = s.services ?? [];
+  if (services.length > 0) {
+    const totals: Record<string, number> = {};
+    for (const svc of services) {
+      const cur   = svc.currency ?? "USD";
+      const price = Number(svc.price ?? 0);
+      const tax   = price * 0.16;
+      totals[cur] = (totals[cur] ?? 0) + price + tax;
+    }
+    if (Object.keys(totals).length > 0) return totals;
+  }
+  // Último fallback: campo total de la BD
+  return { [s.currency ?? "USD"]: s.total ?? 0 };
+}
+
 export default function ShipmentsSidebar({ shipments, selected, setSelected, filters, setFilters, onNew }: Props) {
   const { t, lang } = useTranslation();
   const tl          = (t.logistics as any) ?? {};
   const locale      = lang === "en" ? "en-US" : "es-MX";
 
   const STATUS_FILTERS = [
-    { value: "all",       label: "Todos"     },
-    { value: "active",    label: "Activos"   },
-    { value: "delivered", label: "Entregados"},
+    { value: "all",       label: "Todos"      },
+    { value: "active",    label: "Activos"    },
+    { value: "delivered", label: "Entregados" },
   ];
 
   function getStatusLabel(s: ShipmentStatus): string {
-    const key = `status${s.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("")}`;
+    const key = `status${s.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("")}`;
     return tl[key] ?? s;
   }
 
   function getServiceLabel(s: ShipmentServiceType): string {
-    const key = `service${s.split("_").map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join("")}`;
+    const key = `service${s.split("_").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join("")}`;
     return tl[key] ?? s;
   }
 
@@ -41,7 +66,6 @@ export default function ShipmentsSidebar({ shipments, selected, setSelected, fil
       display: "flex", flexDirection: "column", gap: "10px",
       height: "100%", minHeight: 0, overflow: "hidden",
     }}>
-
       <div style={{ flexShrink: 0 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
           <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "1px" }}>
@@ -118,10 +142,12 @@ export default function ShipmentsSidebar({ shipments, selected, setSelected, fil
             {tl.noShipments ?? "Sin servicios"}
           </div>
         ) : shipments.map((s) => {
-          const isSelected = selected?.id === s.id;
-          const stCfg      = SHIPMENT_STATUS_CONFIG[s.status];
-          const svcCfg     = SERVICE_TYPE_CONFIG[s.service_type];
+          const isSelected  = selected?.id === s.id;
+          const stCfg       = SHIPMENT_STATUS_CONFIG[s.status];
+          const svcCfg      = SERVICE_TYPE_CONFIG[s.service_type];
           const statusLabel = getStatusLabel(s.status);
+          const totals      = getShipmentTotals(s);
+          const entries     = Object.entries(totals).filter(([, v]) => v > 0);
 
           return (
             <div
@@ -135,7 +161,7 @@ export default function ShipmentsSidebar({ shipments, selected, setSelected, fil
                 transition: "var(--transition-fast)",
               }}
             >
-              {/* Row 1 */}
+              {/* Row 1 — referencia + status */}
               <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <span style={{ fontSize: "10px", fontFamily: "monospace", fontWeight: 800, color: svcCfg.color, flexShrink: 0 }}>
                   {s.reference}
@@ -149,22 +175,34 @@ export default function ShipmentsSidebar({ shipments, selected, setSelected, fil
                   {statusLabel}
                 </span>
               </div>
-              {/* Row 2 */}
+
+              {/* Row 2 — cliente */}
               <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {s.client?.name ?? "—"}
               </div>
-              {/* Row 3 */}
+
+              {/* Row 3 — ruta */}
               <div style={{ fontSize: "10px", color: "var(--color-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                 {[s.origin, s.destination].filter(Boolean).join(" → ") || "Ruta sin definir"}
               </div>
-              {/* Row 4 */}
-              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10px" }}>
+
+              {/* Row 4 — fecha + totales multi-moneda */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", fontSize: "10px" }}>
                 <span style={{ color: "var(--color-text-muted)" }}>
                   {new Date(s.created_at).toLocaleDateString(locale, { day: "numeric", month: "short" })}
                 </span>
-                <span style={{ fontWeight: 700, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
-                  {s.currency} ${Number(s.total ?? 0).toLocaleString(locale, { maximumFractionDigits: 0 })}
-                </span>
+
+                {/* Totales — una línea por moneda */}
+                <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+                  {entries.length > 0 ? entries.map(([cur, val]) => (
+                    <span key={cur} style={{ fontWeight: 700, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums", fontSize: "10px" }}>
+                      {cur !== "MXN" && <span style={{ fontSize: "9px", opacity: 0.7, marginRight: "2px" }}>{cur}</span>}
+                      ${val.toLocaleString(locale, { maximumFractionDigits: 0 })}
+                    </span>
+                  )) : (
+                    <span style={{ color: "var(--color-text-muted)" }}>—</span>
+                  )}
+                </div>
               </div>
             </div>
           );
