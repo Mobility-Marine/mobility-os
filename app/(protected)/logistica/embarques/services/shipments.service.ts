@@ -332,30 +332,24 @@ export function computeShipmentKPIs(shipments: Shipment[]): ShipmentKPIs {
   const profitByCurrency:  CurrencyAmounts = {};
 
   for (const shipment of delivered) {
-    const services    = shipment.services ?? [];
-    const mainCur     = shipment.currency ?? "USD";
-    const provCost    = Number(shipment.provider_cost ?? 0);
-    const provCur     = shipment.provider_currency ?? mainCur;
+    const mainCur  = shipment.currency ?? "USD";
+    const provCost = Number(shipment.provider_cost ?? 0);
+    // Usar siempre currency del embarque para el costo cuando coincide con AP
+    // provider_currency puede estar mal guardado — AP es la fuente de verdad
+    const provCur  = shipment.provider_currency && shipment.provider_currency !== "USD" || mainCur === "USD"
+      ? (shipment.provider_currency ?? mainCur)
+      : mainCur;
 
-    if (services.length > 0) {
-      // Ingresos: desde líneas de servicio por moneda
-      for (const svc of services) {
-        const cur   = svc.currency ?? mainCur;
-        const price = Number(svc.price ?? 0);
-        revenueByCurrency[cur] = (revenueByCurrency[cur] ?? 0) + price;
-      }
-      // Costo: desde provider_cost del embarque (fuente correcta — viene de AP)
-      if (provCost > 0) {
-        costByCurrency[provCur]   = (costByCurrency[provCur]   ?? 0) + provCost;
-        profitByCurrency[mainCur] = (profitByCurrency[mainCur] ?? 0) + ((shipment.total ?? 0) - provCost);
-      } else {
-        profitByCurrency[mainCur] = (profitByCurrency[mainCur] ?? 0) + (shipment.total ?? 0);
-      }
+    // Ingreso: usar shipment.total (incluye IVA) — fuente más confiable
+    revenueByCurrency[mainCur] = (revenueByCurrency[mainCur] ?? 0) + (shipment.total ?? 0);
+
+    // Costo desde provider_cost (actualizado por AP)
+    if (provCost > 0) {
+      costByCurrency[provCur]   = (costByCurrency[provCur]   ?? 0) + provCost;
+      profitByCurrency[mainCur] = (profitByCurrency[mainCur] ?? 0) + ((shipment.total ?? 0) - provCost);
     } else {
-      // Fallback sin servicios detallados
-      revenueByCurrency[mainCur] = (revenueByCurrency[mainCur] ?? 0) + (shipment.total ?? 0);
-      costByCurrency[provCur]    = (costByCurrency[provCur]    ?? 0) + provCost;
-      profitByCurrency[mainCur]  = (profitByCurrency[mainCur]  ?? 0) + (shipment.profit ?? 0);
+      // Sin costo registrado: ganancia = ingreso total (pendiente de registrar factura)
+      profitByCurrency[mainCur] = (profitByCurrency[mainCur] ?? 0) + (shipment.total ?? 0);
     }
   }
 
