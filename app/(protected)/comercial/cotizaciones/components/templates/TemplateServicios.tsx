@@ -7,6 +7,10 @@ import { getBrandColors, PDFHeader, PDFFooter, PDFClientBlock, PDFSectionTitle, 
 type Props = { quotation: Quotation; settings?: CompanySettings | null };
 
 const FOOTER_HEIGHT = 56;
+// Espacio reservado en cada página para el header fijo + margen de respiración.
+// Se aplica como paddingTop en la Page para que funcione en TODAS las páginas
+// (primera y subsecuentes generadas por desbordamiento).
+const HEADER_SPACE  = 180;
 
 const SUBTYPE_TITLES: Record<string, { es: string; en: string }> = {
   terrestre_ltl:    { es: "Cotización Terrestre LTL",        en: "LTL Trucking Quotation"       },
@@ -55,17 +59,27 @@ export default function TemplateServicios({ quotation, settings }: Props) {
 
   return (
     <Document>
+      {/* ═══ PÁGINA(S) PRINCIPAL(ES) ═══ */}
+      {/* paddingTop reserva espacio para el header en TODAS las páginas (primera y las
+          generadas automáticamente cuando el contenido se desborda). El header fijo se
+          dibuja encima de ese espacio reservado gracias a position:absolute. */}
       <Page
         size="LETTER"
-        style={{ backgroundColor: c.WHITE, fontSize: 9, color: c.TEXT_DARK, paddingBottom: FOOTER_HEIGHT + 10 }}
+        style={{
+          backgroundColor: c.WHITE,
+          fontSize: 9,
+          color: c.TEXT_DARK,
+          paddingTop: HEADER_SPACE,
+          paddingBottom: FOOTER_HEIGHT + 10,
+        }}
       >
-        {/* HEADER — fijo, se repite en cada página */}
-        <View fixed>
+        {/* HEADER — fijo y absoluto; se repite en cada página sin ocupar flujo */}
+        <View fixed style={{ position: "absolute", top: 0, left: 0, right: 0 }}>
           <PDFHeader quotation={quotation} settings={settings} lang={lang} subtitle={subtitle} />
         </View>
 
         {/* CONTENIDO */}
-        <View style={{ paddingTop: 20, paddingLeft: 36, paddingRight: 36 }}>
+        <View style={{ paddingLeft: 36, paddingRight: 36 }}>
 
           {/* CLIENTE */}
           <PDFClientBlock quotation={quotation} lang={lang} settings={settings} />
@@ -178,7 +192,9 @@ export default function TemplateServicios({ quotation, settings }: Props) {
         </View>
       </Page>
 
-      {/* PÁGINA TÉRMINOS — sin header */}
+      {/* ═══ PÁGINA TÉRMINOS ═══ */}
+      {/* Esta página NO tiene header, así que NO lleva HEADER_SPACE.
+          El PDFTermsPage ya maneja su propio paddingTop interno. */}
       {termsText ? (
         <Page size="LETTER" style={{ backgroundColor: c.WHITE, fontSize: 9, color: c.TEXT_DARK, paddingBottom: FOOTER_HEIGHT + 10 }}>
           <PDFTermsPage quotation={quotation} lang={lang} settings={settings} />
