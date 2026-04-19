@@ -251,6 +251,8 @@ export async function addService(
       billing_concept_id:  payload.billing_concept_id  ?? null,
       tax_rate:            payload.tax_rate             ?? 16,
       unit_label:          payload.unit_label           ?? null,
+      quantity:            payload.quantity            ?? 1,
+      unit_price:          payload.unit_price          ?? null,
     })
     .select("*").single();
   if (error) throw error;
