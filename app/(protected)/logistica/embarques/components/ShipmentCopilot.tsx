@@ -37,10 +37,19 @@ export default function ShipmentCopilot({ shipment }: Props) {
   );
 
   const stCfg     = SHIPMENT_STATUS_CONFIG[shipment.status];
+
+  // Costo real: preferir suma de AP si provider_cost está en 0
+  const realCost = shipment.provider_cost > 0
+    ? shipment.provider_cost
+    : apProviders.reduce((s, ap) => s + Number(ap.total ?? 0), 0);
+
   const totalRevForMargin = shipment.totals_by_currency
     ? Object.values(shipment.totals_by_currency).reduce((s, v) => s + v.total, 0)
     : (shipment.total ?? 0);
-  const profitPct = totalRevForMargin > 0 ? ((shipment.profit ?? 0) / totalRevForMargin) * 100 : 0;
+
+  const realProfit = totalRevForMargin - realCost;
+  const profitPct  = totalRevForMargin > 0 ? (realProfit / totalRevForMargin) * 100 : 0;
+
   const isLate    = shipment.estimated_delivery && !["delivered","invoiced","cancelled"].includes(shipment.status)
     ? new Date(shipment.estimated_delivery).getTime() < Date.now() : false;
   const daysLate  = isLate && shipment.estimated_delivery
@@ -137,8 +146,8 @@ export default function ShipmentCopilot({ shipment }: Props) {
             {hasMixedCurrencies ? (
               <span style={{ fontSize: "10px", color: "var(--color-text-muted)", fontStyle: "italic" }}>Monedas mixtas</span>
             ) : (
-              <span style={{ fontSize: "11px", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: (shipment.profit ?? 0) >= 0 ? "var(--color-success-text)" : "var(--color-danger-text)" }}>
-                {shipment.currency} ${Number(shipment.profit ?? 0).toLocaleString(locale, { minimumFractionDigits: 2 })}
+              <span style={{ fontSize: "11px", fontWeight: 700, fontVariantNumeric: "tabular-nums", color: realProfit >= 0 ? "var(--color-success-text)" : "var(--color-danger-text)" }}>
+                {shipment.currency} ${realProfit.toLocaleString(locale, { minimumFractionDigits: 2 })}
               </span>
             )}
           </div>
