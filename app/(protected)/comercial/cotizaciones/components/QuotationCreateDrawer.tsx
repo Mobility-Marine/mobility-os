@@ -20,6 +20,8 @@ import StepGeneralInfo from "./drawer/generalInfo/StepGeneralInfo";
 import StepItems       from "./drawer/steps/StepItems";
 import ContentTerrestre, { EMPTY_TERRESTRE_INFO } from "./drawer/byType/ContentTerrestre";
 import type { TerrestreInfo } from "./drawer/byType/ContentTerrestre";
+import ContentMaritimo, { EMPTY_MARITIMO_INFO } from "./drawer/byType/ContentMaritimo";
+import type { MaritimoInfo } from "./drawer/byType/ContentMaritimo";
 
 type Props = {
   open:    boolean;
@@ -44,6 +46,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
   const [billingConcepts,setBillingConcepts]= useState<BillingConceptDraft[]>([]);
   const [svcCatalog,     setSvcCatalog]     = useState<any[]>([]);
   const [terrestreInfo, setTerrestreInfo] = useState<TerrestreInfo>(EMPTY_TERRESTRE_INFO());
+  const [maritimoInfo, setMaritimoInfo] = useState<MaritimoInfo>(EMPTY_MARITIMO_INFO());
   const [config,         setConfig]         = useState<ConfigState>(EMPTY_CONFIG());
   const [stepIdx,        setStepIdx]        = useState(0);
   const [saving,         setSaving]         = useState(false);
@@ -81,6 +84,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
     setCcEmails("");
     setSendingEmail(false);
     setTerrestreInfo(EMPTY_TERRESTRE_INFO());
+    setMaritimoInfo(EMPTY_MARITIMO_INFO());
   }, [open]);
 
   function canAdvance(): boolean {
@@ -122,10 +126,11 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
           type:            quotType,
           service_subtype: serviceSubtype ?? undefined,
           language:        config.language,
-          general_info:    (() => {
-            if (serviceSubtype === "terrestre_ltl" || serviceSubtype === "terrestre_ftl") {
-              return terrestreInfo as any;
-            }
+          general_info: (() => {
+            if (serviceSubtype === "terrestre_ltl" || serviceSubtype === "terrestre_ftl") return terrestreInfo as any;
+            if (serviceSubtype === "maritimo_fcl"  || serviceSubtype === "maritimo_lcl")  return maritimoInfo as any;
+            return Object.keys(generalInfo).length > 0 ? generalInfo as GeneralInfo : undefined;
+          })(),
             return Object.keys(generalInfo).length > 0 ? generalInfo as GeneralInfo : undefined;
           })(),
           client_id:       !clientState.useManual ? clientState.selectedClient?.id : undefined,
@@ -248,7 +253,16 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
                   svcCatalog={svcCatalog}
                 />
               )}
-              {serviceSubtype && !["terrestre_ltl","terrestre_ftl"].includes(serviceSubtype) && (
+              {(serviceSubtype === "maritimo_fcl" || serviceSubtype === "maritimo_lcl") && (
+                <ContentMaritimo
+                  info={maritimoInfo}
+                  setInfo={setMaritimoInfo}
+                  billingConcepts={billingConcepts}
+                  setBillingConcepts={setBillingConcepts}
+                  svcCatalog={svcCatalog}
+                />
+              )}
+              {serviceSubtype && !["terrestre_ltl","terrestre_ftl","maritimo_fcl","maritimo_lcl"].includes(serviceSubtype) && (
                 <div style={{ padding: "32px", textAlign: "center", borderRadius: "var(--radius-md)", border: "1px dashed var(--color-border)", color: "var(--color-text-muted)" }}>
                   <div style={{ fontSize: "24px", marginBottom: "8px" }}>🚧</div>
                   <div style={{ fontSize: "14px", fontWeight: 700 }}>En construcción</div>
@@ -288,7 +302,6 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
             />
           )}
         </div>
-
         {/* FOOTER */}
         <div style={{ padding: "14px 24px", borderTop: "1px solid var(--color-border-faint)", display: "flex", gap: "10px", flexShrink: 0 }}>
           {stepIdx > 0 && currentStep !== "actions" && (
