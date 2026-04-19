@@ -15,7 +15,6 @@ import type { ShipmentDocument, DocCategory } from "../../../logistica/documenta
 import { DOC_CATEGORY_CONFIG, DOC_STATUS_CONFIG } from "../../../logistica/documentacion/types/docs.types";
 import { useRef, useEffect } from "react";
 
-// ── PANEL FACTURA PROVEEDOR ───────────────────────────────────
 function ProveedorFacturaPanel({
   shipment, companyId, onCreated,
 }: {
@@ -23,10 +22,8 @@ function ProveedorFacturaPanel({
   companyId:  string;
   onCreated:  () => Promise<void>;
 }) {
-  // usa sb y las funciones importadas al inicio del archivo
-
-  const [hasAP,     setHasAP]     = useState<boolean | null>(null);
-  const [apData,    setApData]    = useState<{ id: string; pdf_url?: string } | null>(null);
+  const [apList,    setApList]    = useState<{ id: string; supplier_name: string; total: number; currency: string; pdf_url?: string }[]>([]);
+  const [loaded,    setLoaded]    = useState(false);
   const [open,      setOpen]      = useState(false);
   const [saving,    setSaving]    = useState(false);
   const [providers, setProviders] = useState<{ id: string; name: string; rfc?: string }[]>([]);
@@ -35,7 +32,7 @@ function ProveedorFacturaPanel({
   const pdfRef = useRef<HTMLInputElement>(null);
   const xmlRef = useRef<HTMLInputElement>(null);
 
-  const [form, setForm] = useState({
+  const EMPTY_FORM = {
     logistics_provider_id: shipment.provider_id ?? "",
     supplier_name:   (shipment as any).provider?.name ?? "",
     supplier_rfc:    "",
@@ -45,24 +42,31 @@ function ProveedorFacturaPanel({
     currency:        shipment.currency ?? "USD",
     subtotal:        "",
     tax_amount:      "",
-    total:           String(shipment.provider_cost > 0 ? shipment.provider_cost : ""),
+    total:           "",
     exchange_rate:   "1",
-  });
+  };
+  const [form, setForm] = useState(EMPTY_FORM);
 
   useEffect(() => {
     sb.from("accounts_payable")
-      .select("id, pdf_url").eq("related_shipment_id", shipment.id).limit(1)
-      .then(({ data }: any) => {
-        if ((data ?? []).length > 0) { setHasAP(true); setApData(data[0]); }
-        else setHasAP(false);
-      });
+      .select("id, supplier_name, total, currency, pdf_url")
+      .eq("related_shipment_id", shipment.id)
+      .order("created_at")
+      .then(({ data }) => { setApList(data ?? []); setLoaded(true); });
     sb.from("logistics_providers")
       .select("id, name, rfc").eq("company_id", companyId).eq("is_active", true).order("name")
-      .then(({ data }: any) => setProviders(data ?? []));
+      .then(({ data }) => setProviders(data ?? []));
   }, [shipment.id, companyId]);
 
+  // Totales por moneda de todas las facturas
+  const totalsByCurrency = apList.reduce((acc, ap) => {
+    const cur = ap.currency ?? "MXN";
+    acc[cur] = (acc[cur] ?? 0) + Number(ap.total ?? 0);
+    return acc;
+  }, {} as Record<string, number>);
+
   function selectProvider(id: string) {
-    const p = providers.find((x: any) => x.id === id);
+    const p = providers.find((x) => x.id === id);
     setForm(f => ({ ...f, logistics_provider_id: id, supplier_name: p?.name ?? "", supplier_rfc: p?.rfc ?? "" }));
   }
 
@@ -80,11 +84,11 @@ function ProveedorFacturaPanel({
     setSaving(true);
     try {
       const { data: user } = await sb.auth.getUser();
-      const userId = user.user?.id ?? null;
+      const userId   = user.user?.id ?? null;
       const totalNum = parseFloat(form.total);
       if (!totalNum || totalNum <= 0) return;
 
-      // 1. Crear registro en accounts_payable
+      // 1. Crear AP
       const { data: ap, error: apErr } = await sb.from("accounts_payable").insert({
         company_id:            companyId,
         logistics_provider_id: form.logistics_provider_id || null,
@@ -107,80 +111,68 @@ function ProveedorFacturaPanel({
         notes:                 `Servicio logístico — ${shipment.reference}`,
         created_by:            userId,
       }).select("id").single();
+      if (apErr || !ap) { console.error("AP insert error:", apErr); return; }
 
-      if (apErr) { console.error("AP insert error:", apErr); return; }
-      if (!ap)   { console.error("AP insert returned null"); return; }
-
-      // 2. Actualizar provider_cost INMEDIATAMENTE después del insert
-      //    Sumar facturas previas de este embarque + la nueva
-      const { data: prevAP } = await sb
+      // 2. Sumar TODOS los AP de este embarque para actualizar provider_cost
+      const { data: allAP } = await sb
         .from("accounts_payable")
-        .select("total")
-        .eq("related_shipment_id", shipment.id)
-        .neq("id", ap.id);
+        .select("total, currency")
+        .eq("related_shipment_id", shipment.id);
 
-      const prevTotal         = (prevAP ?? []).reduce((s: number, r: any) => s + (parseFloat(r.total) || 0), 0);
-      const totalProviderCost = prevTotal + totalNum;
+      // Sumar en moneda del embarque usando tipo de cambio si aplica
+      const newTotal = (allAP ?? []).reduce((s, r) => {
+        const amt = parseFloat(r.total) || 0;
+        const tc  = r.currency !== shipment.currency ? parseFloat(form.exchange_rate) || 1 : 1;
+        return s + (r.currency === shipment.currency ? amt : amt / tc);
+      }, 0);
 
-      const { data: sh } = await sb
-        .from("shipments")
-        .select("total")
-        .eq("id", shipment.id)
-        .single();
+      const { data: sh } = await sb.from("shipments").select("total").eq("id", shipment.id).single();
+      await sb.from("shipments").update({
+        provider_cost: newTotal,
+        profit:        (sh?.total ?? 0) - newTotal,
+        updated_at:    new Date().toISOString(),
+      }).eq("id", shipment.id);
 
-      const { error: updateErr } = await sb
-        .from("shipments")
-        .update({
-          provider_cost: totalProviderCost,
-          profit:        (sh?.total ?? 0) - totalProviderCost,
-          updated_at:    new Date().toISOString(),
-        })
-        .eq("id", shipment.id);
-
-      if (updateErr) console.error("Shipment update error:", updateErr);
-
-      // 3. Subir PDF si se adjuntó (secundario — no bloquea el flujo)
+      // 3. PDF
       let pdfUrl: string | null = null;
       if (pdfFile) {
         try {
           const doc = await createDocument(companyId, userId, {
             shipment_id: shipment.id,
             name:        `Factura proveedor — ${form.supplier_name}${form.document_number ? ` (${form.document_number})` : ""}`,
-            category:    "factura_proveedor",
-            status:      "approved",
-            version:     1,
-            required:    false,
+            category:    "factura_proveedor", status: "approved", version: 1, required: false,
           });
           pdfUrl = await uploadDocumentFile(companyId, doc.id, pdfFile);
-          await sb.from("accounts_payable")
-            .update({ pdf_url: pdfUrl, updated_at: new Date().toISOString() })
-            .eq("id", ap.id);
-        } catch (pdfErr) { console.error("PDF upload error:", pdfErr); }
+          await sb.from("accounts_payable").update({ pdf_url: pdfUrl }).eq("id", ap.id);
+        } catch (e) { console.error("PDF error:", e); }
       }
 
-      // 4. Subir XML si se adjuntó (secundario)
+      // 4. XML
       if (xmlFile) {
         try {
           const docXml = await createDocument(companyId, userId, {
             shipment_id: shipment.id,
-            name:        `XML factura proveedor — ${form.supplier_name}${form.document_number ? ` (${form.document_number})` : ""}`,
-            category:    "factura_proveedor",
-            status:      "approved",
-            version:     1,
-            required:    false,
+            name:        `XML factura — ${form.supplier_name}${form.document_number ? ` (${form.document_number})` : ""}`,
+            category:    "factura_proveedor", status: "approved", version: 1, required: false,
           });
           const xmlUrl = await uploadDocumentFile(companyId, docXml.id, xmlFile);
-          await sb.from("accounts_payable")
-            .update({ xml_url: xmlUrl, updated_at: new Date().toISOString() })
-            .eq("id", ap.id);
-        } catch (xmlErr) { console.error("XML upload error:", xmlErr); }
+          await sb.from("accounts_payable").update({ xml_url: xmlUrl }).eq("id", ap.id);
+        } catch (e) { console.error("XML error:", e); }
       }
 
-      setHasAP(true);
-      setApData({ id: ap.id, pdf_url: pdfUrl ?? undefined });
+      // 5. Actualizar lista local
+      setApList(prev => [...prev, {
+        id: ap.id,
+        supplier_name: form.supplier_name,
+        total: totalNum,
+        currency: form.currency,
+        pdf_url: pdfUrl ?? undefined,
+      }]);
+      setForm(EMPTY_FORM);
+      setPdfFile(null);
+      setXmlFile(null);
       setOpen(false);
       await onCreated();
-
     } finally { setSaving(false); }
   }
 
@@ -191,49 +183,74 @@ function ProveedorFacturaPanel({
     fontSize: "12px", outline: "none", boxSizing: "border-box",
   };
 
-  if (hasAP === null) return null;
+  if (!loaded) return null;
 
-  // ── Ya tiene AP registrado ──
-  if (hasAP) return (
-    <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", fontSize: "12px", color: "var(--color-success-text)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-        Factura de proveedor registrada en Cuentas por Pagar
-      </div>
-      {apData?.pdf_url && (
-        <a href={apData.pdf_url} target="_blank" rel="noopener noreferrer"
-          style={{ display: "flex", alignItems: "center", gap: "4px", fontSize: "11px", fontWeight: 700, color: "var(--color-success-text)", textDecoration: "none", padding: "3px 10px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-success-border)", background: "var(--color-bg-base)" }}>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          Ver factura PDF
-        </a>
-      )}
-    </div>
-  );
-
-  // ── Pendiente de registrar ──
   return (
-    <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.3)" }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: open ? "12px" : 0 }}>
+    <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: apList.length > 0 ? "var(--color-bg-subtle)" : "rgba(239,68,68,0.06)", border: `1px solid ${apList.length > 0 ? "var(--color-border-faint)" : "rgba(239,68,68,0.3)"}` }}>
+
+      {/* HEADER */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: apList.length > 0 || open ? "10px" : 0 }}>
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          <span style={{ fontSize: "12px", fontWeight: 700, color: "#ef4444" }}>
-            Factura de proveedor pendiente de registrar
+          {apList.length > 0 ? (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-text)" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+          ) : (
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          )}
+          <span style={{ fontSize: "12px", fontWeight: 700, color: apList.length > 0 ? "var(--color-text-primary)" : "#ef4444" }}>
+            {apList.length > 0
+              ? `${apList.length} factura${apList.length > 1 ? "s" : ""} de proveedor registrada${apList.length > 1 ? "s" : ""}`
+              : "Factura de proveedor pendiente"}
           </span>
         </div>
         <button onClick={() => setOpen(v => !v)}
-          style={{ height: "26px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "#ef4444", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
-          {open ? "Cancelar" : "Registrar factura"}
+          style={{ height: "26px", padding: "0 12px", borderRadius: "var(--radius-md)", background: apList.length > 0 ? "var(--color-brand-blue)" : "#ef4444", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
+          {open ? "Cancelar" : apList.length > 0 ? "+ Agregar factura" : "Registrar factura"}
         </button>
       </div>
 
+      {/* LISTA DE FACTURAS EXISTENTES */}
+      {apList.length > 0 && (
+        <div style={{ display: "grid", gap: "5px", marginBottom: open ? "10px" : 0 }}>
+          {apList.map((ap, i) => (
+            <div key={ap.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "6px 10px", borderRadius: "var(--radius-sm)", background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)" }}>#{i + 1}</span>
+                <span style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)" }}>{ap.supplier_name}</span>
+                <span style={{ fontSize: "10px", padding: "1px 5px", borderRadius: "var(--radius-full)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", color: "var(--color-info-text)", fontWeight: 600 }}>{ap.currency}</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <span style={{ fontSize: "13px", fontWeight: 800, color: "var(--color-danger-text)", fontVariantNumeric: "tabular-nums" }}>
+                  {ap.currency} ${Number(ap.total).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                </span>
+                {ap.pdf_url && (
+                  <a href={ap.pdf_url} target="_blank" rel="noopener noreferrer"
+                    style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-brand-blue)", textDecoration: "none", padding: "2px 8px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-info-border)", background: "var(--color-info-bg)" }}>
+                    PDF
+                  </a>
+                )}
+              </div>
+            </div>
+          ))}
+          {/* Totales por moneda */}
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px", padding: "5px 10px", borderTop: "1px solid var(--color-border-faint)", marginTop: "2px" }}>
+            <span style={{ fontSize: "10px", color: "var(--color-text-muted)", alignSelf: "center" }}>Total costo:</span>
+            {Object.entries(totalsByCurrency).map(([cur, total]) => (
+              <span key={cur} style={{ fontSize: "13px", fontWeight: 800, color: "var(--color-danger-text)", fontVariantNumeric: "tabular-nums" }}>
+                {cur} ${Number(total).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* FORMULARIO NUEVA FACTURA */}
       {open && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-          {/* Proveedor */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", paddingTop: "8px", borderTop: "1px solid var(--color-border-faint)" }}>
           <div style={{ gridColumn: "1 / -1" }}>
             <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Proveedor *</div>
             <select value={form.logistics_provider_id} onChange={e => selectProvider(e.target.value)} style={{ ...INPUT_S, cursor: "pointer" }}>
               <option value="">— Seleccionar —</option>
-              {providers.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              {providers.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
             {!form.logistics_provider_id && (
               <input value={form.supplier_name} onChange={e => setForm(f => ({ ...f, supplier_name: e.target.value }))}
@@ -241,16 +258,15 @@ function ProveedorFacturaPanel({
             )}
           </div>
 
-          {/* Campos de documento */}
           {[
             { k: "document_number", label: "Folio factura",  type: "text" },
             { k: "document_date",   label: "Fecha factura",  type: "date" },
             { k: "due_date",        label: "Vencimiento",    type: "date" },
-            { k: "currency",        label: "Moneda",         type: "select" },
+            { k: "currency",        label: "Moneda",         type: "select-currency" },
           ].map(f => (
             <div key={f.k}>
               <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>{f.label}</div>
-              {f.type === "select" ? (
+              {f.type === "select-currency" ? (
                 <select value={(form as any)[f.k]} onChange={e => setForm(p => ({ ...p, [f.k]: e.target.value }))} style={{ ...INPUT_S, cursor: "pointer" }}>
                   {["USD","MXN","EUR"].map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
@@ -260,32 +276,25 @@ function ProveedorFacturaPanel({
             </div>
           ))}
 
-{/* Tipo de cambio — solo si moneda difiere del embarque */}
+          {/* Tipo de cambio si moneda difiere */}
           {form.currency !== (shipment.currency ?? "USD") && (
             <div style={{ gridColumn: "1 / -1" }}>
               <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>
                 Tipo de cambio ({form.currency} → {shipment.currency ?? "USD"}) *
               </div>
               <div style={{ display: "flex", gap: "8px", alignItems: "center" }}>
-                <input
-                  type="number" min="0.01" step="0.01"
-                  value={form.exchange_rate}
+                <input type="number" min="0.01" step="0.01" value={form.exchange_rate}
                   onChange={e => setForm(f => ({ ...f, exchange_rate: e.target.value }))}
-                  placeholder="Ej: 17.50"
-                  style={{ ...INPUT_S, flex: 1 }}
-                />
+                  placeholder="Ej: 17.50" style={{ ...INPUT_S, flex: 1 }} />
                 {form.total && form.exchange_rate && (
-                  <div style={{ fontSize: "11px", color: "var(--color-text-muted)", whiteSpace: "nowrap", flexShrink: 0 }}>
+                  <div style={{ fontSize: "11px", color: "var(--color-text-muted)", whiteSpace: "nowrap" }}>
                     = {shipment.currency} ${(parseFloat(form.total) / parseFloat(form.exchange_rate)).toFixed(2)}
                   </div>
                 )}
               </div>
-              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "3px" }}>
-                Cuántos {form.currency} equivalen a 1 {shipment.currency ?? "USD"}
-              </div>
             </div>
           )}
-          
+
           {/* Importes */}
           <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
             {[
@@ -302,47 +311,31 @@ function ProveedorFacturaPanel({
             ))}
           </div>
 
-          {/* Adjuntar archivos */}
+          {/* Archivos */}
           <div style={{ gridColumn: "1 / -1", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-            {/* PDF */}
             <div>
-              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>
-                Factura PDF
-                <span style={{ color: "var(--color-text-muted)", fontWeight: 400, textTransform: "none", marginLeft: "4px" }}>(opcional)</span>
+              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>PDF <span style={{ fontWeight: 400 }}>(opcional)</span></div>
+              <div onClick={() => pdfRef.current?.click()}
+                style={{ height: "34px", borderRadius: "var(--radius-md)", border: `1px dashed ${pdfFile ? "var(--color-success-text)" : "var(--color-border)"}`, background: pdfFile ? "var(--color-success-bg)" : "var(--color-bg-base)", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer", fontSize: "11px", color: pdfFile ? "var(--color-success-text)" : "var(--color-text-muted)", fontWeight: pdfFile ? 600 : 400 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                {pdfFile ? pdfFile.name.substring(0, 18) + (pdfFile.name.length > 18 ? "…" : "") : "Subir PDF"}
               </div>
-              <div
-                onClick={() => pdfRef.current?.click()}
-                style={{ height: "36px", borderRadius: "var(--radius-md)", border: `1px dashed ${pdfFile ? "var(--color-success-text)" : "var(--color-border)"}`, background: pdfFile ? "var(--color-success-bg)" : "var(--color-bg-base)", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer", fontSize: "11px", color: pdfFile ? "var(--color-success-text)" : "var(--color-text-muted)", fontWeight: pdfFile ? 600 : 400 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                {pdfFile ? pdfFile.name.substring(0, 20) + (pdfFile.name.length > 20 ? "…" : "") : "Subir PDF"}
-              </div>
-              <input ref={pdfRef} type="file" accept=".pdf" style={{ display: "none" }}
-                onChange={e => setPdfFile(e.target.files?.[0] ?? null)} />
+              <input ref={pdfRef} type="file" accept=".pdf" style={{ display: "none" }} onChange={e => setPdfFile(e.target.files?.[0] ?? null)} />
             </div>
-
-            {/* XML */}
             <div>
-              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>
-                XML SAT
-                <span style={{ color: "var(--color-text-muted)", fontWeight: 400, textTransform: "none", marginLeft: "4px" }}>(opcional)</span>
+              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>XML SAT <span style={{ fontWeight: 400 }}>(opcional)</span></div>
+              <div onClick={() => xmlRef.current?.click()}
+                style={{ height: "34px", borderRadius: "var(--radius-md)", border: `1px dashed ${xmlFile ? "var(--color-success-text)" : "var(--color-border)"}`, background: xmlFile ? "var(--color-success-bg)" : "var(--color-bg-base)", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer", fontSize: "11px", color: xmlFile ? "var(--color-success-text)" : "var(--color-text-muted)", fontWeight: xmlFile ? 600 : 400 }}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+                {xmlFile ? xmlFile.name.substring(0, 18) + (xmlFile.name.length > 18 ? "…" : "") : "Subir XML"}
               </div>
-              <div
-                onClick={() => xmlRef.current?.click()}
-                style={{ height: "36px", borderRadius: "var(--radius-md)", border: `1px dashed ${xmlFile ? "var(--color-success-text)" : "var(--color-border)"}`, background: xmlFile ? "var(--color-success-bg)" : "var(--color-bg-base)", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px", cursor: "pointer", fontSize: "11px", color: xmlFile ? "var(--color-success-text)" : "var(--color-text-muted)", fontWeight: xmlFile ? 600 : 400 }}>
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
-                {xmlFile ? xmlFile.name.substring(0, 20) + (xmlFile.name.length > 20 ? "…" : "") : "Subir XML"}
-              </div>
-              <input ref={xmlRef} type="file" accept=".xml" style={{ display: "none" }}
-                onChange={e => setXmlFile(e.target.files?.[0] ?? null)} />
+              <input ref={xmlRef} type="file" accept=".xml" style={{ display: "none" }} onChange={e => setXmlFile(e.target.files?.[0] ?? null)} />
             </div>
           </div>
 
-          {/* Botón guardar */}
           <button onClick={handleSave} disabled={saving || !form.supplier_name || !form.total}
-            style={{ gridColumn: "1 / -1", height: "36px", borderRadius: "var(--radius-md)", background: "#ef4444", color: "#fff", border: "none", fontSize: "12px", fontWeight: 700, cursor: saving || (!form.supplier_name || !form.total) ? "not-allowed" : "pointer", opacity: (!form.supplier_name || !form.total) ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
-            {saving ? (
-              <>"Guardando…"</>
-            ) : (
+            style={{ gridColumn: "1 / -1", height: "36px", borderRadius: "var(--radius-md)", background: "#ef4444", color: "#fff", border: "none", fontSize: "12px", fontWeight: 700, cursor: saving || !form.supplier_name || !form.total ? "not-allowed" : "pointer", opacity: !form.supplier_name || !form.total ? 0.6 : 1, display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+            {saving ? "Guardando…" : (
               <>
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
                 Registrar en Cuentas por Pagar{pdfFile || xmlFile ? " y subir archivos" : ""}
