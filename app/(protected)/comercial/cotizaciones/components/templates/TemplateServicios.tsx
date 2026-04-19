@@ -191,10 +191,12 @@ export default function TemplateServicios({ quotation, settings }: Props) {
   );
 }
 
-// ── Info General por subtipo — DISEÑO PREMIUM UNIFICADO ──────────
-// Todas las subsecciones (ruta, carga, equipo, dimensiones, etc.) se renderizan
-// dentro de un único "card" con divisores sutiles entre filas. Mismos labels,
-// mismos tamaños, misma tipografía para todos los subtipos.
+// ── Info General por subtipo — DOS CARDS SEPARADOS ──────────────
+// Card 1 (borde ACCENT): Rutas / Puertos / Aeropuertos / Aduana
+// Card 2 (borde BRAND):  Detalles de la Carga (mercancía, peso, unidad, dimensiones, contenedores, etc.)
+// Los colores se toman de la configuración de la empresa vía getBrandColors().
+// Cada card está envuelto en <View wrap={false}> para que el título y el contenido
+// no se separen entre páginas, igual que pasa con los conceptos y el cuadro de totales.
 function GeneralInfoBlock({ gi, subtype, lang, c }: any) {
   const isTerrestre = subtype.startsWith("terrestre");
   const isMaritimo  = subtype.startsWith("maritimo");
@@ -210,7 +212,15 @@ function GeneralInfoBlock({ gi, subtype, lang, c }: any) {
     : volLTL;
 
   // ── Estilos unificados ───────────────────────────────────────
-  const cardStyle: any = {
+  // Card con borde de acento (Rutas / Puertos / Aeropuertos / Aduana)
+  const cardAccentStyle: any = {
+    backgroundColor: c.LIGHT,
+    borderWidth: 1,
+    borderColor: c.ACCENT + "60",
+    borderRadius: 5,
+  };
+  // Card con borde de marca (Detalles de la Carga)
+  const cardBrandStyle: any = {
     backgroundColor: c.LIGHT,
     borderWidth: 1,
     borderColor: c.BRAND_COLOR + "30",
@@ -234,9 +244,13 @@ function GeneralInfoBlock({ gi, subtype, lang, c }: any) {
     color: c.TEXT_DARK,
     fontWeight: "bold",
   };
-  const dividerStyle: any = {
+  const dividerBrandStyle: any = {
     height: 1,
     backgroundColor: c.BRAND_COLOR + "20",
+  };
+  const dividerAccentStyle: any = {
+    height: 1,
+    backgroundColor: c.ACCENT + "40",
   };
 
   // ── Helper: campo individual ─────────────────────────────────
@@ -247,18 +261,28 @@ function GeneralInfoBlock({ gi, subtype, lang, c }: any) {
     </View>
   );
 
+  // Título reutilizado para el segundo card
+  const cargoDetailsTitle = lang === "en" ? "Cargo Details" : "Detalles de la Carga";
+
+  // Flags para saber si hay info a mostrar en el card 2
+  const hasTerrestreCargo = gi.mercancia || gi.peso_kg || gi.tipo_unidad;
+  const hasTerrestreDims  = subtype === "terrestre_ltl" && (gi.largo_cm || gi.ancho_cm || gi.alto_cm || gi.piezas);
+  const hasMaritimoCargo  = gi.mercancia || gi.peso_kg;
+  const hasMaritimoConts  = subtype === "maritimo_fcl" && gi.contenedores?.length > 0;
+  const hasAereoCargo     = gi.mercancia || gi.carrier || gi.peso_cobrable_kg;
+  const hasAduanalCargo   = gi.descripcion_mercancia || gi.pais_origen_destino;
+
   return (
-    <View style={{ marginBottom: 12 }} wrap={false}>
+    <View style={{ marginBottom: 12 }}>
 
       {/* ═══════════════ TERRESTRE ═══════════════ */}
       {isTerrestre && gi.rutas?.length > 0 && (
-        <>
+        <View wrap={false}>
           <PDFSectionTitle title={subtype === "terrestre_ltl" ? (lang === "en" ? "Routes — LTL" : "Rutas — LTL") : (lang === "en" ? "Routes — FTL" : "Rutas — FTL")} c={c} />
-          <View style={cardStyle}>
-            {/* Rutas */}
+          <View style={cardAccentStyle}>
             {gi.rutas.map((r: any, i: number) => (
               <View key={`ruta-${i}`}>
-                {i > 0 && <View style={dividerStyle} />}
+                {i > 0 && <View style={dividerAccentStyle} />}
                 <View style={rowStyle}>
                   <Field label={tx(lang, "origin")} value={r.origen} />
                   <Field label={tx(lang, "destination")} value={r.destino} />
@@ -266,23 +290,24 @@ function GeneralInfoBlock({ gi, subtype, lang, c }: any) {
                 </View>
               </View>
             ))}
+          </View>
+        </View>
+      )}
 
-            {/* Mercancía / Peso / Unidad */}
-            {(gi.mercancia || gi.peso_kg || gi.tipo_unidad) ? (
+      {isTerrestre && (hasTerrestreCargo || hasTerrestreDims) && (
+        <View wrap={false}>
+          <PDFSectionTitle title={cargoDetailsTitle} c={c} />
+          <View style={cardBrandStyle}>
+            {hasTerrestreCargo && (
+              <View style={rowStyle}>
+                {gi.mercancia   ? <Field label={tx(lang, "cargo")}    value={gi.mercancia} flex={2} /> : null}
+                {gi.peso_kg     ? <Field label={tx(lang, "weight")}   value={`${Number(gi.peso_kg).toLocaleString()} kg`} /> : null}
+                {gi.tipo_unidad ? <Field label={tx(lang, "unitType")} value={`${gi.tipo_unidad}${gi.cantidad_unidades && Number(gi.cantidad_unidades) > 1 ? ` × ${gi.cantidad_unidades}` : ""}`} /> : null}
+              </View>
+            )}
+            {hasTerrestreDims && (
               <>
-                <View style={dividerStyle} />
-                <View style={rowStyle}>
-                  {gi.mercancia  ? <Field label={tx(lang, "cargo")}    value={gi.mercancia} flex={2} /> : null}
-                  {gi.peso_kg    ? <Field label={tx(lang, "weight")}   value={`${Number(gi.peso_kg).toLocaleString()} kg`} /> : null}
-                  {gi.tipo_unidad? <Field label={tx(lang, "unitType")} value={`${gi.tipo_unidad}${gi.cantidad_unidades && Number(gi.cantidad_unidades) > 1 ? ` × ${gi.cantidad_unidades}` : ""}`} /> : null}
-                </View>
-              </>
-            ) : null}
-
-            {/* LTL — Dimensiones y volumen */}
-            {subtype === "terrestre_ltl" && (gi.largo_cm || gi.ancho_cm || gi.alto_cm || gi.piezas) ? (
-              <>
-                <View style={dividerStyle} />
+                {hasTerrestreCargo && <View style={dividerBrandStyle} />}
                 <View style={rowStyle}>
                   {gi.largo_cm ? <Field label={lang === "en" ? "Length" : "Largo"} value={`${gi.largo_cm} cm`} /> : null}
                   {gi.ancho_cm ? <Field label={lang === "en" ? "Width"  : "Ancho"} value={`${gi.ancho_cm} cm`} /> : null}
@@ -291,38 +316,38 @@ function GeneralInfoBlock({ gi, subtype, lang, c }: any) {
                   {volLTL      ? <Field label={tx(lang, "volume")} value={`${volLTL.toFixed(3)} m³${volTotal && Number(gi.piezas) > 1 ? ` × ${gi.piezas} = ${volTotal.toFixed(3)} m³` : ""}`} flex={2} accent /> : null}
                 </View>
               </>
-            ) : null}
+            )}
           </View>
-        </>
+        </View>
       )}
 
       {/* ═══════════════ MARÍTIMO ═══════════════ */}
-      {isMaritimo ? (
-        <>
-          <PDFSectionTitle title={subtype === "maritimo_fcl" ? `FCL — ${tx(lang, "containers")}` : "LCL"} c={c} />
-          <View style={cardStyle}>
-            {/* Puertos + Incoterm */}
+      {isMaritimo && (
+        <View wrap={false}>
+          <PDFSectionTitle title={lang === "en" ? "Ports" : "Puertos"} c={c} />
+          <View style={cardAccentStyle}>
             <View style={rowStyle}>
               {gi.puerto_origen  ? <Field label={tx(lang, "originPort")} value={gi.puerto_origen}  /> : null}
               {gi.puerto_destino ? <Field label={tx(lang, "destPort")}   value={gi.puerto_destino} /> : null}
               {gi.incoterm       ? <Field label={tx(lang, "incoterm")}   value={gi.incoterm} width={70} /> : null}
             </View>
+          </View>
+        </View>
+      )}
 
-            {/* Mercancía / Peso */}
-            {(gi.mercancia || gi.peso_kg) ? (
+      {isMaritimo && (hasMaritimoCargo || hasMaritimoConts) && (
+        <View wrap={false}>
+          <PDFSectionTitle title={cargoDetailsTitle} c={c} />
+          <View style={cardBrandStyle}>
+            {hasMaritimoCargo && (
+              <View style={rowStyle}>
+                {gi.mercancia ? <Field label={tx(lang, "cargo")}  value={gi.mercancia} flex={2} /> : null}
+                {gi.peso_kg   ? <Field label={tx(lang, "weight")} value={`${Number(gi.peso_kg).toLocaleString()} kg`} /> : null}
+              </View>
+            )}
+            {hasMaritimoConts && (
               <>
-                <View style={dividerStyle} />
-                <View style={rowStyle}>
-                  {gi.mercancia ? <Field label={tx(lang, "cargo")}  value={gi.mercancia} flex={2} /> : null}
-                  {gi.peso_kg   ? <Field label={tx(lang, "weight")} value={`${Number(gi.peso_kg).toLocaleString()} kg`} /> : null}
-                </View>
-              </>
-            ) : null}
-
-            {/* Contenedores FCL */}
-            {subtype === "maritimo_fcl" && gi.contenedores?.length > 0 ? (
-              <>
-                <View style={dividerStyle} />
+                {hasMaritimoCargo && <View style={dividerBrandStyle} />}
                 <View style={{ padding: "9 14" }}>
                   <Text style={labelStyle}>{tx(lang, "containers")}</Text>
                   <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
@@ -334,63 +359,63 @@ function GeneralInfoBlock({ gi, subtype, lang, c }: any) {
                   </View>
                 </View>
               </>
-            ) : null}
+            )}
           </View>
-        </>
-      ) : null}
+        </View>
+      )}
 
       {/* ═══════════════ AÉREO ═══════════════ */}
-      {isAereo ? (
-        <>
-          <PDFSectionTitle title={subtype === "aereo_carga" ? (lang === "en" ? "Air Freight" : "Flete Aéreo") : "Courier"} c={c} />
-          <View style={cardStyle}>
-            {/* Aeropuertos + Incoterm */}
+      {isAereo && (
+        <View wrap={false}>
+          <PDFSectionTitle title={lang === "en" ? "Airports" : "Aeropuertos"} c={c} />
+          <View style={cardAccentStyle}>
             <View style={rowStyle}>
               {gi.aeropuerto_origen  ? <Field label={tx(lang, "originAirport")} value={gi.aeropuerto_origen}  /> : null}
               {gi.aeropuerto_destino ? <Field label={tx(lang, "destAirport")}   value={gi.aeropuerto_destino} /> : null}
               {gi.incoterm           ? <Field label={tx(lang, "incoterm")}      value={gi.incoterm} width={70} /> : null}
             </View>
-
-            {/* Mercancía / Carrier / Peso cobrable */}
-            {(gi.mercancia || gi.carrier || gi.peso_cobrable_kg) ? (
-              <>
-                <View style={dividerStyle} />
-                <View style={rowStyle}>
-                  {gi.mercancia        ? <Field label={tx(lang, "cargo")}            value={gi.mercancia} flex={2} /> : null}
-                  {gi.carrier          ? <Field label={tx(lang, "carrier")}          value={gi.carrier} /> : null}
-                  {gi.peso_cobrable_kg ? <Field label={tx(lang, "chargeableWeight")} value={`${Number(gi.peso_cobrable_kg).toFixed(2)} kg`} /> : null}
-                </View>
-              </>
-            ) : null}
           </View>
-        </>
-      ) : null}
+        </View>
+      )}
+
+      {isAereo && hasAereoCargo && (
+        <View wrap={false}>
+          <PDFSectionTitle title={cargoDetailsTitle} c={c} />
+          <View style={cardBrandStyle}>
+            <View style={rowStyle}>
+              {gi.mercancia        ? <Field label={tx(lang, "cargo")}            value={gi.mercancia} flex={2} /> : null}
+              {gi.carrier          ? <Field label={tx(lang, "carrier")}          value={gi.carrier} /> : null}
+              {gi.peso_cobrable_kg ? <Field label={tx(lang, "chargeableWeight")} value={`${Number(gi.peso_cobrable_kg).toFixed(2)} kg`} /> : null}
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* ═══════════════ ADUANAL ═══════════════ */}
-      {isAduanal ? (
-        <>
+      {isAduanal && (
+        <View wrap={false}>
           <PDFSectionTitle title={tx(lang, "customs")} c={c} />
-          <View style={cardStyle}>
-            {/* Aduana / Fracción / Incoterm */}
+          <View style={cardAccentStyle}>
             <View style={rowStyle}>
               {gi.aduana_nombre        ? <Field label={tx(lang, "customsOffice")} value={`${gi.aduana_nombre} (${gi.aduana_clave_sat})`} flex={2} /> : null}
               {gi.fraccion_arancelaria ? <Field label={tx(lang, "tariffCode")}    value={gi.fraccion_arancelaria} /> : null}
               {gi.incoterm             ? <Field label={tx(lang, "incoterm")}      value={gi.incoterm} width={70} /> : null}
             </View>
-
-            {/* Descripción + País */}
-            {(gi.descripcion_mercancia || gi.pais_origen_destino) ? (
-              <>
-                <View style={dividerStyle} />
-                <View style={rowStyle}>
-                  {gi.descripcion_mercancia ? <Field label={tx(lang, "mercDesc")}      value={gi.descripcion_mercancia} flex={2} /> : null}
-                  {gi.pais_origen_destino   ? <Field label={tx(lang, "countryOrigin")} value={gi.pais_origen_destino} /> : null}
-                </View>
-              </>
-            ) : null}
           </View>
-        </>
-      ) : null}
+        </View>
+      )}
+
+      {isAduanal && hasAduanalCargo && (
+        <View wrap={false}>
+          <PDFSectionTitle title={cargoDetailsTitle} c={c} />
+          <View style={cardBrandStyle}>
+            <View style={rowStyle}>
+              {gi.descripcion_mercancia ? <Field label={tx(lang, "mercDesc")}      value={gi.descripcion_mercancia} flex={2} /> : null}
+              {gi.pais_origen_destino   ? <Field label={tx(lang, "countryOrigin")} value={gi.pais_origen_destino} /> : null}
+            </View>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
