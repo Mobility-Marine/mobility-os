@@ -147,7 +147,7 @@ async function handleFacturarEmbarque(shipment: any) {
     }));
     const uniqueCurrencies = [...new Set(mappedServices.map((s: any) => s.currency as string))];
     const hasMultiCurrency = uniqueCurrencies.length > 1;
-    const servicesByCurrency = uniqueCurrencies.reduce((acc, cur) => {
+        const servicesByCurrency = uniqueCurrencies.reduce((acc: Record<string, any[]>, cur: string) => {
       acc[cur] = mappedServices.filter((s: any) => s.currency === cur);
       return acc;
     }, {} as Record<string, any[]>);
