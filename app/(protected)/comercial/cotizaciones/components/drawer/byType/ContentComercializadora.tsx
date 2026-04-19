@@ -463,7 +463,7 @@ export default function ContentComercializadora({ info, setInfo, billingConcepts
         </div>
         <div style={{ padding: "14px", display: "flex", flexDirection: "column", gap: "10px" }}>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-            <Field label="Comisión comercializadora (% sobre costo total)" hint="Uso de padrón de importadores Mobility">
+            <Field label="Comisión comercializadora (% sobre costo total)" hint="Uso de padrón de importadores Propio">
               <input type="number" value={info.comision_pct} onChange={e => setInfo(p => ({ ...p, comision_pct: e.target.value }))} placeholder="5" min="0" max="100" step="0.5" style={INPUT} />
             </Field>
             <Field label="Moneda de venta al cliente">
