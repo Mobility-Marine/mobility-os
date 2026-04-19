@@ -213,7 +213,7 @@ export function PDFTotalsBlock({
       {currencies.map((cur) => {
         const ct = byCurrency[cur];
         return (
-          <View key={cur} style={{ backgroundColor: c.BRAND_COLOR, borderRadius: 6, padding: "14 18", minWidth: 220 }}>
+          <View key={cur} wrap={false} style={{ backgroundColor: c.BRAND_COLOR, borderRadius: 6, padding: "14 18", minWidth: 220 }}>
             {multiCurr && (
               <View style={{ flexDirection: "row", justifyContent: "flex-end", marginBottom: 8 }}>
                 <Text style={{ fontSize: 9, color: c.ACCENT, fontWeight: "bold" }}>{cur}</Text>
@@ -286,11 +286,11 @@ export function PDFTermsPage({
     : ((settings as any)?.quote_terms_services ?? null);
   if (!termsText) return null;
   return (
-    <View style={{ paddingTop: 40, paddingBottom: 16, paddingLeft: 36, paddingRight: 36 }}>
-      <Text style={{ fontSize: 11, fontWeight: "bold", color: c.ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 12, paddingBottom: 6, borderBottomWidth: 2, borderBottomColor: c.BRAND_COLOR }}>
+    <View style={{ paddingTop: 16, paddingBottom: 16, paddingLeft: 36, paddingRight: 36 }}>
+      <Text style={{ fontSize: 11, fontWeight: "bold", color: c.ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 10, paddingBottom: 6, borderBottomWidth: 2, borderBottomColor: c.BRAND_COLOR }}>
         {tx(lang, "terms")}
       </Text>
-      <Text style={{ fontSize: 8, color: c.TEXT_MEDIUM, lineHeight: 1.8 }}>{termsText}</Text>
+      <Text style={{ fontSize: 8, color: c.TEXT_MEDIUM, lineHeight: 1.7 }}>{termsText}</Text>
     </View>
   );
 }
