@@ -1,438 +1,508 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
-import { INCOTERMS, CONTAINER_TYPES, CURRENCIES } from "../../../types/quotations.types";
-import type { BillingConceptDraft } from "../drawerState";
-
-type Contenedor = { tipo: string; cantidad: number };
-type Bulto      = { largo_cm: string; ancho_cm: string; alto_cm: string; peso_kg: string; cantidad: string };
-
-export interface MaritimoInfo {
-  subtipo:         "fcl" | "lcl";
-  puerto_origen:   string;
-  puerto_destino:  string;
-  incoterm:        string;
-  mercancia:       string;
-  valor_comercial: string;
-  valor_moneda:    string;
-  peso_kg:         string;
-  contenedores:    Contenedor[];
-  bultos:          Bulto[];
-}
-
-const EMPTY_CONTENEDOR = (): Contenedor => ({ tipo: "40'HC", cantidad: 1 });
-const EMPTY_BULTO      = (): Bulto      => ({ largo_cm: "", ancho_cm: "", alto_cm: "", peso_kg: "", cantidad: "1" });
-
-export const EMPTY_MARITIMO_INFO = (): MaritimoInfo => ({
-  subtipo: "fcl", puerto_origen: "", puerto_destino: "", incoterm: "",
-  mercancia: "", valor_comercial: "", valor_moneda: "USD", peso_kg: "",
-  contenedores: [EMPTY_CONTENEDOR()], bultos: [],
-});
-
-// Unidades de cobro por subtipo
-const UNITS_FCL = ["Por contenedor", "Por BL", "Por embarque", "Por servicio", "Por factura", "Por trámite"];
-const UNITS_LCL = ["Por W/M", "Por CBM", "Por tonelada", "Por BL", "Por embarque", "Por servicio", "Por factura"];
-
-interface LineDraft {
-  description: string;
-  quantity:    string;
-  unit_label:  string;
-  unit_price:  string;
-  currency:    string;
-  tax_rate:    number;
-  notes:       string;
-}
-
-const EMPTY_LINE = (currency: string, unit: string, qty: string): LineDraft => ({
-  description: "", quantity: qty, unit_label: unit,
-  unit_price: "", currency, tax_rate: 0, notes: "",
-});
+import { useTenant } from "@/lib/tenant/TenantProvider";
+import { supabase } from "@/lib/supabaseClient";
+import type {
+  QuotationType, ServiceSubtype, GeneralInfo,
+  CreateQuotationPayload, CreateItemPayload, CreateServicePayload,
+} from "../types/quotations.types";
+import {
+  getSteps, STEP_LABELS_ES, STEP_LABELS_EN,
+  EMPTY_CONFIG, EMPTY_CLIENT,
+} from "./drawer/drawerState";
+import type { BillingConceptDraft, ConfigState, ClientState } from "./drawer/drawerState";
+import StepType        from "./drawer/steps/StepType";
+import StepSubtype     from "./drawer/steps/StepSubtype";
+import StepClient      from "./drawer/steps/StepClient";
+import StepConfig      from "./drawer/steps/StepConfig";
+import StepConceptos   from "./drawer/steps/StepConceptos";
+import StepGeneralInfo from "./drawer/generalInfo/StepGeneralInfo";
+import StepItems       from "./drawer/steps/StepItems";
+import ContentTerrestre, { EMPTY_TERRESTRE_INFO } from "./drawer/byType/ContentTerrestre";
+import type { TerrestreInfo } from "./drawer/byType/ContentTerrestre";
+import ContentMaritimo, { EMPTY_MARITIMO_INFO } from "./drawer/byType/ContentMaritimo";
+import type { MaritimoInfo } from "./drawer/byType/ContentMaritimo";
 
 type Props = {
-  info:               MaritimoInfo;
-  setInfo:            React.Dispatch<React.SetStateAction<MaritimoInfo>>;
-  billingConcepts:    BillingConceptDraft[];
-  setBillingConcepts: React.Dispatch<React.SetStateAction<BillingConceptDraft[]>>;
-  svcCatalog:         any[];
+  open:    boolean;
+  onClose: () => void;
+  onCreate: (
+    payload:          CreateQuotationPayload,
+    items?:           Omit<CreateItemPayload,    "quotation_id">[],
+    services?:        Omit<CreateServicePayload, "quotation_id">[],
+    billingConcepts?: BillingConceptDraft[],
+  ) => Promise<void>;
+  onDownloadPDF?: () => void;
 };
 
-export default function ContentMaritimo({ info, setInfo, billingConcepts, setBillingConcepts, svcCatalog }: Props) {
-  const [activeConcept, setActiveConcept] = useState<string | null>(null);
-  const [addingConcept, setAddingConcept] = useState(false);
-  const [conceptForm,   setConceptForm]   = useState({ product_id: "", description: "", currency: "USD" });
-  const [lineForm,      setLineForm]      = useState<LineDraft>(EMPTY_LINE("USD", "Por contenedor", "1"));
+export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownloadPDF }: Props) {
+  const { companyId } = useTenant();
 
-  // Cálculos automáticos
-  const totalContenedores = info.contenedores.reduce((s, c) => s + c.cantidad, 0);
-  const cbmTotal  = info.bultos.reduce((s, b) => s + (Number(b.largo_cm) * Number(b.ancho_cm) * Number(b.alto_cm) / 1_000_000) * Number(b.cantidad || 1), 0);
-  const pesoTotal = info.bultos.reduce((s, b) => s + Number(b.peso_kg) * Number(b.cantidad || 1), 0);
-  const wmTotal   = Math.max(cbmTotal, pesoTotal / 1000);
+  const [quotType,       setQuotType]       = useState<QuotationType>("services");
+  const [serviceSubtype, setServiceSubtype] = useState<ServiceSubtype | null>(null);
+  const [clientState,    setClientState]    = useState<ClientState>(EMPTY_CLIENT());
+  const [generalInfo,    setGeneralInfo]    = useState<Partial<GeneralInfo>>({});
+  const [items,          setItems]          = useState<Omit<CreateItemPayload, "quotation_id">[]>([]);
+  const [billingConcepts,setBillingConcepts]= useState<BillingConceptDraft[]>([]);
+  const [svcCatalog,     setSvcCatalog]     = useState<any[]>([]);
+  const [terrestreInfo, setTerrestreInfo] = useState<TerrestreInfo>(EMPTY_TERRESTRE_INFO());
+  const [maritimoInfo, setMaritimoInfo] = useState<MaritimoInfo>(EMPTY_MARITIMO_INFO());
+  const [config,         setConfig]         = useState<ConfigState>(EMPTY_CONFIG());
+  const [stepIdx,        setStepIdx]        = useState(0);
+  const [saving,         setSaving]         = useState(false);
+  const [error,          setError]          = useState<string | null>(null);
+  const [ccEmails,       setCcEmails]       = useState("");
+  const [sendingEmail,   setSendingEmail]   = useState(false);
 
-  // Al cambiar subtipo, actualizar defaults del lineForm
-  useEffect(() => {
-    if (info.subtipo === "fcl") {
-      setLineForm(EMPTY_LINE("USD", "Por contenedor", String(totalContenedores || 1)));
-    } else {
-      setLineForm(EMPTY_LINE("USD", "Por W/M", wmTotal > 0 ? wmTotal.toFixed(3) : ""));
-    }
-  }, [info.subtipo]);
-
-  // Actualizar cantidad automática cuando cambian contenedores o W/M
-  useEffect(() => {
-    if (info.subtipo === "fcl" && totalContenedores > 0) {
-      setLineForm(p => ({ ...p, quantity: String(totalContenedores) }));
-    }
-  }, [totalContenedores]);
+  const steps       = getSteps(quotType);
+  const currentStep = steps[stepIdx];
+  const stepLabels  = config.language === "en" ? STEP_LABELS_EN : STEP_LABELS_ES;
 
   useEffect(() => {
-    if (info.subtipo === "lcl" && wmTotal > 0) {
-      setLineForm(p => ({ ...p, quantity: wmTotal.toFixed(3) }));
+    if (!open || !companyId) return;
+    supabase
+      .from("products")
+      .select("id, name, sku, unit, unit_price, sat_product_code, sat_unit_code")
+      .eq("company_id", companyId)
+      .eq("is_active", true)
+      .eq("product_type", "service")
+      .order("name")
+      .then(({ data }) => setSvcCatalog(data ?? []));
+  }, [open, companyId]);
+
+  useEffect(() => {
+    if (!open) return;
+    setStepIdx(0);
+    setQuotType("services");
+    setServiceSubtype(null);
+    setClientState(EMPTY_CLIENT());
+    setGeneralInfo({});
+    setItems([]);
+    setBillingConcepts([]);
+    setConfig(EMPTY_CONFIG());
+    setError(null);
+    setCcEmails("");
+    setSendingEmail(false);
+    setTerrestreInfo(EMPTY_TERRESTRE_INFO());
+    setMaritimoInfo(EMPTY_MARITIMO_INFO());
+  }, [open]);
+
+  function canAdvance(): boolean {
+    switch (currentStep) {
+      case "type":      return true;
+      case "subtype":   return !!serviceSubtype;
+      case "client":    return !!(clientState.useManual ? clientState.manualClient.name.trim() : clientState.selectedClient);
+      case "general":   return true;
+      case "content":   return billingConcepts.length > 0 && billingConcepts.every(c => c.lines.length > 0);
+      case "conceptos": return quotType === "products"
+        ? items.length > 0
+        : billingConcepts.length > 0 && billingConcepts.every(c => c.lines.length > 0);
+      default:          return true;
     }
-  }, [wmTotal]);
-
-  const autoTotal = (Number(lineForm.quantity) || 0) * (Number(lineForm.unit_price) || 0);
-  const unitOptions = info.subtipo === "fcl" ? UNITS_FCL : UNITS_LCL;
-
-  function addLine(ci: number, concept: BillingConceptDraft) {
-    if (!lineForm.description.trim() || !lineForm.unit_price) return;
-    const price = autoTotal;
-    setBillingConcepts(p => p.map((c, i) => i === ci ? {
-      ...c, lines: [...c.lines, {
-        service_type: "maritimo" as any,
-        description:  lineForm.description,
-        currency:     lineForm.currency,
-        price,
-        quantity:     Number(lineForm.quantity) || 1,
-        unit_price:   Number(lineForm.unit_price),
-        unit_label:   lineForm.unit_label || undefined,
-        tax_rate:     lineForm.tax_rate,
-        notes:        lineForm.notes || undefined,
-      }],
-    } : c));
-    setLineForm(EMPTY_LINE(
-      concept.currency,
-      info.subtipo === "fcl" ? "Por contenedor" : "Por W/M",
-      info.subtipo === "fcl" ? String(totalContenedores) : wmTotal > 0 ? wmTotal.toFixed(3) : "",
-    ));
   }
 
-  function createConcept() {
-    if (!conceptForm.description.trim()) return;
-    const tempId = Date.now().toString();
-    setBillingConcepts(p => [...p, { tempId, product_id: conceptForm.product_id || undefined, description: conceptForm.description, currency: conceptForm.currency, lines: [] }]);
-    setActiveConcept(tempId);
-    setConceptForm({ product_id: "", description: "", currency: "USD" });
-    setAddingConcept(false);
+  function next() { setError(null); if (stepIdx < steps.length - 1) setStepIdx(s => s + 1); }
+  function prev() { if (stepIdx > 0) setStepIdx(s => s - 1); }
+
+  async function handleCreate() {
+    setSaving(true);
+    try {
+      const clientName  = clientState.useManual ? clientState.manualClient.name  : clientState.selectedClient?.name;
+      const clientEmail = clientState.useManual ? clientState.manualClient.email : clientState.selectedClient?.email;
+      const clientRfc   = clientState.useManual ? clientState.manualClient.rfc   : clientState.selectedClient?.rfc;
+      const discount    = Number(config.discount_amount) || 0;
+
+      // Auto-detectar moneda principal
+      let currency = config.currency;
+      if (billingConcepts.length > 0) {
+        const currencies = billingConcepts.flatMap(c => c.lines.map(l => (l as any).currency ?? c.currency));
+        const usd = currencies.filter(c => c === "USD").length;
+        const mxn = currencies.filter(c => c === "MXN").length;
+        currency = usd >= mxn ? "USD" : "MXN";
+      }
+
+      await onCreate(
+        {
+          type:            quotType,
+          service_subtype: serviceSubtype ?? undefined,
+          language:        config.language,
+          general_info: (() => {
+            if (serviceSubtype === "terrestre_ltl" || serviceSubtype === "terrestre_ftl") return terrestreInfo as any;
+            if (serviceSubtype === "maritimo_fcl"  || serviceSubtype === "maritimo_lcl")  return maritimoInfo as any;
+            return Object.keys(generalInfo).length > 0 ? generalInfo as GeneralInfo : undefined;
+          })(),
+          client_id:       !clientState.useManual ? clientState.selectedClient?.id : undefined,
+          client_name:     clientName,
+          client_email:    clientEmail    || undefined,
+          client_rfc:      clientRfc      || undefined,
+          contact_name:    clientState.contactName  || undefined,
+          contact_email:   clientState.contactEmail || undefined,
+          contact_title:   clientState.contactTitle || undefined,
+          template:        "elegante",
+          currency,
+          discount_amount: discount || undefined,
+          tax_rate:        Number(config.tax_rate) || 16,
+          valid_until:     config.valid_until || undefined,
+          notes:           config.notes    || undefined,
+          terms:           config.terms    || undefined,
+        },
+        quotType === "products" ? items          : undefined,
+        undefined,
+        quotType === "services" ? billingConcepts : undefined,
+      );
+      setStepIdx(steps.length - 1);
+    } catch (e: any) {
+      setError(e?.message ?? "Error al crear la cotización");
+    } finally {
+      setSaving(false);
+    }
   }
+
+  if (!open) return null;
+
+  // Totales para preview
+  const subtotal = quotType === "products"
+    ? items.reduce((s, i) => s + i.quantity * i.unit_price * (1 - (i.discount_pct ?? 0) / 100), 0)
+    : billingConcepts.reduce((s, c) => s + c.lines.reduce((ls, l) => ls + Number(l.price), 0), 0);
+  const discount = Number(config.discount_amount) || 0;
+  const taxAmt   = Math.max(0, subtotal - discount) * ((Number(config.tax_rate) || 16) / 100);
+  const total    = Math.max(0, subtotal - discount) + taxAmt;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-
-      {/* ── SUBTIPO ── */}
-      <div>
-        <SectionTitle>Tipo de servicio marítimo</SectionTitle>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px", marginTop: "8px" }}>
-          {(["fcl","lcl"] as const).map(sub => (
-            <button key={sub} onClick={() => setInfo(p => ({ ...p, subtipo: sub }))}
-              style={{ padding: "14px", borderRadius: "var(--radius-md)", cursor: "pointer", textAlign: "left", background: info.subtipo === sub ? "var(--color-info-bg)" : "var(--color-bg-subtle)", border: `2px solid ${info.subtipo === sub ? "var(--color-brand-blue)" : "var(--color-border-faint)"}` }}>
-              <div style={{ fontSize: "13px", fontWeight: 700, color: info.subtipo === sub ? "var(--color-brand-blue)" : "var(--color-text-primary)" }}>
-                {sub === "fcl" ? "FCL — Full Container Load" : "LCL — Less than Container Load"}
+    <>
+      <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", zIndex: 400 }} />
+      <div style={{
+        position: "fixed", right: 0, top: 0, bottom: 0,
+        width: "min(640px, 96vw)",
+        background: "var(--color-bg-base)",
+        borderLeft: "1px solid var(--color-border)",
+        boxShadow: "var(--shadow-xl)", zIndex: 401,
+        display: "flex", flexDirection: "column",
+        height: "100vh", overflow: "hidden",
+      }}>
+        {/* HEADER */}
+        <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--color-border-faint)", flexShrink: 0 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
+            <div>
+              <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-text-primary)" }}>
+                Nueva cotización
               </div>
-              <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "3px" }}>
-                {sub === "fcl" ? "Contenedor(es) completo(s) dedicados" : "Carga consolidada — se cobra por W/M"}
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* ── PUERTOS ── */}
-      <div>
-        <SectionTitle>Puertos e Incoterm</SectionTitle>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px", marginTop: "8px" }}>
-          <Field label="Puerto de origen *">
-            <input value={info.puerto_origen} onChange={e => setInfo(p => ({ ...p, puerto_origen: e.target.value }))} placeholder="Shanghai, China" style={INPUT} />
-          </Field>
-          <Field label="Puerto de destino *">
-            <input value={info.puerto_destino} onChange={e => setInfo(p => ({ ...p, puerto_destino: e.target.value }))} placeholder="Manzanillo, México" style={INPUT} />
-          </Field>
-          <Field label="Incoterm">
-            <select value={info.incoterm} onChange={e => setInfo(p => ({ ...p, incoterm: e.target.value }))} style={SELECT}>
-              <option value="">—</option>
-              {INCOTERMS.map(inc => <option key={inc} value={inc}>{inc}</option>)}
-            </select>
-          </Field>
-        </div>
-      </div>
-
-      {/* ── MERCANCÍA ── */}
-      <div>
-        <SectionTitle>Mercancía</SectionTitle>
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
-          <Field label="Descripción *">
-            <input value={info.mercancia} onChange={e => setInfo(p => ({ ...p, mercancia: e.target.value }))} placeholder="Electrónicos, textiles, maquinaria…" style={INPUT} />
-          </Field>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-            <Field label="Valor comercial">
-              <input type="number" value={info.valor_comercial} onChange={e => setInfo(p => ({ ...p, valor_comercial: e.target.value }))} placeholder="0.00" style={INPUT} />
-            </Field>
-            <Field label="Moneda">
-              <select value={info.valor_moneda} onChange={e => setInfo(p => ({ ...p, valor_moneda: e.target.value }))} style={SELECT}>
-                {["USD","MXN","EUR"].map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </Field>
-            <Field label="Peso total (kg)">
-              <input type="number" value={info.peso_kg} onChange={e => setInfo(p => ({ ...p, peso_kg: e.target.value }))} placeholder="0" style={INPUT} />
-            </Field>
-          </div>
-        </div>
-      </div>
-
-      {/* ── FCL: Contenedores ── */}
-      {info.subtipo === "fcl" && (
-        <div>
-          <SectionTitle>Contenedores a cotizar</SectionTitle>
-          <div style={{ display: "flex", flexDirection: "column", gap: "6px", marginTop: "8px" }}>
-            {info.contenedores.map((cont, i) => (
-              <div key={i} style={{ display: "grid", gridTemplateColumns: "2fr 1fr auto", gap: "8px", alignItems: "flex-end" }}>
-                <Field label={i === 0 ? "Tipo de contenedor" : ""}>
-                  <select value={cont.tipo} onChange={e => setInfo(p => ({ ...p, contenedores: p.contenedores.map((c, j) => j === i ? { ...c, tipo: e.target.value } : c) }))} style={SELECT}>
-                    {CONTAINER_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
-                  </select>
-                </Field>
-                <Field label={i === 0 ? "Cantidad" : ""}>
-                  <input type="number" min="1" value={cont.cantidad}
-                    onChange={e => setInfo(p => ({ ...p, contenedores: p.contenedores.map((c, j) => j === i ? { ...c, cantidad: Number(e.target.value) } : c) }))}
-                    style={INPUT} />
-                </Field>
-                {info.contenedores.length > 1 && (
-                  <button onClick={() => setInfo(p => ({ ...p, contenedores: p.contenedores.filter((_, j) => j !== i) }))}
-                    style={{ height: "36px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)", cursor: "pointer", fontSize: "12px" }}>✕</button>
+              <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "2px" }}>
+                {stepLabels[currentStep]}
+                {serviceSubtype && currentStep !== "type" && currentStep !== "subtype" && (
+                  <span style={{ marginLeft: "6px", fontSize: "11px", color: "var(--color-brand-blue)", fontWeight: 600 }}>
+                    · {serviceSubtype.replace(/_/g, " ").toUpperCase()}
+                  </span>
                 )}
-              </div>
-            ))}
-            <button onClick={() => setInfo(p => ({ ...p, contenedores: [...p.contenedores, EMPTY_CONTENEDOR()] }))}
-              style={{ height: "32px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px dashed var(--color-border)", fontSize: "12px", color: "var(--color-text-muted)", cursor: "pointer" }}>
-              + Agregar tipo de contenedor
-            </button>
-            {totalContenedores > 0 && (
-              <InfoBox type="info">
-                Total: <strong>{totalContenedores} contenedor{totalContenedores !== 1 ? "es" : ""}</strong> — la cantidad en los conceptos se asignará automáticamente
-              </InfoBox>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── LCL: Bultos ── */}
-      {info.subtipo === "lcl" && (
-        <div>
-          <SectionTitle>Bultos / Partidas</SectionTitle>
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
-            {info.bultos.map((bulto, i) => (
-              <div key={i} style={{ padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
-                  <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)" }}>Bulto {i + 1}</span>
-                  <button onClick={() => setInfo(p => ({ ...p, bultos: p.bultos.filter((_, j) => j !== i) }))}
-                    style={{ fontSize: "10px", color: "var(--color-danger-text)", background: "none", border: "none", cursor: "pointer" }}>Eliminar</button>
-                </div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr 1fr 1fr", gap: "8px" }}>
-                  {(["largo_cm","ancho_cm","alto_cm","peso_kg","cantidad"] as const).map(key => (
-                    <Field key={key} label={key === "largo_cm" ? "Largo (cm)" : key === "ancho_cm" ? "Ancho (cm)" : key === "alto_cm" ? "Alto (cm)" : key === "peso_kg" ? "Peso (kg)" : "Cantidad"}>
-                      <input type="number" value={bulto[key]} min="0"
-                        onChange={e => setInfo(p => ({ ...p, bultos: p.bultos.map((b, j) => j === i ? { ...b, [key]: e.target.value } : b) }))}
-                        style={INPUT} />
-                    </Field>
-                  ))}
-                </div>
-              </div>
-            ))}
-            <button onClick={() => setInfo(p => ({ ...p, bultos: [...p.bultos, EMPTY_BULTO()] }))}
-              style={{ height: "32px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px dashed var(--color-border)", fontSize: "12px", color: "var(--color-text-muted)", cursor: "pointer" }}>
-              + Agregar bulto
-            </button>
-            {cbmTotal > 0 && (
-              <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px" }}>
-                <div>
-                  <div style={{ fontSize: "10px", color: "var(--color-info-text)", fontWeight: 600, textTransform: "uppercase" }}>CBM Total</div>
-                  <div style={{ fontSize: "14px", fontWeight: 800, color: "var(--color-info-text)" }}>{cbmTotal.toFixed(3)} m³</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "10px", color: "var(--color-info-text)", fontWeight: 600, textTransform: "uppercase" }}>Peso Total</div>
-                  <div style={{ fontSize: "14px", fontWeight: 800, color: "var(--color-info-text)" }}>{pesoTotal.toFixed(0)} kg</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: "10px", color: "var(--color-brand-blue)", fontWeight: 700, textTransform: "uppercase" }}>W/M Cobrable</div>
-                  <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-brand-blue)" }}>{wmTotal.toFixed(3)}</div>
-                  <div style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>lo mayor entre CBM y toneladas</div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* ── CONCEPTOS DE FACTURACIÓN ── */}
-      <div>
-        <SectionTitle>Conceptos de facturación</SectionTitle>
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px", marginTop: "8px" }}>
-          <InfoBox type="info">
-            {info.subtipo === "fcl"
-              ? <>Cargos cotizados <strong>por contenedor</strong>. Cantidad automática: <strong>{totalContenedores} contenedor{totalContenedores !== 1 ? "es" : ""}</strong>.</>
-              : <>Cargos cotizados <strong>por W/M</strong>. W/M calculado: <strong>{wmTotal.toFixed(3)}</strong>.</>
-            }
-          </InfoBox>
-
-          {billingConcepts.map((concept, ci) => {
-            const isActive     = activeConcept === concept.tempId;
-            const conceptTotal = concept.lines.reduce((s, l) => s + Number(l.price), 0);
-            const prodName     = svcCatalog.find((p: any) => p.id === concept.product_id)?.name;
-            return (
-              <div key={concept.tempId} style={{ borderRadius: "var(--radius-md)", border: `2px solid ${isActive ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`, overflow: "hidden" }}>
-                <div onClick={() => setActiveConcept(isActive ? null : concept.tempId)}
-                  style={{ padding: "10px 14px", background: isActive ? "var(--color-info-bg)" : "var(--color-bg-subtle)", display: "flex", alignItems: "center", gap: "8px", cursor: "pointer" }}>
-                  <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-full)", background: "var(--color-brand-blue)20", color: "var(--color-brand-blue)", border: "1px solid var(--color-brand-blue)30" }}>CFDI</span>
-                  <span style={{ flex: 1, fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>{prodName ?? concept.description}</span>
-                  <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{concept.lines.length} línea{concept.lines.length !== 1 ? "s" : ""}</span>
-                  <span style={{ fontSize: "13px", fontWeight: 800, color: "var(--color-success-text)" }}>{concept.currency} ${conceptTotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
-                  <span style={{ color: "var(--color-text-muted)" }}>{isActive ? "▲" : "▼"}</span>
-                  <button onClick={e => { e.stopPropagation(); setBillingConcepts(p => p.filter((_, i) => i !== ci)); }}
-                    style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", cursor: "pointer", color: "var(--color-danger-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                  </button>
-                </div>
-
-                {isActive && (
-                  <div style={{ padding: "12px 14px", borderTop: "1px solid var(--color-border-faint)", display: "flex", flexDirection: "column", gap: "8px" }}>
-
-                    {/* Líneas existentes */}
-                    {concept.lines.map((line, li) => {
-                      const qty    = (line as any).quantity ?? 1;
-                      const uPrice = (line as any).unit_price;
-                      const taxLabel = (line as any).tax_rate === -1 ? "Exento" : (line as any).tax_rate === 0 ? "0%" : `IVA ${(line as any).tax_rate ?? 16}%`;
-                      return (
-                        <div key={li} style={{ padding: "8px 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                            <div style={{ flex: 1 }}>
-                              <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)" }}>{line.description}</div>
-                              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "2px" }}>
-                                {qty} {(line as any).unit_label} × {(line as any).currency} ${Number(uPrice ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })} · {taxLabel}
-                              </div>
-                            </div>
-                            <span style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-success-text)", flexShrink: 0 }}>
-                              {(line as any).currency} ${Number(line.price).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
-                            </span>
-                            <button onClick={() => setBillingConcepts(p => p.map((c, i) => i === ci ? { ...c, lines: c.lines.filter((_, j) => j !== li) } : c))}
-                              style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", cursor: "pointer", color: "var(--color-danger-text)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                              <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-
-                    {/* Form nueva línea */}
-                    <div style={{ background: "var(--color-bg-base)", border: "1px dashed var(--color-border)", borderRadius: "var(--radius-md)", padding: "12px", display: "flex", flexDirection: "column", gap: "10px" }}>
-                      <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase" }}>+ Nueva línea de detalle</div>
-
-                      {/* Fila 1: Descripción */}
-                      <Field label="Descripción *">
-                        <input value={lineForm.description} onChange={e => setLineForm(p => ({ ...p, description: e.target.value }))} placeholder="Ocean Freight, THC, BL Fee, Seguro…" style={INPUT} />
-                      </Field>
-
-                      {/* Fila 2: Cantidad · Unidad · Precio unitario · Total */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr 1fr 1fr", gap: "8px" }}>
-                        <Field label="Cantidad" hint={info.subtipo === "fcl" ? `Auto: ${totalContenedores}` : `Auto: ${wmTotal.toFixed(3)}`}>
-                          <input type="number" value={lineForm.quantity}
-                            onChange={e => setLineForm(p => ({ ...p, quantity: e.target.value }))}
-                            style={{ ...INPUT, background: "var(--color-info-bg)" }} />
-                        </Field>
-                        <Field label="Unidad de cobro *">
-                          <select value={lineForm.unit_label} onChange={e => setLineForm(p => ({ ...p, unit_label: e.target.value }))} style={SELECT}>
-                            {unitOptions.map(u => <option key={u} value={u}>{u}</option>)}
-                          </select>
-                        </Field>
-                        <Field label="Precio unitario *">
-                          <input type="number" value={lineForm.unit_price}
-                            onChange={e => setLineForm(p => ({ ...p, unit_price: e.target.value }))}
-                            placeholder="0.00" style={INPUT} />
-                        </Field>
-                        <Field label="Total (auto)">
-                          <div style={{ height: "36px", padding: "0 12px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-success-text)", fontWeight: 700, fontSize: "13px", display: "flex", alignItems: "center" }}>
-                            ${autoTotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
-                          </div>
-                        </Field>
-                      </div>
-
-                      {/* Fila 3: Moneda · IVA · Notas */}
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: "8px" }}>
-                        <Field label="Moneda">
-                          <select value={lineForm.currency} onChange={e => setLineForm(p => ({ ...p, currency: e.target.value }))} style={SELECT}>
-                            {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.value}</option>)}
-                          </select>
-                        </Field>
-                        <Field label="IVA">
-                          <select value={String(lineForm.tax_rate)} onChange={e => setLineForm(p => ({ ...p, tax_rate: Number(e.target.value) }))} style={SELECT}>
-                            <option value="0">Tasa 0%</option>
-                            <option value="-1">Exento</option>
-                            <option value="16">IVA 16%</option>
-                            <option value="8">IVA 8%</option>
-                          </select>
-                        </Field>
-                        <Field label="Notas">
-                          <input value={lineForm.notes} onChange={e => setLineForm(p => ({ ...p, notes: e.target.value }))} placeholder="Observaciones…" style={INPUT} />
-                        </Field>
-                      </div>
-
-                      <button onClick={() => addLine(ci, concept)} disabled={!lineForm.description.trim() || !lineForm.unit_price}
-                        style={{ height: "36px", padding: "0 20px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: "pointer", alignSelf: "flex-start" }}>
-                        + Agregar línea
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-
-          {/* Agregar concepto */}
-          {!addingConcept ? (
-            <button onClick={() => setAddingConcept(true)}
-              style={{ height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              Agregar concepto de facturación
-            </button>
-          ) : (
-            <div style={{ padding: "14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "2px solid var(--color-brand-blue)", display: "flex", flexDirection: "column", gap: "10px" }}>
-              <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-brand-blue)", textTransform: "uppercase" }}>Nuevo concepto de facturación</div>
-              <Field label="Concepto del catálogo — para CFDI (no aparece en PDF)">
-                <select value={conceptForm.product_id} onChange={e => setConceptForm(p => ({ ...p, product_id: e.target.value }))} style={SELECT}>
-                  <option value="">— Sin vincular —</option>
-                  {svcCatalog.map((p: any) => <option key={p.id} value={p.id}>{p.name}{p.sku ? ` (${p.sku})` : ""}</option>)}
-                </select>
-              </Field>
-              <Field label="Nombre del concepto (visible en PDF) *">
-                <input value={conceptForm.description} onChange={e => setConceptForm(p => ({ ...p, description: e.target.value }))} placeholder="ej: Flete Marítimo FCL Shanghai–Manzanillo" style={INPUT} />
-              </Field>
-              <Field label="Moneda">
-                <select value={conceptForm.currency} onChange={e => setConceptForm(p => ({ ...p, currency: e.target.value }))} style={SELECT}>
-                  {CURRENCIES.map(c => <option key={c.value} value={c.value}>{c.value}</option>)}
-                </select>
-              </Field>
-              <div style={{ display: "flex", gap: "8px" }}>
-                <button onClick={createConcept} disabled={!conceptForm.description.trim()}
-                  style={{ height: "36px", padding: "0 20px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
-                  Crear concepto
-                </button>
-                <button onClick={() => { setAddingConcept(false); setConceptForm({ product_id: "", description: "", currency: "USD" }); }}
-                  style={{ height: "36px", padding: "0 14px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-base)", color: "var(--color-text-muted)", fontSize: "12px", cursor: "pointer" }}>
-                  Cancelar
-                </button>
               </div>
             </div>
+            <button onClick={onClose} style={{ width: "30px", height: "30px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-muted)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            </button>
+          </div>
+          <div style={{ display: "flex", gap: "3px" }}>
+            {steps.map((s, i) => (
+              <div key={s} style={{ flex: 1 }}>
+                <div style={{ height: "3px", borderRadius: "var(--radius-full)", background: i <= stepIdx ? "var(--color-brand-blue)" : "var(--color-border-faint)", transition: "background 0.3s" }} />
+                <div style={{ fontSize: "9px", fontWeight: 600, marginTop: "3px", color: i === stepIdx ? "var(--color-brand-blue)" : "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.3px" }}>
+                  {stepLabels[s]}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* ERROR */}
+        {error && (
+          <div style={{ margin: "0 24px", marginTop: "10px", padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)", fontSize: "13px", flexShrink: 0 }}>
+            {error}
+          </div>
+        )}
+
+        {/* CONTENT — scroll aquí */}
+        <div style={{
+          flex: 1,
+          overflowY: "scroll",
+          overflowX: "hidden",
+          padding: "20px 24px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "14px",
+        }}>
+          {currentStep === "type" && (
+            <StepType quotType={quotType} setQuotType={(t) => { setQuotType(t); setServiceSubtype(null); }} />
+          )}
+          {currentStep === "subtype" && (
+            <StepSubtype serviceSubtype={serviceSubtype} setServiceSubtype={setServiceSubtype} />
+          )}
+          {currentStep === "client" && (
+            <StepClient state={clientState} onChange={(u) => setClientState(p => ({ ...p, ...u }))} />
+          )}
+          {currentStep === "content" && (
+            <>
+              {(serviceSubtype === "terrestre_ltl" || serviceSubtype === "terrestre_ftl") && (
+                <ContentTerrestre
+                  info={terrestreInfo}
+                  setInfo={setTerrestreInfo}
+                  billingConcepts={billingConcepts}
+                  setBillingConcepts={setBillingConcepts}
+                  svcCatalog={svcCatalog}
+                />
+              )}
+              {(serviceSubtype === "maritimo_fcl" || serviceSubtype === "maritimo_lcl") && (
+                <ContentMaritimo
+                  info={maritimoInfo}
+                  setInfo={setMaritimoInfo}
+                  billingConcepts={billingConcepts}
+                  setBillingConcepts={setBillingConcepts}
+                  svcCatalog={svcCatalog}
+                />
+              )}
+              {serviceSubtype && !["terrestre_ltl","terrestre_ftl","maritimo_fcl","maritimo_lcl"].includes(serviceSubtype) && (
+                <div style={{ padding: "32px", textAlign: "center", borderRadius: "var(--radius-md)", border: "1px dashed var(--color-border)", color: "var(--color-text-muted)" }}>
+                  <div style={{ fontSize: "24px", marginBottom: "8px" }}>🚧</div>
+                  <div style={{ fontSize: "14px", fontWeight: 700 }}>En construcción</div>
+                  <div style={{ fontSize: "12px", marginTop: "4px" }}>
+                    {serviceSubtype.replace(/_/g, " ").toUpperCase()} — próximamente
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+          {currentStep === "config" && (
+            <StepConfig state={config} onChange={(u) => setConfig(p => ({ ...p, ...u }))} />
+          )}
+          {currentStep === "preview" && (
+            <QuotPreview
+              quotType={quotType}
+              serviceSubtype={serviceSubtype}
+              clientState={clientState}
+              items={items}
+              billingConcepts={billingConcepts}
+              config={config}
+              subtotal={subtotal}
+              taxAmt={taxAmt}
+              total={total}
+              discount={discount}
+            />
+          )}
+          {currentStep === "actions" && (
+            <ActionsStep
+              contactEmail={clientState.contactEmail}
+              ccEmails={ccEmails}
+              setCcEmails={setCcEmails}
+              sendingEmail={sendingEmail}
+              setSendingEmail={setSendingEmail}
+              onClose={onClose}
+              onDownloadPDF={onDownloadPDF}
+            />
+          )}
+        </div>
+        {/* FOOTER */}
+        <div style={{ padding: "14px 24px", borderTop: "1px solid var(--color-border-faint)", display: "flex", gap: "10px", flexShrink: 0 }}>
+          {stepIdx > 0 && currentStep !== "actions" && (
+            <button onClick={prev} style={{ height: "40px", padding: "0 18px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", fontSize: "13px", cursor: "pointer" }}>
+              ← Atrás
+            </button>
+          )}
+          {currentStep === "actions" ? (
+            <button onClick={onClose} style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", border: "1px solid var(--color-border)", fontSize: "13px", fontWeight: 600, cursor: "pointer" }}>
+              Ir al Workspace
+            </button>
+          ) : currentStep === "preview" ? (
+            <button onClick={handleCreate} disabled={saving} style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
+              {saving ? "Creando…" : "✓ Crear cotización"}
+            </button>
+          ) : (
+            <button onClick={next} disabled={!canAdvance()} style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: canAdvance() ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: canAdvance() ? "#fff" : "var(--color-text-muted)", border: "none", fontSize: "13px", fontWeight: 700, cursor: canAdvance() ? "pointer" : "not-allowed" }}>
+              Siguiente →
+            </button>
+          )}
+          {currentStep !== "actions" && (
+            <button onClick={onClose} style={{ height: "40px", padding: "0 16px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-muted)", fontSize: "13px", cursor: "pointer" }}>
+              Cancelar
+            </button>
           )}
         </div>
       </div>
-    </div>
+    </>
+  );
+}
+
+// ── ACTIONS ───────────────────────────────────────────────────
+function ActionsStep({ contactEmail, ccEmails, setCcEmails, sendingEmail, setSendingEmail, onClose, onDownloadPDF }: any) {
+  return (
+    <>
+      <div style={{ textAlign: "center", padding: "16px 0" }}>
+        <div style={{ width: "56px", height: "56px", borderRadius: "50%", background: "var(--color-success-bg)", border: "2px solid var(--color-success-border)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-text)" strokeWidth="2.5">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--color-text-primary)", marginBottom: "6px" }}>¡Cotización creada!</div>
+        <div style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>Selecciona la cotización en el Workspace para descargar el PDF.</div>
+      </div>
+
+      <div style={{ padding: "14px 16px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", display: "grid", gap: "8px" }}>
+        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase" }}>Enviar por correo</div>
+        {contactEmail
+          ? <div style={{ fontSize: "12px", color: "var(--color-text-second)" }}>Para: <strong>{contactEmail}</strong></div>
+          : <div style={{ fontSize: "12px", color: "var(--color-warning-text)" }}>Sin correo de contacto asignado</div>
+        }
+        <div>
+          <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "4px" }}>CC (opcional, separar con comas)</div>
+          <input value={ccEmails} onChange={(e) => setCcEmails(e.target.value)} placeholder="correo1@empresa.com, correo2@empresa.com"
+            style={{ width: "100%", height: "36px", padding: "0 12px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-base)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" as any }} />
+        </div>
+        {/* Botón descargar PDF */}
+        {onDownloadPDF && (
+          <button
+            onClick={onDownloadPDF}
+            style={{ height: "44px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "14px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Descargar PDF
+          </button>
+        )}
+        <button disabled={sendingEmail || !contactEmail} onClick={() => setSendingEmail(true)}
+          style={{ height: "38px", borderRadius: "var(--radius-md)", background: contactEmail ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: contactEmail ? "#fff" : "var(--color-text-muted)", border: contactEmail ? "none" : "1px solid var(--color-border)", fontSize: "13px", fontWeight: 600, cursor: contactEmail ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+            <polyline points="22,6 12,13 2,6"/>
+          </svg>
+          {sendingEmail ? "Enviando…" : "Enviar cotización por correo"}
+        </button>
+      </div>
+
+      <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.6 }}>
+        💡 Cierra este drawer → selecciona la cotización en la lista → botón <strong>Descargar PDF</strong> en el Workspace.
+      </div>
+    </>
+  );
+}
+
+// ── PREVIEW ───────────────────────────────────────────────────
+function QuotPreview({ quotType, serviceSubtype, clientState, items, billingConcepts, config, subtotal, taxAmt, total, discount }: any) {
+  const clientName = clientState.useManual ? clientState.manualClient.name : clientState.selectedClient?.name;
+
+  // Calcular totales por moneda para servicios
+  const byCurrency: Record<string, { subtotal: number; tax: number; total: number }> = {};
+  if (quotType === "services") {
+    for (const concept of billingConcepts) {
+      for (const line of concept.lines) {
+        const cur   = (line as any).currency ?? concept.currency ?? "MXN";
+        const price = Number(line.price ?? 0);
+        const rate  = (line as any).tax_rate;
+        const tax   = (rate === -1 || rate === 0) ? 0 : price * ((rate ?? 16) / 100);
+        if (!byCurrency[cur]) byCurrency[cur] = { subtotal: 0, tax: 0, total: 0 };
+        byCurrency[cur].subtotal += price;
+        byCurrency[cur].tax      += tax;
+        byCurrency[cur].total    += price + tax;
+      }
+    }
+  }
+
+  return (
+    <>
+      <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>Resumen de la cotización</div>
+
+      <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "12px", display: "grid", gap: "5px" }}>
+        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "4px" }}>Cliente</div>
+        {[
+          { label: "Nombre",   value: clientName },
+          { label: "RFC",      value: clientState.useManual ? clientState.manualClient.rfc : clientState.selectedClient?.rfc },
+          { label: "Contacto", value: clientState.contactName },
+          { label: "Subtipo",  value: serviceSubtype ? serviceSubtype.replace(/_/g, " ").toUpperCase() : "Productos" },
+          { label: "Idioma",   value: config.language === "en" ? "🇺🇸 English" : "🇲🇽 Español" },
+        ].filter(r => r.value).map((row) => (
+          <div key={row.label} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+            <span style={{ color: "var(--color-text-muted)" }}>{row.label}</span>
+            <span style={{ color: "var(--color-text-primary)", fontWeight: 600 }}>{row.value}</span>
+          </div>
+        ))}
+      </div>
+
+      <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "12px" }}>
+        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", marginBottom: "6px" }}>
+          {quotType === "products" ? `${items.length} producto${items.length !== 1 ? "s" : ""}` : `${billingConcepts.length} concepto${billingConcepts.length !== 1 ? "s" : ""}`}
+        </div>
+        {quotType === "products" && items.map((item: any, i: number) => (
+          <div key={i} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
+            <span style={{ color: "var(--color-text-second)" }}>{item.quantity}× {item.description}</span>
+            <span style={{ fontWeight: 600 }}>${(item.quantity * item.unit_price * (1 - (item.discount_pct ?? 0) / 100)).toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+          </div>
+        ))}
+        {quotType === "services" && billingConcepts.map((c: any, i: number) => {
+          const ct = c.lines.reduce((s: number, l: any) => s + Number(l.price), 0);
+          return (
+            <div key={i} style={{ marginBottom: "8px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", fontWeight: 700 }}>
+                <span>{c.description}</span>
+                <span style={{ color: "var(--color-success-text)" }}>{c.currency} ${ct.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+              </div>
+              {c.lines.map((l: any, j: number) => (
+                <div key={j} style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", paddingLeft: "10px", marginTop: "2px", color: "var(--color-text-muted)" }}>
+                  <span>↳ {l.description?.substring(0, 42)}</span>
+                  <span>{(l as any).currency} ${Number(l.price).toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+                </div>
+              ))}
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Totales por moneda */}
+      {quotType === "services" ? (
+        <div style={{ background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", borderRadius: "var(--radius-md)", padding: "12px 16px", display: "grid", gap: "8px" }}>
+          {Object.entries(byCurrency).map(([cur, ct], i) => (
+            <div key={cur}>
+              {Object.keys(byCurrency).length > 1 && (
+                <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-success-text)", textTransform: "uppercase", marginBottom: "4px" }}>{cur}</div>
+              )}
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "2px" }}>
+                <span style={{ color: "var(--color-text-muted)" }}>Subtotal</span>
+                <span>{cur} ${ct.subtotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "2px" }}>
+                <span style={{ color: "var(--color-text-muted)" }}>IVA</span>
+                <span>{cur} ${ct.tax.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "14px", fontWeight: 800, paddingTop: "4px", borderTop: "1px solid var(--color-success-border)" }}>
+                <span style={{ color: "var(--color-success-text)" }}>TOTAL {cur}</span>
+                <span style={{ color: "var(--color-success-text)" }}>{cur} ${ct.total.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+              </div>
+              {i < Object.keys(byCurrency).length - 1 && <div style={{ borderTop: "1px dashed var(--color-success-border)", marginTop: "8px" }} />}
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div style={{ background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", borderRadius: "var(--radius-md)", padding: "12px 16px", display: "grid", gap: "4px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+            <span style={{ color: "var(--color-text-muted)" }}>Subtotal</span>
+            <span>${subtotal.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+          </div>
+          {discount > 0 && (
+            <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+              <span style={{ color: "var(--color-warning-text)" }}>Descuento</span>
+              <span style={{ color: "var(--color-warning-text)" }}>- ${discount.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+            </div>
+          )}
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+            <span style={{ color: "var(--color-text-muted)" }}>IVA</span>
+            <span>${taxAmt.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+          </div>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: "16px", fontWeight: 800, marginTop: "4px", paddingTop: "6px", borderTop: "1px solid var(--color-success-border)" }}>
+            <span style={{ color: "var(--color-success-text)" }}>TOTAL</span>
+            <span style={{ color: "var(--color-success-text)" }}>${total.toLocaleString("es-MX", { minimumFractionDigits: 2 })}</span>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
