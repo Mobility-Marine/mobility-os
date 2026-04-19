@@ -46,12 +46,40 @@ export async function generateQuoteNumber(
 
 // ── QUOTATIONS CRUD ───────────────────────────────────────────
 export async function fetchQuotations(companyId: string): Promise<Quotation[]> {
-  const { data } = await supabase
+  // 1. Traer la lista base de cotizaciones
+  const { data: quotations } = await supabase
     .from("quotations")
     .select("*, client:clients(name, email, rfc)")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
-  return (data ?? []) as Quotation[];
+
+  if (!quotations?.length) return [];
+
+  // 2. Traer TODOS los billing_concepts de la empresa en un solo query
+  const quotationIds = quotations.map((q) => q.id);
+
+  const { data: allConcepts } = await supabase
+    .from("quotation_billing_concepts")
+    .select("*, lines:quotation_services(*)")
+    .in("quotation_id", quotationIds)
+    .order("sort_order");
+
+  // 3. Agrupar concepts por quotation_id
+  const conceptsByQuotation: Record<string, any[]> = {};
+  for (const concept of allConcepts ?? []) {
+    const qid = concept.quotation_id;
+    if (!conceptsByQuotation[qid]) conceptsByQuotation[qid] = [];
+    conceptsByQuotation[qid].push({
+      ...concept,
+      lines: (concept.lines ?? []).sort((a: any, b: any) => a.sort_order - b.sort_order),
+    });
+  }
+
+  // 4. Unir concepts a cada cotización
+  return quotations.map((q) => ({
+    ...q,
+    billing_concepts: conceptsByQuotation[q.id] ?? [],
+  })) as Quotation[];
 }
 
 export async function fetchQuotation(
