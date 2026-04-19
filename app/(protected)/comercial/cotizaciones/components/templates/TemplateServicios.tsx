@@ -10,7 +10,7 @@ const FOOTER_HEIGHT = 56;
 // Espacio reservado en cada página para el header fijo + margen de respiración.
 // Se aplica como paddingTop en la Page para que funcione en TODAS las páginas
 // (primera y subsecuentes generadas por desbordamiento).
-const HEADER_SPACE  = 180;
+const HEADER_SPACE  = 200;
 
 const SUBTYPE_TITLES: Record<string, { es: string; en: string }> = {
   terrestre_ltl:    { es: "Cotización Terrestre LTL",        en: "LTL Trucking Quotation"       },
