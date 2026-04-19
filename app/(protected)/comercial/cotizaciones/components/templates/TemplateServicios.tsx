@@ -75,9 +75,58 @@ export default function TemplateServicios({ quotation, settings }: Props) {
             <GeneralInfoBlock gi={gi} subtype={subtype} lang={lang} c={c} fmt={fmt} />
           )}
 
-          {/* SERVICIOS */}
+          {/* SERVICIOS — agrupados por concepto con descripción visible */}
           <PDFSectionTitle title={tx(lang, "services")} c={c} />
-          {allLines.map((line: any, i: number) => {
+          {concepts.length > 0 ? (
+            concepts.map((concept: any, ci: number) => {
+              const lines = concept.lines ?? [];
+              return (
+                <View key={ci} style={{ marginBottom: 10 }}>
+                  {/* Título del concepto agrupador — visible para el cliente */}
+                  <View style={{ backgroundColor: c.BRAND_COLOR + "20", borderRadius: 3, padding: "5 10", marginBottom: 4, flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+                    <Text style={{ fontSize: 9.5, fontWeight: "bold", color: c.BRAND_COLOR }}>{concept.description}</Text>
+                    <Text style={{ fontSize: 9, color: c.BRAND_COLOR, fontWeight: "bold" }}>
+                      {concept.currency} ${lines.reduce((s: number, l: any) => s + Number(l.price ?? 0), 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                    </Text>
+                  </View>
+                  {/* Líneas de detalle */}
+                  {lines.map((line: any, i: number) => {
+                    const taxRate  = line.tax_rate;
+                    const isExento = taxRate === -1;
+                    const isTasa0  = taxRate === 0;
+                    const taxLabel = isExento ? tx(lang, "exempt") : isTasa0 ? tx(lang, "zeroRate") : `${tx(lang, "tax")} ${taxRate ?? 16}%`;
+                    return (
+                      <View key={i} style={{ backgroundColor: c.LIGHT, borderLeftWidth: 3, borderLeftColor: c.BRAND_COLOR, padding: "6 10 6 14", marginBottom: 3, borderRadius: 3 }}>
+                        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start" }}>
+                          <View style={{ flex: 1, paddingRight: 8 }}>
+                            <View style={{ flexDirection: "row", gap: 4, marginBottom: 2 }}>
+                              <View style={{ backgroundColor: c.BRAND_COLOR + "30", borderRadius: 2, padding: "1 4" }}>
+                                <Text style={{ fontSize: 6, color: c.BRAND_COLOR, fontWeight: "bold", textTransform: "uppercase" }}>{line.service_type}</Text>
+                              </View>
+                              <View style={{ backgroundColor: isExento ? "#e2e8f0" : isTasa0 ? "#dcfce7" : "#fef9c3", borderRadius: 2, padding: "1 4" }}>
+                                <Text style={{ fontSize: 6, color: isExento ? c.TEXT_MUTED : isTasa0 ? "#166534" : "#854d0e", fontWeight: "bold" }}>{taxLabel}</Text>
+                              </View>
+                              {line.unit_label && (
+                                <View style={{ backgroundColor: c.BRAND_COLOR + "15", borderRadius: 2, padding: "1 4" }}>
+                                  <Text style={{ fontSize: 6, color: c.BRAND_COLOR }}>{line.unit_label}</Text>
+                                </View>
+                              )}
+                            </View>
+                            <Text style={{ fontSize: 8.5, color: c.TEXT_DARK, fontWeight: "bold", marginBottom: 1 }}>{line.description}</Text>
+                            {line.notes && <Text style={{ fontSize: 7, color: c.TEXT_MUTED, fontStyle: "italic" }}>{line.notes}</Text>}
+                          </View>
+                          <Text style={{ fontSize: 9.5, fontWeight: "bold", color: c.TEXT_DARK, minWidth: 80, textAlign: "right" }}>
+                            {(line.currency ?? concept.currency)} ${Number(line.price ?? 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                          </Text>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </View>
+              );
+            })
+          ) : (
+            allLines.map((line: any, i: number) => {
             const taxRate  = line.tax_rate;
             const isExento = taxRate === -1;
             const isTasa0  = taxRate === 0;
