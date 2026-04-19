@@ -37,7 +37,10 @@ export default function ShipmentCopilot({ shipment }: Props) {
   );
 
   const stCfg     = SHIPMENT_STATUS_CONFIG[shipment.status];
-  const profitPct = shipment.total > 0 ? ((shipment.profit ?? 0) / shipment.total) * 100 : 0;
+  const totalRevForMargin = shipment.totals_by_currency
+    ? Object.values(shipment.totals_by_currency).reduce((s, v) => s + v.total, 0)
+    : (shipment.total ?? 0);
+  const profitPct = totalRevForMargin > 0 ? ((shipment.profit ?? 0) / totalRevForMargin) * 100 : 0;
   const isLate    = shipment.estimated_delivery && !["delivered","invoiced","cancelled"].includes(shipment.status)
     ? new Date(shipment.estimated_delivery).getTime() < Date.now() : false;
   const daysLate  = isLate && shipment.estimated_delivery
@@ -87,12 +90,25 @@ export default function ShipmentCopilot({ shipment }: Props) {
           {tl.profitAnalysis ?? "Rentabilidad"}
         </div>
         <div style={{ display: "grid", gap: "5px" }}>
-          {/* Ingreso */}
-          <div style={{ display: "flex", justifyContent: "space-between", padding: "5px 8px", borderRadius: "var(--radius-sm)", background: "var(--color-bg-subtle)" }}>
+          {/* Ingreso — multi-moneda */}
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", padding: "5px 8px", borderRadius: "var(--radius-sm)", background: "var(--color-bg-subtle)" }}>
             <span style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{tl.revenue ?? "Ingreso"}</span>
-            <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
-              {shipment.currency} ${Number(shipment.total ?? 0).toLocaleString(locale, { minimumFractionDigits: 2 })}
-            </span>
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "1px" }}>
+              {shipment.totals_by_currency && Object.keys(shipment.totals_by_currency).length > 0
+                ? Object.entries(shipment.totals_by_currency)
+                    .filter(([, v]) => v.total > 0)
+                    .map(([cur, vals]) => (
+                      <span key={cur} style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
+                        {cur} ${vals.total.toLocaleString(locale, { minimumFractionDigits: 2 })}
+                      </span>
+                    ))
+                : (
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
+                    {shipment.currency} ${Number(shipment.total ?? 0).toLocaleString(locale, { minimumFractionDigits: 2 })}
+                  </span>
+                )
+              }
+            </div>
           </div>
 
           {/* Costo — separado por moneda */}
