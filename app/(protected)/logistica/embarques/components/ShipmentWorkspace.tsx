@@ -601,7 +601,11 @@ useEffect(() => {
     { key: "timeline",  label: tl.tabTimeline  ?? "Historial" },
   ];
 
-  const profitPct = shipment.total > 0 ? ((shipment.profit ?? 0) / shipment.total) * 100 : 0;
+  // profitPct — usa totals_by_currency si disponible, si no el campo total legacy
+  const totalRevForMargin = shipment.totals_by_currency
+    ? Object.values(shipment.totals_by_currency).reduce((s, v) => s + v.total, 0)
+    : (shipment.total ?? 0);
+  const profitPct = totalRevForMargin > 0 ? ((shipment.profit ?? 0) / totalRevForMargin) * 100 : 0;
 
   return (
     <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden" }}>
@@ -642,8 +646,22 @@ useEffect(() => {
             </div>
           </div>
           <div style={{ textAlign: "right", flexShrink: 0 }}>
-            <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
-              {shipment.currency} ${Number(shipment.total ?? 0).toLocaleString(locale, { minimumFractionDigits: 2 })}
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px" }}>
+              {shipment.totals_by_currency && Object.keys(shipment.totals_by_currency).length > 0
+                ? Object.entries(shipment.totals_by_currency)
+                    .filter(([, v]) => v.total > 0)
+                    .map(([cur, vals]) => (
+                      <div key={cur} style={{ fontSize: "17px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums", lineHeight: 1.2 }}>
+                        {cur !== "MXN" && <span style={{ fontSize: "12px", marginRight: "3px", opacity: 0.8 }}>{cur}</span>}
+                        ${vals.total.toLocaleString(locale, { minimumFractionDigits: 2 })}
+                      </div>
+                    ))
+                : (
+                  <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
+                    {shipment.currency} ${Number(shipment.total ?? 0).toLocaleString(locale, { minimumFractionDigits: 2 })}
+                  </div>
+                )
+              }
             </div>
             <div style={{ fontSize: "11px", color: profitPct >= 20 ? "var(--color-success-text)" : "var(--color-warning-text)", fontWeight: 700 }}>
               {tl.margin ?? "Margen"}: {profitPct.toFixed(1)}%
@@ -914,12 +932,23 @@ useEffect(() => {
 
             {/* FINANCIERO */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "8px" }}>
-              {/* Ingreso */}
+              {/* Ingreso — multi-moneda */}
               <div style={{ padding: "10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", textAlign: "center" }}>
                 <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Ingreso</div>
-                <div style={{ fontSize: "15px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
-                  {shipment.currency} ${Number(shipment.total ?? 0).toLocaleString(locale, { minimumFractionDigits: 2 })}
-                </div>
+                {shipment.totals_by_currency && Object.keys(shipment.totals_by_currency).length > 0
+                  ? <div style={{ display: "flex", flexDirection: "column", gap: "2px", alignItems: "center" }}>
+                      {Object.entries(shipment.totals_by_currency)
+                        .filter(([, v]) => v.total > 0)
+                        .map(([cur, vals]) => (
+                          <div key={cur} style={{ fontSize: "14px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
+                            {cur} ${vals.total.toLocaleString(locale, { minimumFractionDigits: 2 })}
+                          </div>
+                        ))}
+                    </div>
+                  : <div style={{ fontSize: "15px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
+                      {shipment.currency} ${Number(shipment.total ?? 0).toLocaleString(locale, { minimumFractionDigits: 2 })}
+                    </div>
+                }
               </div>
 
               {/* Costo — separado por moneda desde AP */}
