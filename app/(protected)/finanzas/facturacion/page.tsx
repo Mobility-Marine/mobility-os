@@ -145,7 +145,7 @@ async function handleFacturarEmbarque(shipment: any) {
       sat_unit_code:    s.sat_unit_code    ?? "E48",
       unit:             s.unit             ?? "Servicio",
     }));
-    const uniqueCurrencies = [...new Set(mappedServices.map((s: any) => s.currency))];
+    const uniqueCurrencies = [...new Set(mappedServices.map((s: any) => s.currency as string))];
     const hasMultiCurrency = uniqueCurrencies.length > 1;
     const servicesByCurrency = uniqueCurrencies.reduce((acc, cur) => {
       acc[cur] = mappedServices.filter((s: any) => s.currency === cur);
