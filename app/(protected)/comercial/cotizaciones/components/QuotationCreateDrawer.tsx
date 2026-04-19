@@ -131,8 +131,6 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
             if (serviceSubtype === "maritimo_fcl"  || serviceSubtype === "maritimo_lcl")  return maritimoInfo as any;
             return Object.keys(generalInfo).length > 0 ? generalInfo as GeneralInfo : undefined;
           })(),
-            return Object.keys(generalInfo).length > 0 ? generalInfo as GeneralInfo : undefined;
-          })(),
           client_id:       !clientState.useManual ? clientState.selectedClient?.id : undefined,
           client_name:     clientName,
           client_email:    clientEmail    || undefined,
