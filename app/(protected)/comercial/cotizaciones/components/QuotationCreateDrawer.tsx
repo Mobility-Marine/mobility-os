@@ -11,21 +11,51 @@ import {
   EMPTY_CONFIG, EMPTY_CLIENT,
 } from "./drawer/drawerState";
 import type { BillingConceptDraft, ConfigState, ClientState } from "./drawer/drawerState";
-import StepType        from "./drawer/steps/StepType";
-import StepSubtype     from "./drawer/steps/StepSubtype";
-import StepClient      from "./drawer/steps/StepClient";
-import StepConfig      from "./drawer/steps/StepConfig";
-import StepConceptos   from "./drawer/steps/StepConceptos";
-import StepGeneralInfo from "./drawer/generalInfo/StepGeneralInfo";
-import StepItems       from "./drawer/steps/StepItems";
-import ContentTerrestre, { EMPTY_TERRESTRE_INFO } from "./drawer/byType/ContentTerrestre";
-import type { TerrestreInfo } from "./drawer/byType/ContentTerrestre";
-import ContentMaritimo, { EMPTY_MARITIMO_INFO } from "./drawer/byType/ContentMaritimo";
-import type { MaritimoInfo } from "./drawer/byType/ContentMaritimo";
+
+// Steps
+import StepType    from "./drawer/steps/StepType";
+import StepSubtype from "./drawer/steps/StepSubtype";
+import StepClient  from "./drawer/steps/StepClient";
+import StepConfig  from "./drawer/steps/StepConfig";
+import StepItems   from "./drawer/steps/StepItems";
+
+// Content por subtipo
+import ContentTerrestre_LTL, { EMPTY_TERRESTRE_LTL_INFO } from "./drawer/byType/ContentTerrestre_LTL";
+import ContentTerrestre_FTL, { EMPTY_TERRESTRE_FTL_INFO } from "./drawer/byType/ContentTerrestre_FTL";
+import ContentMaritimo_FCL,  { EMPTY_MARITIMO_FCL_INFO  } from "./drawer/byType/ContentMaritimo_FCL";
+import ContentMaritimo_LCL,  { EMPTY_MARITIMO_LCL_INFO  } from "./drawer/byType/ContentMaritimo_LCL";
+import ContentAereo_Carga,   { EMPTY_AEREO_CARGA_INFO   } from "./drawer/byType/ContentAereo_Carga";
+import ContentAereo_Courier, { EMPTY_AEREO_COURIER_INFO } from "./drawer/byType/ContentAereo_Courier";
+import ContentImpo,          { EMPTY_IMPO_INFO           } from "./drawer/byType/ContentImpo";
+import ContentExpo,          { EMPTY_EXPO_INFO           } from "./drawer/byType/ContentExpo";
+import ContentOpCompleta,    { EMPTY_OP_COMPLETA_INFO    } from "./drawer/byType/ContentOpCompleta";
+import ContentComercializadora, { EMPTY_COMERCIALIZADORA_INFO } from "./drawer/byType/ContentComercializadora";
+import ContentConsultoria,   { EMPTY_CONSULTORIA_INFO    } from "./drawer/byType/ContentConsultoria";
+
+import type { TerrestreLTLInfo   } from "./drawer/byType/ContentTerrestre_LTL";
+import type { TerrestreFTLInfo   } from "./drawer/byType/ContentTerrestre_FTL";
+import type { MaritimoFCLInfo    } from "./drawer/byType/ContentMaritimo_FCL";
+import type { MaritimoLCLInfo    } from "./drawer/byType/ContentMaritimo_LCL";
+import type { AereoCargaInfo     } from "./drawer/byType/ContentAereo_Carga";
+import type { AereoCourierInfo   } from "./drawer/byType/ContentAereo_Courier";
+import type { ImpoInfo            } from "./drawer/byType/ContentImpo";
+import type { ExpoInfo            } from "./drawer/byType/ContentExpo";
+import type { OpCompletaInfo      } from "./drawer/byType/ContentOpCompleta";
+import type { ComercializadoraInfo} from "./drawer/byType/ContentComercializadora";
+import type { ConsultoriaInfo     } from "./drawer/byType/ContentConsultoria";
+
+// Subtipos que ya tienen Content propio
+const SUBTYPES_WITH_CONTENT: ServiceSubtype[] = [
+  "terrestre_ltl", "terrestre_ftl",
+  "maritimo_fcl",  "maritimo_lcl",
+  "aereo_carga",   "aereo_courier",
+  "impo_integral", "expo_integral",
+  "op_completa",   "comercializadora", "consultoria",
+];
 
 type Props = {
-  open:    boolean;
-  onClose: () => void;
+  open:         boolean;
+  onClose:      () => void;
   onCreate: (
     payload:          CreateQuotationPayload,
     items?:           Omit<CreateItemPayload,    "quotation_id">[],
@@ -38,26 +68,49 @@ type Props = {
 export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownloadPDF }: Props) {
   const { companyId } = useTenant();
 
+  // ── Tipo y subtipo ─────────────────────────────────────────
   const [quotType,       setQuotType]       = useState<QuotationType>("services");
   const [serviceSubtype, setServiceSubtype] = useState<ServiceSubtype | null>(null);
-  const [clientState,    setClientState]    = useState<ClientState>(EMPTY_CLIENT());
-  const [generalInfo,    setGeneralInfo]    = useState<Partial<GeneralInfo>>({});
-  const [items,          setItems]          = useState<Omit<CreateItemPayload, "quotation_id">[]>([]);
-  const [billingConcepts,setBillingConcepts]= useState<BillingConceptDraft[]>([]);
-  const [svcCatalog,     setSvcCatalog]     = useState<any[]>([]);
-  const [terrestreInfo, setTerrestreInfo] = useState<TerrestreInfo>(EMPTY_TERRESTRE_INFO());
-  const [maritimoInfo, setMaritimoInfo] = useState<MaritimoInfo>(EMPTY_MARITIMO_INFO());
-  const [config,         setConfig]         = useState<ConfigState>(EMPTY_CONFIG());
-  const [stepIdx,        setStepIdx]        = useState(0);
-  const [saving,         setSaving]         = useState(false);
-  const [error,          setError]          = useState<string | null>(null);
-  const [ccEmails,       setCcEmails]       = useState("");
-  const [sendingEmail,   setSendingEmail]   = useState(false);
 
+  // ── Cliente ────────────────────────────────────────────────
+  const [clientState, setClientState] = useState<ClientState>(EMPTY_CLIENT());
+
+  // ── Productos ──────────────────────────────────────────────
+  const [items,      setItems]      = useState<Omit<CreateItemPayload, "quotation_id">[]>([]);
+  const [svcCatalog, setSvcCatalog] = useState<any[]>([]);
+
+  // ── Billing concepts (compartido por todos los Content) ────
+  const [billingConcepts, setBillingConcepts] = useState<BillingConceptDraft[]>([]);
+
+  // ── Estados por subtipo ────────────────────────────────────
+  const [ltlInfo,   setLtlInfo]   = useState<TerrestreLTLInfo   >(EMPTY_TERRESTRE_LTL_INFO());
+  const [ftlInfo,   setFtlInfo]   = useState<TerrestreFTLInfo   >(EMPTY_TERRESTRE_FTL_INFO());
+  const [fclInfo,   setFclInfo]   = useState<MaritimoFCLInfo    >(EMPTY_MARITIMO_FCL_INFO());
+  const [lclInfo,   setLclInfo]   = useState<MaritimoLCLInfo    >(EMPTY_MARITIMO_LCL_INFO());
+  const [acInfo,    setAcInfo]    = useState<AereoCargaInfo     >(EMPTY_AEREO_CARGA_INFO());
+  const [courInfo,  setCourInfo]  = useState<AereoCourierInfo   >(EMPTY_AEREO_COURIER_INFO());
+  const [impoInfo,  setImpoInfo]  = useState<ImpoInfo           >(EMPTY_IMPO_INFO());
+  const [expoInfo,  setExpoInfo]  = useState<ExpoInfo           >(EMPTY_EXPO_INFO());
+  const [opInfo,    setOpInfo]    = useState<OpCompletaInfo     >(EMPTY_OP_COMPLETA_INFO());
+  const [comInfo,   setComInfo]   = useState<ComercializadoraInfo>(EMPTY_COMERCIALIZADORA_INFO());
+  const [consInfo,  setConsInfo]  = useState<ConsultoriaInfo    >(EMPTY_CONSULTORIA_INFO());
+
+  // ── Config ─────────────────────────────────────────────────
+  const [config, setConfig] = useState<ConfigState>(EMPTY_CONFIG());
+
+  // ── Navegación ─────────────────────────────────────────────
   const steps       = getSteps(quotType);
+  const [stepIdx,   setStepIdx]   = useState(0);
   const currentStep = steps[stepIdx];
   const stepLabels  = config.language === "en" ? STEP_LABELS_EN : STEP_LABELS_ES;
 
+  // ── UI state ───────────────────────────────────────────────
+  const [saving,       setSaving]       = useState(false);
+  const [error,        setError]        = useState<string | null>(null);
+  const [ccEmails,     setCcEmails]     = useState("");
+  const [sendingEmail, setSendingEmail] = useState(false);
+
+  // ── Cargar catálogo ────────────────────────────────────────
   useEffect(() => {
     if (!open || !companyId) return;
     supabase
@@ -70,29 +123,38 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
       .then(({ data }) => setSvcCatalog(data ?? []));
   }, [open, companyId]);
 
+  // ── Reset al abrir ─────────────────────────────────────────
   useEffect(() => {
     if (!open) return;
     setStepIdx(0);
     setQuotType("services");
     setServiceSubtype(null);
     setClientState(EMPTY_CLIENT());
-    setGeneralInfo({});
     setItems([]);
     setBillingConcepts([]);
     setConfig(EMPTY_CONFIG());
     setError(null);
     setCcEmails("");
     setSendingEmail(false);
-    setTerrestreInfo(EMPTY_TERRESTRE_INFO());
-    setMaritimoInfo(EMPTY_MARITIMO_INFO());
+    setLtlInfo(EMPTY_TERRESTRE_LTL_INFO());
+    setFtlInfo(EMPTY_TERRESTRE_FTL_INFO());
+    setFclInfo(EMPTY_MARITIMO_FCL_INFO());
+    setLclInfo(EMPTY_MARITIMO_LCL_INFO());
+    setAcInfo(EMPTY_AEREO_CARGA_INFO());
+    setCourInfo(EMPTY_AEREO_COURIER_INFO());
+    setImpoInfo(EMPTY_IMPO_INFO());
+    setExpoInfo(EMPTY_EXPO_INFO());
+    setOpInfo(EMPTY_OP_COMPLETA_INFO());
+    setComInfo(EMPTY_COMERCIALIZADORA_INFO());
+    setConsInfo(EMPTY_CONSULTORIA_INFO());
   }, [open]);
 
+  // ── Validación ─────────────────────────────────────────────
   function canAdvance(): boolean {
     switch (currentStep) {
       case "type":      return true;
       case "subtype":   return !!serviceSubtype;
       case "client":    return !!(clientState.useManual ? clientState.manualClient.name.trim() : clientState.selectedClient);
-      case "general":   return true;
       case "content":   return billingConcepts.length > 0 && billingConcepts.every(c => c.lines.length > 0);
       case "conceptos": return quotType === "products"
         ? items.length > 0
@@ -104,6 +166,25 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
   function next() { setError(null); if (stepIdx < steps.length - 1) setStepIdx(s => s + 1); }
   function prev() { if (stepIdx > 0) setStepIdx(s => s - 1); }
 
+  // ── Helper: obtener general_info del subtipo activo ────────
+  function getGeneralInfo(): any {
+    switch (serviceSubtype) {
+      case "terrestre_ltl":  return ltlInfo;
+      case "terrestre_ftl":  return ftlInfo;
+      case "maritimo_fcl":   return fclInfo;
+      case "maritimo_lcl":   return lclInfo;
+      case "aereo_carga":    return acInfo;
+      case "aereo_courier":  return courInfo;
+      case "impo_integral":  return impoInfo;
+      case "expo_integral":  return expoInfo;
+      case "op_completa":    return opInfo;
+      case "comercializadora": return comInfo;
+      case "consultoria":    return consInfo;
+      default:               return undefined;
+    }
+  }
+
+  // ── Crear cotización ───────────────────────────────────────
   async function handleCreate() {
     setSaving(true);
     try {
@@ -112,7 +193,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
       const clientRfc   = clientState.useManual ? clientState.manualClient.rfc   : clientState.selectedClient?.rfc;
       const discount    = Number(config.discount_amount) || 0;
 
-      // Auto-detectar moneda principal
+      // Auto-detectar moneda principal desde líneas
       let currency = config.currency;
       if (billingConcepts.length > 0) {
         const currencies = billingConcepts.flatMap(c => c.lines.map(l => (l as any).currency ?? c.currency));
@@ -126,11 +207,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
           type:            quotType,
           service_subtype: serviceSubtype ?? undefined,
           language:        config.language,
-          general_info: (() => {
-            if (serviceSubtype === "terrestre_ltl" || serviceSubtype === "terrestre_ftl") return terrestreInfo as any;
-            if (serviceSubtype === "maritimo_fcl"  || serviceSubtype === "maritimo_lcl")  return maritimoInfo as any;
-            return Object.keys(generalInfo).length > 0 ? generalInfo as GeneralInfo : undefined;
-          })(),
+          general_info:    getGeneralInfo(),
           client_id:       !clientState.useManual ? clientState.selectedClient?.id : undefined,
           client_name:     clientName,
           client_email:    clientEmail    || undefined,
@@ -146,7 +223,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
           notes:           config.notes    || undefined,
           terms:           config.terms    || undefined,
         },
-        quotType === "products" ? items          : undefined,
+        quotType === "products" ? items           : undefined,
         undefined,
         quotType === "services" ? billingConcepts : undefined,
       );
@@ -168,6 +245,13 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
   const taxAmt   = Math.max(0, subtotal - discount) * ((Number(config.tax_rate) || 16) / 100);
   const total    = Math.max(0, subtotal - discount) + taxAmt;
 
+  // Props comunes para todos los Content
+  const contentProps = {
+    billingConcepts,
+    setBillingConcepts,
+    svcCatalog,
+  };
+
   return (
     <>
       <div onClick={onClose} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", zIndex: 400 }} />
@@ -180,13 +264,12 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
         display: "flex", flexDirection: "column",
         height: "100vh", overflow: "hidden",
       }}>
+
         {/* HEADER */}
         <div style={{ padding: "18px 24px", borderBottom: "1px solid var(--color-border-faint)", flexShrink: 0 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "14px" }}>
             <div>
-              <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-text-primary)" }}>
-                Nueva cotización
-              </div>
+              <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-text-primary)" }}>Nueva cotización</div>
               <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "2px" }}>
                 {stepLabels[currentStep]}
                 {serviceSubtype && currentStep !== "type" && currentStep !== "subtype" && (
@@ -221,59 +304,54 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
           </div>
         )}
 
-        {/* CONTENT — scroll aquí */}
-        <div style={{
-          flex: 1,
-          overflowY: "scroll",
-          overflowX: "hidden",
-          padding: "20px 24px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "14px",
-        }}>
+        {/* CONTENT */}
+        <div style={{ flex: 1, overflowY: "scroll", overflowX: "hidden", padding: "20px 24px", display: "flex", flexDirection: "column", gap: "14px" }}>
+
           {currentStep === "type" && (
-            <StepType quotType={quotType} setQuotType={(t) => { setQuotType(t); setServiceSubtype(null); }} />
+            <StepType quotType={quotType} setQuotType={(t) => { setQuotType(t); setServiceSubtype(null); setBillingConcepts([]); }} />
           )}
+
           {currentStep === "subtype" && (
-            <StepSubtype serviceSubtype={serviceSubtype} setServiceSubtype={setServiceSubtype} />
+            <StepSubtype serviceSubtype={serviceSubtype} setServiceSubtype={(s) => { setServiceSubtype(s); setBillingConcepts([]); }} />
           )}
+
           {currentStep === "client" && (
             <StepClient state={clientState} onChange={(u) => setClientState(p => ({ ...p, ...u }))} />
           )}
+
+          {/* CONTENT — un componente por subtipo */}
           {currentStep === "content" && (
             <>
-              {(serviceSubtype === "terrestre_ltl" || serviceSubtype === "terrestre_ftl") && (
-                <ContentTerrestre
-                  info={terrestreInfo}
-                  setInfo={setTerrestreInfo}
-                  billingConcepts={billingConcepts}
-                  setBillingConcepts={setBillingConcepts}
-                  svcCatalog={svcCatalog}
-                />
-              )}
-              {(serviceSubtype === "maritimo_fcl" || serviceSubtype === "maritimo_lcl") && (
-                <ContentMaritimo
-                  info={maritimoInfo}
-                  setInfo={setMaritimoInfo}
-                  billingConcepts={billingConcepts}
-                  setBillingConcepts={setBillingConcepts}
-                  svcCatalog={svcCatalog}
-                />
-              )}
-              {serviceSubtype && !["terrestre_ltl","terrestre_ftl","maritimo_fcl","maritimo_lcl"].includes(serviceSubtype) && (
+              {serviceSubtype === "terrestre_ltl" && <ContentTerrestre_LTL info={ltlInfo}  setInfo={setLtlInfo}  {...contentProps} />}
+              {serviceSubtype === "terrestre_ftl" && <ContentTerrestre_FTL info={ftlInfo}  setInfo={setFtlInfo}  {...contentProps} />}
+              {serviceSubtype === "maritimo_fcl"  && <ContentMaritimo_FCL  info={fclInfo}  setInfo={setFclInfo}  {...contentProps} />}
+              {serviceSubtype === "maritimo_lcl"  && <ContentMaritimo_LCL  info={lclInfo}  setInfo={setLclInfo}  {...contentProps} />}
+              {serviceSubtype === "aereo_carga"   && <ContentAereo_Carga   info={acInfo}   setInfo={setAcInfo}   {...contentProps} />}
+              {serviceSubtype === "aereo_courier" && <ContentAereo_Courier info={courInfo} setInfo={setCourInfo} {...contentProps} />}
+              {serviceSubtype === "impo_integral" && <ContentImpo          info={impoInfo} setInfo={setImpoInfo} {...contentProps} />}
+              {serviceSubtype === "expo_integral" && <ContentExpo          info={expoInfo} setInfo={setExpoInfo} {...contentProps} />}
+              {serviceSubtype === "op_completa"   && <ContentOpCompleta    info={opInfo}   setInfo={setOpInfo}   {...contentProps} />}
+              {serviceSubtype === "comercializadora" && <ContentComercializadora info={comInfo} setInfo={setComInfo} {...contentProps} />}
+              {serviceSubtype === "consultoria"   && <ContentConsultoria   info={consInfo} setInfo={setConsInfo} {...contentProps} />}
+              {serviceSubtype && !SUBTYPES_WITH_CONTENT.includes(serviceSubtype) && (
                 <div style={{ padding: "32px", textAlign: "center", borderRadius: "var(--radius-md)", border: "1px dashed var(--color-border)", color: "var(--color-text-muted)" }}>
                   <div style={{ fontSize: "24px", marginBottom: "8px" }}>🚧</div>
                   <div style={{ fontSize: "14px", fontWeight: 700 }}>En construcción</div>
-                  <div style={{ fontSize: "12px", marginTop: "4px" }}>
-                    {serviceSubtype.replace(/_/g, " ").toUpperCase()} — próximamente
-                  </div>
+                  <div style={{ fontSize: "12px", marginTop: "4px" }}>{serviceSubtype.replace(/_/g, " ").toUpperCase()} — próximamente</div>
                 </div>
               )}
             </>
           )}
+
+          {/* Productos */}
+          {currentStep === "conceptos" && quotType === "products" && (
+            <StepItems items={items} setItems={setItems} companyId={companyId ?? ""} />
+          )}
+
           {currentStep === "config" && (
             <StepConfig state={config} onChange={(u) => setConfig(p => ({ ...p, ...u }))} />
           )}
+
           {currentStep === "preview" && (
             <QuotPreview
               quotType={quotType}
@@ -288,6 +366,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
               discount={discount}
             />
           )}
+
           {currentStep === "actions" && (
             <ActionsStep
               contactEmail={clientState.contactEmail}
@@ -300,6 +379,7 @@ export default function QuotationCreateDrawer({ open, onClose, onCreate, onDownl
             />
           )}
         </div>
+
         {/* FOOTER */}
         <div style={{ padding: "14px 24px", borderTop: "1px solid var(--color-border-faint)", display: "flex", gap: "10px", flexShrink: 0 }}>
           {stepIdx > 0 && currentStep !== "actions" && (
@@ -342,10 +422,23 @@ function ActionsStep({ contactEmail, ccEmails, setCcEmails, sendingEmail, setSen
           </svg>
         </div>
         <div style={{ fontSize: "18px", fontWeight: 800, color: "var(--color-text-primary)", marginBottom: "6px" }}>¡Cotización creada!</div>
-        <div style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>Selecciona la cotización en el Workspace para descargar el PDF.</div>
+        <div style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>Selecciona la cotización en el Workspace para ver los detalles.</div>
       </div>
 
-      <div style={{ padding: "14px 16px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", display: "grid", gap: "8px" }}>
+      {/* Botón descargar PDF */}
+      {onDownloadPDF && (
+        <button onClick={onDownloadPDF}
+          style={{ height: "48px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "15px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "10px" }}>
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Descargar PDF
+        </button>
+      )}
+
+      <div style={{ padding: "14px 16px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", display: "flex", flexDirection: "column", gap: "8px" }}>
         <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase" }}>Enviar por correo</div>
         {contactEmail
           ? <div style={{ fontSize: "12px", color: "var(--color-text-second)" }}>Para: <strong>{contactEmail}</strong></div>
@@ -356,20 +449,6 @@ function ActionsStep({ contactEmail, ccEmails, setCcEmails, sendingEmail, setSen
           <input value={ccEmails} onChange={(e) => setCcEmails(e.target.value)} placeholder="correo1@empresa.com, correo2@empresa.com"
             style={{ width: "100%", height: "36px", padding: "0 12px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-base)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" as any }} />
         </div>
-        {/* Botón descargar PDF */}
-        {onDownloadPDF && (
-          <button
-            onClick={onDownloadPDF}
-            style={{ height: "44px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "14px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-              <polyline points="7 10 12 15 17 10"/>
-              <line x1="12" y1="15" x2="12" y2="3"/>
-            </svg>
-            Descargar PDF
-          </button>
-        )}
         <button disabled={sendingEmail || !contactEmail} onClick={() => setSendingEmail(true)}
           style={{ height: "38px", borderRadius: "var(--radius-md)", background: contactEmail ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: contactEmail ? "#fff" : "var(--color-text-muted)", border: contactEmail ? "none" : "1px solid var(--color-border)", fontSize: "13px", fontWeight: 600, cursor: contactEmail ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: "8px" }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -381,7 +460,7 @@ function ActionsStep({ contactEmail, ccEmails, setCcEmails, sendingEmail, setSen
       </div>
 
       <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", fontSize: "12px", color: "var(--color-info-text)", lineHeight: 1.6 }}>
-        💡 Cierra este drawer → selecciona la cotización en la lista → botón <strong>Descargar PDF</strong> en el Workspace.
+        💡 También puedes descargar el PDF desde el Workspace → selecciona la cotización → botón <strong>Descargar PDF</strong>.
       </div>
     </>
   );
@@ -391,7 +470,6 @@ function ActionsStep({ contactEmail, ccEmails, setCcEmails, sendingEmail, setSen
 function QuotPreview({ quotType, serviceSubtype, clientState, items, billingConcepts, config, subtotal, taxAmt, total, discount }: any) {
   const clientName = clientState.useManual ? clientState.manualClient.name : clientState.selectedClient?.name;
 
-  // Calcular totales por moneda para servicios
   const byCurrency: Record<string, { subtotal: number; tax: number; total: number }> = {};
   if (quotType === "services") {
     for (const concept of billingConcepts) {
@@ -418,7 +496,7 @@ function QuotPreview({ quotType, serviceSubtype, clientState, items, billingConc
           { label: "Nombre",   value: clientName },
           { label: "RFC",      value: clientState.useManual ? clientState.manualClient.rfc : clientState.selectedClient?.rfc },
           { label: "Contacto", value: clientState.contactName },
-          { label: "Subtipo",  value: serviceSubtype ? serviceSubtype.replace(/_/g, " ").toUpperCase() : "Productos" },
+          { label: "Subtipo",  value: serviceSubtype ? serviceSubtype.replace(/_/g, " ").toUpperCase() : quotType === "products" ? "Productos" : null },
           { label: "Idioma",   value: config.language === "en" ? "🇺🇸 English" : "🇲🇽 Español" },
         ].filter(r => r.value).map((row) => (
           <div key={row.label} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
@@ -457,7 +535,7 @@ function QuotPreview({ quotType, serviceSubtype, clientState, items, billingConc
         })}
       </div>
 
-      {/* Totales por moneda */}
+      {/* Totales */}
       {quotType === "services" ? (
         <div style={{ background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", borderRadius: "var(--radius-md)", padding: "12px 16px", display: "grid", gap: "8px" }}>
           {Object.entries(byCurrency).map(([cur, ct], i) => (
