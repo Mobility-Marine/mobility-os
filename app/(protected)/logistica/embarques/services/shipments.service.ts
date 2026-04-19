@@ -332,23 +332,30 @@ export function computeShipmentKPIs(shipments: Shipment[]): ShipmentKPIs {
   const profitByCurrency:  CurrencyAmounts = {};
 
   for (const shipment of delivered) {
-    const services = shipment.services ?? [];
+    const services    = shipment.services ?? [];
+    const mainCur     = shipment.currency ?? "USD";
+    const provCost    = Number(shipment.provider_cost ?? 0);
+    const provCur     = shipment.provider_currency ?? mainCur;
 
-    for (const svc of services) {
-      const cur   = svc.currency ?? shipment.currency ?? "USD";
-      const price = Number(svc.price ?? 0);
-      const cost  = Number(svc.cost  ?? 0);
-      revenueByCurrency[cur] = (revenueByCurrency[cur] ?? 0) + price;
-      costByCurrency[cur]    = (costByCurrency[cur]    ?? 0) + cost;
-      profitByCurrency[cur]  = (profitByCurrency[cur]  ?? 0) + (price - cost);
-    }
-
-    // Fallback si no hay servicios detallados
-    if (services.length === 0) {
-      const cur = shipment.currency ?? "USD";
-      revenueByCurrency[cur] = (revenueByCurrency[cur] ?? 0) + (shipment.total ?? 0);
-      costByCurrency[cur]    = (costByCurrency[cur]    ?? 0) + (shipment.provider_cost ?? 0);
-      profitByCurrency[cur]  = (profitByCurrency[cur]  ?? 0) + (shipment.profit ?? 0);
+    if (services.length > 0) {
+      // Ingresos: desde líneas de servicio por moneda
+      for (const svc of services) {
+        const cur   = svc.currency ?? mainCur;
+        const price = Number(svc.price ?? 0);
+        revenueByCurrency[cur] = (revenueByCurrency[cur] ?? 0) + price;
+      }
+      // Costo: desde provider_cost del embarque (fuente correcta — viene de AP)
+      if (provCost > 0) {
+        costByCurrency[provCur]   = (costByCurrency[provCur]   ?? 0) + provCost;
+        profitByCurrency[mainCur] = (profitByCurrency[mainCur] ?? 0) + ((shipment.total ?? 0) - provCost);
+      } else {
+        profitByCurrency[mainCur] = (profitByCurrency[mainCur] ?? 0) + (shipment.total ?? 0);
+      }
+    } else {
+      // Fallback sin servicios detallados
+      revenueByCurrency[mainCur] = (revenueByCurrency[mainCur] ?? 0) + (shipment.total ?? 0);
+      costByCurrency[provCur]    = (costByCurrency[provCur]    ?? 0) + provCost;
+      profitByCurrency[mainCur]  = (profitByCurrency[mainCur]  ?? 0) + (shipment.profit ?? 0);
     }
   }
 
