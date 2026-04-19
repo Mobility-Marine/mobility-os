@@ -158,9 +158,6 @@ export default function TemplateServicios({ quotation, settings }: Props) {
       {/* PÁGINA DE TÉRMINOS */}
       {termsText && (
         <Page size="LETTER" style={{ backgroundColor: c.WHITE, fontSize: 9, color: c.TEXT_DARK, paddingBottom: FOOTER_HEIGHT + 10 }}>
-          <View fixed>
-            <PDFHeader quotation={quotation} settings={settings} lang={lang} subtitle={subtitle} />
-          </View>
           <PDFTermsPage quotation={quotation} lang={lang} settings={settings} />
           <View fixed style={{ position: "absolute", bottom: 0, left: 0, right: 0 }}>
             <PDFFooter settings={settings} lang={lang} />
