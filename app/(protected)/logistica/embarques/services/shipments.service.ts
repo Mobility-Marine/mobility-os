@@ -1,11 +1,45 @@
 import { supabase } from "@/lib/supabaseClient";
 import type {
   Shipment, ShipmentService, ShipmentFilters, ShipmentKPIs,
-  ShipmentStatus, ShipmentServiceType,
+  ShipmentStatus, ShipmentServiceType, CurrencyTotals, CurrencyAmounts,
 } from "../types/shipments.types";
 
-// ── REFERENCIA ────────────────────────────────────────────────
+// ── HELPERS MULTI-MONEDA ──────────────────────────────────────
+export function calcTotalsByCurrency(services: ShipmentService[]): CurrencyTotals {
+  const byCurrency: CurrencyTotals = {};
+  for (const svc of services) {
+    const cur   = svc.currency ?? "USD";
+    const price = Number(svc.price ?? 0);
+    const tax   = price * 0.16; // IVA estándar por línea
+    if (!byCurrency[cur]) byCurrency[cur] = { subtotal: 0, tax: 0, total: 0 };
+    byCurrency[cur].subtotal += price;
+    byCurrency[cur].tax      += tax;
+    byCurrency[cur].total    += price + tax;
+  }
+  return byCurrency;
+}
 
+export function calcCostByCurrency(services: ShipmentService[]): CurrencyAmounts {
+  const byCurrency: CurrencyAmounts = {};
+  for (const svc of services) {
+    const cur  = svc.currency ?? "USD";
+    const cost = Number(svc.cost ?? 0);
+    byCurrency[cur] = (byCurrency[cur] ?? 0) + cost;
+  }
+  return byCurrency;
+}
+
+// Agrega totales calculados a cada embarque
+function enrichWithTotals(shipment: Shipment & { services?: ShipmentService[] }): Shipment {
+  const services = shipment.services ?? [];
+  return {
+    ...shipment,
+    totals_by_currency: calcTotalsByCurrency(services),
+    cost_by_currency:   calcCostByCurrency(services),
+  };
+}
+
+// ── REFERENCIA ────────────────────────────────────────────────
 export async function generateShipmentReference(
   companyId: string, clientName: string, serviceType: ShipmentServiceType
 ): Promise<string> {
@@ -16,9 +50,8 @@ export async function generateShipmentReference(
     .single();
 
   const format  = settings?.shipment_ref_format ?? "LOG_{CLIENTE}_{TIPO}{NUM}";
-  let   counter = settings?.shipment_ref_counter ?? 1;
+  const counter = settings?.shipment_ref_counter ?? 1;
 
-  // Código de tipo
   const TYPE_CODES: Record<string, string> = {
     terrestre_mx:  "T", terrestre_usa: "T", maritimo: "M",
     aereo:         "A", multimodal:    "X", almacenaje: "W",
@@ -26,9 +59,7 @@ export async function generateShipmentReference(
     otro:          "O",
   };
 
-  // Clave de cliente: primeras 3 letras sin espacios, mayúsculas
   const clientKey = clientName.replace(/\s+/g, "").substring(0, 3).toUpperCase();
-
   const reference = format
     .replace("{CLIENTE}", clientKey)
     .replace("{TIPO}",    TYPE_CODES[serviceType] ?? "O")
@@ -36,7 +67,6 @@ export async function generateShipmentReference(
     .replace("{AÑO}",     String(new Date().getFullYear()))
     .replace("{MES}",     String(new Date().getMonth() + 1).padStart(2, "0"));
 
-  // Incrementar counter
   await supabase.from("company_settings")
     .update({ shipment_ref_counter: counter + 1 })
     .eq("company_id", companyId);
@@ -45,31 +75,57 @@ export async function generateShipmentReference(
 }
 
 // ── FETCH ─────────────────────────────────────────────────────
-
 export async function fetchShipments(companyId: string): Promise<Shipment[]> {
-  const { data } = await supabase
+  // 1. Lista base de embarques
+  const { data: shipments } = await supabase
     .from("shipments")
     .select("*, client:clients(name, email, rfc), quotation:quotations(quote_number), provider:logistics_providers(name, contact_phone)")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
-  return (data ?? []) as Shipment[];
+
+  if (!shipments?.length) return [];
+
+  // 2. Todos los servicios en un solo query (batch)
+  const shipmentIds = shipments.map(s => s.id);
+  const { data: allServices } = await supabase
+    .from("shipment_services")
+    .select("*")
+    .in("shipment_id", shipmentIds)
+    .order("sort_order");
+
+  // 3. Agrupar servicios por shipment_id
+  const servicesByShipment: Record<string, ShipmentService[]> = {};
+  for (const svc of allServices ?? []) {
+    const sid = svc.shipment_id;
+    if (!servicesByShipment[sid]) servicesByShipment[sid] = [];
+    servicesByShipment[sid].push(svc as ShipmentService);
+  }
+
+  // 4. Enriquecer con totales multi-moneda
+  return shipments.map(s => enrichWithTotals({
+    ...s,
+    services: servicesByShipment[s.id] ?? [],
+  } as Shipment));
 }
 
 export async function fetchShipment(companyId: string, id: string): Promise<Shipment | null> {
   const [{ data: shipment }, { data: services }] = await Promise.all([
-    // DESPUÉS:
     supabase.from("shipments")
       .select("*, client:clients(name, email, rfc), quotation:quotations(quote_number), provider:logistics_providers(name, contact_phone)")
       .eq("company_id", companyId).eq("id", id).single(),
     supabase.from("shipment_services")
       .select("*").eq("shipment_id", id).order("sort_order"),
   ]);
+
   if (!shipment) return null;
-  return { ...shipment, services: services ?? [] } as Shipment;
+
+  return enrichWithTotals({
+    ...shipment,
+    services: (services ?? []) as ShipmentService[],
+  } as Shipment);
 }
 
 // ── PRECIO PROMEDIO HISTÓRICO ─────────────────────────────────
-
 export async function fetchAvgPrice(
   companyId: string, serviceType: ShipmentServiceType,
   origin?: string, destination?: string
@@ -93,7 +149,6 @@ export async function fetchAvgPrice(
 }
 
 // ── CREATE ────────────────────────────────────────────────────
-
 export async function createShipment(
   companyId: string, userId: string,
   payload: Partial<Shipment> & { clientName: string }
@@ -107,51 +162,54 @@ export async function createShipment(
     .insert({
       company_id:          companyId,
       reference,
-      quotation_id:        payload.quotation_id    ?? null,
-      client_id:           payload.client_id       ?? null,
+      quotation_id:        payload.quotation_id        ?? null,
+      client_id:           payload.client_id           ?? null,
       status:              "draft",
-      service_type:        payload.service_type    ?? "terrestre_mx",
-      origin:              payload.origin          ?? null,
-      destination:         payload.destination     ?? null,
-      origin_country:      payload.origin_country  ?? "México",
+      service_type:        payload.service_type        ?? "terrestre_mx",
+      origin:              payload.origin              ?? null,
+      destination:         payload.destination         ?? null,
+      origin_country:      payload.origin_country      ?? "México",
       destination_country: payload.destination_country ?? "México",
-      incoterm:            payload.incoterm        ?? null,
-      provider_id:         payload.provider_id     ?? null,
-      currency:            payload.currency        ?? "USD",
-      subtotal:            payload.subtotal        ?? 0,
-      tax_rate:            payload.tax_rate        ?? 16,
-      tax_amount:          payload.tax_amount      ?? 0,
-      total:               payload.total           ?? 0,
-      provider_cost:       payload.provider_cost   ?? 0,
-      provider_currency:   payload.provider_currency ?? "USD",
+      incoterm:            payload.incoterm            ?? null,
+      provider_id:         payload.provider_id         ?? null,
+      currency:            payload.currency            ?? "USD",
+      subtotal:            payload.subtotal            ?? 0,
+      tax_rate:            payload.tax_rate            ?? 16,
+      tax_amount:          payload.tax_amount          ?? 0,
+      total:               payload.total               ?? 0,
+      provider_cost:       payload.provider_cost       ?? 0,
+      provider_currency:   payload.provider_currency   ?? "USD",
       profit:              (payload.total ?? 0) - (payload.provider_cost ?? 0),
-      pickup_date:         payload.pickup_date     ?? null,
-      estimated_delivery:  payload.estimated_delivery ?? null,
-      notes:               payload.notes           ?? null,
-      internal_notes:      payload.internal_notes  ?? null,
+      pickup_date:         payload.pickup_date         ?? null,
+      estimated_delivery:  payload.estimated_delivery  ?? null,
+      notes:               payload.notes               ?? null,
+      internal_notes:      payload.internal_notes      ?? null,
       created_by:          userId,
     })
     .select("*, client:clients(name, email, rfc), quotation:quotations(quote_number)")
     .single();
 
   if (error) throw error;
-  return data as Shipment;
+  return enrichWithTotals({ ...data, services: [] } as Shipment);
 }
 
 // ── UPDATE ────────────────────────────────────────────────────
-
 export async function updateShipment(
   companyId: string, id: string, updates: Partial<Shipment>
 ): Promise<void> {
-  const { client, quotation, provider, services, id: _id, company_id: _cid, created_at: _ca, reference: _ref, ...safe } = updates as any;
+  const {
+    client, quotation, provider, services,
+    totals_by_currency, cost_by_currency,
+    id: _id, company_id: _cid, created_at: _ca, reference: _ref,
+    ...safe
+  } = updates as any;
 
-  // Recalcular profit si cambia total o provider_cost
   if (safe.total !== undefined || safe.provider_cost !== undefined) {
     const { data: current } = await supabase
       .from("shipments").select("total, provider_cost").eq("id", id).single();
-    const total       = safe.total         ?? current?.total         ?? 0;
-    const provCost    = safe.provider_cost ?? current?.provider_cost ?? 0;
-    safe.profit       = total - provCost;
+    const total    = safe.total         ?? current?.total         ?? 0;
+    const provCost = safe.provider_cost ?? current?.provider_cost ?? 0;
+    safe.profit    = total - provCost;
   }
 
   await supabase.from("shipments")
@@ -160,25 +218,23 @@ export async function updateShipment(
 }
 
 // ── STATUS ────────────────────────────────────────────────────
-
 export async function updateShipmentStatus(
   companyId: string, id: string, status: ShipmentStatus, userId: string
 ): Promise<void> {
-  const now     = new Date().toISOString();
+  const now      = new Date().toISOString();
   const updates: any = { status, updated_at: now };
   if (status === "delivered") updates.actual_delivery = now;
 
   await supabase.from("shipments").update(updates).eq("id", id).eq("company_id", companyId);
 
-  // Timeline
   const labels: Partial<Record<ShipmentStatus, string>> = {
-    coordinating:      "Servicio en coordinación",
-    pickup_scheduled:  "Recolección programada",
-    in_transit:        "Servicio en tránsito",
-    at_destination:    "Servicio en destino",
-    delivered:         "Servicio entregado",
-    invoiced:          "Servicio facturado",
-    cancelled:         "Servicio cancelado",
+    coordinating:     "Servicio en coordinación",
+    pickup_scheduled: "Recolección programada",
+    in_transit:       "Servicio en tránsito",
+    at_destination:   "Servicio en destino",
+    delivered:        "Servicio entregado",
+    invoiced:         "Servicio facturado",
+    cancelled:        "Servicio cancelado",
   };
 
   await supabase.from("entity_timeline_events").insert({
@@ -194,7 +250,6 @@ export async function updateShipmentStatus(
 }
 
 // ── SERVICES ─────────────────────────────────────────────────
-
 export async function upsertShipmentService(
   companyId: string, shipmentId: string,
   service: Partial<ShipmentService> & { description: string; service_type: string }
@@ -207,8 +262,6 @@ export async function upsertShipmentService(
       ...service, company_id: companyId, shipment_id: shipmentId,
     });
   }
-
-  // Recalcular totales del embarque
   await recalcShipmentTotals(companyId, shipmentId);
 }
 
@@ -219,26 +272,35 @@ export async function deleteShipmentService(
   await recalcShipmentTotals(companyId, shipmentId);
 }
 
+// Recalcula totales respetando moneda por línea
+// El campo total/subtotal de la tabla usa la moneda de referencia del embarque
 async function recalcShipmentTotals(companyId: string, shipmentId: string): Promise<void> {
-  const { data: services } = await supabase
-    .from("shipment_services")
-    .select("price, cost")
-    .eq("shipment_id", shipmentId);
+  const [{ data: shipment }, { data: services }] = await Promise.all([
+    supabase.from("shipments").select("currency, tax_rate").eq("id", shipmentId).single(),
+    supabase.from("shipment_services").select("price, cost, currency").eq("shipment_id", shipmentId),
+  ]);
 
-  const subtotal     = (services ?? []).reduce((s, sv) => s + (sv.price ?? 0), 0);
-  const providerCost = (services ?? []).reduce((s, sv) => s + (sv.cost  ?? 0), 0);
+  const mainCurrency = shipment?.currency ?? "USD";
+  const lines        = services ?? [];
+
+  // Subtotal solo de líneas en la moneda principal del embarque
+  const mainLines    = lines.filter(l => (l.currency ?? "USD") === mainCurrency);
+  const subtotal     = mainLines.reduce((s, l) => s + (l.price ?? 0), 0);
   const taxAmt       = subtotal * 0.16;
   const total        = subtotal + taxAmt;
+
+  // Costo total en moneda del proveedor (puede ser distinta)
+  const providerCost = lines.reduce((s, l) => s + (l.cost ?? 0), 0);
   const profit       = total - providerCost;
 
   await supabase.from("shipments").update({
-    subtotal, tax_amount: taxAmt, total, provider_cost: providerCost, profit,
+    subtotal, tax_amount: taxAmt, total,
+    provider_cost: providerCost, profit,
     updated_at: new Date().toISOString(),
   }).eq("id", shipmentId).eq("company_id", companyId);
 }
 
 // ── FILTERS + KPIs ────────────────────────────────────────────
-
 export function filterShipments(shipments: Shipment[], filters: ShipmentFilters): Shipment[] {
   return shipments.filter((s) => {
     const q = filters.search.trim().toLowerCase();
@@ -261,27 +323,57 @@ export function filterShipments(shipments: Shipment[], filters: ShipmentFilters)
 }
 
 export function computeShipmentKPIs(shipments: Shipment[]): ShipmentKPIs {
-  const active    = shipments.filter((s) => !["delivered","invoiced","cancelled"].includes(s.status));
-  const delivered = shipments.filter((s) => ["delivered","invoiced"].includes(s.status));
-  const totalRev  = delivered.reduce((s, sh) => s + (sh.total        ?? 0), 0);
-  const totalCost = delivered.reduce((s, sh) => s + (sh.provider_cost ?? 0), 0);
-  const totalProfit = totalRev - totalCost;
-  const avgMargin   = totalRev > 0 ? (totalProfit / totalRev) * 100 : 0;
+  const active    = shipments.filter(s => !["delivered","invoiced","cancelled"].includes(s.status));
+  const delivered = shipments.filter(s => ["delivered","invoiced"].includes(s.status));
+
+  // Totales multi-moneda desde servicios
+  const revenueByCurrency: CurrencyAmounts = {};
+  const costByCurrency:    CurrencyAmounts = {};
+  const profitByCurrency:  CurrencyAmounts = {};
+
+  for (const shipment of delivered) {
+    const services = shipment.services ?? [];
+
+    for (const svc of services) {
+      const cur   = svc.currency ?? shipment.currency ?? "USD";
+      const price = Number(svc.price ?? 0);
+      const cost  = Number(svc.cost  ?? 0);
+      revenueByCurrency[cur] = (revenueByCurrency[cur] ?? 0) + price;
+      costByCurrency[cur]    = (costByCurrency[cur]    ?? 0) + cost;
+      profitByCurrency[cur]  = (profitByCurrency[cur]  ?? 0) + (price - cost);
+    }
+
+    // Fallback si no hay servicios detallados
+    if (services.length === 0) {
+      const cur = shipment.currency ?? "USD";
+      revenueByCurrency[cur] = (revenueByCurrency[cur] ?? 0) + (shipment.total ?? 0);
+      costByCurrency[cur]    = (costByCurrency[cur]    ?? 0) + (shipment.provider_cost ?? 0);
+      profitByCurrency[cur]  = (profitByCurrency[cur]  ?? 0) + (shipment.profit ?? 0);
+    }
+  }
+
+  // Legacy single-currency para compatibilidad
+  const totalRevenue = Object.values(revenueByCurrency).reduce((s, v) => s + v, 0);
+  const totalCost    = Object.values(costByCurrency).reduce((s, v) => s + v, 0);
+  const totalProfit  = totalRevenue - totalCost;
+  const avgMargin    = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
 
   return {
-    total:        shipments.length,
-    active:       active.length,
-    delivered:    delivered.length,
-    cancelled:    shipments.filter((s) => s.status === "cancelled").length,
-    totalRevenue: totalRev,
+    total:     shipments.length,
+    active:    active.length,
+    delivered: delivered.length,
+    cancelled: shipments.filter(s => s.status === "cancelled").length,
+    revenueByCurrency,
+    costByCurrency,
+    profitByCurrency,
+    avgMargin,
+    totalRevenue,
     totalCost,
     totalProfit,
-    avgMargin,
   };
 }
 
 // ── ACCEPTED SERVICE QUOTATIONS ───────────────────────────────
-
 export async function fetchAcceptedServiceQuotations(companyId: string) {
   const { data } = await supabase
     .from("quotations")
@@ -303,7 +395,9 @@ export async function fetchQuotationServices(quotationId: string) {
 }
 
 // ── PROVEEDORES LOGÍSTICOS ────────────────────────────────────
-export async function fetchLogisticsProviders(companyId: string): Promise<{ id: string; name: string; contact_phone?: string }[]> {
+export async function fetchLogisticsProviders(
+  companyId: string
+): Promise<{ id: string; name: string; contact_phone?: string }[]> {
   const { data } = await supabase
     .from("logistics_providers")
     .select("id, name, contact_phone")
