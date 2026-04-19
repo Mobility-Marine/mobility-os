@@ -12,6 +12,10 @@ export type ServiceLineType =
   | "terrestre" | "aereo" | "maritimo" | "almacenaje"
   | "comercializadora" | "aduanal" | "seguro" | "courier" | "otro";
 
+// ── Multi-moneda ───────────────────────────────────────────────
+export type CurrencyAmounts = Record<string, number>;
+export type CurrencyTotals  = Record<string, { subtotal: number; tax: number; total: number }>;
+
 // Categoría: logistics = requiere ruta, consulting = solo registro/facturación
 export const SERVICE_TYPE_CATEGORY: Record<ShipmentServiceType, "logistics" | "consulting"> = {
   terrestre_mx:  "logistics",
@@ -81,6 +85,7 @@ export type Shipment = {
   incoterm?:            string | null;
   provider_id?:         string | null;
   transport_unit_id?:   string | null;
+  // Moneda de referencia (campo BD — puede ser moneda principal del embarque)
   currency:             string;
   subtotal:             number;
   tax_rate:             number;
@@ -89,6 +94,9 @@ export type Shipment = {
   provider_cost:        number;
   provider_currency:    string;
   profit:               number;
+  // Totales multi-moneda calculados desde shipment_services (computed, no en BD)
+  totals_by_currency?:  CurrencyTotals;
+  cost_by_currency?:    CurrencyAmounts;
   pickup_date?:         string | null;
   estimated_delivery?:  string | null;
   actual_delivery?:     string | null;
@@ -137,14 +145,19 @@ export const DEFAULT_SHIPMENT_FILTERS: ShipmentFilters = {
 };
 
 export type ShipmentKPIs = {
-  total:        number;
-  active:       number;
-  delivered:    number;
-  cancelled:    number;
+  total:     number;
+  active:    number;
+  delivered: number;
+  cancelled: number;
+  // Multi-moneda
+  revenueByCurrency: CurrencyAmounts;
+  costByCurrency:    CurrencyAmounts;
+  profitByCurrency:  CurrencyAmounts;
+  avgMargin:         number;
+  // Fallback legacy (suma en moneda de referencia para compatibilidad)
   totalRevenue: number;
   totalCost:    number;
   totalProfit:  number;
-  avgMargin:    number;
 };
 
 export const SERVICE_LINE_TYPES: ServiceLineType[] = [
