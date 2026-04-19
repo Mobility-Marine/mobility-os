@@ -101,6 +101,10 @@ export default function ProviderWorkspace({ provider, onUpdate, onToggle, onDele
   const [apRecords,    setApRecords]    = useState<APRecord[]>([]);
   const [loadingAP,    setLoadingAP]    = useState(false);
 
+    // Shipments
+  const [shipments,      setShipments]      = useState<any[]>([]);
+  const [loadingShips,   setLoadingShips]   = useState(false);
+
   // Documents
   const docFileRef = useRef<HTMLInputElement>(null);
   const [docForm, setDocForm] = useState({ doc_type: "fiscal", expiry_date: "", notes: "" });
@@ -127,6 +131,33 @@ export default function ProviderWorkspace({ provider, onUpdate, onToggle, onDele
       .then(({ data }) => { setApRecords((data ?? []) as any); setLoadingAP(false); });
   }, [tab, provider?.id, companyId]);
 
+  useEffect(() => {
+    if (tab !== "shipments" || !provider || !companyId) return;
+    setLoadingShips(true);
+    // Buscar por provider_id directo + por accounts_payable
+    Promise.all([
+      supabase.from("shipments")
+        .select("id, reference, service_type, status, currency, total, created_at, client:clients(name)")
+        .eq("company_id", companyId)
+        .eq("provider_id", provider.id),
+      supabase.from("accounts_payable")
+        .select("related_shipment_id, shipment:shipments(id, reference, service_type, status, currency, total, created_at, client:clients(name))")
+        .eq("company_id", companyId)
+        .eq("logistics_provider_id", provider.id)
+        .not("related_shipment_id", "is", null),
+    ]).then(([direct, viaAP]) => {
+      const directList = (direct.data ?? []);
+      const apList = (viaAP.data ?? [])
+        .map((r: any) => r.shipment)
+        .filter(Boolean);
+      // Deduplicar por id
+      const map = new Map<string, any>();
+      [...directList, ...apList].forEach(s => { if (s?.id) map.set(s.id, s); });
+      setShipments([...map.values()]);
+      setLoadingShips(false);
+    });
+  }, [tab, provider?.id, companyId]);
+  
   if (!provider) return (
     <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "32px", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: "12px", height: "100%" }}>
       <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="1.5">
@@ -635,12 +666,49 @@ export default function ProviderWorkspace({ provider, onUpdate, onToggle, onDele
           </div>
         )}
 
-        {/* ── SHIPMENTS ── */}
+                {/* ── SHIPMENTS ── */}
         {tab === "shipments" && (
-          <div style={{ padding: "20px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px", border: "1px dashed var(--color-border)", borderRadius: "var(--radius-md)" }}>
-            Los embarques asignados a este proveedor aparecerán aquí en la Fase 2.
+          <div style={{ display: "grid", gap: "10px" }}>
+            <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
+              Embarques vinculados a {provider.name} — {shipments.length} registros
+            </div>
+            {loadingShips ? (
+              <div style={{ padding: "20px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "12px" }}>Cargando embarques…</div>
+            ) : shipments.length === 0 ? (
+              <div style={{ padding: "28px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px", border: "1px dashed var(--color-border)", borderRadius: "var(--radius-md)" }}>
+                Sin embarques vinculados a este proveedor
+              </div>
+            ) : shipments.map((s: any) => {
+              const statusColors: Record<string, string> = {
+                draft: "#94a3b8", coordinating: "#3b82f6", pickup_scheduled: "#8b5cf6",
+                in_transit: "#f59e0b", at_destination: "#06b6d4", delivered: "#10b981",
+                invoiced: "#10b981", cancelled: "#ef4444",
+              };
+              const color = statusColors[s.status] ?? "#94a3b8";
+              return (
+                <div key={s.id} style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", display: "grid", gap: "4px" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span style={{ fontSize: "13px", fontWeight: 800, color: "var(--color-brand-blue)", fontFamily: "monospace" }}>{s.reference}</span>
+                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                      <span style={{ fontSize: "9px", fontWeight: 700, padding: "1px 6px", borderRadius: "var(--radius-full)", background: `${color}20`, border: `1px solid ${color}40`, color, textTransform: "uppercase" }}>
+                        {s.status}
+                      </span>
+                      <span style={{ fontSize: "13px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
+                        {s.currency} ${Number(s.total ?? 0).toLocaleString(locale, { minimumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+                  <div style={{ fontSize: "11px", color: "var(--color-text-muted)", display: "flex", gap: "10px" }}>
+                    <span>{(s.client as any)?.name ?? "—"}</span>
+                    <span style={{ textTransform: "capitalize" }}>{s.service_type?.replace(/_/g, " ")}</span>
+                    <span>{new Date(s.created_at).toLocaleDateString(locale, { day: "numeric", month: "short", year: "numeric" })}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         )}
+
       </div>
     </div>
   );
