@@ -203,11 +203,14 @@ export function parseProductsCSV(text: string): { valid: any[]; errors: any[] } 
     if (!row.sku?.trim())  { errors.push({ ...row, _row: i + 1, _error: "SKU requerido" }); continue; }
     if (!row.name?.trim()) { errors.push({ ...row, _row: i + 1, _error: "Nombre requerido" }); continue; }
 
-    valid.push({
+        valid.push({
       sku:                row.sku.trim().toUpperCase(),
       name:               row.name.trim(),
       description:        row.description?.trim()        || null,
       category:           row.category?.trim()           || null,
+      product_type:       ["product","service"].includes(row.product_type?.trim().toLowerCase())
+                            ? row.product_type.trim().toLowerCase()
+                            : "product",
       unit:               row.unit?.trim()               || "pza",
       unit_price:         parseFloat(row.unit_price)     || 0,
       cost:               parseFloat(row.cost)           || 0,
@@ -287,9 +290,9 @@ export function exportProductsCSV(products: Product[]): void {
 
 export function downloadProductTemplate(): void {
   const header  = CSV_HEADERS.join(",");
-  const example = [
+    const example = [
     "SKU-001", "Caja de cartón corrugado", "Caja doble corrugado 60x40x40cm",
-    "Embalaje", "pza", "45.00", "28.00", "MXN", "16", "500", "50", "true",
+    "Embalaje", "product", "pza", "45.00", "28.00", "MXN", "16", "500", "50", "true",
     "14111500", "H87", "4819.10.01", "Cajas de cartón corrugado", "México", "",
   ].join(",");
   const csv  = [header, example].join("\n");
