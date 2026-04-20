@@ -42,10 +42,11 @@ export function useOrdersController() {
   }, [companyId, load]);
 
   // Sync selected
-  useEffect(() => {
-    if (!selected || !companyId) return;
+    useEffect(() => {
+    if (!selected?.id || !companyId) return;
     fetchOrder(companyId, selected.id).then((o) => { if (o) setSelected(o); });
-  }, [orders]);
+  }, [selected?.id, companyId]);
+
 
   const filtered = filterOrders(orders, filters);
 
