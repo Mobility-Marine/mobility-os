@@ -37,6 +37,7 @@ const INPUT: React.CSSProperties = {
 const EMPTY_ITEM = {
   sku: "", description: "", details: "",
   quantity: "1", unit: "pza", unit_price: "", discount_pct: "0",
+  product_id: "" as string | undefined,
 };
 
 // ── Helpers multi-moneda ───────────────────────────────────────
@@ -192,8 +193,8 @@ export default function QuotationWorkspace({
     setProdSuggestions(prods);
   }
 
-  function selectSuggestion(prod: any) {
-    setNewItem(p => ({ ...p, sku: prod.sku ?? "", description: prod.name, unit: prod.unit ?? "pza", unit_price: String(prod.unit_price ?? "") }));
+    function selectSuggestion(prod: any) {
+    setNewItem(p => ({ ...p, product_id: prod.id, sku: prod.sku ?? "", description: prod.name, unit: prod.unit ?? "pza", unit_price: String(prod.unit_price ?? "") }));
     setProdSuggestions([]);
   }
 
@@ -201,8 +202,9 @@ export default function QuotationWorkspace({
     if (!newItem.description.trim() || !newItem.unit_price || !companyId) return;
     setAddingItem(true);
     try {
-      await onAddItem({
+            await onAddItem({
         quotation_id: quotation.id,
+        product_id:   newItem.product_id  || undefined,
         sku:          newItem.sku         || undefined,
         description:  newItem.description,
         details:      newItem.details     || undefined,
