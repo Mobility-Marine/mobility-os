@@ -12,19 +12,35 @@ type PendingShipment = {
   quotation?:   { quote_number: string } | null;
 };
 
+type PendingOrder = {
+  id:           string;
+  order_number: string;
+  currency:     string;
+  total:        number;
+  delivery_date?: string | null;
+  client?:      { name: string } | null;
+  quotation?:   { quote_number: string } | null;
+};
+
 type Props = {
-  stats:             FacturacionStats;
-  cfdis:             CFDIDocument[];
-  loading:           boolean;
-  pendingShipments:  PendingShipment[];
-  onSelect:          (c: CFDIDocument) => void;
-  onEmitir:          () => void;
-  onFacturarEmbarque:(s: PendingShipment) => void;
+  stats:              FacturacionStats;
+  cfdis:              CFDIDocument[];
+  loading:            boolean;
+  pendingShipments:   PendingShipment[];
+  pendingOrders?:     PendingOrder[];
+  onSelect:           (c: CFDIDocument) => void;
+  onEmitir:           () => void;
+  onFacturarEmbarque: (s: PendingShipment) => void;
+  onFacturarPedido?:  (o: PendingOrder) => void;
 };
 
 const fmt = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-export default function FacturacionDashboard({ stats: s, cfdis, loading, pendingShipments, onSelect, onEmitir, onFacturarEmbarque }: Props) {
+export default function FacturacionDashboard({
+  stats: s, cfdis, loading,
+  pendingShipments, pendingOrders = [],
+  onSelect, onEmitir, onFacturarEmbarque, onFacturarPedido,
+}: Props) {
   const { lang } = useTranslation();
   const es = lang !== "en";
 
@@ -52,7 +68,7 @@ export default function FacturacionDashboard({ stats: s, cfdis, loading, pending
       value: String(s.count_cancelled),
       sub:   es ? "histórico total" : "total history",
       color: s.count_cancelled > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)",
-      bg:    s.count_cancelled > 0 ? "var(--color-danger-bg)" : "var(--color-bg-base)",
+      bg:    s.count_cancelled > 0 ? "var(--color-danger-bg)"   : "var(--color-bg-base)",
       icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>,
     },
     {
@@ -102,6 +118,56 @@ export default function FacturacionDashboard({ stats: s, cfdis, loading, pending
         ))}
       </div>
 
+      {/* ── PEDIDOS PENDIENTES DE FACTURAR ── */}
+      {pendingOrders.length > 0 && (
+        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+          <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(59,130,246,0.05)" }}>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{ fontSize: "16px" }}>📦</span>
+              <div>
+                <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-brand-blue)" }}>
+                  {pendingOrders.length} {es ? "pedido(s) entregados pendientes de facturar" : "delivered order(s) pending invoicing"}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "1px" }}>
+                  {es ? "Haz clic en Facturar para generar el CFDI precargado con los productos del pedido" : "Click Invoice to generate pre-filled CFDI with order products"}
+                </div>
+              </div>
+            </div>
+            <div style={{ fontSize: "18px", fontWeight: 900, color: "var(--color-brand-blue)", fontVariantNumeric: "tabular-nums" }}>
+              ${fmt(pendingOrders.reduce((sum, o) => sum + (o.total ?? 0), 0))}
+            </div>
+          </div>
+          {pendingOrders.map((o, i) => (
+            <div key={o.id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "11px 18px", borderBottom: i < pendingOrders.length - 1 ? "1px solid var(--color-border-faint)" : "none" }}>
+              <span style={{ fontSize: "18px", flexShrink: 0 }}>🛍️</span>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--color-text-primary)", fontFamily: "monospace" }}>{o.order_number}</span>
+                  {o.quotation?.quote_number && (
+                    <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>← {o.quotation.quote_number}</span>
+                  )}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "1px" }}>
+                  {o.client?.name ?? "—"}
+                  {o.delivery_date && ` · Entregado: ${new Date(o.delivery_date).toLocaleDateString("es-MX", { day: "2-digit", month: "short" })}`}
+                </div>
+              </div>
+              <div style={{ textAlign: "right", flexShrink: 0 }}>
+                <div style={{ fontSize: "13px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
+                  {o.currency} ${fmt(o.total ?? 0)}
+                </div>
+              </div>
+              <button
+                onClick={() => onFacturarPedido?.(o)}
+                style={{ height: "30px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
+              >
+                ⚡ {es ? "Facturar" : "Invoice"}
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── SERVICIOS PENDIENTES DE FACTURAR ── */}
       {pendingShipments.length > 0 && (
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
@@ -118,7 +184,7 @@ export default function FacturacionDashboard({ stats: s, cfdis, loading, pending
               </div>
             </div>
             <div style={{ fontSize: "18px", fontWeight: 900, color: "var(--color-warning-text)", fontVariantNumeric: "tabular-nums" }}>
-              ${fmt(pendingShipments.reduce((s, sh) => s + sh.total, 0))}
+              ${fmt(pendingShipments.reduce((sum, sh) => sum + sh.total, 0))}
             </div>
           </div>
           {pendingShipments.map((sh, i) => (
