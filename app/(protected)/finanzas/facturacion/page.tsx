@@ -169,11 +169,24 @@ export default function FacturacionPage() {
       .eq("order_id", order.id)
       .order("sort_order");
 
-        const mappedServices = (items ?? []).map((item: any) => ({
+            // Para items sin product_id, buscar el producto por nombre para obtener claves SAT
+    const itemsWithSAT = await Promise.all((items ?? []).map(async (item: any) => {
+      if (item.product) return item;
+      if (!item.description) return item;
+      const { data: prod } = await supabase
+        .from("products")
+        .select("id, name, sat_product_code, sat_unit_code, unit")
+        .eq("company_id", companyId!)
+        .ilike("name", item.description.trim())
+        .maybeSingle();
+      return prod ? { ...item, product: prod } : item;
+    }));
+
+    const mappedServices = itemsWithSAT.map((item: any) => ({
       description:      item.product?.name             ?? item.description,
       price:            item.subtotal,
       currency:         order.currency                 ?? "MXN",
-      product_id:       item.product_id                ?? null,
+      product_id:       item.product_id                ?? item.product?.id ?? null,
       sat_product_code: item.product?.sat_product_code ?? "",
       sat_unit_code:    item.product?.sat_unit_code     ?? "",
       unit:             item.product?.unit              ?? item.unit ?? "",
