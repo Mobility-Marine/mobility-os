@@ -156,11 +156,17 @@ export default function OrderCopilot({ order }: Props) {
         </div>
       )}
 
-      {/* LISTO PARA FACTURAR */}
-      {isDelivered && !order.invoice_id && (
-        <div style={{ padding: "8px 10px", borderRadius: "var(--radius-sm)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", fontSize: "11px", color: "var(--color-warning-text)", fontWeight: 600 }}>
-          ⚡ {to.readyToInvoice ?? "Listo para facturar"} — Ve a Finanzas
-        </div>
+            {/* ESTADO FACTURACIÓN */}
+      {isDelivered && (
+        order.invoice_id ? (
+          <div style={{ padding: "8px 10px", borderRadius: "var(--radius-sm)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", fontSize: "11px", color: "var(--color-success-text)", fontWeight: 600 }}>
+            ✓ Pedido facturado
+          </div>
+        ) : (
+          <div style={{ padding: "8px 10px", borderRadius: "var(--radius-sm)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", fontSize: "11px", color: "var(--color-warning-text)", fontWeight: 600 }}>
+            ⏳ Pendiente de facturar — El área de finanzas recibirá la notificación
+          </div>
+        )
       )}
     </div>
   );
