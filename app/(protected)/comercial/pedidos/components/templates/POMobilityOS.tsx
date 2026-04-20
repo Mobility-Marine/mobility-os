@@ -1,227 +1,288 @@
-import { Document, Page, Text, View, StyleSheet, Image } from "@react-pdf/renderer";
-import type { Order, OrderItem } from "../../types/orders.types";
+import {
+  Document, Page, Text, View, StyleSheet, Image,
+} from "@react-pdf/renderer";
+import type { Order } from "../../types/orders.types";
 
 type Props = { order: Order; settings: any };
 
-const fmt = (n: number, cur = "MXN") =>
-  `${cur} $${Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+function isLightColor(hex: string): boolean {
+  const h = hex.replace("#", "");
+  const r = parseInt(h.substring(0, 2), 16) / 255;
+  const g = parseInt(h.substring(2, 4), 16) / 255;
+  const b = parseInt(h.substring(4, 6), 16) / 255;
+  return (0.299 * r + 0.587 * g + 0.114 * b) > 0.5;
+}
+
+const STATUS_LABELS: Record<string, string> = {
+  pending:        "Pendiente",
+  confirmed:      "Confirmado",
+  in_preparation: "En preparación",
+  shipped:        "Enviado",
+  delivered:      "Entregado",
+  cancelled:      "Cancelado",
+};
 
 export default function POMobilityOS({ order, settings }: Props) {
-  const dark    = settings?.brand_color_dark ?? "#0f172a";
-  const mid     = settings?.brand_color      ?? "#1e3a5f";
-  const accent  = settings?.brand_accent     ?? "#3b82f6";
-  const logoUrl = settings?.logo_url         ?? null;
+  const items = order.items ?? [];
 
-  const items   = order.items ?? [];
-  const client  = order.client;
+  const HEADER_BG   = settings?.brand_color_dark ?? "#0a1628";
+  const BRAND_COLOR = settings?.brand_color      ?? "#1d4ed8";
+  const ACCENT      = settings?.brand_accent      ?? "#c9a227";
 
-  const styles = StyleSheet.create({
-    page:       { fontFamily: "Helvetica", fontSize: 9, color: "#1e293b", backgroundColor: "#fff", padding: 0 },
-    header:     { backgroundColor: dark, paddingHorizontal: 32, paddingTop: 28, paddingBottom: 20 },
-    logoRow:    { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 16 },
-    logoBox:    { width: 100, height: 36, justifyContent: "center" },
-    logoText:   { color: "#fff", fontSize: 16, fontFamily: "Helvetica-Bold" },
-    docTitle:   { color: "#ffffff99", fontSize: 9, marginBottom: 2 },
-    docNum:     { color: "#fff", fontSize: 20, fontFamily: "Helvetica-Bold" },
-    docDate:    { color: "#ffffff80", fontSize: 8, marginTop: 2 },
-    infoRow:    { flexDirection: "row", gap: 12 },
-    infoBox:    { flex: 1, backgroundColor: "#ffffff15", borderRadius: 6, padding: 10 },
-    infoLabel:  { color: "#ffffff60", fontSize: 7, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 3 },
-    infoValue:  { color: "#fff", fontSize: 9, fontFamily: "Helvetica-Bold" },
-    infoSub:    { color: "#ffffff80", fontSize: 8, marginTop: 1 },
-    body:       { paddingHorizontal: 32, paddingTop: 20 },
-    sectionTitle:{ fontSize: 8, fontFamily: "Helvetica-Bold", color: "#64748b", textTransform: "uppercase", letterSpacing: 0.8, marginBottom: 8 },
-    table:      { borderRadius: 6, overflow: "hidden", borderWidth: 1, borderColor: "#e2e8f0" },
-    thead:      { flexDirection: "row", backgroundColor: mid, paddingVertical: 7, paddingHorizontal: 10 },
-    th:         { color: "#fff", fontSize: 7, fontFamily: "Helvetica-Bold", textTransform: "uppercase", letterSpacing: 0.5 },
-    trow:       { flexDirection: "row", paddingVertical: 7, paddingHorizontal: 10, borderBottomWidth: 1, borderBottomColor: "#f1f5f9" },
-    trowAlt:    { backgroundColor: "#f8fafc" },
-    td:         { fontSize: 8.5, color: "#1e293b" },
-    tdMuted:    { fontSize: 7.5, color: "#64748b", marginTop: 1 },
-    totalsBox:  { marginTop: 16, alignSelf: "flex-end", width: 240 },
-    totRow:     { flexDirection: "row", justifyContent: "space-between", paddingVertical: 4, paddingHorizontal: 10 },
-    totLabel:   { fontSize: 8.5, color: "#64748b" },
-    totValue:   { fontSize: 8.5, color: "#1e293b", fontFamily: "Helvetica-Bold" },
-    totalFinal: { flexDirection: "row", justifyContent: "space-between", backgroundColor: accent, borderRadius: 6, paddingVertical: 9, paddingHorizontal: 10, marginTop: 4 },
-    totalLabel: { fontSize: 10, color: "#fff", fontFamily: "Helvetica-Bold" },
-    totalValue: { fontSize: 12, color: "#fff", fontFamily: "Helvetica-Bold" },
-    delivBox:   { marginTop: 16, backgroundColor: "#f8fafc", borderRadius: 6, padding: 12, borderWidth: 1, borderColor: "#e2e8f0" },
-    delivRow:   { flexDirection: "row", marginBottom: 4 },
-    delivLbl:   { width: 80, fontSize: 7.5, color: "#64748b", textTransform: "uppercase", letterSpacing: 0.3 },
-    delivVal:   { flex: 1, fontSize: 8.5, color: "#1e293b", fontFamily: "Helvetica-Bold" },
-    footer:     { marginTop: "auto", backgroundColor: dark, paddingHorizontal: 32, paddingVertical: 14, flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
-    footerText: { color: "#ffffff60", fontSize: 7 },
-    footerBold: { color: "#fff", fontSize: 8, fontFamily: "Helvetica-Bold" },
-    badge:      { backgroundColor: accent, borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
-    badgeText:  { color: "#fff", fontSize: 7, fontFamily: "Helvetica-Bold" },
-    statusRow:  { flexDirection: "row", alignItems: "center", gap: 6 },
+  const headerIsLight     = isLightColor(HEADER_BG);
+  const HEADER_TEXT       = headerIsLight ? "#1a2332" : "#ffffff";
+  const HEADER_TEXT_SUB   = headerIsLight ? "#334155" : "#e2e8f0";
+  const HEADER_TEXT_MUTED = headerIsLight ? "#64748b" : "#cbd5e1";
+
+  const brandIsLight = isLightColor(BRAND_COLOR);
+  const BRAND_TEXT   = brandIsLight ? "#1a2332" : "#ffffff";
+  const BRAND_MUTED  = brandIsLight ? "#475569" : "#cbd5e1";
+  const BORDER_COLOR = brandIsLight ? "#94a3b8" : "#1e3a5f";
+
+  const WHITE       = "#ffffff";
+  const LIGHT       = "#f8fafc";
+  const TEXT_DARK   = "#1a2332";
+  const TEXT_MEDIUM = "#334155";
+  const TEXT_MUTED  = "#64748b";
+
+  const issuerName    = settings?.fiscal_name    ?? "Mi Empresa";
+  const issuerRfc     = settings?.fiscal_rfc     ?? "";
+  const issuerState   = settings?.fiscal_state   ?? "";
+  const issuerCountry = settings?.fiscal_country ?? "";
+  const issuerAddress = settings?.fiscal_address ?? "";
+  const issuerPhone   = settings?.fiscal_phone   ?? "";
+  const issuerEmail   = settings?.fiscal_email   ?? "";
+  const issuerWebsite = settings?.fiscal_website ?? "";
+  const logoUrl       = settings?.logo_url       ?? "";
+  const quoteFooter   = settings?.quote_footer   ?? "";
+
+  const issuerLocation = (issuerState && issuerCountry)
+    ? (issuerState + ", " + issuerCountry)
+    : (issuerState || issuerCountry || issuerAddress);
+
+  const clientName  = order.client?.name  ?? "—";
+  const clientRfc   = order.client?.rfc   ?? "";
+  const clientEmail = order.client?.email ?? "";
+
+  const locale = "es-MX";
+  const fmt = (n: number) => Number(n ?? 0).toLocaleString(locale, {
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
   });
 
-  const STATUS_LABELS: Record<string, string> = {
-    pending: "Pendiente", confirmed: "Confirmado", in_preparation: "En preparación",
-    shipped: "Enviado", delivered: "Entregado", cancelled: "Cancelado",
-  };
+  const footerText = issuerName
+    + (issuerLocation ? ("  \u00B7  " + issuerLocation)  : "")
+    + (issuerRfc      ? ("  \u00B7  RFC: " + issuerRfc)  : "")
+    + (issuerPhone    ? ("  \u00B7  " + issuerPhone)     : "");
+
+  const s = StyleSheet.create({
+    page:         { backgroundColor: WHITE, fontSize: 9, color: TEXT_DARK, display: "flex", flexDirection: "column" },
+    header:       { backgroundColor: HEADER_BG, padding: "24 36", flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", flexShrink: 0 },
+    accentLine:   { backgroundColor: ACCENT, height: 3, flexShrink: 0 },
+    logoBox:      { width: 110, height: 44, objectFit: "contain" },
+    body:         { flex: 1, paddingTop: 20, paddingBottom: 16, paddingLeft: 36, paddingRight: 36 },
+    section:      { marginBottom: 16 },
+    sectionTitle: { fontSize: 8, fontWeight: "bold", color: ACCENT, textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 7, paddingBottom: 4, borderBottomWidth: 1, borderBottomColor: BRAND_COLOR },
+    row2:         { flexDirection: "row", gap: 16 },
+    col:          { flex: 1 },
+    label:        { fontSize: 7.5, color: TEXT_MUTED, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 2 },
+    value:        { fontSize: 9.5, color: TEXT_DARK, fontWeight: "bold" },
+    valueSmall:   { fontSize: 8.5, color: TEXT_MEDIUM },
+    muted:        { fontSize: 8, color: TEXT_MUTED },
+    tableHead:    { flexDirection: "row", backgroundColor: BRAND_COLOR, padding: "7 10", borderRadius: 3 },
+    tableHeadTxt: { color: BRAND_TEXT, fontSize: 7.5, fontWeight: "bold", textTransform: "uppercase", letterSpacing: 0.5 },
+    tableRow:     { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", padding: "7 10" },
+    tableRowAlt:  { flexDirection: "row", borderBottomWidth: 1, borderBottomColor: "#e2e8f0", padding: "7 10", backgroundColor: LIGHT },
+    cell:         { fontSize: 8.5, color: TEXT_MEDIUM },
+    cellBold:     { fontSize: 8.5, color: TEXT_DARK, fontWeight: "bold" },
+    totalBox:     { backgroundColor: BRAND_COLOR, borderRadius: 6, padding: "14 18", marginTop: 8, alignSelf: "flex-end", minWidth: 230 },
+    totalRow:     { flexDirection: "row", justifyContent: "space-between", marginBottom: 5 },
+    totalLabel:   { fontSize: 8.5, color: BRAND_MUTED },
+    totalValue:   { fontSize: 8.5, color: BRAND_TEXT },
+    grandLabel:   { fontSize: 13, color: ACCENT, fontWeight: "bold" },
+    grandValue:   { fontSize: 13, color: ACCENT, fontWeight: "bold" },
+    notesBox:     { backgroundColor: "#f1f5f9", borderRadius: 4, padding: "12 16", marginTop: 4, borderLeftWidth: 3, borderLeftColor: BRAND_COLOR },
+    notesText:    { fontSize: 8, color: TEXT_MEDIUM, lineHeight: 1.7 },
+    delivBox:     { backgroundColor: "#f8fafc", borderRadius: 4, padding: "12 16", marginTop: 4, borderLeftWidth: 3, borderLeftColor: ACCENT },
+    footer:       { backgroundColor: BRAND_COLOR, padding: "12 36", flexShrink: 0 },
+    footerMain:   { color: BRAND_TEXT, fontSize: 8, textAlign: "center", marginBottom: 3 },
+    footerPowered:{ color: BRAND_MUTED, fontSize: 7, textAlign: "center" },
+    footerDivider:{ height: 1, backgroundColor: BORDER_COLOR, marginBottom: 8 },
+    badge:        { backgroundColor: ACCENT, borderRadius: 3, padding: "3 8", alignSelf: "flex-start" },
+    badgeText:    { color: HEADER_BG, fontSize: 7.5, fontWeight: "bold" },
+  });
+
+  const PageHeader = () => (
+    <>
+      <View style={s.header}>
+        <View style={{ flexDirection: "column", gap: 3 }}>
+          {logoUrl
+            ? <Image src={logoUrl} style={s.logoBox} />
+            : <Text style={{ fontSize: 20, fontWeight: "bold", color: HEADER_TEXT }}>{issuerName}</Text>
+          }
+          <Text style={{ fontSize: 12, fontWeight: "bold", color: ACCENT, marginTop: logoUrl ? 4 : 2 }}>
+            {issuerName}
+          </Text>
+          {issuerRfc      && <Text style={{ color: HEADER_TEXT_SUB,   fontSize: 7.5 }}>{"RFC: " + issuerRfc}</Text>}
+          {issuerLocation && <Text style={{ color: HEADER_TEXT_MUTED, fontSize: 7.5 }}>{issuerLocation}</Text>}
+          {issuerPhone    && <Text style={{ color: HEADER_TEXT_MUTED, fontSize: 7.5 }}>{"Tel: " + issuerPhone}</Text>}
+          {issuerEmail    && <Text style={{ color: HEADER_TEXT_MUTED, fontSize: 7.5 }}>{issuerEmail}</Text>}
+          {issuerWebsite  && <Text style={{ color: HEADER_TEXT_MUTED, fontSize: 7.5 }}>{issuerWebsite}</Text>}
+        </View>
+        <View style={{ alignItems: "flex-end", gap: 4 }}>
+          <Text style={{ fontSize: 8, color: ACCENT, textTransform: "uppercase", letterSpacing: 2 }}>
+            Orden de Pedido
+          </Text>
+          <Text style={{ fontSize: 22, fontWeight: "bold", color: HEADER_TEXT, letterSpacing: 1 }}>
+            {order.order_number}
+          </Text>
+          <Text style={{ fontSize: 8, color: HEADER_TEXT_MUTED }}>
+            {new Date(order.created_at).toLocaleDateString(locale)}
+          </Text>
+          <View style={{ backgroundColor: BRAND_COLOR, borderRadius: 4, padding: "4 10", alignItems: "flex-end", marginTop: 2 }}>
+            <Text style={{ color: BRAND_MUTED, fontSize: 7 }}>Estado</Text>
+            <Text style={{ color: BRAND_TEXT, fontSize: 8, fontWeight: "bold" }}>
+              {STATUS_LABELS[order.status] ?? order.status}
+            </Text>
+          </View>
+        </View>
+      </View>
+      <View style={s.accentLine} />
+    </>
+  );
+
+  const PageFooter = () => (
+    <View style={s.footer}>
+      <View style={s.footerDivider} />
+      <Text style={s.footerMain}>{footerText}</Text>
+      {quoteFooter ? <Text style={[s.footerMain, { marginTop: 3 }]}>{quoteFooter}</Text> : null}
+      <Text style={[s.footerPowered, { marginTop: 5 }]}>Powered by Mobility OS</Text>
+    </View>
+  );
 
   return (
-    <Document title={order.order_number} author="Mobility OS">
-      <Page size="A4" style={styles.page}>
+    <Document>
+      <Page size="LETTER" style={s.page}>
+        <PageHeader />
+        <View style={s.body}>
 
-        {/* HEADER */}
-        <View style={styles.header}>
-          <View style={styles.logoRow}>
-            {logoUrl ? (
-              <Image src={logoUrl} style={styles.logoBox} />
-            ) : (
-              <Text style={styles.logoText}>Mobility OS</Text>
-            )}
-            <View style={{ alignItems: "flex-end" }}>
-              <Text style={styles.docTitle}>ORDEN DE PEDIDO</Text>
-              <Text style={styles.docNum}>{order.order_number}</Text>
-              <Text style={styles.docDate}>
-                {new Date(order.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
-              </Text>
-              <View style={[styles.badge, { marginTop: 6 }]}>
-                <Text style={styles.badgeText}>{STATUS_LABELS[order.status] ?? order.status}</Text>
+          {/* CLIENTE + DATOS */}
+          <View style={[s.section, s.row2]}>
+            <View style={s.col}>
+              <Text style={s.sectionTitle}>Cliente</Text>
+              <Text style={s.value}>{clientName}</Text>
+              {clientRfc   && <Text style={[s.muted, { marginTop: 3 }]}>{"RFC: " + clientRfc}</Text>}
+              {clientEmail && <Text style={s.muted}>{clientEmail}</Text>}
+            </View>
+            <View style={s.col}>
+              <Text style={s.sectionTitle}>Datos del pedido</Text>
+              <View style={{ gap: 5 }}>
+                {[
+                  { l: "No. Pedido",        v: order.order_number },
+                  { l: "Cotización origen", v: order.quotation?.quote_number ?? null },
+                  { l: "Moneda",            v: order.currency },
+                  { l: "Prioridad",         v: order.priority === "urgent" ? "URGENTE" : order.priority === "high" ? "Alta" : order.priority === "low" ? "Baja" : "Normal" },
+                  { l: "Fecha de entrega",  v: order.delivery_date ? new Date(order.delivery_date).toLocaleDateString(locale) : null },
+                ].filter(r => r.v).map((r) => (
+                  <View key={r.l} style={{ flexDirection: "row", justifyContent: "space-between" }}>
+                    <Text style={s.label}>{r.l}</Text>
+                    <Text style={s.valueSmall}>{r.v}</Text>
+                  </View>
+                ))}
               </View>
             </View>
           </View>
 
-          <View style={styles.infoRow}>
-            {/* Cliente */}
-            <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Cliente</Text>
-              <Text style={styles.infoValue}>{client?.name ?? "—"}</Text>
-              {client?.rfc   && <Text style={styles.infoSub}>RFC: {client.rfc}</Text>}
-              {client?.email && <Text style={styles.infoSub}>{client.email}</Text>}
-            </View>
-            {/* Cotización origen */}
-            <View style={styles.infoBox}>
-              <Text style={styles.infoLabel}>Referencia</Text>
-              <Text style={styles.infoValue}>{order.quotation?.quote_number ?? "—"}</Text>
-              <Text style={styles.infoSub}>Moneda: {order.currency}</Text>
-              {order.delivery_date && (
-                <Text style={styles.infoSub}>
-                  Entrega: {new Date(order.delivery_date).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" })}
-                </Text>
-              )}
-            </View>
-          </View>
-        </View>
-
-        {/* BODY */}
-        <View style={styles.body}>
-
           {/* TABLA DE PRODUCTOS */}
-          <Text style={styles.sectionTitle}>Productos</Text>
-          <View style={styles.table}>
-            <View style={styles.thead}>
-              <Text style={[styles.th, { width: 55 }]}>SKU</Text>
-              <Text style={[styles.th, { flex: 1 }]}>Descripción</Text>
-              <Text style={[styles.th, { width: 40, textAlign: "center" }]}>Cant.</Text>
-              <Text style={[styles.th, { width: 45, textAlign: "center" }]}>Unidad</Text>
-              <Text style={[styles.th, { width: 65, textAlign: "right" }]}>P. Unit.</Text>
-              <Text style={[styles.th, { width: 55, textAlign: "center" }]}>Desc.</Text>
-              <Text style={[styles.th, { width: 70, textAlign: "right" }]}>Subtotal</Text>
+          <View style={s.section}>
+            <Text style={s.sectionTitle}>Productos</Text>
+            <View style={s.tableHead}>
+              <Text style={[s.tableHeadTxt, { width: "8%" }]}>SKU</Text>
+              <Text style={[s.tableHeadTxt, { width: "36%" }]}>Descripción</Text>
+              <Text style={[s.tableHeadTxt, { width: "10%", textAlign: "right" }]}>Cant.</Text>
+              <Text style={[s.tableHeadTxt, { width: "8%",  textAlign: "center" }]}>U.</Text>
+              <Text style={[s.tableHeadTxt, { width: "16%", textAlign: "right" }]}>P. Unit.</Text>
+              <Text style={[s.tableHeadTxt, { width: "8%",  textAlign: "center" }]}>Desc.</Text>
+              <Text style={[s.tableHeadTxt, { width: "14%", textAlign: "right" }]}>Subtotal</Text>
             </View>
-
             {items.length === 0 ? (
-              <View style={styles.trow}>
-                <Text style={[styles.td, { flex: 1, color: "#94a3b8", fontStyle: "italic" }]}>Sin productos</Text>
+              <View style={s.tableRow}>
+                <Text style={[s.cell, { color: TEXT_MUTED, fontStyle: "italic" }]}>Sin productos</Text>
               </View>
             ) : items.map((item, i) => {
               const disc = 1 - (item.discount_pct ?? 0) / 100;
               const sub  = item.quantity * item.unit_price * disc;
               return (
-                <View key={item.id} style={[styles.trow, i % 2 === 1 ? styles.trowAlt : {}]}>
-                  <Text style={[styles.td, { width: 55, color: "#64748b", fontFamily: "Helvetica-Oblique" }]}>
-                    {item.sku ?? "—"}
-                  </Text>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.td}>{item.description}</Text>
-                    {item.details && <Text style={styles.tdMuted}>{item.details}</Text>}
+                <View key={item.id} style={i % 2 === 0 ? s.tableRow : s.tableRowAlt}>
+                  <Text style={[s.cell, { width: "8%" }]}>{item.sku ?? "—"}</Text>
+                  <View style={{ width: "36%" }}>
+                    <Text style={s.cellBold}>{item.description}</Text>
+                    {item.details && <Text style={[s.cell, { fontSize: 7.5 }]}>{item.details}</Text>}
                   </View>
-                  <Text style={[styles.td, { width: 40, textAlign: "center" }]}>{item.quantity}</Text>
-                  <Text style={[styles.td, { width: 45, textAlign: "center", color: "#64748b" }]}>{item.unit}</Text>
-                  <Text style={[styles.td, { width: 65, textAlign: "right" }]}>
-                    ${Number(item.unit_price).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
+                  <Text style={[s.cell, { width: "10%", textAlign: "right" }]}>{String(item.quantity)}</Text>
+                  <Text style={[s.cell, { width: "8%",  textAlign: "center" }]}>{item.unit}</Text>
+                  <Text style={[s.cell, { width: "16%", textAlign: "right" }]}>{"$" + fmt(item.unit_price)}</Text>
+                  <Text style={[s.cell, { width: "8%", textAlign: "center", color: item.discount_pct > 0 ? ACCENT : TEXT_MUTED }]}>
+                    {item.discount_pct > 0 ? (String(item.discount_pct) + "%") : "—"}
                   </Text>
-                  <Text style={[styles.td, { width: 55, textAlign: "center", color: item.discount_pct > 0 ? "#10b981" : "#cbd5e1" }]}>
-                    {item.discount_pct > 0 ? `-${item.discount_pct}%` : "—"}
-                  </Text>
-                  <Text style={[styles.td, { width: 70, textAlign: "right", fontFamily: "Helvetica-Bold", color: "#0f172a" }]}>
-                    ${sub.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
-                  </Text>
+                  <Text style={[s.cellBold, { width: "14%", textAlign: "right" }]}>{"$" + fmt(sub)}</Text>
                 </View>
               );
             })}
           </View>
 
           {/* TOTALES */}
-          <View style={styles.totalsBox}>
-            <View style={[styles.totRow, { borderTopWidth: 1, borderTopColor: "#e2e8f0" }]}>
-              <Text style={styles.totLabel}>Subtotal</Text>
-              <Text style={styles.totValue}>{fmt(order.subtotal, order.currency)}</Text>
+          <View style={s.totalBox}>
+            <View style={s.totalRow}>
+              <Text style={s.totalLabel}>Subtotal</Text>
+              <Text style={s.totalValue}>{order.currency + " $" + fmt(order.subtotal)}</Text>
             </View>
-            {order.discount_amount > 0 && (
-              <View style={styles.totRow}>
-                <Text style={[styles.totLabel, { color: "#f59e0b" }]}>Descuento</Text>
-                <Text style={[styles.totValue, { color: "#f59e0b" }]}>- {fmt(order.discount_amount, order.currency)}</Text>
+            {(order.discount_amount ?? 0) > 0 && (
+              <View style={s.totalRow}>
+                <Text style={s.totalLabel}>Descuento</Text>
+                <Text style={[s.totalValue, { color: ACCENT }]}>{"- " + order.currency + " $" + fmt(order.discount_amount)}</Text>
               </View>
             )}
-            <View style={styles.totRow}>
-              <Text style={styles.totLabel}>IVA {order.tax_rate}%</Text>
-              <Text style={styles.totValue}>{fmt(order.tax_amount, order.currency)}</Text>
+            <View style={s.totalRow}>
+              <Text style={s.totalLabel}>{"IVA " + String(order.tax_rate ?? 16) + "%"}</Text>
+              <Text style={s.totalValue}>{order.currency + " $" + fmt(order.tax_amount)}</Text>
             </View>
-            <View style={styles.totalFinal}>
-              <Text style={styles.totalLabel}>TOTAL</Text>
-              <Text style={styles.totalValue}>{fmt(order.total, order.currency)}</Text>
+            <View style={[s.totalRow, { borderTopWidth: 1, borderTopColor: BORDER_COLOR, paddingTop: 7, marginTop: 4 }]}>
+              <Text style={s.grandLabel}>TOTAL</Text>
+              <Text style={s.grandValue}>{order.currency + " $" + fmt(order.total)}</Text>
             </View>
           </View>
 
           {/* DATOS DE ENTREGA */}
-          {(order.delivery_date || order.delivery_address || (order as any).delivery_notes) && (
-            <View style={styles.delivBox}>
-              <Text style={[styles.sectionTitle, { marginBottom: 8 }]}>Datos de entrega</Text>
-              {order.delivery_date && (
-                <View style={styles.delivRow}>
-                  <Text style={styles.delivLbl}>Fecha</Text>
-                  <Text style={styles.delivVal}>
-                    {new Date(order.delivery_date).toLocaleDateString("es-MX", { day: "2-digit", month: "long", year: "numeric" })}
-                  </Text>
-                </View>
-              )}
-              {order.delivery_address && (
-                <View style={styles.delivRow}>
-                  <Text style={styles.delivLbl}>Dirección</Text>
-                  <Text style={styles.delivVal}>
-                    {[order.delivery_address, order.delivery_city, order.delivery_state].filter(Boolean).join(", ")}
-                  </Text>
-                </View>
-              )}
-              {(order as any).delivery_notes && (
-                <View style={styles.delivRow}>
-                  <Text style={styles.delivLbl}>Notas</Text>
-                  <Text style={[styles.delivVal, { fontFamily: "Helvetica", color: "#64748b" }]}>{(order as any).delivery_notes}</Text>
-                </View>
-              )}
+          {(order.delivery_date || order.delivery_address) && (
+            <View style={[s.section, { marginTop: 16 }]}>
+              <Text style={s.sectionTitle}>Datos de entrega</Text>
+              <View style={s.delivBox}>
+                {[
+                  { l: "Fecha de entrega", v: order.delivery_date ? new Date(order.delivery_date).toLocaleDateString(locale, { day: "2-digit", month: "long", year: "numeric" }) : null },
+                  { l: "Dirección",        v: [order.delivery_address, order.delivery_city, order.delivery_state].filter(Boolean).join(", ") || null },
+                  { l: "Notas",            v: (order as any).delivery_notes ?? null },
+                ].filter(r => r.v).map(r => (
+                  <View key={r.l} style={{ flexDirection: "row", marginBottom: 4 }}>
+                    <Text style={[s.label, { width: 80 }]}>{r.l}</Text>
+                    <Text style={[s.valueSmall, { flex: 1 }]}>{r.v}</Text>
+                  </View>
+                ))}
+              </View>
             </View>
           )}
 
           {/* NOTAS */}
           {order.notes && (
-            <View style={{ marginTop: 12, padding: 10, backgroundColor: "#fffbeb", borderRadius: 6, borderWidth: 1, borderColor: "#fde68a" }}>
-              <Text style={[styles.sectionTitle, { color: "#92400e", marginBottom: 4 }]}>Notas</Text>
-              <Text style={{ fontSize: 8.5, color: "#78350f", lineHeight: 1.5 }}>{order.notes}</Text>
+            <View style={[s.section, { marginTop: 8 }]}>
+              <Text style={s.sectionTitle}>Notas</Text>
+              <View style={s.notesBox}>
+                <Text style={s.notesText}>{order.notes}</Text>
+              </View>
             </View>
           )}
         </View>
 
-        {/* FOOTER */}
-        <View style={styles.footer} fixed>
-          <Text style={styles.footerText}>Generado por Mobility OS · {new Date().toLocaleDateString("es-MX")}</Text>
-          <Text style={styles.footerBold}>{order.order_number}</Text>
-          <Text style={styles.footerText}>www.mobility-os.lat</Text>
-        </View>
+        <PageFooter />
       </Page>
     </Document>
   );
