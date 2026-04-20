@@ -140,14 +140,10 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
   async function handleSubmit() {
     if (!form.supplier_name.trim()) { setError(es ? "Selecciona o escribe el proveedor" : "Select or enter supplier"); return; }
     if (!form.total || parseFloat(form.total) <= 0) { setError(es ? "Ingresa el total" : "Enter total"); return; }
-        setError(null);
+            setError(null);
     setUploading(true);
     try {
       let pdf_url: string | undefined;
-      let xml_url: string | undefined;
-      if (pdfFile) { const url = await uploadFile(pdfFile, "pdf"); if (url) pdf_url = url; }
-      if (xmlFile) { const url = await uploadFile(xmlFile, "xml"); if (url) xml_url = url; }
-            let pdf_url: string | undefined;
       let xml_url: string | undefined;
       if (pdfFile) { const url = await uploadFile(pdfFile, "pdf"); if (url) pdf_url = url; }
       if (xmlFile) { const url = await uploadFile(xmlFile, "xml"); if (url) xml_url = url; }
