@@ -157,7 +157,7 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
       receiver_regime: preloadShipment.receiver_regime ?? "601",
       currency:        preloadShipment.currency        ?? "MXN",
       notes:           `Ref. ${preloadShipment.reference}`,
-      concepts: (preloadShipment.services ?? []).map((svc) => ({
+            concepts: (preloadShipment.services ?? []).map((svc) => ({
         product_key:  svc.sat_product_code ?? "84111506",
         unit_key:     svc.sat_unit_code    ?? "E48",
         description:  svc.description,
@@ -165,10 +165,9 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
         quantity:     1,
         unit_price:   svc.price,
         discount_pct: 0,
-        tax_rate:     0.16,
-        subtotal:     svc.price,
-        tax_amount:   svc.price * 0.16,
+        taxes:        DEFAULT_TAXES,
       })),
+
     }));
 
     // Si hay multi-moneda → ir al paso moneda primero
@@ -238,9 +237,7 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
           quantity:     1,
           unit_price:   svc.price,
           discount_pct: 0,
-          tax_rate:     0.16,
-          subtotal:     svc.price,
-          tax_amount:   svc.price * 0.16,
+          taxes:        DEFAULT_TAXES,
         })),
       }));
     } else if (currencyMode === "all_mxn") {
@@ -260,9 +257,7 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
           quantity:     1,
           unit_price:   svc.price,
           discount_pct: 0,
-          tax_rate:     0.16,
-          subtotal:     svc.price,
-          tax_amount:   svc.price * 0.16,
+          taxes:        DEFAULT_TAXES,
         })),
       }));
     } else if (currencyMode === "all_usd") {
@@ -283,9 +278,7 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
           quantity:     1,
           unit_price:   svc.price,
           discount_pct: 0,
-          tax_rate:     0.16,
-          subtotal:     svc.price,
-          tax_amount:   svc.price * 0.16,
+          taxes:        DEFAULT_TAXES,
         })),
       }));
     }
