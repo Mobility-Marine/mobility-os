@@ -39,6 +39,22 @@ export default function CxPPage() {
 
   function openPayment(ap: AccountPayable) { setPagoAP(ap); setPagoOpen(true); }
 
+    async function handleAttach(ap: AccountPayable, file: File, type: "pdf" | "xml") {
+    const ext  = type === "pdf" ? "pdf" : "xml";
+    const path = `${companyId}/cxp/${ap.id}-${type}.${ext}`;
+    const { error } = await supabase.storage
+      .from("financial-documents")
+      .upload(path, file, { contentType: file.type, upsert: true });
+    if (error) return;
+    const { data } = supabase.storage.from("financial-documents").getPublicUrl(path);
+    const url = data?.publicUrl;
+    if (!url) return;
+    await supabase.from("accounts_payable")
+      .update({ [type === "pdf" ? "pdf_url" : "xml_url"]: url, updated_at: new Date().toISOString() })
+      .eq("id", ap.id).eq("company_id", companyId!);
+    ctrl.load();
+  }
+
   function openFromShipment(sh: any) {
     setPreloadShip(sh); setPreloadPO(null); setNewOpen(true);
   }
@@ -111,13 +127,14 @@ export default function CxPPage() {
         />
       )}
       {tab === "cartera" && (
-        <CxPCartera
+                <CxPCartera
           items={ctrl.items}
           loading={ctrl.loading}
           filters={ctrl.filters}
           onFilter={ctrl.handleFilter}
           onSelect={ctrl.handleSelect}
           onPay={openPayment}
+          onAttach={handleAttach}
         />
       )}
       {tab === "proveedores" && (
