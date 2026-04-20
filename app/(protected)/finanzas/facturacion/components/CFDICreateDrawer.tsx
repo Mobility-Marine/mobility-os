@@ -208,14 +208,13 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
     setCF("unit_key",    p.sat_unit_code    ?? "E48");
   }
 
-  function addConcept() {
+    function addConcept() {
     if (!conceptForm.description || !conceptForm.unit_price) return;
-    const subtotal = conceptForm.quantity * conceptForm.unit_price * (1 - conceptForm.discount_pct / 100);
     setForm((p) => ({
       ...p,
-      concepts: [...p.concepts, { ...conceptForm, subtotal, tax_amount: subtotal * conceptForm.tax_rate }],
+      concepts: [...p.concepts, { ...conceptForm }],
     }));
-    setConceptForm({ product_key: "84111506", unit_key: "E48", description: "", unit: "Servicio", quantity: 1, unit_price: 0, discount_pct: 0, tax_rate: 0.16 });
+    setConceptForm({ product_key: "84111506", unit_key: "E48", description: "", unit: "Servicio", quantity: 1, unit_price: 0, discount_pct: 0, taxes: DEFAULT_TAXES });
   }
 
   // Aplicar modo de moneda y avanzar a receptor
@@ -308,7 +307,7 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
     setError(null);
     setCurrencyMode(null);
     setSplitDone(false);
-    setConceptForm({ product_key: "84111506", unit_key: "E48", description: "", unit: "Servicio", quantity: 1, unit_price: 0, discount_pct: 0, tax_rate: 0.16 });
+        setConceptForm({ product_key: "84111506", unit_key: "E48", description: "", unit: "Servicio", quantity: 1, unit_price: 0, discount_pct: 0, taxes: DEFAULT_TAXES });
     onClose();
   }
 
