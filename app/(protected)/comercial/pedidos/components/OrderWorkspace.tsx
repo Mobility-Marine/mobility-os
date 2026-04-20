@@ -317,19 +317,27 @@ export default function OrderWorkspace({ order, onStatusChange, onUpdate, saving
             )
           )}
 
-          {/* Generar factura (solo cuando entregado) */}
-          {isDelivered && !order.invoice_id && (
-            <button onClick={() => router.push("/finanzas/facturacion")} style={{
-              height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)",
-              background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)",
-              color: "var(--color-warning-text)", fontSize: "11px", fontWeight: 700, cursor: "pointer",
-              display: "flex", alignItems: "center", gap: "4px",
-            }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-              </svg>
-              {to.generateInvoice ?? "Generar factura"}
-            </button>
+                    {/* Badge estado facturación */}
+          {isDelivered && (
+            order.invoice_id ? (
+              <span style={{
+                height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)",
+                background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)",
+                color: "var(--color-success-text)", fontSize: "11px", fontWeight: 700,
+                display: "flex", alignItems: "center", gap: "4px",
+              }}>
+                ✓ Facturado
+              </span>
+            ) : (
+              <span style={{
+                height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)",
+                background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)",
+                color: "var(--color-warning-text)", fontSize: "11px", fontWeight: 700,
+                display: "flex", alignItems: "center", gap: "4px",
+              }}>
+                ⏳ Pendiente facturar
+              </span>
+            )
           )}
         </div>
       </div>
