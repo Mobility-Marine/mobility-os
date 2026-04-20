@@ -96,6 +96,14 @@ export default function QuotationWorkspace({
   const [addingItem,      setAddingItem]     = useState(false);
   // Email en tab PDF
   const [ccEmails,        setCcEmails]       = useState("");
+    // Modal de entrega antes de aceptar cotización de productos
+  const [deliveryModal,    setDeliveryModal]    = useState(false);
+  const [deliveryDate,     setDeliveryDate]     = useState("");
+  const [deliveryType,     setDeliveryType]     = useState<"client_address" | "custom">("client_address");
+  const [deliveryAddress,  setDeliveryAddress]  = useState("");
+  const [deliveryCity,     setDeliveryCity]     = useState("");
+  const [deliveryState,    setDeliveryState]    = useState("");
+  const [deliveryNotes,    setDeliveryNotes]    = useState("");
   const [sendingEmail,    setSendingEmail]   = useState(false);
 
   if (!quotation) {
@@ -134,18 +142,20 @@ export default function QuotationWorkspace({
     { key: "preview" as Tab, label: "PDF / Envío" },
   ];
 
-    async function handleAccept() {
+      async function handleAccept() {
     setAccepting(true); setConfirmAccept(false);
     try {
-      const result = await onAccept(quotation);
-      if (result?.type === "shipment") {
-        // Logística sí puede navegar a su módulo
-        router.push("/logistica/embarques");
-      }
-      // Pedido: se crea en background, la cotización muestra el botón "→ Ver pedido"
-    } finally { setAccepting(false); }
+      const result = await onAccept(quotation, {
+        delivery_date:    deliveryDate    || undefined,
+        delivery_type:    deliveryType,
+        delivery_address: deliveryType === "custom" ? deliveryAddress  : undefined,
+        delivery_city:    deliveryType === "custom" ? deliveryCity     : undefined,
+        delivery_state:   deliveryType === "custom" ? deliveryState    : undefined,
+        delivery_notes:   deliveryNotes  || undefined,
+      });
+      if (result?.type === "shipment") router.push("/logistica/embarques");
+    } finally { setAccepting(false); setDeliveryModal(false); }
   }
-
 
   function startEditDetail() {
     setDetailForm({
@@ -258,8 +268,11 @@ export default function QuotationWorkspace({
               Marcar enviada
             </button>
           )}
-          {isOpen && !confirmAccept && !confirmReject && !confirmDelete && (
-            <button onClick={() => setConfirmAccept(true)} style={{ height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", color: "var(--color-success-text)", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
+                    {isOpen && !confirmAccept && !confirmReject && !confirmDelete && (
+            <button onClick={() => {
+              if (!isServices) { setDeliveryModal(true); }
+              else { setConfirmAccept(true); }
+            }} style={{ height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", color: "var(--color-success-text)", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               Aceptada →{isServices ? " Embarque" : " Pedido"}
             </button>
@@ -782,7 +795,77 @@ export default function QuotationWorkspace({
             </div>
           </div>
         )}
-      </div>
+           </div>
+
+      {/* ── MODAL ENTREGA ── */}
+      {deliveryModal && (
+        <>
+          <div onClick={() => setDeliveryModal(false)} style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.5)", backdropFilter: "blur(4px)", zIndex: 500 }} />
+          <div style={{ position: "fixed", top: "50%", left: "50%", transform: "translate(-50%,-50%)", width: "min(480px, 94vw)", background: "var(--color-bg-base)", borderRadius: "var(--radius-lg)", border: "1px solid var(--color-border)", padding: "24px", zIndex: 501, display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div style={{ fontSize: "15px", fontWeight: 800, color: "var(--color-text-primary)" }}>Confirmar pedido — Datos de entrega</div>
+
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Fecha de entrega *</div>
+              <input type="date" value={deliveryDate} onChange={e => setDeliveryDate(e.target.value)}
+                style={{ width: "100%", height: "36px", padding: "0 10px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-primary)", fontSize: "13px", outline: "none", boxSizing: "border-box" as any }} />
+            </div>
+
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "8px", textTransform: "uppercase" }}>Dirección de entrega</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                {[
+                  { v: "client_address", l: "📍 Dirección del cliente", d: "La registrada en el perfil del cliente" },
+                  { v: "custom",         l: "✏️ Otra dirección",         d: "Capturar dirección diferente" },
+                ].map(opt => (
+                  <div key={opt.v} onClick={() => setDeliveryType(opt.v as any)}
+                    style={{ padding: "12px", borderRadius: "var(--radius-md)", cursor: "pointer", border: `2px solid ${deliveryType === opt.v ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`, background: deliveryType === opt.v ? "var(--color-info-bg)" : "var(--color-bg-subtle)" }}>
+                    <div style={{ fontSize: "12px", fontWeight: 700, color: deliveryType === opt.v ? "var(--color-brand-blue)" : "var(--color-text-primary)" }}>{opt.l}</div>
+                    <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "3px" }}>{opt.d}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {deliveryType === "custom" && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                {[
+                  { k: "address", l: "Calle y número", v: deliveryAddress, fn: setDeliveryAddress, cols: "1 / -1" },
+                  { k: "city",    l: "Ciudad",          v: deliveryCity,    fn: setDeliveryCity,    cols: undefined },
+                  { k: "state",   l: "Estado",          v: deliveryState,   fn: setDeliveryState,   cols: undefined },
+                ].map(f => (
+                  <div key={f.k} style={{ gridColumn: f.cols ?? "auto" }}>
+                    <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>{f.l}</div>
+                    <input value={f.v} onChange={e => f.fn(e.target.value)}
+                      style={{ width: "100%", height: "34px", padding: "0 10px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" as any }} />
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Notas de entrega (opcional)</div>
+              <input value={deliveryNotes} onChange={e => setDeliveryNotes(e.target.value)} placeholder="Instrucciones especiales, horario, contacto…"
+                style={{ width: "100%", height: "34px", padding: "0 10px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" as any }} />
+            </div>
+
+            <div style={{ display: "flex", gap: "8px" }}>
+              <button onClick={() => setDeliveryModal(false)} style={{ height: "40px", padding: "0 18px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", fontSize: "13px", cursor: "pointer" }}>
+                Cancelar
+              </button>
+              <button onClick={handleAccept} disabled={!deliveryDate || accepting}
+                style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: deliveryDate ? "var(--color-success-text)" : "var(--color-bg-subtle)", color: deliveryDate ? "#fff" : "var(--color-text-muted)", border: "none", fontSize: "13px", fontWeight: 700, cursor: deliveryDate ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", gap: "6px" }}>
+                {accepting ? "Creando pedido…" : (
+                  <>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                    Confirmar y crear pedido
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
+
