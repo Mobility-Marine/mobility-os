@@ -16,7 +16,7 @@ type Props = {
   detailLoading:     boolean;
   onUpdateStatus:    (id: string, status: string) => Promise<void>;
   onUpdateFields:    (id: string, updates: Partial<Quotation>) => Promise<void>;
-  onAccept:          (q: Quotation) => Promise<{ type: "order" | "shipment"; id: string } | undefined>;
+    onAccept:          (q: Quotation, deliveryInfo?: any) => Promise<{ type: "order" | "shipment"; id: string } | undefined>;
   onRemoveItem:      (id: string, quotationId: string) => Promise<void>;
   onRemoveService:   (id: string, quotationId: string) => Promise<void>;
   onUpdateItem:      (id: string, updates: Partial<QuotationItem>, quotationId: string) => Promise<void>;
