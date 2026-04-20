@@ -65,9 +65,96 @@ export type FacturacionStats = {
   count_total:       number;
 };
 
+// ── IMPUESTOS POR CONCEPTO ────────────────────────────────────
+export type ConceptTax = {
+  type:        "IVA" | "ISR" | "IEPS";
+  rate:        number;        // 0.16, 0.10, 0.106667, etc.
+  factor:      "Tasa" | "Exento" | "Cuota";
+  withholding: boolean;       // false = trasladado (+), true = retenido (-)
+};
+
+// Presets de impuestos más comunes en México
+export const TAX_PRESETS: { key: string; labelEs: string; taxes: ConceptTax[] }[] = [
+  {
+    key: "iva16",
+    labelEs: "IVA 16%",
+    taxes: [{ type: "IVA", rate: 0.16, factor: "Tasa", withholding: false }],
+  },
+  {
+    key: "iva8",
+    labelEs: "IVA 8% (Zona fronteriza)",
+    taxes: [{ type: "IVA", rate: 0.08, factor: "Tasa", withholding: false }],
+  },
+  {
+    key: "iva0",
+    labelEs: "IVA 0%",
+    taxes: [{ type: "IVA", rate: 0, factor: "Tasa", withholding: false }],
+  },
+  {
+    key: "exento",
+    labelEs: "Exento de IVA",
+    taxes: [{ type: "IVA", rate: 0, factor: "Exento", withholding: false }],
+  },
+  {
+    key: "honorarios",
+    labelEs: "Honorarios — IVA 16% + IVA ret. 10.67% + ISR ret. 10%",
+    taxes: [
+      { type: "IVA", rate: 0.16,     factor: "Tasa", withholding: false },
+      { type: "IVA", rate: 0.106667, factor: "Tasa", withholding: true  },
+      { type: "ISR", rate: 0.10,     factor: "Tasa", withholding: true  },
+    ],
+  },
+  {
+    key: "arrendamiento",
+    labelEs: "Arrendamiento — IVA 16% + IVA ret. 10.67%",
+    taxes: [
+      { type: "IVA", rate: 0.16,     factor: "Tasa", withholding: false },
+      { type: "IVA", rate: 0.106667, factor: "Tasa", withholding: true  },
+    ],
+  },
+  {
+    key: "servicios_isr",
+    labelEs: "Servicios + ISR ret. 10%",
+    taxes: [
+      { type: "IVA", rate: 0.16, factor: "Tasa", withholding: false },
+      { type: "ISR", rate: 0.10, factor: "Tasa", withholding: true  },
+    ],
+  },
+  {
+    key: "iva_ret4",
+    labelEs: "IVA 16% + IVA ret. 4%",
+    taxes: [
+      { type: "IVA", rate: 0.16, factor: "Tasa", withholding: false },
+      { type: "IVA", rate: 0.04, factor: "Tasa", withholding: true  },
+    ],
+  },
+  {
+    key: "isr_ret1",
+    labelEs: "IVA 16% + ISR ret. 1.25%",
+    taxes: [
+      { type: "IVA", rate: 0.16,   factor: "Tasa", withholding: false },
+      { type: "ISR", rate: 0.0125, factor: "Tasa", withholding: true  },
+    ],
+  },
+];
+
+// Helper: calcular totales de un concepto respetando traslados y retenciones
+export function calcConceptTotals(concept: NewConcept): {
+  base: number; trasladados: number; retenidos: number; total: number;
+} {
+  const base = concept.quantity * concept.unit_price * (1 - concept.discount_pct / 100);
+  const taxes = concept.taxes;
+  const trasladados = taxes
+    .filter(t => !t.withholding)
+    .reduce((s, t) => s + (t.factor === "Exento" ? 0 : base * t.rate), 0);
+  const retenidos = taxes
+    .filter(t => t.withholding)
+    .reduce((s, t) => s + base * t.rate, 0);
+  return { base, trasladados, retenidos, total: base + trasladados - retenidos };
+}
+
 // Para crear una nueva factura en el drawer
 export type NewCFDIForm = {
-  // Receptor
   client_id:         string;
   receiver_rfc:      string;
   receiver_name:     string;
@@ -75,7 +162,6 @@ export type NewCFDIForm = {
   receiver_cfdi_use: string;
   receiver_zip:      string;
   receiver_regime:   string;
-  // Config
   serie:             string;
   currency:          string;
   exchange_rate:     number;
@@ -83,7 +169,6 @@ export type NewCFDIForm = {
   payment_form:      string;
   cfdi_date:         string;
   notes:             string;
-  // Conceptos
   concepts:          NewConcept[];
 };
 
@@ -96,10 +181,10 @@ export type NewConcept = {
   quantity:     number;
   unit_price:   number;
   discount_pct: number;
-  tax_rate:     number;
+  taxes:        ConceptTax[];
 };
 
-// Catálogos SAT más usados
+// Catálogos SAT
 export const CFDI_USES = [
   { key: "G01", label: "Adquisición de mercancias" },
   { key: "G03", label: "Gastos en general" },
@@ -157,6 +242,10 @@ export const UNIT_KEYS = [
   { key: "HUR", label: "Hora" },
 ];
 
+export const DEFAULT_TAXES: ConceptTax[] = [
+  { type: "IVA", rate: 0.16, factor: "Tasa", withholding: false },
+];
+
 export const DEFAULT_NEW_CFDI: NewCFDIForm = {
   client_id: "", receiver_rfc: "", receiver_name: "",
   receiver_email: "", receiver_cfdi_use: "G03",
@@ -167,8 +256,6 @@ export const DEFAULT_NEW_CFDI: NewCFDIForm = {
   notes: "", concepts: [],
 };
 
-// ── TIPOS ADICIONALES ────────────────────────────────────────
-
 export type CFDITypeGroup = {
   group:    string;
   groupEs:  string;
@@ -177,16 +264,16 @@ export type CFDITypeGroup = {
 };
 
 export type CFDITypeOption = {
-  id:          string;
-  type:        CFDIType;
-  labelEs:     string;
-  labelEn:     string;
-  descEs:      string;
-  descEn:      string;
-  badge?:      string;
-  disabled?:   boolean;
-  disabledMsg?:string;
-  icon:        string; // SVG path d value
+  id:           string;
+  type:         CFDIType;
+  labelEs:      string;
+  labelEn:      string;
+  descEs:       string;
+  descEn:       string;
+  badge?:       string;
+  disabled?:    boolean;
+  disabledMsg?: string;
+  icon:         string;
 };
 
 export const CFDI_TYPE_GROUPS: CFDITypeGroup[] = [
@@ -255,7 +342,6 @@ export const CFDI_TYPE_GROUPS: CFDITypeGroup[] = [
   },
 ];
 
-// Tipos para Notas sin valor fiscal
 export type BusinessNoteType = "remision" | "honorarios" | "presupuesto" | "recibo" | "otro";
 export type BusinessNoteStatus = "draft" | "sent" | "voided";
 
@@ -281,9 +367,9 @@ export type BusinessNote = {
 };
 
 export const BUSINESS_NOTE_TYPES: { key: BusinessNoteType; labelEs: string; labelEn: string; descEs: string; descEn: string }[] = [
-  { key: "remision",    labelEs: "Nota de Remisión",     labelEn: "Delivery Note",       descEs: "Acompaña mercancía sin valor fiscal", descEn: "Accompanies goods without fiscal value" },
-  { key: "honorarios",  labelEs: "Recibo de Honorarios", labelEn: "Honorarium Receipt",  descEs: "Para servicios profesionales sin IVA", descEn: "For professional services without VAT" },
-  { key: "presupuesto", labelEs: "Presupuesto",          labelEn: "Estimate",            descEs: "Cotización informal sin compromiso",   descEn: "Informal quote without commitment" },
-  { key: "recibo",      labelEs: "Recibo de Pago",       labelEn: "Payment Receipt",     descEs: "Comprobante informal de pago recibido", descEn: "Informal proof of received payment" },
-  { key: "otro",        labelEs: "Otro Documento",       labelEn: "Other Document",      descEs: "Documento personalizado sin valor fiscal", descEn: "Custom document without fiscal value" },
+  { key: "remision",    labelEs: "Nota de Remisión",     labelEn: "Delivery Note",      descEs: "Acompaña mercancía sin valor fiscal",       descEn: "Accompanies goods without fiscal value" },
+  { key: "honorarios",  labelEs: "Recibo de Honorarios", labelEn: "Honorarium Receipt", descEs: "Para servicios profesionales sin IVA",       descEn: "For professional services without VAT" },
+  { key: "presupuesto", labelEs: "Presupuesto",          labelEn: "Estimate",           descEs: "Cotización informal sin compromiso",          descEn: "Informal quote without commitment" },
+  { key: "recibo",      labelEs: "Recibo de Pago",       labelEn: "Payment Receipt",    descEs: "Comprobante informal de pago recibido",       descEn: "Informal proof of received payment" },
+  { key: "otro",        labelEs: "Otro Documento",       labelEn: "Other Document",     descEs: "Documento personalizado sin valor fiscal",    descEn: "Custom document without fiscal value" },
 ];
