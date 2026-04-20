@@ -242,7 +242,8 @@ export async function checkOrderStock(
     .eq("order_id", orderId)
     .not("product_id", "is", null);
 
-  if (!items?.length) return { ok: true, alerts: [] };
+  // Sin items vinculados al catálogo → no se puede verificar stock
+  if (!items?.length) return { ok: false, alerts: [{ sku: "—", name: "Sin productos vinculados al catálogo", needed: 0, available: 0 }] };
 
   const alerts: any[] = [];
   for (const item of items) {
@@ -253,13 +254,10 @@ export async function checkOrderStock(
       .eq("company_id", companyId)
       .single();
 
-    if (product && product.stock < item.quantity) {
-      alerts.push({
-        sku:       item.sku ?? product.sku,
-        name:      product.name,
-        needed:    item.quantity,
-        available: product.stock,
-      });
+    if (!product) {
+      alerts.push({ sku: item.sku ?? "?", name: item.description, needed: item.quantity, available: 0 });
+    } else if (product.stock < item.quantity) {
+      alerts.push({ sku: item.sku ?? product.sku, name: product.name, needed: item.quantity, available: product.stock });
     }
   }
   return { ok: alerts.length === 0, alerts };
