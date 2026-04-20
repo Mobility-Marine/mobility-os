@@ -113,6 +113,8 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
   const [error,        setError]        = useState<string | null>(null);
   const [clients,      setClients]      = useState<Client[]>([]);
   const [products,     setProducts]     = useState<any[]>([]);
+  const [editingConceptIdx, setEditingConceptIdx] = useState<number | null>(null);
+  const [editConceptForm,   setEditConceptForm]   = useState<any>({});
   const [conceptForm,  setConceptForm]  = useState<Omit<NewConcept, "product_id"> & { product_id?: string }>({
     product_key: "84111506", unit_key: "E48", description: "",
     unit: "Servicio", quantity: 1, unit_price: 0, discount_pct: 0, tax_rate: 0.16,
@@ -610,9 +612,72 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
 
               {form.concepts.length > 0 && (
                 <div style={{ display: "grid", gap: "5px" }}>
-                  {form.concepts.map((c, i) => {
+                                    {form.concepts.map((c, i) => {
+                    const isEditing = editingConceptIdx === i;
                     const base = c.quantity * c.unit_price * (1 - c.discount_pct / 100);
                     const ttl  = base + base * c.tax_rate;
+                    if (isEditing) {
+                      const eBase = (editConceptForm.quantity ?? 1) * (editConceptForm.unit_price ?? 0) * (1 - (editConceptForm.discount_pct ?? 0) / 100);
+                      const eTtl  = eBase + eBase * (editConceptForm.tax_rate ?? 0.16);
+                      return (
+                        <div key={i} style={{ padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", display: "grid", gap: "8px" }}>
+                          <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-brand-blue)" }}>Editando concepto {i + 1}</div>
+                          <input value={editConceptForm.description ?? ""} onChange={e => setEditConceptForm((p: any) => ({ ...p, description: e.target.value }))} placeholder="Descripción" style={{ ...INPUT, height: "32px" }} />
+                          <div style={{ display: "grid", gridTemplateColumns: "80px 100px 80px auto", gap: "8px" }}>
+                            <div>
+                              <div style={{ fontSize: "9px", color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Cant.</div>
+                              <input type="number" min="0.001" value={editConceptForm.quantity ?? 1} onChange={e => setEditConceptForm((p: any) => ({ ...p, quantity: Number(e.target.value) }))} style={{ ...INPUT, height: "30px", fontSize: "12px" }} />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: "9px", color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Precio</div>
+                              <input type="number" min="0" value={editConceptForm.unit_price ?? 0} onChange={e => setEditConceptForm((p: any) => ({ ...p, unit_price: Number(e.target.value) }))} style={{ ...INPUT, height: "30px", fontSize: "12px" }} />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: "9px", color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Desc. %</div>
+                              <input type="number" min="0" max="100" value={editConceptForm.discount_pct ?? 0} onChange={e => setEditConceptForm((p: any) => ({ ...p, discount_pct: Number(e.target.value) }))} style={{ ...INPUT, height: "30px", fontSize: "12px" }} />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: "9px", color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Impuestos</div>
+                              <select value={`${editConceptForm.tax_rate ?? 0.16}_${editConceptForm.tax_type ?? "IVA_T"}`}
+                                onChange={e => { const [rate, type] = e.target.value.split("_"); setEditConceptForm((p: any) => ({ ...p, tax_rate: parseFloat(rate), tax_type: type })); }}
+                                style={{ ...SELECT, height: "30px", fontSize: "11px" }}>
+                                <option value="0.16_IVA_T">IVA 16%</option>
+                                <option value="0.08_IVA_T">IVA 8%</option>
+                                <option value="0_IVA_T0">IVA 0%</option>
+                                <option value="0_EXENTO">Exento</option>
+                                <option value="0.106_IVA_R">IVA Ret. 10.6%</option>
+                                <option value="0.10_ISR_R">ISR Ret. 10%</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+                            <div>
+                              <div style={{ fontSize: "9px", color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Clave SAT producto</div>
+                              <SATSearch value={editConceptForm.product_key ?? ""} onChange={code => setEditConceptForm((p: any) => ({ ...p, product_key: code }))} type="products" placeholder="Buscar clave SAT…" inputStyle={{ height: "30px", fontSize: "11px" }} />
+                            </div>
+                            <div>
+                              <div style={{ fontSize: "9px", color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Clave SAT unidad</div>
+                              <SATSearch value={editConceptForm.unit_key ?? ""} onChange={code => setEditConceptForm((p: any) => ({ ...p, unit_key: code }))} type="units" placeholder="Buscar unidad SAT…" inputStyle={{ height: "30px", fontSize: "11px" }} />
+                            </div>
+                          </div>
+                          <div style={{ fontSize: "11px", color: "var(--color-success-text)", fontWeight: 700, textAlign: "right" }}>
+                            Total: {form.currency} ${fmt(eTtl)}
+                          </div>
+                          <div style={{ display: "flex", gap: "6px" }}>
+                            <button onClick={() => {
+                              const updated = { ...c, ...editConceptForm, subtotal: eBase, tax_amount: eBase * (editConceptForm.tax_rate ?? 0.16) };
+                              setForm(p => ({ ...p, concepts: p.concepts.map((cc, idx) => idx === i ? updated : cc) }));
+                              setEditingConceptIdx(null); setEditConceptForm({});
+                            }} style={{ flex: 1, height: "30px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
+                              ✓ Guardar
+                            </button>
+                            <button onClick={() => { setEditingConceptIdx(null); setEditConceptForm({}); }} style={{ height: "30px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-base)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer" }}>
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    }
                     return (
                       <div key={i} style={{ display: "flex", gap: "10px", padding: "9px 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", alignItems: "center" }}>
                         <div style={{ flex: 1, minWidth: 0 }}>
@@ -624,6 +689,10 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                           </div>
                         </div>
                         <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>${fmt(ttl)}</div>
+                        <button onClick={() => { setEditingConceptIdx(i); setEditConceptForm({ ...c }); }}
+                          style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-blue)" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </button>
                         <button onClick={() => setForm((p) => ({ ...p, concepts: p.concepts.filter((_, idx) => idx !== i) }))}
                           style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                           <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="var(--color-danger-text)" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -631,22 +700,6 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                       </div>
                     );
                   })}
-                  <div style={{ background: "var(--color-bg-subtle)", borderRadius: "var(--radius-md)", padding: "10px 12px", display: "grid", gap: "4px", marginTop: "4px" }}>
-                    {[{ l: "Subtotal", v: fmt(subtotal) }, { l: "IVA", v: fmt(taxes) }].map((r) => (
-                      <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
-                        <span style={{ color: "var(--color-text-muted)" }}>{r.l}</span>
-                        <span style={{ fontVariantNumeric: "tabular-nums" }}>{form.currency} ${r.v}</span>
-                      </div>
-                    ))}
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "16px", fontWeight: 900, paddingTop: "6px", borderTop: "1px solid var(--color-border-faint)", marginTop: "4px" }}>
-                      <span style={{ color: "var(--color-text-primary)" }}>TOTAL</span>
-                      <span style={{ color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>{form.currency} ${fmt(total)}</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
 
           {/* ── PASO 3: CONFIG CFDI ── */}
           {step === "config" && (
