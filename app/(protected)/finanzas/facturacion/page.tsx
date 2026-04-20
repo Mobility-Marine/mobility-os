@@ -169,25 +169,25 @@ export default function FacturacionPage() {
       .eq("order_id", order.id)
       .order("sort_order");
 
-    const mappedServices = (items ?? []).map((item: any) => ({
+        const mappedServices = (items ?? []).map((item: any) => ({
       description:      item.product?.name             ?? item.description,
       price:            item.subtotal,
       currency:         order.currency                 ?? "MXN",
       product_id:       item.product_id                ?? null,
-      sat_product_code: item.product?.sat_product_code ?? "01010101",
-      sat_unit_code:    item.product?.sat_unit_code     ?? "H87",
-      unit:             item.product?.unit              ?? item.unit ?? "Pieza",
+      sat_product_code: item.product?.sat_product_code ?? "",
+      sat_unit_code:    item.product?.sat_unit_code     ?? "",
+      unit:             item.product?.unit              ?? item.unit ?? "",
       quantity:         item.quantity,
       unit_price:       item.unit_price,
     }));
 
-    const services = mappedServices.length > 0 ? mappedServices : [{
+        const services = mappedServices.length > 0 ? mappedServices : [{
       description:      `Pedido ${order.order_number}`,
       price:            order.total ?? 0,
       currency:         order.currency ?? "MXN",
-      sat_product_code: "01010101",
-      sat_unit_code:    "H87",
-      unit:             "Pieza",
+      sat_product_code: "",
+      sat_unit_code:    "",
+      unit:             "",
     }];
 
     setPreloadShipment({
