@@ -4,7 +4,7 @@ import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { supabase } from "@/lib/supabaseClient";
 import type { NewCFDIForm, NewConcept } from "../types/facturacion.types";
-import { DEFAULT_NEW_CFDI, CFDI_USES, PAYMENT_FORMS, FISCAL_REGIMES } from "../types/facturacion.types";
+import { DEFAULT_NEW_CFDI, CFDI_USES, PAYMENT_FORMS, FISCAL_REGIMES, TAX_PRESETS, calcConceptTotals, DEFAULT_TAXES } from "../types/facturacion.types";
 
 type CurrencyMode = "split" | "all_mxn" | "all_usd" | null;
 
@@ -115,9 +115,10 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
   const [products,     setProducts]     = useState<any[]>([]);
   const [editingConceptIdx, setEditingConceptIdx] = useState<number | null>(null);
   const [editConceptForm,   setEditConceptForm]   = useState<any>({});
-  const [conceptForm,  setConceptForm]  = useState<Omit<NewConcept, "product_id"> & { product_id?: string }>({
+    const [conceptForm,  setConceptForm]  = useState<Omit<NewConcept, "product_id"> & { product_id?: string }>({
     product_key: "84111506", unit_key: "E48", description: "",
-    unit: "Servicio", quantity: 1, unit_price: 0, discount_pct: 0, tax_rate: 0.16,
+    unit: "Servicio", quantity: 1, unit_price: 0, discount_pct: 0,
+    taxes: DEFAULT_TAXES,
   });
 
   // Multi-moneda
@@ -291,9 +292,10 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
     setStep("receptor");
   }
 
-  const subtotal = form.concepts.reduce((s, c) => s + c.quantity * c.unit_price * (1 - c.discount_pct / 100), 0);
-  const taxes    = form.concepts.reduce((s, c) => { const b = c.quantity * c.unit_price * (1 - c.discount_pct / 100); return s + b * c.tax_rate; }, 0);
-  const total    = subtotal + taxes;
+    const subtotal   = form.concepts.reduce((s, c) => s + calcConceptTotals(c).base, 0);
+  const taxes      = form.concepts.reduce((s, c) => s + calcConceptTotals(c).trasladados, 0);
+  const retenciones = form.concepts.reduce((s, c) => s + calcConceptTotals(c).retenidos, 0);
+  const total      = subtotal + taxes - retenciones;
 
   async function handleCreate() {
     if (!form.receiver_rfc)         { setError("RFC del receptor requerido"); return; }
@@ -568,30 +570,34 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                     <div style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>{es ? "Desc. %" : "Disc. %"}</div>
                     <input type="number" min="0" max="100" value={conceptForm.discount_pct} onChange={(e) => setCF("discount_pct", Number(e.target.value))} style={{ ...INPUT, height: "32px", fontSize: "12px" }} />
                   </div>
-                  <div style={{ gridColumn: "span 2" }}>
+                                    <div style={{ gridColumn: "span 2" }}>
                     <div style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase" }}>Impuestos</div>
                     <select
-                      value={`${conceptForm.tax_rate ?? 0.16}_${(conceptForm as any).tax_type ?? "IVA_T"}`}
-                      onChange={(e) => { const [rate, type] = e.target.value.split("_"); setCF("tax_rate", parseFloat(rate)); setCF("tax_type", type); }}
+                      value={TAX_PRESETS.find(p => JSON.stringify(p.taxes) === JSON.stringify((conceptForm as any).taxes))?.key ?? "custom"}
+                      onChange={(e) => {
+                        const preset = TAX_PRESETS.find(p => p.key === e.target.value);
+                        if (preset) setCF("taxes", preset.taxes);
+                      }}
                       style={{ ...SELECT, height: "32px", fontSize: "11px" }}
                     >
-                      <optgroup label="── IVA Trasladado ──">
-                        <option value="0.16_IVA_T">IVA Trasladado 16%</option>
-                        <option value="0.08_IVA_T">IVA Trasladado 8%</option>
-                        <option value="0_IVA_T0">IVA Trasladado 0%</option>
-                        <option value="0_EXENTO">Exento de IVA</option>
-                      </optgroup>
-                      <optgroup label="── Retenciones ──">
-                        <option value="0.106_IVA_R">IVA Retenido 10.6%</option>
-                        <option value="0.04_IVA_R">IVA Retenido 4%</option>
-                        <option value="0.10_ISR_R">ISR Retenido 10%</option>
-                        <option value="0.0125_ISR_R">ISR Retenido 1.25%</option>
-                      </optgroup>
-                      <optgroup label="── Combinados ──">
-                        <option value="0.16_IVA_T+0.10_ISR_R">IVA 16% + ISR Ret. 10%</option>
-                        <option value="0.16_IVA_T+0.106_IVA_R">IVA 16% + IVA Ret. 10.6%</option>
-                      </optgroup>
+                      {TAX_PRESETS.map(p => (
+                        <option key={p.key} value={p.key}>{p.labelEs}</option>
+                      ))}
                     </select>
+                    {/* Mostrar los impuestos activos */}
+                    <div style={{ display: "flex", gap: "4px", flexWrap: "wrap", marginTop: "4px" }}>
+                      {((conceptForm as any).taxes ?? DEFAULT_TAXES).map((t: any, i: number) => (
+                        <span key={i} style={{
+                          fontSize: "9px", fontWeight: 700, padding: "2px 6px",
+                          borderRadius: "var(--radius-full)",
+                          background: t.withholding ? "var(--color-danger-bg)" : "var(--color-success-bg)",
+                          color:      t.withholding ? "var(--color-danger-text)" : "var(--color-success-text)",
+                          border:     `1px solid ${t.withholding ? "var(--color-danger-border)" : "var(--color-success-border)"}`,
+                        }}>
+                          {t.withholding ? "−" : "+"} {t.type} {t.factor === "Exento" ? "Exento" : `${(t.rate * 100).toFixed(2).replace(/\.?0+$/, "")}%`}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   <button onClick={addConcept} disabled={!conceptForm.description || !conceptForm.unit_price}
                     style={{ height: "32px", padding: "0 14px", borderRadius: "var(--radius-md)", background: conceptForm.description && conceptForm.unit_price ? "var(--color-brand-blue)" : "var(--color-bg-base)", color: conceptForm.description && conceptForm.unit_price ? "#fff" : "var(--color-text-muted)", border: "1px solid var(--color-border)", fontSize: "12px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap" }}>
@@ -818,9 +824,10 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                 {/* Total final */}
                 <div style={{ borderTop: "1px solid var(--color-border-faint)", paddingTop: "8px", display: "grid", gap: "4px" }}>
                   {[
-                    { l: "Subtotal", v: fmt(subtotal), muted: true },
-                    { l: "IVA",      v: fmt(taxes),    muted: true },
-                  ].map(r => (
+                    { l: "Subtotal",    v: fmt(subtotal)    },
+                    { l: "IVA",        v: fmt(taxes)        },
+                    ...(retenciones > 0 ? [{ l: "Retenciones", v: `- ${fmt(retenciones)}` }] : []),
+                  ].map((r) => (
                     <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
                       <span style={{ color: "var(--color-text-muted)" }}>{r.l}</span>
                       <span style={{ color: "var(--color-text-second)", fontVariantNumeric: "tabular-nums" }}>{form.currency} ${r.v}</span>
