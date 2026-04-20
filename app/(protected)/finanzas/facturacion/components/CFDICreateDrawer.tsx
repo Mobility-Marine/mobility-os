@@ -127,7 +127,7 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
   const [exchangeRate,   setExchangeRate]   = useState<string>("17");
   const [splitDone,      setSplitDone]      = useState(false); // si ya se emitió la primera del par
 
-  useEffect(() => {
+    useEffect(() => {
     if (!open || !companyId) return;
     supabase.from("clients").select("id, name, legal_name, rfc, email, tax_regime, zip_code")
       .eq("company_id", companyId).order("name").limit(200)
@@ -135,6 +135,16 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
     supabase.from("products").select("id, name, sku, unit, unit_price, cost, tax_rate, sat_product_code, sat_unit_code")
       .eq("company_id", companyId).eq("is_active", true).order("name").limit(200)
       .then(({ data }) => setProducts(data ?? []));
+    // Cargar serie configurada en settings
+    supabase.from("company_settings")
+      .select("invoice_series")
+      .eq("company_id", companyId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data?.invoice_series) {
+          setForm((p) => ({ ...p, serie: data.invoice_series }));
+        }
+      });
   }, [open, companyId]);
 
   // Precargar datos del embarque
