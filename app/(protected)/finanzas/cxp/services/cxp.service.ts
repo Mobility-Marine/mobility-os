@@ -327,7 +327,7 @@ export async function fetchAllProvidersForView(companyId: string): Promise<Suppl
       supplier_id:   sp.id,
       supplier_name: sp.name,
       supplier_rfc:  sp.tax_id ?? null,
-      supplier_type: "procurement",
+            supplier_type: (sp.type === "operating" ? "operating" : "procurement") as any,
       total:         b.total,
       balance:       b.balance,
       overdue:       b.overdue,
