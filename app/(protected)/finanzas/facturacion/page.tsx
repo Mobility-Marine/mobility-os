@@ -230,6 +230,55 @@ async function handleFacturarEmbarque(shipment: any) {
 
     setSelectedCFDIType({ id: "factura" } as any);
   }
+
+  async function handleFacturarPedido(order: any) {
+    if (!companyId) return;
+
+    const { data: items } = await supabase
+      .from("order_items")
+      .select("description, quantity, unit_price, discount_pct, subtotal, unit, product_id, product:products(name, sat_product_code, sat_unit_code, unit)")
+      .eq("order_id", order.id)
+      .order("sort_order");
+
+    const mappedServices = (items ?? []).map((item: any) => ({
+      description:      item.product?.name             ?? item.description,
+      price:            item.subtotal,
+      currency:         order.currency                 ?? "MXN",
+      product_id:       item.product_id                ?? null,
+      sat_product_code: item.product?.sat_product_code ?? "01010101",
+      sat_unit_code:    item.product?.sat_unit_code     ?? "H87",
+      unit:             item.product?.unit              ?? item.unit ?? "Pieza",
+      quantity:         item.quantity,
+      unit_price:       item.unit_price,
+    }));
+
+    const services = mappedServices.length > 0 ? mappedServices : [{
+      description:      `Pedido ${order.order_number}`,
+      price:            order.total ?? 0,
+      currency:         order.currency ?? "MXN",
+      sat_product_code: "01010101",
+      sat_unit_code:    "H87",
+      unit:             "Pieza",
+    }];
+
+    setPreloadOrder({
+      order_id:        order.id,
+      order_number:    order.order_number,
+      client_id:       order.client_id,
+      receiver_rfc:    order.client?.rfc          ?? "",
+      receiver_name:   order.client?.legal_name   ?? order.client?.name ?? "",
+      receiver_email:  order.client?.email        ?? "",
+      receiver_zip:    order.client?.zip_code     ?? "",
+      receiver_regime: order.client?.tax_regime   ?? "601",
+      currency:        order.currency             ?? "MXN",
+      total:           order.total,
+      services,
+      hasMultiCurrency:    false,
+      servicesByCurrency: { [order.currency ?? "MXN"]: services },
+    });
+
+    setSelectedCFDIType({ id: "factura" } as any);
+  }
   
   async function handleSendEmail() {
     if (!emailTarget) return;
