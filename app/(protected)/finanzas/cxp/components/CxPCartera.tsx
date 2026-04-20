@@ -1,4 +1,5 @@
 "use client";
+import React from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { AccountPayable, APFilters } from "../types/cxp.types";
 import { AP_STATUS_CONFIG, AP_AGING_CONFIG, AP_SUPPLIER_TYPE_CONFIG, DEFAULT_AP_FILTERS } from "../types/cxp.types";
@@ -10,12 +11,22 @@ type Props = {
   onFilter: (f: Partial<APFilters>) => void;
   onSelect: (ap: AccountPayable) => void;
   onPay:    (ap: AccountPayable) => void;
+  onAttach: (ap: AccountPayable, file: File, type: "pdf" | "xml") => Promise<void>;
 };
 
 const fmt = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2 });
 const SELECT: React.CSSProperties = { height: "32px", padding: "0 8px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", cursor: "pointer" };
 
-export default function CxPCartera({ items, loading, filters, onFilter, onSelect, onPay }: Props) {
+export default function CxPCartera({ items, loading, filters, onFilter, onSelect, onPay, onAttach }: Props) {
+  const [uploadingId, setUploadingId] = React.useState<string | null>(null);
+
+  async function handleFileChange(ap: AccountPayable, e: React.ChangeEvent<HTMLInputElement>, type: "pdf" | "xml") {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingId(ap.id);
+    try { await onAttach(ap, file, type); }
+    finally { setUploadingId(null); e.target.value = ""; }
+  }
   const { lang, t } = useTranslation();
   const es  = lang !== "en";
   const cxp = (t as any).cxp ?? {};
@@ -123,13 +134,33 @@ export default function CxPCartera({ items, loading, filters, onFilter, onSelect
                   {sc.labelEs}
                 </span>
               </div>
-              <div style={{ textAlign: "center" }}>
+                            <div style={{ textAlign: "center", display: "flex", flexDirection: "column", gap: "4px", alignItems: "center" }}>
                 {ap.balance > 0 && ap.status !== "cancelled" && (
                   <button onClick={e => { e.stopPropagation(); onPay(ap); }}
                     style={{ height: "24px", padding: "0 8px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", color: "var(--color-success-text)", fontSize: "10px", fontWeight: 700, cursor: "pointer" }}>
                     {es ? "Pagar" : "Pay"}
                   </button>
                 )}
+                {/* Botón adjuntar — muestra si falta PDF o XML */}
+                {(!ap.pdf_url || !ap.xml_url) && (
+                  <label onClick={e => e.stopPropagation()}
+                    style={{ height: "22px", padding: "0 7px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", color: "var(--color-info-text)", fontSize: "9px", fontWeight: 700, cursor: uploadingId === ap.id ? "wait" : "pointer", display: "flex", alignItems: "center", gap: "3px" }}>
+                    {uploadingId === ap.id ? "…" : (
+                      <>
+                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        {!ap.pdf_url ? "PDF" : "XML"}
+                      </>
+                    )}
+                    <input type="file" accept={!ap.pdf_url ? ".pdf,application/pdf" : ".xml,text/xml"}
+                      style={{ display: "none" }}
+                      onChange={e => handleFileChange(ap, e, !ap.pdf_url ? "pdf" : "xml")} />
+                  </label>
+                )}
+                {/* Indicadores de archivos adjuntos */}
+                <div style={{ display: "flex", gap: "3px" }}>
+                  {ap.pdf_url && <span style={{ fontSize: "8px", padding: "1px 4px", borderRadius: "2px", background: "var(--color-danger-bg)", color: "var(--color-danger-text)", fontWeight: 700 }}>PDF</span>}
+                  {ap.xml_url && <span style={{ fontSize: "8px", padding: "1px 4px", borderRadius: "2px", background: "var(--color-brand-blue)20", color: "var(--color-brand-blue)", fontWeight: 700 }}>XML</span>}
+                </div>
               </div>
             </div>
           );
