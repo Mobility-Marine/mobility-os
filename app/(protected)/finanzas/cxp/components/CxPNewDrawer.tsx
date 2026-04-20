@@ -4,6 +4,7 @@ import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { APSupplierType, APDocumentType } from "../types/cxp.types";
 import { EXPENSE_CATEGORIES } from "../types/cxp.types";
 import { fetchSuppliersForAP } from "../services/cxp.service";
+import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 
 type Props = {
