@@ -30,6 +30,9 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
   const [suppliers,  setSuppliers]  = useState<any[]>([]);
   const [providers,  setProviders]  = useState<any[]>([]);
   const [error,      setError]      = useState<string | null>(null);
+  const [pdfFile,    setPdfFile]    = useState<File | null>(null);
+  const [xmlFile,    setXmlFile]    = useState<File | null>(null);
+  const [uploading,  setUploading]  = useState(false);
   const [form, setForm] = useState({
     supplier_type:    "procurement" as APSupplierType,
     supplier_id:      "",
@@ -122,11 +125,33 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
     }
   }
 
+  async function uploadFile(file: File, type: "pdf" | "xml"): Promise<string | null> {
+    if (!companyId) return null;
+    const ext  = type === "pdf" ? "pdf" : "xml";
+    const path = `${companyId}/cxp/${Date.now()}-${type}.${ext}`;
+    const { error } = await supabase.storage
+      .from("financial-documents")
+      .upload(path, file, { contentType: file.type, upsert: false });
+    if (error) return null;
+    const { data } = supabase.storage.from("financial-documents").getPublicUrl(path);
+    return data?.publicUrl ?? null;
+  }
+  
   async function handleSubmit() {
     if (!form.supplier_name.trim()) { setError(es ? "Selecciona o escribe el proveedor" : "Select or enter supplier"); return; }
     if (!form.total || parseFloat(form.total) <= 0) { setError(es ? "Ingresa el total" : "Enter total"); return; }
-    setError(null);
+        setError(null);
+    setUploading(true);
     try {
+      let pdf_url: string | undefined;
+      let xml_url: string | undefined;
+      if (pdfFile) { const url = await uploadFile(pdfFile, "pdf"); if (url) pdf_url = url; }
+      if (xmlFile) { const url = await uploadFile(xmlFile, "xml"); if (url) xml_url = url; }
+            let pdf_url: string | undefined;
+      let xml_url: string | undefined;
+      if (pdfFile) { const url = await uploadFile(pdfFile, "pdf"); if (url) pdf_url = url; }
+      if (xmlFile) { const url = await uploadFile(xmlFile, "xml"); if (url) xml_url = url; }
+
       await onCreate({
         supplier_type:         form.supplier_type,
         supplier_id:           form.supplier_id    || undefined,
@@ -146,9 +171,12 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
         related_po_id:         form.related_po_id       || undefined,
         related_shipment_id:   form.related_shipment_id || undefined,
         notes:                 form.notes || undefined,
+        pdf_url,
+        xml_url,
       });
       onClose();
     } catch (e: any) { setError(e.message); }
+    finally { setUploading(false); }
   }
 
   if (!open) return null;
@@ -267,6 +295,36 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
             ))}
           </div>
 
+          {/* Archivos — PDF y XML */}
+          <div>
+            <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "6px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              Adjuntar factura (opcional)
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+              {[
+                { label: "PDF", accept: ".pdf,application/pdf", file: pdfFile, setFile: setPdfFile, color: "var(--color-danger-text)" },
+                { label: "XML", accept: ".xml,text/xml,application/xml", file: xmlFile, setFile: setXmlFile, color: "var(--color-brand-blue)" },
+              ].map(f => (
+                <div key={f.label}>
+                  <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "4px" }}>{f.label}</div>
+                  <label style={{ display: "flex", alignItems: "center", gap: "8px", height: "36px", padding: "0 10px", borderRadius: "var(--radius-md)", border: `1px dashed ${f.file ? f.color : "var(--color-border)"}`, background: f.file ? `${f.color}10` : "var(--color-bg-subtle)", cursor: "pointer", fontSize: "12px", color: f.file ? f.color : "var(--color-text-muted)", fontWeight: f.file ? 600 : 400 }}>
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                    {f.file ? f.file.name.slice(0, 20) + (f.file.name.length > 20 ? "…" : "") : `Subir ${f.label}`}
+                    <input type="file" accept={f.accept} style={{ display: "none" }}
+                      onChange={e => f.setFile(e.target.files?.[0] ?? null)} />
+                  </label>
+                  {f.file && (
+                    <button onClick={() => f.setFile(null)} style={{ marginTop: "3px", fontSize: "10px", color: "var(--color-danger-text)", background: "none", border: "none", cursor: "pointer", padding: 0 }}>
+                      × Quitar
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+          
           {/* Notas */}
           <div>
             <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Notas</div>
@@ -283,7 +341,7 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
 
         <div style={{ padding: "14px 24px", borderTop: "1px solid var(--color-border-faint)", display: "flex", gap: "10px" }}>
           <button onClick={handleSubmit} disabled={saving} style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-danger-text)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
-            {saving ? (es ? "Guardando…" : "Saving…") : (es ? "Crear cuenta por pagar" : "Create payable")}
+                        {(saving || uploading) ? (es ? "Guardando…" : "Saving…") : (es ? "Crear cuenta por pagar" : "Create payable")}
           </button>
           <button onClick={onClose} style={{ height: "40px", padding: "0 16px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-muted)", fontSize: "13px", cursor: "pointer" }}>
             {es ? "Cancelar" : "Cancel"}
