@@ -453,25 +453,75 @@ export async function acceptQuotation(
 ): Promise<{ type: "order" | "shipment"; id: string }> {
   await updateQuotationStatus(companyId, quotation.id, "accepted");
 
-  if (quotation.type === "products") {
+    if (quotation.type === "products") {
     // ── Cotización de productos → crear Pedido ────────────────
+
+    // 1. Generar número de pedido
+    const { count } = await supabase
+      .from("orders")
+      .select("*", { count: "exact", head: true })
+      .eq("company_id", companyId);
+    const num         = String((count ?? 0) + 1).padStart(4, "0");
+    const year        = new Date().getFullYear();
+    const orderNumber = `PED-${year}-${num}`;
+
+    // 2. Crear el pedido con totales completos
     const { data: order, error } = await supabase
       .from("orders")
       .insert({
-        company_id:   companyId,
-        client_id:    quotation.client_id ?? null,
-        quotation_id: quotation.id,
-        status:       "pending",
-        total:        quotation.total,
-        currency:     quotation.currency,
-        notes:        quotation.notes    ?? null,
-        created_by:   userId,
+        company_id:      companyId,
+        order_number:    orderNumber,
+        client_id:       quotation.client_id ?? null,
+        quotation_id:    quotation.id,
+        status:          "pending",
+        priority:        "normal",
+        currency:        quotation.currency  ?? "MXN",
+        subtotal:        quotation.subtotal  ?? quotation.total ?? 0,
+        discount_amount: quotation.discount_amount ?? 0,
+        tax_rate:        quotation.tax_rate  ?? 16,
+        tax_amount:      quotation.tax_amount ?? 0,
+        total:           quotation.total     ?? 0,
+        notes:           quotation.notes     ?? null,
+        created_by:      userId,
       })
       .select("id")
       .single();
 
     if (!error && order) {
-      await supabase.from("quotations").update({ order_id: order.id }).eq("id", quotation.id);
+      // 3. Copiar items de la cotización al pedido
+      const { data: qItems } = await supabase
+        .from("quotation_items")
+        .select("*")
+        .eq("quotation_id", quotation.id)
+        .order("sort_order");
+
+      if (qItems?.length) {
+        await supabase.from("order_items").insert(
+          qItems.map((qi: any, idx: number) => ({
+            company_id:         companyId,
+            order_id:           order.id,
+            product_id:         qi.product_id      ?? null,
+            quotation_item_id:  qi.id,
+            sort_order:         idx,
+            sku:                qi.sku             ?? null,
+            description:        qi.description,
+            details:            qi.details         ?? null,
+            quantity:           qi.quantity,
+            quantity_delivered: 0,
+            unit:               qi.unit,
+            unit_price:         qi.unit_price,
+            discount_pct:       qi.discount_pct    ?? 0,
+            subtotal:           qi.subtotal,
+          }))
+        );
+      }
+
+      // 4. Vincular pedido a la cotización
+      await supabase.from("quotations")
+        .update({ order_id: order.id })
+        .eq("id", quotation.id);
+
+      // 5. Timeline
       await supabase.from("entity_timeline_events").insert({
         company_id:     companyId,
         entity_type:    "quotation",
@@ -479,11 +529,13 @@ export async function acceptQuotation(
         module_key:     "cotizaciones",
         event_type:     "accepted_to_order",
         event_category: "commercial",
-        title:          "Cotización aceptada → Pedido creado",
+        title:          `Cotización aceptada → Pedido ${orderNumber} creado`,
         description:    quotation.quote_number,
       }).then(() => {});
+
       return { type: "order", id: order.id };
     }
+
 
   } else {
     // ── Cotización de servicios → crear Embarque/Servicio ─────
