@@ -612,11 +612,15 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                 <div style={{ display: "grid", gap: "5px" }}>
                                     {form.concepts.map((c, i) => {
                     const isEditing = editingConceptIdx === i;
-                    const base = c.quantity * c.unit_price * (1 - c.discount_pct / 100);
-                    const ttl  = base + base * c.tax_rate;
+                                        const base = c.quantity * c.unit_price * (1 - c.discount_pct / 100);
+                    const { trasladados, retenidos } = calcConceptTotals(c);
+                    const ttl  = base + trasladados - retenidos;
                     if (isEditing) {
-                      const eBase = (editConceptForm.quantity ?? 1) * (editConceptForm.unit_price ?? 0) * (1 - (editConceptForm.discount_pct ?? 0) / 100);
-                      const eTtl  = eBase + eBase * (editConceptForm.tax_rate ?? 0.16);
+                                            const eBase = (editConceptForm.quantity ?? 1) * (editConceptForm.unit_price ?? 0) * (1 - (editConceptForm.discount_pct ?? 0) / 100);
+                      const eTaxes = (editConceptForm.taxes ?? DEFAULT_TAXES);
+                      const eTrasladados = eTaxes.filter((t: any) => !t.withholding).reduce((s: number, t: any) => s + (t.factor === "Exento" ? 0 : eBase * t.rate), 0);
+                      const eRetenidos   = eTaxes.filter((t: any) =>  t.withholding).reduce((s: number, t: any) => s + eBase * t.rate, 0);
+                      const eTtl  = eBase + eTrasladados - eRetenidos;
                       return (
                         <div key={i} style={{ padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", display: "grid", gap: "8px" }}>
                           <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-brand-blue)" }}>Editando concepto {i + 1}</div>
@@ -636,15 +640,16 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                             </div>
                             <div>
                               <div style={{ fontSize: "9px", color: "var(--color-text-muted)", marginBottom: "3px", textTransform: "uppercase" }}>Impuestos</div>
-                              <select value={`${editConceptForm.tax_rate ?? 0.16}_${editConceptForm.tax_type ?? "IVA_T"}`}
-                                onChange={e => { const [rate, type] = e.target.value.split("_"); setEditConceptForm((p: any) => ({ ...p, tax_rate: parseFloat(rate), tax_type: type })); }}
+                                                            <select
+                                value={TAX_PRESETS.find(p => JSON.stringify(p.taxes) === JSON.stringify(editConceptForm.taxes ?? DEFAULT_TAXES))?.key ?? "iva16"}
+                                onChange={e => {
+                                  const preset = TAX_PRESETS.find(p => p.key === e.target.value);
+                                  if (preset) setEditConceptForm((p: any) => ({ ...p, taxes: preset.taxes }));
+                                }}
                                 style={{ ...SELECT, height: "30px", fontSize: "11px" }}>
-                                <option value="0.16_IVA_T">IVA 16%</option>
-                                <option value="0.08_IVA_T">IVA 8%</option>
-                                <option value="0_IVA_T0">IVA 0%</option>
-                                <option value="0_EXENTO">Exento</option>
-                                <option value="0.106_IVA_R">IVA Ret. 10.6%</option>
-                                <option value="0.10_ISR_R">ISR Ret. 10%</option>
+                                {TAX_PRESETS.map(p => (
+                                  <option key={p.key} value={p.key}>{p.labelEs}</option>
+                                ))}
                               </select>
                             </div>
                           </div>
