@@ -449,7 +449,15 @@ function detectShipmentServiceType(
 
 // ── ACEPTAR COTIZACIÓN ────────────────────────────────────────
 export async function acceptQuotation(
-  companyId: string, quotation: Quotation, userId: string
+  companyId: string, quotation: Quotation, userId: string,
+  deliveryInfo?: {
+    delivery_date?:    string;
+    delivery_type?:    string;
+    delivery_address?: string;
+    delivery_city?:    string;
+    delivery_state?:   string;
+    delivery_notes?:   string;
+  }
 ): Promise<{ type: "order" | "shipment"; id: string }> {
   await updateQuotationStatus(companyId, quotation.id, "accepted");
 
@@ -466,24 +474,30 @@ export async function acceptQuotation(
     const orderNumber = `PED-${year}-${num}`;
 
     // 2. Crear el pedido con totales completos
-    const { data: order, error } = await supabase
-      .from("orders")
-      .insert({
-        company_id:      companyId,
-        order_number:    orderNumber,
-        client_id:       quotation.client_id ?? null,
-        quotation_id:    quotation.id,
-        status:          "pending",
-        priority:        "normal",
-        currency:        quotation.currency  ?? "MXN",
-        subtotal:        quotation.subtotal  ?? quotation.total ?? 0,
-        discount_amount: quotation.discount_amount ?? 0,
-        tax_rate:        quotation.tax_rate  ?? 16,
-        tax_amount:      quotation.tax_amount ?? 0,
-        total:           quotation.total     ?? 0,
-        notes:           quotation.notes     ?? null,
-        created_by:      userId,
-      })
+          const { data: order, error } = await supabase
+        .from("orders")
+        .insert({
+          company_id:      companyId,
+          order_number:    orderNumber,
+          client_id:       quotation.client_id ?? null,
+          quotation_id:    quotation.id,
+          status:          "pending",
+          priority:        "normal",
+          currency:        quotation.currency  ?? "MXN",
+          subtotal:        quotation.subtotal  ?? quotation.total ?? 0,
+          discount_amount: quotation.discount_amount ?? 0,
+          tax_rate:        quotation.tax_rate  ?? 16,
+          tax_amount:      quotation.tax_amount ?? 0,
+          total:           quotation.total     ?? 0,
+          notes:           quotation.notes     ?? null,
+          delivery_date:   deliveryInfo?.delivery_date    ?? null,
+          delivery_type:   deliveryInfo?.delivery_type    ?? "client_address",
+          delivery_address:deliveryInfo?.delivery_address ?? null,
+          delivery_city:   deliveryInfo?.delivery_city    ?? null,
+          delivery_state:  deliveryInfo?.delivery_state   ?? null,
+          delivery_notes:  deliveryInfo?.delivery_notes   ?? null,
+          created_by:      userId,
+        })
       .select("id")
       .single();
 
