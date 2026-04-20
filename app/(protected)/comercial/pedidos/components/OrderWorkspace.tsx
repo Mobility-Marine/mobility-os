@@ -38,7 +38,7 @@ export default function OrderWorkspace({ order, onStatusChange, onUpdate, saving
   const [confirmNext, setConfirmNext] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [genPDF,      setGenPDF]      = useState(false);
-  const [poTemplate,  setPOTemplate]  = useState<POTemplate>("elegante");
+    // Template unificado POMobilityOS
 
   if (!order) return (
     <div style={{
@@ -95,12 +95,12 @@ export default function OrderWorkspace({ order, onStatusChange, onUpdate, saving
     setConfirmCancel(false);
   }
 
-  async function handleDownloadPO() {
+    async function handleDownloadPO() {
     if (!companyId) return;
     setGenPDF(true);
     try {
       const settings = await fetchCompanySettings(companyId);
-      await generateAndDownloadPO(order, settings, poTemplate);
+      await generateAndDownloadPO(order, settings);
     } finally { setGenPDF(false); }
   }
 
@@ -260,17 +260,8 @@ export default function OrderWorkspace({ order, onStatusChange, onUpdate, saving
             </>
           )}
 
-          {/* PDF Orden de compra */}
+                    {/* PDF Orden de compra */}
           <div style={{ display: "flex", gap: "4px", alignItems: "center" }}>
-            <select value={poTemplate} onChange={(e) => setPOTemplate(e.target.value as POTemplate)} style={{
-              height: "28px", padding: "0 6px", borderRadius: "var(--radius-md)",
-              border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)",
-              color: "var(--color-text-muted)", fontSize: "10px", cursor: "pointer",
-            }}>
-              {(["elegante", "moderna", "corporativa"] as POTemplate[]).map((tpl) => (
-                <option key={tpl} value={tpl} style={{ textTransform: "capitalize" }}>{tpl}</option>
-              ))}
-            </select>
             <button onClick={handleDownloadPO} disabled={genPDF} style={{
               height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)",
               background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)",
