@@ -59,9 +59,13 @@ export async function fetchCFDIById(id: string): Promise<{ cfdi: CFDIDocument; c
 // ── EMITIR ────────────────────────────────────────────────────
 
 export async function emitirCFDI(companyId: string, userId: string, form: NewCFDIForm) {
-  // Construir payload para Facturapi
   const concepts = form.concepts.map((c) => {
-    const subtotal = c.quantity * c.unit_price * (1 - c.discount_pct / 100);
+    const base        = c.quantity * c.unit_price * (1 - c.discount_pct / 100);
+    const taxes       = c.taxes ?? [{ type: "IVA", rate: 0.16, factor: "Tasa", withholding: false }];
+    const trasladados = taxes.filter((t: any) => !t.withholding).reduce((s: number, t: any) => s + (t.factor === "Exento" ? 0 : base * t.rate), 0);
+    const retenidos   = taxes.filter((t: any) =>  t.withholding).reduce((s: number, t: any) => s + base * t.rate, 0);
+    const total       = base + trasladados - retenidos;
+
     return {
       product_key:  c.product_key,
       unit_key:     c.unit_key,
@@ -70,12 +74,12 @@ export async function emitirCFDI(companyId: string, userId: string, form: NewCFD
       quantity:     c.quantity,
       unit_price:   c.unit_price,
       discount_pct: c.discount_pct,
-      tax_rate:     c.tax_rate,
-      tax_amount:   subtotal * c.tax_rate,
-      subtotal,
-      total:        subtotal + subtotal * c.tax_rate,
+      taxes,
+      subtotal:     base,
+      tax_amount:   trasladados,
+      retention_amount: retenidos,
+      total,
       product_id:   c.product_id,
-      // Facturapi format
       product: {
         description:  c.description,
         product_key:  c.product_key,
@@ -83,7 +87,12 @@ export async function emitirCFDI(companyId: string, userId: string, form: NewCFD
         unit_name:    c.unit,
         price:        c.unit_price,
         tax_included: false,
-        taxes: [{ type: "IVA", rate: c.tax_rate, factor: "Tasa", withholding: false }],
+        taxes: taxes.map((t: any) => ({
+          type:        t.type,
+          rate:        t.factor === "Exento" ? undefined : t.rate,
+          factor:      t.factor,
+          withholding: t.withholding,
+        })),
       },
     };
   });
@@ -102,22 +111,22 @@ export async function emitirCFDI(companyId: string, userId: string, form: NewCFD
       tax_id:      form.receiver_rfc,
       tax_system:  form.receiver_regime,
       email:       form.receiver_email || undefined,
-      address: { zip: form.receiver_zip },
+      address:     { zip: form.receiver_zip },
     },
     items: concepts.map((c) => ({
       product:  c.product,
       quantity: c.quantity,
       discount: c.discount_pct > 0 ? (c.unit_price * c.quantity * c.discount_pct / 100) : undefined,
     })),
-   pdf_custom_section: form.notes || undefined,
+    pdf_custom_section: form.notes || undefined,
   };
 
   return callApi("emitir", companyId, {
     invoice,
     concepts,
-    client_id:     form.client_id || undefined,
-    receiver_email:form.receiver_email || undefined,
-    user_id:       userId,
+    client_id:      form.client_id || undefined,
+    receiver_email: form.receiver_email || undefined,
+    user_id:        userId,
   });
 }
 
