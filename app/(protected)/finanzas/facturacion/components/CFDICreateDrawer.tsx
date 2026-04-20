@@ -760,20 +760,77 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                 <textarea rows={2} value={form.notes} onChange={(e) => setF("notes", e.target.value)} placeholder={es ? "Descripción adicional o número de referencia…" : "Additional description or reference number…"} style={{ ...INPUT, height: "auto", padding: "8px 10px", resize: "vertical" }} />
               </div>
 
-              <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "14px", display: "grid", gap: "5px" }}>
+                            <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "14px", display: "grid", gap: "8px" }}>
                 <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "4px" }}>{es ? "Resumen CFDI" : "CFDI Summary"}</div>
+
+                {/* Datos del receptor */}
                 {[
-                  { l: es ? "Receptor" : "Receiver",  v: form.receiver_name  },
-                  { l: "RFC",                          v: form.receiver_rfc   },
-                  { l: es ? "Conceptos" : "Concepts", v: String(form.concepts.length) },
-                  { l: "Total",                        v: `${form.currency} $${fmt(total)}` },
-                  { l: es ? "Método" : "Method",       v: form.payment_method },
+                  { l: es ? "Receptor" : "Receiver", v: form.receiver_name },
+                  { l: "RFC",                         v: form.receiver_rfc  },
+                  { l: es ? "Método" : "Method",      v: form.payment_method },
+                  { l: es ? "Moneda" : "Currency",    v: form.currency },
                 ].map((r) => (
                   <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
                     <span style={{ color: "var(--color-text-muted)" }}>{r.l}</span>
                     <span style={{ fontWeight: 600, color: "var(--color-text-primary)" }}>{r.v}</span>
                   </div>
                 ))}
+
+                {/* Conceptos detallados */}
+                <div style={{ borderTop: "1px solid var(--color-border-faint)", paddingTop: "8px", marginTop: "2px" }}>
+                  <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "6px" }}>
+                    {es ? "Conceptos" : "Concepts"} ({form.concepts.length})
+                  </div>
+                  <div style={{ display: "grid", gap: "4px" }}>
+                    {form.concepts.map((c, i) => {
+                      const base = c.quantity * c.unit_price * (1 - c.discount_pct / 100);
+                      const tax  = base * c.tax_rate;
+                      const ttl  = base + tax;
+                      return (
+                        <div key={i} style={{ padding: "7px 10px", borderRadius: "var(--radius-sm)", background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)" }}>
+                          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
+                            <div style={{ flex: 1, minWidth: 0 }}>
+                              <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {c.description}
+                              </div>
+                              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "2px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                                <span>{c.quantity} × ${fmt(c.unit_price)}</span>
+                                {c.discount_pct > 0 && <span style={{ color: "var(--color-warning-text)" }}>-{c.discount_pct}%</span>}
+                                <span>IVA {(c.tax_rate * 100).toFixed(0)}%</span>
+                                {c.product_key && <span style={{ fontFamily: "monospace", color: "var(--color-brand-blue)" }}>{c.product_key}</span>}
+                              </div>
+                            </div>
+                            <div style={{ textAlign: "right", flexShrink: 0 }}>
+                              <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
+                                ${fmt(ttl)}
+                              </div>
+                              <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
+                                +${fmt(tax)} IVA
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Total final */}
+                <div style={{ borderTop: "1px solid var(--color-border-faint)", paddingTop: "8px", display: "grid", gap: "4px" }}>
+                  {[
+                    { l: "Subtotal", v: fmt(subtotal), muted: true },
+                    { l: "IVA",      v: fmt(taxes),    muted: true },
+                  ].map(r => (
+                    <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px" }}>
+                      <span style={{ color: "var(--color-text-muted)" }}>{r.l}</span>
+                      <span style={{ color: "var(--color-text-second)", fontVariantNumeric: "tabular-nums" }}>{form.currency} ${r.v}</span>
+                    </div>
+                  ))}
+                  <div style={{ display: "flex", justifyContent: "space-between", padding: "8px 10px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", marginTop: "2px" }}>
+                    <span style={{ fontSize: "14px", fontWeight: 800, color: "var(--color-success-text)" }}>TOTAL</span>
+                    <span style={{ fontSize: "14px", fontWeight: 800, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>{form.currency} ${fmt(total)}</span>
+                  </div>
+                </div>
               </div>
 
               {form.payment_method === "PPD" && (
