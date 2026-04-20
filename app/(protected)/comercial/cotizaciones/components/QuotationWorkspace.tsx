@@ -134,16 +134,18 @@ export default function QuotationWorkspace({
     { key: "preview" as Tab, label: "PDF / Envío" },
   ];
 
-  async function handleAccept() {
+    async function handleAccept() {
     setAccepting(true); setConfirmAccept(false);
     try {
       const result = await onAccept(quotation);
-      if (result) {
-        if (result.type === "order")    router.push("/comercial/pedidos");
-        if (result.type === "shipment") router.push("/logistica/embarques");
+      if (result?.type === "shipment") {
+        // Logística sí puede navegar a su módulo
+        router.push("/logistica/embarques");
       }
+      // Pedido: se crea en background, la cotización muestra el botón "→ Ver pedido"
     } finally { setAccepting(false); }
   }
+
 
   function startEditDetail() {
     setDetailForm({
