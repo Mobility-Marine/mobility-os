@@ -699,7 +699,11 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                         </button>
                       </div>
                     );
-                  })}
+                                    })}
+                </div>
+              )}
+            </>
+          )}
 
           {/* ── PASO 3: CONFIG CFDI ── */}
           {step === "config" && (
