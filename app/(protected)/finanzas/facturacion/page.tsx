@@ -42,6 +42,8 @@ export default function FacturacionPage() {
   const [notaCreditoOpen,    setNotaCreditoOpen]     = useState(false);
   const [savingExtra,        setSavingExtra]         = useState(false);
   const [pendingShipments,   setPendingShipments]    = useState<any[]>([]);
+  const [pendingOrders,    setPendingOrders]    = useState<any[]>([]);
+  const [preloadOrder,     setPreloadOrder]     = useState<any | null>(null);
   const [preloadShipment,    setPreloadShipment]     = useState<any | null>(null);
   const [nominaDrawerOpen,   setNominaDrawerOpen]    = useState(false);
 
@@ -63,6 +65,15 @@ export default function FacturacionPage() {
       .is("invoice_id", null)
       .order("updated_at", { ascending: false })
       .then(({ data }) => setPendingShipments(data ?? []));
+          // Cargar pedidos entregados sin factura
+    supabase
+      .from("orders")
+      .select("id, order_number, currency, total, subtotal, tax_rate, tax_amount, delivery_date, client:clients(name, legal_name, rfc, email, tax_regime, zip_code), quotation:quotations(quote_number)")
+      .eq("company_id", companyId)
+      .eq("status", "delivered")
+      .is("invoice_id", null)
+      .order("updated_at", { ascending: false })
+      .then(({ data }) => setPendingOrders(data ?? []));
   }, [companyId]);
 
   const loadNotes = useCallback(async () => {
@@ -135,6 +146,55 @@ async function handleFacturarEmbarque(shipment: any) {
       }];
     }
 
+    async function handleFacturarPedido(order: any) {
+    if (!companyId) return;
+
+    const { data: items } = await supabase
+      .from("order_items")
+      .select("description, quantity, unit_price, discount_pct, subtotal, unit, product_id, product:products(name, sat_product_code, sat_unit_code, unit)")
+      .eq("order_id", order.id)
+      .order("sort_order");
+
+    const mappedServices = (items ?? []).map((item: any) => ({
+      description:      item.product?.name            ?? item.description,
+      price:            item.subtotal,
+      currency:         order.currency                ?? "MXN",
+      product_id:       item.product_id               ?? null,
+      sat_product_code: item.product?.sat_product_code ?? "01010101",
+      sat_unit_code:    item.product?.sat_unit_code    ?? "H87",
+      unit:             item.product?.unit             ?? item.unit ?? "Pieza",
+      quantity:         item.quantity,
+      unit_price:       item.unit_price,
+    }));
+
+    // Si no hay items con productos, crear una línea con el total
+    const services = mappedServices.length > 0 ? mappedServices : [{
+      description:      `Pedido ${order.order_number}`,
+      price:            order.total ?? 0,
+      currency:         order.currency ?? "MXN",
+      sat_product_code: "01010101",
+      sat_unit_code:    "H87",
+      unit:             "Pieza",
+    }];
+
+    setPreloadOrder({
+      order_id:        order.id,
+      order_number:    order.order_number,
+      client_id:       order.client_id,
+      receiver_rfc:    order.client?.rfc          ?? "",
+      receiver_name:   order.client?.legal_name   ?? order.client?.name ?? "",
+      receiver_email:  order.client?.email        ?? "",
+      receiver_zip:    order.client?.zip_code     ?? "",
+      receiver_regime: order.client?.tax_regime   ?? "601",
+      currency:        order.currency             ?? "MXN",
+      total:           order.total,
+      services,
+      hasMultiCurrency: false,
+      servicesByCurrency: { [order.currency ?? "MXN"]: services },
+    });
+
+    setSelectedCFDIType({ id: "factura" } as any);
+  }
         // Detectar si hay servicios en múltiples monedas
     const mappedServices = services.map((s: any) => ({
       description:      s.description,
@@ -254,14 +314,16 @@ async function handleFacturarEmbarque(shipment: any) {
 
       {/* CONTENIDO */}
       {tab === "dashboard" && (
-        <FacturacionDashboard
+                <FacturacionDashboard
           stats={ctrl.stats}
           cfdis={ctrl.cfdis}
           loading={ctrl.loading}
           pendingShipments={pendingShipments}
+          pendingOrders={pendingOrders}
           onSelect={ctrl.handleSelect}
           onEmitir={() => setTab("emitir")}
           onFacturarEmbarque={handleFacturarEmbarque}
+          onFacturarPedido={handleFacturarPedido}
         />
       )}
 
@@ -389,7 +451,7 @@ async function handleFacturarEmbarque(shipment: any) {
         open={selectedCFDIType?.id === "factura"}
         saving={ctrl.saving}
         preloadShipment={preloadShipment}
-        onClose={() => { setSelectedCFDIType(null); setPreloadShipment(null); }}
+                onClose={() => { setSelectedCFDIType(null); setPreloadShipment(null); setPreloadOrder(null); }}
         onCreate={ctrl.handleEmitir}
         onCreated={async (cfdi) => {
           // Vincular CFDI al embarque y marcarlo como facturado
@@ -413,6 +475,18 @@ async function handleFacturarEmbarque(shipment: any) {
           // Recargar embarques pendientes — el recién facturado ya no aparecerá
           if (companyId) {
             supabase.from("shipments").select("id, reference, service_type, currency, total, client:clients(name), quotation:quotations(quote_number)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingShipments(data ?? []));
+          }
+                    // Vincular CFDI al pedido
+          if (preloadOrder?.order_id && cfdi?.id) {
+            await supabase.from("orders")
+              .update({ invoice_id: cfdi.id, invoiced_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+              .eq("id", preloadOrder.order_id)
+              .eq("company_id", companyId!);
+          }
+          setPreloadOrder(null);
+          // Recargar pedidos pendientes
+          if (companyId) {
+            supabase.from("orders").select("id, order_number, currency, total, client:clients(name, legal_name, rfc, email, tax_regime, zip_code)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingOrders(data ?? []));
           }
         }}
       />
