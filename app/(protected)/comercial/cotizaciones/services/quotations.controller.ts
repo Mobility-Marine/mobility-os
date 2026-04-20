@@ -168,11 +168,11 @@ async function removeQuotation(id: string) {
     } finally { setSaving(false); }
   }
 
-  async function acceptQuotation(quotation: Quotation) {
+    async function acceptQuotation(quotation: Quotation, deliveryInfo?: any) {
     if (!companyId || !user) return;
     setSaving(true);
     try {
-      const result = await acceptSvc(companyId, quotation, user.id);
+      const result = await acceptSvc(companyId, quotation, user.id, deliveryInfo);
       await load();
       if (selected?.id === quotation.id) await loadDetail(quotation.id);
       return result;
