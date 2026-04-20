@@ -1,18 +1,11 @@
 import type { Order } from "../types/orders.types";
-import type { POTemplate } from "../types/orders.types";
 
-export async function generateAndDownloadPO(
-  order: Order, settings: any, template: POTemplate = "elegante"
-): Promise<void> {
+export async function generateAndDownloadPO(order: Order, settings: any): Promise<void> {
   const { pdf }           = await import("@react-pdf/renderer");
   const { createElement } = await import("react");
+  const { default: POMobilityOS } = await import("../components/templates/POMobilityOS");
 
-  let Template: any;
-  if (template === "moderna")      Template = (await import("../components/templates/POModerna")).default;
-  else if (template === "corporativa") Template = (await import("../components/templates/POCorporativa")).default;
-  else                             Template = (await import("../components/templates/POElegante")).default;
-
-  const doc  = createElement(Template, { order, settings });
+  const doc  = createElement(POMobilityOS, { order, settings });
   const blob = await pdf(doc as any).toBlob();
   const url  = URL.createObjectURL(blob);
   const a    = document.createElement("a");
