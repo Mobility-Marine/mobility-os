@@ -668,7 +668,7 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                           </div>
                           <div style={{ display: "flex", gap: "6px" }}>
                             <button onClick={() => {
-                              const updated = { ...c, ...editConceptForm, subtotal: eBase, tax_amount: eBase * (editConceptForm.tax_rate ?? 0.16) };
+                                                            const updated = { ...c, ...editConceptForm };
                               setForm(p => ({ ...p, concepts: p.concepts.map((cc, idx) => idx === i ? updated : cc) }));
                               setEditingConceptIdx(null); setEditConceptForm({});
                             }} style={{ flex: 1, height: "30px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
@@ -686,9 +686,14 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)" }}>{c.description}</div>
                           <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "2px" }}>
-                            {c.quantity} × ${fmt(c.unit_price)} · IVA {(c.tax_rate * 100).toFixed(0)}%
+                                                        {c.quantity} × ${fmt(c.unit_price)}
                             {c.discount_pct > 0 && ` · Desc. ${c.discount_pct}%`}
-                            {" · "}<span style={{ fontFamily: "monospace" }}>{c.product_key}</span>
+                            {" · "}{(c.taxes ?? DEFAULT_TAXES).map((t: any, ti: number) => (
+                              <span key={ti} style={{ marginRight: "3px", color: t.withholding ? "var(--color-danger-text)" : "var(--color-success-text)" }}>
+                                {t.withholding ? "−" : "+"}{t.type}{t.factor === "Exento" ? " Exento" : ` ${(t.rate * 100).toFixed(2).replace(/\.?0+$/, "")}%`}
+                              </span>
+                            ))}
+                            {c.product_key && <>{" · "}<span style={{ fontFamily: "monospace" }}>{c.product_key}</span></>}
                           </div>
                         </div>
                         <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums", flexShrink: 0 }}>${fmt(ttl)}</div>
@@ -786,9 +791,8 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                   </div>
                   <div style={{ display: "grid", gap: "4px" }}>
                     {form.concepts.map((c, i) => {
-                      const base = c.quantity * c.unit_price * (1 - c.discount_pct / 100);
-                      const tax  = base * c.tax_rate;
-                      const ttl  = base + tax;
+                                            const { base, trasladados, retenidos: cRet } = calcConceptTotals(c);
+                      const ttl  = base + trasladados - cRet;
                       return (
                         <div key={i} style={{ padding: "7px 10px", borderRadius: "var(--radius-sm)", background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)" }}>
                           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
@@ -799,7 +803,11 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                               <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "2px", display: "flex", gap: "8px", flexWrap: "wrap" }}>
                                 <span>{c.quantity} × ${fmt(c.unit_price)}</span>
                                 {c.discount_pct > 0 && <span style={{ color: "var(--color-warning-text)" }}>-{c.discount_pct}%</span>}
-                                <span>IVA {(c.tax_rate * 100).toFixed(0)}%</span>
+                                                                {(c.taxes ?? DEFAULT_TAXES).map((t: any, ti: number) => (
+                                  <span key={ti} style={{ color: t.withholding ? "var(--color-danger-text)" : undefined }}>
+                                    {t.withholding ? "−" : "+"}{t.type}{t.factor === "Exento" ? " Exento" : ` ${(t.rate * 100).toFixed(2).replace(/\.?0+$/, "")}%`}{" "}
+                                  </span>
+                                ))}
                                 {c.product_key && <span style={{ fontFamily: "monospace", color: "var(--color-brand-blue)" }}>{c.product_key}</span>}
                               </div>
                             </div>
@@ -807,9 +815,11 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                               <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-success-text)", fontVariantNumeric: "tabular-nums" }}>
                                 ${fmt(ttl)}
                               </div>
-                              <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
-                                +${fmt(tax)} IVA
-                              </div>
+                                                            {cRet > 0 && (
+                                <div style={{ fontSize: "10px", color: "var(--color-danger-text)" }}>
+                                  −${fmt(cRet)} ret.
+                                </div>
+                              )}
                             </div>
                           </div>
                         </div>
