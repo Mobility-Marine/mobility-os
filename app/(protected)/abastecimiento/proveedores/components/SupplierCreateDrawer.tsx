@@ -32,6 +32,7 @@ export default function SupplierCreateDrawer({ open, onClose, onCreated }: Props
   const [country,      setCountry]      = useState("México");
   const [paymentTerms, setPaymentTerms] = useState("");
   const [notes,        setNotes]        = useState("");
+  const [supplierType, setSupplierType] = useState<"procurement" | "operating">("procurement");
 
   async function handleCreate() {
     if (!name.trim() || !companyId) return;
@@ -49,7 +50,7 @@ export default function SupplierCreateDrawer({ open, onClose, onCreated }: Props
         payment_terms: paymentTerms || null,
         notes:         notes     || null,
         is_active:     true,
-        type:          "supplier",
+                type:          supplierType,
       });
       if (err) throw err;
       onCreated();
@@ -59,9 +60,10 @@ export default function SupplierCreateDrawer({ open, onClose, onCreated }: Props
   }
 
   function handleClose() {
-    setName(""); setContact(""); setTaxId(""); setEmail("");
+        setName(""); setContact(""); setTaxId(""); setEmail("");
     setPhone(""); setCity(""); setCountry("México");
     setPaymentTerms(""); setNotes(""); setError(null);
+    setSupplierType("procurement");
     onClose();
   }
 
@@ -97,6 +99,24 @@ export default function SupplierCreateDrawer({ open, onClose, onCreated }: Props
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre del proveedor" style={INPUT} />
           </div>
 
+          <div>
+            <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", marginBottom: "6px", textTransform: "uppercase" }}>
+              Tipo de proveedor *
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
+              {([
+                { key: "procurement", label: "📦 Abastecimiento", desc: "Materiales e inventario", color: "var(--color-brand-blue)" },
+                { key: "operating",   label: "🏢 Operativo",      desc: "Servicios y gastos fijos", color: "#8b5cf6" },
+              ] as const).map(opt => (
+                <button key={opt.key} onClick={() => setSupplierType(opt.key)}
+                  style={{ padding: "10px 12px", borderRadius: "var(--radius-md)", cursor: "pointer", textAlign: "left", border: `2px solid ${supplierType === opt.key ? opt.color : "var(--color-border-faint)"}`, background: supplierType === opt.key ? `${opt.color}15` : "var(--color-bg-subtle)" }}>
+                  <div style={{ fontSize: "12px", fontWeight: 700, color: supplierType === opt.key ? opt.color : "var(--color-text-primary)" }}>{opt.label}</div>
+                  <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "2px" }}>{opt.desc}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+          
           <div>
             <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", marginBottom: "6px", textTransform: "uppercase" }}>
               Contacto principal
