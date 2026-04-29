@@ -24,6 +24,7 @@ export function useFacturacionController(companyId: string, userId: string) {
     total_month: 0, count_month: 0,
     count_pending_pay: 0, total_pending_pay: 0,
     count_cancelled: 0, count_total: 0,
+    por_moneda: {},
   });
   const [filters,      setFilters]      = useState<CFDIFilters>(DEFAULT_FILTERS);
   const [notes,        setNotes]        = useState<any[]>([]);
