@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { supabase } from "@/lib/supabaseClient";
+import { sendEmail } from "@/services/email/email.service";
 
 type CompanyUser = {
   id:         string;
@@ -90,27 +91,88 @@ export default function TabUsuarios() {
     if (!invEmail.trim() || !companyId) return;
     setInviting(true); setError(null);
     try {
-      // Crear invitación en company_invitations
-      const { error } = await supabase.from("company_invitations").insert({
-        company_id: companyId,
-        email:      invEmail.trim().toLowerCase(),
-        role:       invRole,
-        status:     "pending",
-        expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
-      });
-      if (error) throw error;
-      const { data: inv } = await supabase.from("company_invitations")
-        .select("token").eq("company_id", companyId!).eq("email", invEmail.trim().toLowerCase())
-        .order("created_at", { ascending: false }).limit(1).single();
-      const link = inv?.token ? `${window.location.origin}/accept-invitation?token=${inv.token}` : null;
+      const emailLower = invEmail.trim().toLowerCase();
+
+      // 1) Crear invitación en company_invitations (token se autogenera)
+      const { data: createdInv, error: insertError } = await supabase
+        .from("company_invitations")
+        .insert({
+          company_id: companyId,
+          email:      emailLower,
+          role:       invRole,
+          status:     "pending",
+          expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+        })
+        .select("id, token, expires_at")
+        .single();
+
+      if (insertError || !createdInv) {
+        throw new Error(insertError?.message ?? "No se pudo crear la invitación");
+      }
+
+      const link = `${window.location.origin}/accept-invitation?token=${createdInv.token}`;
       setInviteLink(link);
-      setSuccess(`Invitación creada para ${invEmail}`);
+
+      // 2) Recopilar datos del usuario que invita y de la empresa para el email
+      const { data: { user: authUser } } = await supabase.auth.getUser();
+
+      const [{ data: company }, { data: inviterProfile }, { data: inviterEmailSetting }] = await Promise.all([
+        supabase.from("companies").select("name").eq("id", companyId!).maybeSingle(),
+        authUser ? supabase.from("user_profiles").select("full_name").eq("user_id", authUser.id).maybeSingle() : Promise.resolve({ data: null }),
+        authUser ? supabase.from("user_settings").select("value").eq("user_id", authUser.id).eq("key", "email").maybeSingle() : Promise.resolve({ data: null }),
+      ]);
+
+      const inviterName  = inviterProfile?.full_name ?? authUser?.email ?? "Un colaborador";
+      const inviterEmail = inviterEmailSetting?.value ?? authUser?.email ?? null;
+      const companyName  = company?.name ?? "tu empresa";
+
+      // Mapeo de roles a etiquetas legibles para el correo
+      const ROLE_LABELS: Record<string, string> = {
+        admin:     "Administrador",
+        manager:   "Gerente",
+        comercial: "Comercial",
+        logistica: "Logística",
+        finanzas:  "Finanzas",
+        compras:   "Compras",
+        user:      "Usuario",
+        viewer:    "Solo lectura",
+      };
+
+      // 3) Disparar email — no bloquear el flujo si falla
+      const emailResult = await sendEmail({
+        template_key: "user_invitation",
+        company_id:   companyId,
+        recipient:    { email: emailLower },
+        variables: {
+          invited_email:   emailLower,
+          inviter_name:    inviterName,
+          company_name:    companyName,
+          role_label:      ROLE_LABELS[invRole] ?? invRole,
+          invitation_url:  link,
+          expires_in_days: 7,
+        },
+        ...(inviterEmail ? { reply_to: { email: inviterEmail, name: inviterName } } : {}),
+        related_entity:       { type: "invitation", id: createdInv.id },
+        triggered_by_user_id: authUser?.id,
+      });
+
+      if (emailResult.success) {
+        setSuccess(`Invitación enviada por correo a ${emailLower}`);
+      } else {
+        // El registro existe en BD igual; solo no se mandó el email.
+        // Mostramos el link como fallback para que el admin lo copie manualmente.
+        setSuccess(`Invitación creada (no se pudo enviar email: ${emailResult.error ?? "error desconocido"}). Copia el link manualmente.`);
+      }
+
       setInvEmail("");
       await loadInvitations();
-      setTimeout(() => setSuccess(null), 5000);
-      
-    } catch (e: any) { setError(e.message); }
-    finally { setInviting(false); }
+      setTimeout(() => setSuccess(null), 8000);
+
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setInviting(false);
+    }
   }
 
   async function handleChangeRole(userId: string, newRole: string) {
