@@ -1,6 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
+import { supabase } from "@/lib/supabaseClient";
 import type { AccountReceivable } from "../types/cxc.types";
 
 type Props = {
@@ -38,12 +39,37 @@ export default function CxCPagoDrawer({ open, ar, saving, onClose, onCreate }: P
   const [paymentForm,  setPaymentForm]  = useState("03");
   const [reference,    setReference]    = useState("");
   const [notes,        setNotes]        = useState("");
-  const [emitREP,      setEmitREP]      = useState(true);
+  const [emitREP,      setEmitREP]      = useState(false);
+  const [paymentMethod, setPaymentMethod] = useState<"PUE" | "PPD" | null>(null);
   const [error,        setError]        = useState<string | null>(null);
 
   const amountNum = Number(amount) || 0;
   const isTotal   = ar ? amountNum >= ar.balance - 0.01 : false;
   const remaining = ar ? Math.max(0, ar.balance - amountNum) : 0;
+
+  // Al abrir el drawer con un AR vinculado a un CFDI: detectar el método de pago.
+  // PPD → toggle REP activado por default (legalmente obligatorio).
+  // PUE → toggle oculto, no requiere REP.
+  useEffect(() => {
+    if (!open || !ar?.cfdi_id) {
+      setPaymentMethod(null);
+      setEmitREP(false);
+      return;
+    }
+    let cancelled = false;
+    supabase
+      .from("cfdi_documents")
+      .select("payment_method")
+      .eq("id", ar.cfdi_id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled) return;
+        const pm = (data?.payment_method as "PUE" | "PPD" | null) ?? null;
+        setPaymentMethod(pm);
+        setEmitREP(pm === "PPD");
+      });
+    return () => { cancelled = true; };
+  }, [open, ar?.cfdi_id]);
 
   async function handleCreate() {
     if (!ar) return;
@@ -67,7 +93,8 @@ export default function CxCPagoDrawer({ open, ar, saving, onClose, onCreate }: P
 
   function handleClose() {
     setAmount(""); setPaymentDate(new Date().toISOString().split("T")[0]);
-    setPaymentForm("03"); setReference(""); setNotes(""); setEmitREP(true); setError(null);
+    setPaymentForm("03"); setReference(""); setNotes("");
+    setEmitREP(false); setPaymentMethod(null); setError(null);
     onClose();
   }
 
@@ -199,8 +226,8 @@ export default function CxCPagoDrawer({ open, ar, saving, onClose, onCreate }: P
             <textarea rows={2} value={notes} onChange={e => setNotes(e.target.value)} placeholder={es ? "Observaciones del pago…" : "Payment notes…"} style={{ ...INPUT, height: "auto", padding: "10px 12px", resize: "none" }} />
           </div>
 
-          {/* REP */}
-          {ar.cfdi_id && (
+          {/* REP — solo aplica para CFDIs PPD */}
+          {ar.cfdi_id && paymentMethod === "PPD" && (
             <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)" }}>
               <label style={{ display: "flex", alignItems: "flex-start", gap: "10px", cursor: "pointer" }}>
                 <input type="checkbox" checked={emitREP} onChange={e => setEmitREP(e.target.checked)} style={{ marginTop: "2px" }} />
@@ -213,6 +240,25 @@ export default function CxCPagoDrawer({ open, ar, saving, onClose, onCreate }: P
                   </div>
                 </div>
               </label>
+            </div>
+          )}
+
+          {/* Aviso informativo cuando la factura es PUE — no requiere REP */}
+          {ar.cfdi_id && paymentMethod === "PUE" && (
+            <div style={{ padding: "12px 14px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", display: "flex", alignItems: "flex-start", gap: "10px" }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2" style={{ flexShrink: 0, marginTop: "1px" }}>
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="16" x2="12" y2="12"/>
+                <line x1="12" y1="8" x2="12.01" y2="8"/>
+              </svg>
+              <div>
+                <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-second)" }}>
+                  {es ? "Factura PUE — no requiere Complemento de Pago (REP)" : "PUE invoice — no Payment Complement (REP) required"}
+                </div>
+                <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "2px" }}>
+                  {es ? "El pago ya está implícito en el CFDI original. Solo se registrará el pago internamente." : "Payment is implicit in the original CFDI. Only the internal record will be created."}
+                </div>
+              </div>
             </div>
           )}
         </div>
