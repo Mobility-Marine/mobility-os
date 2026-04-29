@@ -745,7 +745,17 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                 </div>
                 <div>
                   <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{es ? "Método de pago" : "Payment method"}</div>
-                  <select value={form.payment_method} onChange={(e) => setF("payment_method", e.target.value)} style={SELECT}>
+                  <select value={form.payment_method} onChange={(e) => {
+                    const newMethod = e.target.value;
+                    setForm((p) => ({
+                      ...p,
+                      payment_method: newMethod,
+                      // Regla SAT/CFDI 4.0: PPD ⇒ forma_pago "99". PUE ⇒ nunca "99".
+                      payment_form: newMethod === "PPD"
+                        ? "99"
+                        : (p.payment_form === "99" ? "03" : p.payment_form),
+                    }));
+                  }} style={SELECT}>
                     <option value="PUE">PUE — {es ? "Pago en una sola exhibición" : "Single payment"}</option>
                     <option value="PPD">PPD — {es ? "Pago en parcialidades o diferido" : "Partial/deferred payment"}</option>
                   </select>
