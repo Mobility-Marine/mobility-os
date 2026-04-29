@@ -139,7 +139,7 @@ export default function CxPPage() {
       )}
       {tab === "proveedores" && (
         <CxPProveedorView
-          suppliers={ctrl.supplierSummaries}
+          suppliers={ctrl.allProviders}
           preselected={preselected}
           onPay={openPayment}
           onNew={() => { setPreloadShip(null); setPreloadPO(null); setNewOpen(true); }}
