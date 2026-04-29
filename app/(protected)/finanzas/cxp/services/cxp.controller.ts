@@ -18,7 +18,8 @@ export function useCxPController(companyId: string, userId: string) {
     by_type: { procurement: 0, logistics: 0, operating: 0 },
     por_moneda: {},
   });
-  const [supplierSummaries,setSupplierSummaries]= useState<SupplierAPSummary[]>([]);
+  const [supplierSummaries,setSupplierSummaries]= useState<SupplierAPSummary[]>([]);  // solo con AP activo (Dashboard / Top proveedores)
+  const [allProviders,     setAllProviders]     = useState<SupplierAPSummary[]>([]);  // todos del catálogo (Tab "Por proveedor")
   const [pendingShipments, setPendingShipments] = useState<any[]>([]);
   const [pendingPOs,       setPendingPOs]       = useState<any[]>([]);
   const [selected,         setSelected]         = useState<{ ap: AccountPayable; payments: any[] } | null>(null);
@@ -32,14 +33,17 @@ export function useCxPController(companyId: string, userId: string) {
     setLoading(true); setError(null);
     const active = f ?? filters;
     try {
-      const [list, st, suppliers, ships, pos] = await Promise.all([
+      const [list, st, suppliers, providers, ships, pos] = await Promise.all([
         fetchAP(companyId, active),
         fetchAPStats(companyId),
-        fetchAllProvidersForView(companyId),   // todos los proveedores, no solo con AP
+        fetchSupplierAPSummaries(companyId),   // SOLO proveedores con AP activo → Dashboard / Top proveedores
+        fetchAllProvidersForView(companyId),   // TODOS los proveedores del catálogo → Tab "Por proveedor"
         fetchPendingFromShipments(companyId),
         fetchPendingFromPOs(companyId),
       ]);
-      setItems(list); setStats(st); setSupplierSummaries(suppliers);
+      setItems(list); setStats(st);
+      setSupplierSummaries(suppliers);
+      setAllProviders(providers);
       setPendingShipments(ships); setPendingPOs(pos);
     } catch (e: any) { setError(e.message); }
     finally { setLoading(false); }
@@ -81,7 +85,7 @@ export function useCxPController(companyId: string, userId: string) {
   }, [companyId]);
 
   return {
-    items, stats, supplierSummaries, pendingShipments, pendingPOs,
+    items, stats, supplierSummaries, allProviders, pendingShipments, pendingPOs,
     selected, filters, loading, saving, error,
     setSelected, load, handleFilter, handleSelect,
     handleCreate, handleRegisterPayment, handleUpdateStatus,
