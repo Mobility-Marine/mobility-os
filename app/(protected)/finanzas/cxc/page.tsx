@@ -11,7 +11,8 @@ import CxCCartera         from "./components/CxCCartera";
 import CxCPipelineKanban  from "./components/CxCPipelineKanban";
 import CxCClienteView     from "./components/CxCClienteView";
 import CxCPagoDrawer      from "./components/CxCPagoDrawer";
-import CxCActividadDrawer from "./components/CxCActividadDrawer";
+import CxCActividadDrawer    from "./components/CxCActividadDrawer";
+import CxCSelectInvoiceModal from "./components/CxCSelectInvoiceModal";
 
 type Tab = "dashboard" | "cartera" | "pipeline" | "clientes";
 
@@ -26,6 +27,7 @@ export default function CxCPage() {
   const [actAR,  setActAR]  = useState<AccountReceivable | null>(null);
   const [pagoOpen,          setPagoOpen]          = useState(false);
   const [actOpen,           setActOpen]            = useState(false);
+  const [selectInvoiceOpen, setSelectInvoiceOpen] = useState(false);
   const [preselectedClient, setPreselectedClient]  = useState<any | null>(null);
   const [syncMsg,  setSyncMsg]  = useState<string | null>(null);
 
@@ -96,7 +98,7 @@ export default function CxCPage() {
             style={{ height: "36px", padding: "0 16px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", fontSize: "12px", fontWeight: 600, cursor: "pointer" }}>
             {es ? "+ Actividad" : "+ Activity"}
           </button>
-          <button onClick={() => setPagoOpen(true)}
+          <button onClick={() => setSelectInvoiceOpen(true)}
             style={{ height: "36px", padding: "0 16px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "12px", fontWeight: 700, cursor: "pointer" }}>
             {es ? "+ Registrar pago" : "+ Register payment"}
           </button>
@@ -173,9 +175,20 @@ export default function CxCPage() {
       <CxCActividadDrawer
         open={actOpen}
         ar={actAR}
+        clients={ctrl.clientSummaries}
         saving={ctrl.saving}
         onClose={() => { setActOpen(false); setActAR(null); }}
         onCreate={ctrl.handleCreateActivity}
+      />
+
+      <CxCSelectInvoiceModal
+        open={selectInvoiceOpen}
+        items={ctrl.items}
+        onClose={() => setSelectInvoiceOpen(false)}
+        onSelect={(ar) => {
+          setSelectInvoiceOpen(false);
+          openPayment(ar);
+        }}
       />
     </div>
   );
