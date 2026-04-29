@@ -746,7 +746,7 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                 <div>
                   <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{es ? "Método de pago" : "Payment method"}</div>
                   <select value={form.payment_method} onChange={(e) => {
-                    const newMethod = e.target.value;
+                    const newMethod = e.target.value as "PUE" | "PPD";
                     setForm((p) => ({
                       ...p,
                       payment_method: newMethod,
