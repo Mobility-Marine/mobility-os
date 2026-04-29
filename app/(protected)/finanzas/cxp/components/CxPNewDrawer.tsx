@@ -213,36 +213,42 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
             </div>
           </div>
 
-          {/* Selector proveedor */}
-          {!isOperating && (
-            <div>
-              <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
-                {isLogistics ? "Proveedor logístico *" : "Proveedor *"}
-              </div>
-              <select
-                value={isLogistics ? form.logistics_provider_id : form.supplier_id}
-                onChange={e => isLogistics ? selectProvider(e.target.value) : selectSupplier(e.target.value)}
-                style={{ ...INPUT, cursor: "pointer" }}>
-                <option value="">— Seleccionar —</option>
-                {(isLogistics ? providers : suppliers).map(s => (
-                  <option key={s.id} value={s.id}>{s.name}{s.tax_id ? ` · ${s.tax_id}` : ""}</option>
-                ))}
-              </select>
+          {/* Selector proveedor — siempre visible. Filtra por tipo seleccionado. */}
+          <div>
+            <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              {isLogistics ? "Proveedor logístico" : isOperating ? "Proveedor operativo (opcional)" : "Proveedor"}
             </div>
-          )}
+            <select
+              value={isLogistics ? form.logistics_provider_id : form.supplier_id}
+              onChange={e => isLogistics ? selectProvider(e.target.value) : selectSupplier(e.target.value)}
+              style={{ ...INPUT, cursor: "pointer" }}>
+              <option value="">— {isOperating ? "Seleccionar o capturar manualmente" : "Seleccionar"} —</option>
+              {(isLogistics
+                ? providers
+                : isOperating
+                  ? suppliers.filter(s => s.type === "operating")
+                  : suppliers.filter(s => s.type !== "operating")
+              ).map(s => (
+                <option key={s.id} value={s.id}>{s.name}{s.tax_id ? ` · ${s.tax_id}` : ""}</option>
+              ))}
+            </select>
+            {isOperating && (
+              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "4px" }}>
+                Si es un gasto suelto sin proveedor registrado, deja vacío y escribe el nombre abajo.
+              </div>
+            )}
+          </div>
 
           {/* Nombre manual si es operativo o no está en catálogo */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-            <div style={{ gridColumn: isOperating ? "1 / -1" : "1" }}>
+            <div style={{ gridColumn: "1" }}>
               <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Nombre proveedor *</div>
               <input value={form.supplier_name} onChange={e => setF("supplier_name", e.target.value)} placeholder="Nombre o razón social" style={INPUT} />
             </div>
-            {!isOperating && (
-              <div>
-                <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>RFC</div>
-                <input value={form.supplier_rfc} onChange={e => setF("supplier_rfc", e.target.value.toUpperCase())} placeholder="RFC del proveedor" style={INPUT} />
-              </div>
-            )}
+            <div>
+              <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>RFC</div>
+              <input value={form.supplier_rfc} onChange={e => setF("supplier_rfc", e.target.value.toUpperCase())} placeholder="RFC del proveedor" style={INPUT} />
+            </div>
           </div>
 
           {/* Categoría de gasto — solo operativo */}
