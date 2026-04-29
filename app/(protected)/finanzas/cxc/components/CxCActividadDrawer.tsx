@@ -1,12 +1,15 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
-import type { AccountReceivable, ARActivityType } from "../types/cxc.types";
+import { useTenant } from "@/lib/tenant/TenantProvider";
+import { supabase } from "@/lib/supabaseClient";
+import type { AccountReceivable, ARActivityType, ClientARSummary } from "../types/cxc.types";
 import { AR_ACTIVITY_CONFIG } from "../types/cxc.types";
 
 type Props = {
   open:    boolean;
   ar:      AccountReceivable | null;
+  clients?: ClientARSummary[];                     // Lista de clientes con AR activos (para selector cuando no hay AR)
   saving:  boolean;
   onClose: () => void;
   onCreate:(payload: any) => Promise<void>;
@@ -21,8 +24,9 @@ const INPUT: React.CSSProperties = {
 
 const TYPES: ARActivityType[] = ["call", "email", "whatsapp", "visit", "promise", "note", "escalation"];
 
-export default function CxCActividadDrawer({ open, ar, saving, onClose, onCreate }: Props) {
+export default function CxCActividadDrawer({ open, ar, clients = [], saving, onClose, onCreate }: Props) {
   const { lang } = useTranslation();
+  const { companyId } = useTenant();
   const es = lang !== "en";
 
   const [type,           setType]           = useState<ARActivityType>("call");
@@ -32,6 +36,11 @@ export default function CxCActividadDrawer({ open, ar, saving, onClose, onCreate
   const [nextAction,     setNextAction]     = useState("");
   const [nextActionDate, setNextActionDate] = useState("");
   const [error,          setError]          = useState<string | null>(null);
+
+  // Cuando no viene un AR (actividad general): selector de cliente y de factura específica
+  const [selectedClientKey, setSelectedClientKey] = useState<string>("");      // formato: rfc o nombre
+  const [clientInvoices,    setClientInvoices]    = useState<AccountReceivable[]>([]);
+  const [selectedARId,      setSelectedARId]      = useState<string>("");       // factura específica (opcional)
 
   const TYPE_TEMPLATES: Record<ARActivityType, { titleEs: string; titleEn: string }> = {
     call:       { titleEs: "Llamada de cobranza",        titleEn: "Collection call"          },
@@ -50,14 +59,53 @@ export default function CxCActividadDrawer({ open, ar, saving, onClose, onCreate
     setTitle(es ? tmpl.titleEs : tmpl.titleEn);
   }
 
+  // Cuando se elige un cliente del selector → traer sus facturas activas
+  useEffect(() => {
+    if (!selectedClientKey || !companyId) {
+      setClientInvoices([]);
+      setSelectedARId("");
+      return;
+    }
+    const c = clients.find(cl => (cl.client_rfc ?? cl.client_name) === selectedClientKey);
+    if (!c) return;
+
+    let cancelled = false;
+    supabase
+      .from("accounts_receivable")
+      .select("*")
+      .eq("company_id", companyId)
+      .eq(c.client_rfc ? "client_rfc" : "client_name", c.client_rfc ?? c.client_name)
+      .in("status", ["pending", "partial", "disputed"])
+      .order("document_date", { ascending: false })
+      .then(({ data }) => {
+        if (!cancelled) setClientInvoices((data ?? []) as AccountReceivable[]);
+      });
+    return () => { cancelled = true; };
+  }, [selectedClientKey, companyId, clients]);
+
   async function handleCreate() {
     if (!title.trim()) { setError(es ? "El título es requerido" : "Title is required"); return; }
     if (type === "promise" && !nextActionDate) { setError(es ? "Ingresa la fecha de la promesa de pago" : "Enter the promise date"); return; }
     setError(null);
+
+    // Calcular ar_id y client_id según contexto
+    let finalARId:    string | undefined = ar?.id;
+    let finalClient:  string | undefined = ar?.client_id;
+
+    if (!ar) {
+      if (!selectedClientKey) {
+        setError(es ? "Selecciona un cliente para registrar la actividad" : "Select a client to log the activity");
+        return;
+      }
+      const c = clients.find(cl => (cl.client_rfc ?? cl.client_name) === selectedClientKey);
+      finalClient = c?.client_id ?? undefined;
+      finalARId   = selectedARId || undefined;   // factura específica si se eligió, si no, queda como actividad de cliente
+    }
+
     try {
       await onCreate({
-        ar_id:            ar?.id,
-        client_id:        ar?.client_id,
+        ar_id:            finalARId,
+        client_id:        finalClient,
         type,
         title:            title.trim(),
         description:      description.trim() || undefined,
@@ -72,12 +120,14 @@ export default function CxCActividadDrawer({ open, ar, saving, onClose, onCreate
   function handleClose() {
     setType("call"); setTitle(""); setDescription(""); setOutcome("");
     setNextAction(""); setNextActionDate(""); setError(null);
+    setSelectedClientKey(""); setClientInvoices([]); setSelectedARId("");
     onClose();
   }
 
   if (!open) return null;
 
   const acCfg = AR_ACTIVITY_CONFIG[type];
+  const showClientSelector = !ar;   // Si NO viene un AR específico, mostrar selectores
 
   return (
     <>
@@ -95,6 +145,14 @@ export default function CxCActividadDrawer({ open, ar, saving, onClose, onCreate
                   {ar.client_name} · {ar.document_number}
                 </div>
               )}
+              {!ar && selectedClientKey && (
+                <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "2px" }}>
+                  {clients.find(c => (c.client_rfc ?? c.client_name) === selectedClientKey)?.client_name ?? ""}
+                  {selectedARId && clientInvoices.find(inv => inv.id === selectedARId)?.document_number
+                    ? ` · ${clientInvoices.find(inv => inv.id === selectedARId)?.document_number}`
+                    : ""}
+                </div>
+              )}
             </div>
             <button onClick={handleClose} style={{ width: "30px", height: "30px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -105,6 +163,56 @@ export default function CxCActividadDrawer({ open, ar, saving, onClose, onCreate
         <div style={{ flex: 1, overflowY: "auto", padding: "20px 24px", display: "grid", gap: "16px", alignContent: "start" }}>
           {error && (
             <div style={{ padding: "10px 14px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)", fontSize: "13px" }}>{error}</div>
+          )}
+
+          {/* Selector de cliente (solo cuando no viene un AR) */}
+          {showClientSelector && (
+            <>
+              <div>
+                <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                  {es ? "Cliente *" : "Client *"}
+                </div>
+                <select
+                  value={selectedClientKey}
+                  onChange={e => setSelectedClientKey(e.target.value)}
+                  style={{ ...INPUT, cursor: "pointer" }}>
+                  <option value="">— {es ? "Seleccionar cliente" : "Select client"} —</option>
+                  {clients.map((c, i) => {
+                    const key = c.client_rfc ?? c.client_name;
+                    return (
+                      <option key={`${key}-${i}`} value={key}>
+                        {c.client_name}{c.client_rfc ? ` · ${c.client_rfc}` : ""}
+                      </option>
+                    );
+                  })}
+                </select>
+              </div>
+
+              {/* Factura específica (opcional) */}
+              {selectedClientKey && clientInvoices.length > 0 && (
+                <div>
+                  <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "5px", textTransform: "uppercase", letterSpacing: "0.5px" }}>
+                    {es ? "Factura específica (opcional)" : "Specific invoice (optional)"}
+                  </div>
+                  <select
+                    value={selectedARId}
+                    onChange={e => setSelectedARId(e.target.value)}
+                    style={{ ...INPUT, cursor: "pointer" }}>
+                    <option value="">— {es ? "Actividad general del cliente" : "General client activity"} —</option>
+                    {clientInvoices.map(inv => (
+                      <option key={inv.id} value={inv.id}>
+                        {inv.document_number ?? "—"} · {inv.currency} ${Number(inv.balance).toLocaleString("es-MX", { minimumFractionDigits: 2 })} · {new Date(inv.document_date).toLocaleDateString(es ? "es-MX" : "en-US")}
+                      </option>
+                    ))}
+                  </select>
+                  <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "4px" }}>
+                    {es
+                      ? "Si la actividad es sobre todas las facturas del cliente, déjalo en blanco."
+                      : "Leave blank if the activity covers all invoices of this client."}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {/* Tipo de actividad */}
