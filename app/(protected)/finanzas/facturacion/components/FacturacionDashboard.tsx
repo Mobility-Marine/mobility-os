@@ -48,37 +48,9 @@ export default function FacturacionDashboard({
   const ppd_pending = cfdis.filter((c) => c.payment_method === "PPD" && c.status === "valid" && c.type === "I");
   const total_ppd   = ppd_pending.reduce((sum, c) => sum + c.total, 0);
 
-  const cards = [
-    {
-      label: es ? "Facturado este mes"   : "Invoiced this month",
-      value: "$" + fmt(s.total_month),
-      sub:   `${s.count_month} ${es ? "documentos" : "documents"}`,
-      color: "var(--color-brand-blue)", bg: "var(--color-info-bg)",
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
-    },
-    {
-      label: es ? "Por cobrar (PPD)"     : "Accounts receivable (PPD)",
-      value: "$" + fmt(total_ppd),
-      sub:   `${ppd_pending.length} ${es ? "facturas pendientes" : "pending invoices"}`,
-      color: "var(--color-warning-text)", bg: "var(--color-warning-bg)",
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
-    },
-    {
-      label: es ? "Canceladas"           : "Cancelled",
-      value: String(s.count_cancelled),
-      sub:   es ? "histórico total" : "total history",
-      color: s.count_cancelled > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)",
-      bg:    s.count_cancelled > 0 ? "var(--color-danger-bg)"   : "var(--color-bg-base)",
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>,
-    },
-    {
-      label: es ? "Total emitidas"       : "Total issued",
-      value: String(s.count_total),
-      sub:   es ? "todos los CFDIs" : "all CFDIs",
-      color: "var(--color-text-primary)", bg: "var(--color-bg-base)",
-      icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
-    },
-  ];
+  // Banderas y colores por moneda — para los KPIs multi-moneda
+  const FLAGS: Record<string, string> = { MXN: "🇲🇽", USD: "🇺🇸", EUR: "🇪🇺", CAD: "🇨🇦", GBP: "🇬🇧" };
+  const monedas = Object.entries(s.por_moneda ?? {}).sort(([a],[b]) => a.localeCompare(b));
 
   const TYPE_COLORS: Record<string, { color: string; bg: string }> = {
     I: { color: "var(--color-success-text)", bg: "var(--color-success-bg)" },
@@ -104,19 +76,70 @@ export default function FacturacionDashboard({
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-      {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px" }}>
-        {cards.map((c) => (
-          <div key={c.label} style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "16px", display: "flex", flexDirection: "column", gap: "10px" }}>
-            <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-              <div style={{ fontSize: "10px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", flex: 1 }}>{c.label}</div>
-              <div style={{ width: "32px", height: "32px", borderRadius: "var(--radius-md)", background: c.bg, color: c.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{c.icon}</div>
+      {/* KPIs por moneda — un bloque por cada divisa con CFDIs */}
+      {monedas.length === 0 ? (
+        <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "30px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
+          {es ? "Aún no se han emitido CFDIs este período" : "No CFDIs issued this period"}
+        </div>
+      ) : (
+        monedas.map(([cur, m]) => (
+          <div key={cur} style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+            {/* Encabezado de moneda */}
+            <div style={{ padding: "8px 18px", background: "var(--color-bg-subtle)", borderBottom: "1px solid var(--color-border-faint)", display: "flex", alignItems: "center", gap: "6px" }}>
+              <span style={{ fontSize: "14px" }}>{FLAGS[cur] ?? "💱"}</span>
+              <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--color-text-primary)" }}>{cur}</span>
+              <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
+                · {m.count_emitidas} {es ? "documentos activos" : "active documents"}
+              </span>
             </div>
-            <div style={{ fontSize: "22px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{c.value}</div>
-            <div style={{ fontSize: "11px", color: "var(--color-text-muted)" }}>{c.sub}</div>
+
+            {/* 4 tarjetas dentro del bloque de la moneda */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
+              {[
+                {
+                  label: es ? "Facturado este mes" : "Invoiced this month",
+                  value: `${cur} $${fmt(m.facturado_mes)}`,
+                  sub:   `${m.count_mes} ${es ? "documentos" : "documents"}`,
+                  color: "var(--color-brand-blue)", bg: "var(--color-info-bg)",
+                  icon:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,
+                },
+                {
+                  label: es ? "Por cobrar (PPD)" : "Receivable (PPD)",
+                  value: `${cur} $${fmt(m.total_pendiente_ppd)}`,
+                  sub:   `${m.count_pendiente_ppd} ${es ? "facturas pendientes" : "pending invoices"}`,
+                  color: m.total_pendiente_ppd > 0 ? "var(--color-warning-text)" : "var(--color-text-muted)",
+                  bg:    m.total_pendiente_ppd > 0 ? "var(--color-warning-bg)"   : "var(--color-bg-subtle)",
+                  icon:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>,
+                },
+                {
+                  label: es ? "Canceladas" : "Cancelled",
+                  value: String(m.count_canceladas),
+                  sub:   es ? "histórico total" : "total history",
+                  color: m.count_canceladas > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)",
+                  bg:    m.count_canceladas > 0 ? "var(--color-danger-bg)"   : "var(--color-bg-subtle)",
+                  icon:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>,
+                },
+                {
+                  label: es ? "Total emitidas" : "Total issued",
+                  value: String(m.count_emitidas),
+                  sub:   es ? "todos los CFDIs" : "all CFDIs",
+                  color: "var(--color-text-primary)", bg: "var(--color-bg-subtle)",
+                  icon:  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
+                },
+              ].map((c, i) => (
+                <div key={c.label} style={{ padding: "16px 18px", borderRight: i < 3 ? "1px solid var(--color-border-faint)" : "none", display: "flex", flexDirection: "column", gap: "8px" }}>
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                    <div style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px" }}>{c.label}</div>
+                    <div style={{ width: "26px", height: "26px", borderRadius: "var(--radius-md)", background: c.bg, color: c.color, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>{c.icon}</div>
+                  </div>
+                  <div style={{ fontSize: "18px", fontWeight: 900, color: c.color, fontVariantNumeric: "tabular-nums", lineHeight: 1 }}>{c.value}</div>
+                  <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{c.sub}</div>
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
+        ))
+      )}
 
       {/* ── PEDIDOS PENDIENTES DE FACTURAR ── */}
       {pendingOrders.length > 0 && (
@@ -298,19 +321,32 @@ export default function FacturacionDashboard({
             </button>
           ))}
           <div style={{ borderTop: "1px solid var(--color-border-faint)", paddingTop: "10px", marginTop: "4px" }}>
-            <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "6px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
-              {es ? "Este mes" : "This month"}
+            <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "8px", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>
+              {es ? "Este mes por moneda" : "This month by currency"}
             </div>
-            {[
-              { l: es ? "Facturas"   : "Invoices",   v: String(s.count_month)    },
-              { l: es ? "Facturado"  : "Billed",     v: "$" + fmt(s.total_month) },
-              { l: es ? "Por cobrar" : "Receivable", v: "$" + fmt(total_ppd)     },
-            ].map((r) => (
-              <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", marginBottom: "4px" }}>
-                <span style={{ color: "var(--color-text-muted)" }}>{r.l}</span>
-                <span style={{ fontWeight: 600, color: "var(--color-text-primary)", fontVariantNumeric: "tabular-nums" }}>{r.v}</span>
+            {monedas.length === 0 ? (
+              <div style={{ fontSize: "11px", color: "var(--color-text-muted)", fontStyle: "italic" }}>
+                {es ? "Sin actividad" : "No activity"}
               </div>
-            ))}
+            ) : (
+              monedas.map(([cur, m]) => (
+                <div key={cur} style={{ marginBottom: "10px" }}>
+                  <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "3px" }}>
+                    {FLAGS[cur] ?? "💱"} {cur}
+                  </div>
+                  {[
+                    { l: es ? "Facturas"   : "Invoices",   v: String(m.count_mes) },
+                    { l: es ? "Facturado"  : "Billed",     v: `${cur} $${fmt(m.facturado_mes)}` },
+                    { l: es ? "Por cobrar" : "Receivable", v: `${cur} $${fmt(m.total_pendiente_ppd)}` },
+                  ].map((r) => (
+                    <div key={r.l} style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", marginBottom: "2px", paddingLeft: "8px" }}>
+                      <span style={{ color: "var(--color-text-muted)" }}>{r.l}</span>
+                      <span style={{ fontWeight: 600, color: "var(--color-text-primary)", fontVariantNumeric: "tabular-nums" }}>{r.v}</span>
+                    </div>
+                  ))}
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
