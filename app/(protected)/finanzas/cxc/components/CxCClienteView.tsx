@@ -55,9 +55,11 @@ export default function CxCClienteView({ clients, preselectedClient, onPay, onAc
     } finally { setLoadingClient(false); }
   }, [companyId]);
 
+  // Recargar datos del cliente cuando: (a) cambia el cliente seleccionado, o
+  // (b) los clientes del padre se actualizan (ej: tras registrar un pago, actividad, etc.)
   useEffect(() => {
     if (selectedClient) loadClient(selectedClient);
-  }, [selectedClient]);
+  }, [selectedClient, clients]);
 
   // Auto-seleccionar cliente cuando viene del dashboard
   useEffect(() => {
