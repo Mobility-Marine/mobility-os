@@ -43,7 +43,7 @@ export async function fetchCFDIs(companyId: string, filters: {
 
 export async function fetchCFDIStats(companyId: string): Promise<FacturacionStats> {
   const { data, error } = await supabase.rpc("get_facturacion_stats", { p_company_id: companyId });
-  if (error || !data) return { total_month: 0, count_month: 0, count_pending_pay: 0, total_pending_pay: 0, count_cancelled: 0, count_total: 0 };
+  if (error || !data) return { total_month: 0, count_month: 0, count_pending_pay: 0, total_pending_pay: 0, count_cancelled: 0, count_total: 0, por_moneda: {} };
   return data as FacturacionStats;
 }
 
