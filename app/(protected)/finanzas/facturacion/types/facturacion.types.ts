@@ -63,6 +63,16 @@ export type FacturacionStats = {
   total_pending_pay: number;
   count_cancelled:   number;
   count_total:       number;
+  por_moneda:        Record<string, FacturacionMonedaStats>;
+};
+
+export type FacturacionMonedaStats = {
+  facturado_mes:        number;
+  count_mes:            number;
+  total_pendiente_ppd:  number;
+  count_pendiente_ppd:  number;
+  count_emitidas:       number;
+  count_canceladas:     number;
 };
 
 // ── IMPUESTOS POR CONCEPTO ────────────────────────────────────
