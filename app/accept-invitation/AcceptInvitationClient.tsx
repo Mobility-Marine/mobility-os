@@ -10,26 +10,28 @@ import { useRouter, useSearchParams } from "next/navigation";
 //   - Si el usuario NO tiene cuenta: signup en línea con nombre + password
 //   - Si el usuario YA tiene cuenta y está logueado: confirma y une
 //   - Si está logueado pero con OTRO email: ofrece cambiar de cuenta
+//
+//   IMPORTANTE: usa RPCs `get_invitation_info` y `accept_invitation` con
+//   SECURITY DEFINER para evitar bloqueos por RLS en el flujo público.
 // ============================================================
 
-type Invitation = {
-  id:           string;
+type InvitationInfo = {
   email:        string;
   role:         string;
   status:       "pending" | "cancelled" | "accepted" | string;
-  token:        string;
   expires_at:   string;
   company_id:   string;
+  company_name: string;
 };
 
 type Phase =
   | "loading"
-  | "error"          // estados terminales: cancelled/expired/accepted/not_found/email_mismatch
-  | "needs_signup"   // sin sesión, hay que crear cuenta
-  | "needs_login"    // sin sesión, ya tiene cuenta (alterna con signup)
-  | "confirm"        // sesión activa con email correcto, falta confirmar
-  | "joining"        // procesando el join
-  | "success";       // listo, redirigiendo
+  | "error"
+  | "needs_signup"
+  | "needs_login"
+  | "confirm"
+  | "joining"
+  | "success";
 
 const ROLE_LABELS: Record<string, string> = {
   admin:     "Administrador",
@@ -49,17 +51,15 @@ export default function AcceptInvitationClient() {
 
   const [phase,        setPhase]        = useState<Phase>("loading");
   const [errorMsg,     setErrorMsg]     = useState<string>("");
-  const [invitation,   setInvitation]   = useState<Invitation | null>(null);
-  const [companyName,  setCompanyName]  = useState<string>("");
+  const [invitation,   setInvitation]   = useState<InvitationInfo | null>(null);
   const [currentEmail, setCurrentEmail] = useState<string>("");
 
-  // Form states
   const [fullName, setFullName] = useState("");
   const [password, setPassword] = useState("");
   const [busy,     setBusy]     = useState(false);
   const [formErr,  setFormErr]  = useState<string>("");
 
-  // ───────────── 1) Cargar invitación + sesión actual ─────────────
+  // ───────── Cargar invitación + sesión actual ─────────
   const loadInvitation = useCallback(async () => {
     if (!token) {
       setPhase("error");
@@ -67,28 +67,32 @@ export default function AcceptInvitationClient() {
       return;
     }
 
-    // Cargar invitación (usar maybeSingle para no romper si no existe)
-    const { data: inv } = await supabase
-      .from("company_invitations")
-      .select("id, email, role, status, token, expires_at, company_id")
-      .eq("token", token)
-      .maybeSingle();
+    // Usar RPC pública que bypasa RLS de forma controlada
+    const { data, error } = await supabase
+      .rpc("get_invitation_info", { p_token: token });
 
-    if (!inv) {
+    if (error) {
       setPhase("error");
-      setErrorMsg("Esta invitación no existe o ya no está disponible.");
+      setErrorMsg(`No pudimos verificar la invitación. Intenta de nuevo en un momento.`);
       return;
     }
 
-    // Validar status
+    const inv: InvitationInfo | null = (data && data[0]) ?? null;
+
+    if (!inv) {
+      setPhase("error");
+      setErrorMsg("Esta invitación no existe o el enlace está dañado.");
+      return;
+    }
+
     if (inv.status === "cancelled") {
       setPhase("error");
-      setErrorMsg("Esta invitación fue cancelada por el administrador. Pide al admin que te envíe una nueva.");
+      setErrorMsg("Esta invitación fue cancelada por el administrador. Pídele que te envíe una nueva.");
       return;
     }
     if (inv.status === "accepted") {
       setPhase("error");
-      setErrorMsg("Esta invitación ya fue aceptada. Si eres tú, simplemente inicia sesión.");
+      setErrorMsg("Esta invitación ya fue aceptada. Si eres tú, inicia sesión normalmente.");
       return;
     }
     if (inv.status !== "pending") {
@@ -97,22 +101,13 @@ export default function AcceptInvitationClient() {
       return;
     }
 
-    // Validar expiración
     if (new Date(inv.expires_at) < new Date()) {
       setPhase("error");
-      setErrorMsg("Esta invitación ya expiró. Pide al administrador que te envíe una nueva.");
+      setErrorMsg("Esta invitación ya expiró. Pídele al administrador que te envíe una nueva.");
       return;
     }
 
-    setInvitation(inv as Invitation);
-
-    // Obtener nombre de la empresa para mostrar en la UI
-    const { data: company } = await supabase
-      .from("companies")
-      .select("name")
-      .eq("id", inv.company_id)
-      .maybeSingle();
-    setCompanyName(company?.name ?? "la empresa");
+    setInvitation(inv);
 
     // Pre-llenar nombre con la parte local del email (mejor UX)
     const localPart = inv.email.split("@")[0].replace(/[._-]/g, " ");
@@ -121,13 +116,12 @@ export default function AcceptInvitationClient() {
     // ¿Hay sesión activa?
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      setPhase("needs_signup");        // por default mostramos signup; hay un toggle a login
+      setPhase("needs_signup");
       return;
     }
 
     setCurrentEmail(user.email ?? "");
 
-    // Validar que el email coincida con la invitación
     if ((user.email ?? "").toLowerCase() !== inv.email.toLowerCase()) {
       setPhase("error");
       setErrorMsg(`Esta invitación es para ${inv.email}, pero estás conectado como ${user.email}. Cierra sesión y entra con la cuenta correcta.`);
@@ -139,11 +133,11 @@ export default function AcceptInvitationClient() {
 
   useEffect(() => { loadInvitation(); }, [loadInvitation]);
 
-  // ───────────── 2) Crear cuenta nueva (signup) ─────────────
+  // ───────── Crear cuenta nueva ─────────
   async function handleSignup() {
     if (!invitation) return;
-    if (!fullName.trim())              { setFormErr("Escribe tu nombre completo"); return; }
-    if (password.length < 8)           { setFormErr("La contraseña debe tener al menos 8 caracteres"); return; }
+    if (!fullName.trim())      { setFormErr("Escribe tu nombre completo"); return; }
+    if (password.length < 8)   { setFormErr("La contraseña debe tener al menos 8 caracteres"); return; }
     setFormErr(""); setBusy(true);
 
     const { data, error } = await supabase.auth.signUp({
@@ -153,7 +147,6 @@ export default function AcceptInvitationClient() {
     });
 
     if (error) {
-      // Si el correo ya existe, ofrecer login
       if (error.message.toLowerCase().includes("already")) {
         setBusy(false);
         setPhase("needs_login");
@@ -171,13 +164,29 @@ export default function AcceptInvitationClient() {
       return;
     }
 
-    await joinCompany(data.user.id, fullName.trim());
+    // Verificar si Supabase requiere confirmar email antes de poder usar la cuenta
+    if (!data.session) {
+      // Registro creado pero sin sesión activa: probablemente requiere confirmación.
+      // Intentamos login directo (en proyectos sin email confirmation activado, funciona).
+      const { error: loginErr } = await supabase.auth.signInWithPassword({
+        email:    invitation.email,
+        password: password,
+      });
+      if (loginErr) {
+        setBusy(false);
+        setPhase("error");
+        setErrorMsg("Tu cuenta fue creada. Revisa tu correo para confirmarla y vuelve a abrir el enlace de invitación.");
+        return;
+      }
+    }
+
+    await joinCompany(fullName.trim());
   }
 
-  // ───────────── 3) Iniciar sesión ─────────────
+  // ───────── Iniciar sesión ─────────
   async function handleLogin() {
     if (!invitation) return;
-    if (!password)          { setFormErr("Escribe tu contraseña"); return; }
+    if (!password)   { setFormErr("Escribe tu contraseña"); return; }
     setFormErr(""); setBusy(true);
 
     const { data, error } = await supabase.auth.signInWithPassword({
@@ -197,103 +206,69 @@ export default function AcceptInvitationClient() {
       return;
     }
 
-    await joinCompany(data.user.id, fullName.trim() || data.user.email!.split("@")[0]);
+    await joinCompany(fullName.trim() || data.user.email!.split("@")[0]);
   }
 
-  // ───────────── 4) Confirmar (usuario YA logueado con email correcto) ─────────────
+  // ───────── Confirmar (usuario ya logueado con email correcto) ─────────
   async function handleConfirm() {
     if (!invitation) return;
     setBusy(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setBusy(false); return; }
-    await joinCompany(user.id, fullName.trim() || user.email!.split("@")[0]);
+    await joinCompany(fullName.trim() || currentEmail.split("@")[0]);
   }
 
-  // ───────────── 5) Operación común: unirse a la empresa ─────────────
-  async function joinCompany(userId: string, name: string) {
-    if (!invitation) return;
+  // ───────── Operación común: llamar la RPC accept_invitation ─────────
+  async function joinCompany(name: string) {
+    if (!invitation || !token) return;
     setPhase("joining");
 
-    try {
-      // 1) Insertar en company_users (idempotente: si ya existe, no romper)
-      const { error: insErr } = await supabase
-        .from("company_users")
-        .insert({
-          user_id:    userId,
-          company_id: invitation.company_id,
-          role:       invitation.role,
-          is_active:  true,
-          joined_at:  new Date().toISOString(),
-        });
+    const { data, error } = await supabase.rpc("accept_invitation", {
+      p_token:     token,
+      p_full_name: name,
+    });
 
-      // Si falla por duplicado, no es error real (ya pertenecía a la empresa)
-      if (insErr && !insErr.message.toLowerCase().includes("duplicate")) {
-        throw new Error(insErr.message);
-      }
-
-      // 2) Crear/actualizar el perfil con el nombre que el usuario escribió
-      await supabase
-        .from("user_profiles")
-        .upsert({
-          user_id:    userId,
-          full_name:  name,
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id" });
-
-      // 3) Marcar la invitación como aceptada
-      await supabase
-        .from("company_invitations")
-        .update({
-          status:      "accepted",
-          accepted_at: new Date().toISOString(),
-        })
-        .eq("id", invitation.id);
-
-      setPhase("success");
-      setTimeout(() => router.push("/dashboard"), 1500);
-    } catch (e: any) {
+    if (error) {
       setPhase("error");
-      setErrorMsg(`No se pudo completar la invitación: ${e.message ?? "error desconocido"}`);
+      setErrorMsg(error.message ?? "No se pudo completar la invitación");
+      return;
     }
+
+    if (!data?.success) {
+      setPhase("error");
+      setErrorMsg("La operación no se completó. Intenta de nuevo.");
+      return;
+    }
+
+    setPhase("success");
+    setTimeout(() => router.push("/dashboard"), 1500);
   }
 
-  // ───────────── 6) Cerrar sesión (cuando el email no coincide) ─────────────
+  // ───────── Cerrar sesión (cuando el email no coincide) ─────────
   async function handleSignOut() {
     await supabase.auth.signOut();
     setCurrentEmail("");
     setPhase("loading");
+    setErrorMsg("");
     loadInvitation();
   }
 
-  // ============================================================
-  //                          RENDER
-  // ============================================================
   return (
     <div style={S.page}>
       <div style={S.card}>
-        {/* Header con branding */}
         <div style={S.brandHeader}>
           <div style={S.brandTitle}>Mobility OS</div>
           <div style={S.brandSubtitle}>Sistema operativo empresarial</div>
         </div>
 
-        {/* Body según fase */}
         <div style={S.body}>
           {phase === "loading" && <Loading />}
-
-          {phase === "error" && <ErrorBlock message={errorMsg} onLogin={() => router.push("/login")} />}
-
+          {phase === "error"   && <ErrorBlock message={errorMsg} onLogin={() => router.push("/login")} />}
           {phase === "joining" && <Loading text="Uniéndote a la empresa…" />}
-
-          {phase === "success" && (
-            <SuccessBlock companyName={companyName} />
-          )}
+          {phase === "success" && <SuccessBlock companyName={invitation?.company_name ?? ""} />}
 
           {(phase === "needs_signup" || phase === "needs_login") && invitation && (
             <SignupOrLogin
               mode={phase}
               invitation={invitation}
-              companyName={companyName}
               fullName={fullName}
               password={password}
               busy={busy}
@@ -309,7 +284,6 @@ export default function AcceptInvitationClient() {
           {phase === "confirm" && invitation && (
             <ConfirmBlock
               invitation={invitation}
-              companyName={companyName}
               currentEmail={currentEmail}
               fullName={fullName}
               setFullName={setFullName}
@@ -364,8 +338,7 @@ function SuccessBlock({ companyName }: { companyName: string }) {
 
 function SignupOrLogin(props: {
   mode: "needs_signup" | "needs_login";
-  invitation: Invitation;
-  companyName: string;
+  invitation: InvitationInfo;
   fullName: string;
   password: string;
   busy: boolean;
@@ -376,26 +349,24 @@ function SignupOrLogin(props: {
   onSignup: () => void;
   onLogin: () => void;
 }) {
-  const { mode, invitation, companyName, fullName, password, busy, formErr, setFullName, setPassword, switchMode, onSignup, onLogin } = props;
+  const { mode, invitation, fullName, password, busy, formErr, setFullName, setPassword, switchMode, onSignup, onLogin } = props;
   const isSignup = mode === "needs_signup";
   const role = ROLE_LABELS[invitation.role] ?? invitation.role;
 
   return (
     <div>
       <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>
-        Has sido invitado a {companyName}
+        Has sido invitado a {invitation.company_name}
       </div>
       <div style={{ fontSize: 13, color: "#475569", marginBottom: 20 }}>
         Te invitaron como <strong>{role}</strong>. {isSignup ? "Crea tu cuenta para continuar." : "Inicia sesión para aceptar."}
       </div>
 
-      {/* Email (read-only) */}
       <div style={S.field}>
         <label style={S.label}>Correo electrónico</label>
         <input value={invitation.email} readOnly style={{ ...S.input, background: "#f1f5f9", color: "#64748b" }} />
       </div>
 
-      {/* Nombre (solo en signup) */}
       {isSignup && (
         <div style={S.field}>
           <label style={S.label}>Nombre completo</label>
@@ -409,7 +380,6 @@ function SignupOrLogin(props: {
         </div>
       )}
 
-      {/* Password */}
       <div style={S.field}>
         <label style={S.label}>Contraseña {isSignup && "(mínimo 8 caracteres)"}</label>
         <input
@@ -419,6 +389,7 @@ function SignupOrLogin(props: {
           placeholder={isSignup ? "Crea una contraseña segura" : "Tu contraseña"}
           style={S.input}
           autoFocus={!isSignup}
+          onKeyDown={e => { if (e.key === "Enter" && !busy) (isSignup ? onSignup() : onLogin()); }}
         />
       </div>
 
@@ -442,8 +413,7 @@ function SignupOrLogin(props: {
 }
 
 function ConfirmBlock(props: {
-  invitation: Invitation;
-  companyName: string;
+  invitation: InvitationInfo;
   currentEmail: string;
   fullName: string;
   setFullName: (v: string) => void;
@@ -451,13 +421,13 @@ function ConfirmBlock(props: {
   onConfirm: () => void;
   onSignOut: () => void;
 }) {
-  const { invitation, companyName, currentEmail, fullName, setFullName, busy, onConfirm, onSignOut } = props;
+  const { invitation, currentEmail, fullName, setFullName, busy, onConfirm, onSignOut } = props;
   const role = ROLE_LABELS[invitation.role] ?? invitation.role;
 
   return (
     <div>
       <div style={{ fontSize: 18, fontWeight: 800, color: "#0f172a", marginBottom: 6 }}>
-        Únete a {companyName}
+        Únete a {invitation.company_name}
       </div>
       <div style={{ fontSize: 13, color: "#475569", marginBottom: 20 }}>
         Estás conectado como <strong>{currentEmail}</strong>. Te invitaron como <strong>{role}</strong>.
@@ -478,7 +448,7 @@ function ConfirmBlock(props: {
         disabled={busy}
         style={{ ...S.btnPrimary, marginTop: 14, opacity: busy ? 0.6 : 1, cursor: busy ? "wait" : "pointer" }}
       >
-        {busy ? "Procesando…" : `Unirme a ${companyName}`}
+        {busy ? "Procesando…" : `Unirme a ${invitation.company_name}`}
       </button>
 
       <div style={{ textAlign: "center", marginTop: 14 }}>
@@ -528,13 +498,11 @@ const S: Record<string, React.CSSProperties> = {
     background: "#ffffff", color: "#0f172a",
     fontSize: 14, outline: "none", boxSizing: "border-box",
   },
-
   formError: {
     padding: "10px 12px", borderRadius: 8,
     background: "#fef2f2", border: "1px solid #fecaca",
     color: "#b91c1c", fontSize: 12, marginTop: 6,
   },
-
   btnPrimary: {
     width: "100%", height: 44, borderRadius: 10,
     background: "linear-gradient(135deg, #1e40af 0%, #2563eb 100%)",
@@ -551,7 +519,6 @@ const S: Record<string, React.CSSProperties> = {
     color: "#2563eb", fontSize: 12, cursor: "pointer",
     textDecoration: "underline",
   },
-
   spinner: {
     width: 36, height: 36, margin: "0 auto",
     border: "3px solid #e2e8f0", borderTopColor: "#2563eb",
