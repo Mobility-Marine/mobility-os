@@ -87,86 +87,139 @@ export default function TabUsuarios() {
     setLoading(false);
   }
 
+  /**
+   * Función reusable: envía el email de invitación.
+   * Recibe los datos de la invitación ya creada y dispara el correo.
+   * Devuelve { success, error } sin lanzar excepciones.
+   */
+  async function sendInvitationEmail(invitation: {
+    id:    string;
+    email: string;
+    role:  string;
+    token: string;
+  }): Promise<{ success: boolean; error?: string }> {
+    if (!companyId) return { success: false, error: "Sin company_id" };
+
+    const link = `${window.location.origin}/accept-invitation?token=${invitation.token}`;
+
+    // Recopilar datos del usuario que invita y de la empresa
+    const { data: { user: authUser } } = await supabase.auth.getUser();
+
+    const [{ data: company }, { data: inviterProfile }, { data: inviterEmailSetting }] = await Promise.all([
+      supabase.from("companies").select("name").eq("id", companyId!).maybeSingle(),
+      authUser ? supabase.from("user_profiles").select("full_name").eq("user_id", authUser.id).maybeSingle() : Promise.resolve({ data: null }),
+      authUser ? supabase.from("user_settings").select("value").eq("user_id", authUser.id).eq("key", "email").maybeSingle() : Promise.resolve({ data: null }),
+    ]);
+
+    const inviterName  = inviterProfile?.full_name ?? authUser?.email ?? "Un colaborador";
+    const inviterEmail = inviterEmailSetting?.value ?? authUser?.email ?? null;
+    const companyName  = company?.name ?? "tu empresa";
+
+    const ROLE_LABELS: Record<string, string> = {
+      admin:     "Administrador",
+      manager:   "Gerente",
+      comercial: "Comercial",
+      logistica: "Logística",
+      finanzas:  "Finanzas",
+      compras:   "Compras",
+      user:      "Usuario",
+      viewer:    "Solo lectura",
+    };
+
+    const result = await sendEmail({
+      template_key: "user_invitation",
+      company_id:   companyId,
+      recipient:    { email: invitation.email },
+      variables: {
+        invited_email:   invitation.email,
+        inviter_name:    inviterName,
+        company_name:    companyName,
+        role_label:      ROLE_LABELS[invitation.role] ?? invitation.role,
+        invitation_url:  link,
+        expires_in_days: 7,
+      },
+      ...(inviterEmail ? { reply_to: { email: inviterEmail, name: inviterName } } : {}),
+      related_entity:       { type: "invitation", id: invitation.id },
+      triggered_by_user_id: authUser?.id,
+    });
+
+    return { success: result.success, error: result.error };
+  }
+
   async function handleInvite() {
     if (!invEmail.trim() || !companyId) return;
     setInviting(true); setError(null);
     try {
       const emailLower = invEmail.trim().toLowerCase();
 
-      // 1) Crear invitación en company_invitations (token se autogenera)
-      const { data: createdInv, error: insertError } = await supabase
+      // 1) ¿Ya existe una invitación PENDIENTE para este correo? Si sí → reenviar
+      const { data: existing } = await supabase
         .from("company_invitations")
-        .insert({
-          company_id: companyId,
-          email:      emailLower,
-          role:       invRole,
-          status:     "pending",
-          expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
-        })
-        .select("id, token, expires_at")
-        .single();
+        .select("id, token, email, role, expires_at, status")
+        .eq("company_id", companyId!)
+        .eq("email", emailLower)
+        .eq("status", "pending")
+        .gt("expires_at", new Date().toISOString())
+        .maybeSingle();
 
-      if (insertError || !createdInv) {
-        throw new Error(insertError?.message ?? "No se pudo crear la invitación");
+      let invitation: { id: string; email: string; role: string; token: string };
+
+      if (existing) {
+        // Reusar la invitación existente (no crear duplicado)
+        invitation = {
+          id:    existing.id,
+          email: existing.email,
+          role:  existing.role,
+          token: existing.token,
+        };
+      } else {
+        // Crear invitación nueva
+        const { data: created, error: insertError } = await supabase
+          .from("company_invitations")
+          .insert({
+            company_id: companyId,
+            email:      emailLower,
+            role:       invRole,
+            status:     "pending",
+            expires_at: new Date(Date.now() + 7 * 86400000).toISOString(),
+          })
+          .select("id, token, email, role")
+          .single();
+
+        if (insertError || !created) {
+          throw new Error(insertError?.message ?? "No se pudo crear la invitación");
+        }
+
+        invitation = {
+          id:    created.id,
+          email: created.email,
+          role:  created.role,
+          token: created.token,
+        };
       }
 
-      const link = `${window.location.origin}/accept-invitation?token=${createdInv.token}`;
+      // 2) Mostrar el link como fallback (siempre disponible)
+      const link = `${window.location.origin}/accept-invitation?token=${invitation.token}`;
       setInviteLink(link);
 
-      // 2) Recopilar datos del usuario que invita y de la empresa para el email
-      const { data: { user: authUser } } = await supabase.auth.getUser();
-
-      const [{ data: company }, { data: inviterProfile }, { data: inviterEmailSetting }] = await Promise.all([
-        supabase.from("companies").select("name").eq("id", companyId!).maybeSingle(),
-        authUser ? supabase.from("user_profiles").select("full_name").eq("user_id", authUser.id).maybeSingle() : Promise.resolve({ data: null }),
-        authUser ? supabase.from("user_settings").select("value").eq("user_id", authUser.id).eq("key", "email").maybeSingle() : Promise.resolve({ data: null }),
-      ]);
-
-      const inviterName  = inviterProfile?.full_name ?? authUser?.email ?? "Un colaborador";
-      const inviterEmail = inviterEmailSetting?.value ?? authUser?.email ?? null;
-      const companyName  = company?.name ?? "tu empresa";
-
-      // Mapeo de roles a etiquetas legibles para el correo
-      const ROLE_LABELS: Record<string, string> = {
-        admin:     "Administrador",
-        manager:   "Gerente",
-        comercial: "Comercial",
-        logistica: "Logística",
-        finanzas:  "Finanzas",
-        compras:   "Compras",
-        user:      "Usuario",
-        viewer:    "Solo lectura",
-      };
-
-      // 3) Disparar email — no bloquear el flujo si falla
-      const emailResult = await sendEmail({
-        template_key: "user_invitation",
-        company_id:   companyId,
-        recipient:    { email: emailLower },
-        variables: {
-          invited_email:   emailLower,
-          inviter_name:    inviterName,
-          company_name:    companyName,
-          role_label:      ROLE_LABELS[invRole] ?? invRole,
-          invitation_url:  link,
-          expires_in_days: 7,
-        },
-        ...(inviterEmail ? { reply_to: { email: inviterEmail, name: inviterName } } : {}),
-        related_entity:       { type: "invitation", id: createdInv.id },
-        triggered_by_user_id: authUser?.id,
-      });
+      // 3) Enviar email
+      const emailResult = await sendInvitationEmail(invitation);
 
       if (emailResult.success) {
-        setSuccess(`Invitación enviada por correo a ${emailLower}`);
+        setSuccess(existing
+          ? `Reenviada la invitación a ${emailLower}`
+          : `Invitación enviada por correo a ${emailLower}`);
       } else {
-        // El registro existe en BD igual; solo no se mandó el email.
-        // Mostramos el link como fallback para que el admin lo copie manualmente.
-        setSuccess(`Invitación creada (no se pudo enviar email: ${emailResult.error ?? "error desconocido"}). Copia el link manualmente.`);
+        setSuccess(`Invitación ${existing ? "actualizada" : "creada"} (no se pudo enviar email: ${emailResult.error ?? "error desconocido"}). Copia el link manualmente.`);
       }
 
       setInvEmail("");
       await loadInvitations();
-      setTimeout(() => setSuccess(null), 8000);
+
+      // Auto-ocultar solo si fue éxito; los errores quedan visibles
+      if (emailResult.success) {
+        setTimeout(() => setSuccess(null), 6000);
+      }
 
     } catch (e: any) {
       setError(e.message);
@@ -204,6 +257,30 @@ export default function TabUsuarios() {
     setInvitations(p => p.filter(i => i.id !== id));
   }
 
+async function resendInvitation(inv: { id: string; email: string; role: string; token: string }) {
+    if (!companyId) return;
+    setError(null); setSuccess(null);
+
+    // Si la invitación ya expiró o casi, renovar la fecha de expiración
+    const expiresAt = new Date(Date.now() + 7 * 86400000).toISOString();
+    await supabase
+      .from("company_invitations")
+      .update({ expires_at: expiresAt, status: "pending" })
+      .eq("id", inv.id)
+      .eq("company_id", companyId!);
+
+    const result = await sendInvitationEmail(inv);
+
+    if (result.success) {
+      setSuccess(`Invitación reenviada a ${inv.email}`);
+      setTimeout(() => setSuccess(null), 6000);
+    } else {
+      setError(`No se pudo reenviar el email: ${result.error ?? "error desconocido"}`);
+    }
+
+    await loadInvitations();
+  }
+  
   const INPUT: React.CSSProperties = {
     width: "100%", height: "38px", padding: "0 12px",
     borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)",
@@ -358,6 +435,14 @@ export default function TabUsuarios() {
                     Rol: <strong>{inv.role}</strong> · {isExpired ? "Expirada" : `Expira ${new Date(inv.expires_at).toLocaleDateString("es-MX")}`}
                   </div>
                 </div>
+                {inv.status === "pending" && !isExpired && (
+                  <button onClick={() => resendInvitation({ id: inv.id, email: inv.email, role: inv.role, token: inv.token })}
+                    title="Reenviar invitación por correo"
+                    style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-sm)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", color: "var(--color-success-text)", fontSize: "10px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/></svg>
+                    Reenviar
+                  </button>
+                )}
                 <button onClick={() => { navigator.clipboard.writeText(link); }}
                   title="Copiar link de invitación"
                   style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-sm)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", color: "var(--color-brand-blue)", fontSize: "10px", fontWeight: 700, cursor: "pointer" }}>
