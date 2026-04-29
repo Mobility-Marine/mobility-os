@@ -253,8 +253,15 @@ export default function TabUsuarios() {
 
   async function cancelInvitation(id: string) {
     if (!companyId) return;
-    await supabase.from("company_invitations").update({ status: "cancelled" }).eq("id", id).eq("company_id", companyId!);
-    setInvitations(p => p.filter(i => i.id !== id));
+    // Al cancelar: marcar status='cancelled' Y regenerar el token para invalidarlo de inmediato.
+    // Mantenemos la fila para auditoría (quién canceló qué), pero el token viejo deja de servir.
+    const newToken = crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "").slice(0, 8);
+    await supabase
+      .from("company_invitations")
+      .update({ status: "cancelled", token: newToken })
+      .eq("id", id)
+      .eq("company_id", companyId!);
+    await loadInvitations();
   }
 
 async function resendInvitation(inv: { id: string; email: string; role: string; token: string }) {
