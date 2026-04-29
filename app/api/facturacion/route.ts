@@ -218,11 +218,25 @@ export async function POST(req: NextRequest) {
       const serie = (folioSettings as any)?.[folioConfig.s] ?? folioConfig.def_s;
       const folio = (folioSettings as any)?.[folioConfig.f] ?? 1;
 
-      const invoicePayload = {
+      const invoicePayload: any = {
         ...payload.invoice,
         series:       serie,
         folio_number: folio,
       };
+
+      // ── BLINDAJE SAT/CFDI 4.0 ─────────────────────────────────────────
+      // Regla fiscal obligatoria — vive en el backend para no depender de la UI:
+      //   • payment_method = PPD  ⇒  payment_form DEBE ser "99"
+      //   • payment_method = PUE  ⇒  payment_form NUNCA puede ser "99"
+      // Aplica solo a CFDI tipo "I" (ingreso) que es donde existe payment_method.
+      if (invoicePayload.payment_method === "PPD") {
+        invoicePayload.payment_form = "99";
+      } else if (
+        invoicePayload.payment_method === "PUE" &&
+        invoicePayload.payment_form === "99"
+      ) {
+        invoicePayload.payment_form = "03"; // fallback seguro: transferencia
+      }
 
       const invoice = await facturapi(apiKey, "/invoices", "POST", invoicePayload, effectiveOrgId);
 
