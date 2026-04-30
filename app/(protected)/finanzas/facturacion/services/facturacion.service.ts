@@ -341,3 +341,149 @@ export async function createBusinessNote(companyId: string, userId: string, payl
   });
   if (error) throw new Error(error.message);
 }
+
+// ════════════════════════════════════════════════════════════════
+// PROFORMAS (CFDIs editables sin timbrar)
+// ════════════════════════════════════════════════════════════════
+
+const PROFORMAS_API = "/api/facturacion/proformas";
+
+// ─── Helper para obtener el access token actual ───
+async function getAuthToken(): Promise<string> {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session?.access_token) throw new Error("Sesión expirada. Vuelve a iniciar sesión.");
+  return session.access_token;
+}
+
+// ─── Convierte la forma del drawer al payload del backend ───
+function buildProformaPayloadFromForm(companyId: string, form: NewCFDIForm) {
+  const concepts = form.concepts.map((c) => {
+    const base        = c.quantity * c.unit_price * (1 - c.discount_pct / 100);
+    const taxes       = c.taxes ?? [{ type: "IVA", rate: 0.16, factor: "Tasa", withholding: false }];
+    const trasladados = taxes.filter((t: any) => !t.withholding).reduce((s: number, t: any) => s + (t.factor === "Exento" ? 0 : base * t.rate), 0);
+    const retenidos   = taxes.filter((t: any) =>  t.withholding).reduce((s: number, t: any) => s + base * t.rate, 0);
+    const total       = base + trasladados - retenidos;
+
+    // Tomamos la primera tasa de traslado (la principal) y la primera retención
+    const trasladoTax = taxes.find((t: any) => !t.withholding && t.factor !== "Exento");
+    const retencionTax = taxes.find((t: any) => t.withholding);
+
+    return {
+      product_key:      c.product_key,
+      unit_key:         c.unit_key,
+      description:      c.description,
+      unit:             c.unit,
+      quantity:         c.quantity,
+      unit_price:       c.unit_price,
+      discount:         c.discount_pct > 0 ? c.unit_price * c.quantity * c.discount_pct / 100 : 0,
+      subtotal:         base,
+      tax_rate:         trasladoTax?.rate ?? 0,
+      tax_amount:       trasladados,
+      retention_rate:   retencionTax?.rate ?? 0,
+      retention_amount: retenidos,
+      total,
+      product_id:       c.product_id ?? null,
+    };
+  });
+
+  const subtotal      = concepts.reduce((s, c) => s + c.subtotal, 0);
+  const taxAmount     = concepts.reduce((s, c) => s + c.tax_amount, 0);
+  const retention     = concepts.reduce((s, c) => s + c.retention_amount, 0);
+  const total         = subtotal + taxAmount - retention;
+  const totalDiscount = concepts.reduce((s, c) => s + (c.discount ?? 0), 0);
+
+  return {
+    company_id:             companyId,
+    type:                   "I",
+    receiver_rfc:           form.receiver_rfc || null,
+    receiver_name:          form.receiver_name || null,
+    receiver_email:         form.receiver_email || null,
+    receiver_fiscal_regime: form.receiver_regime || null,
+    receiver_cfdi_use:      form.receiver_cfdi_use || "G03",
+    receiver_zip:           form.receiver_zip || null,
+    currency:               form.currency || "MXN",
+    exchange_rate:          form.exchange_rate ?? 1,
+    payment_method:         form.payment_method || "PUE",
+    payment_form:           form.payment_form || "03",
+    subtotal,
+    discount:               totalDiscount,
+    tax_amount:             taxAmount,
+    retention_amount:       retention,
+    total,
+    notes:                  form.notes || null,
+    related_client_id:      form.client_id || null,
+    concepts,
+  };
+}
+
+// ─── Crear proforma nueva ───
+export async function saveProforma(companyId: string, form: NewCFDIForm) {
+  const token = await getAuthToken();
+  const payload = buildProformaPayloadFromForm(companyId, form);
+
+  const res = await fetch(PROFORMAS_API, {
+    method: "POST",
+    headers: {
+      "Content-Type":  "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Error guardando proforma");
+  return data.proforma;
+}
+
+// ─── Actualizar proforma existente ───
+export async function updateProforma(proformaId: string, companyId: string, form: NewCFDIForm) {
+  const token = await getAuthToken();
+  const payload = buildProformaPayloadFromForm(companyId, form);
+  // Quitamos company_id porque el endpoint PATCH ya lo deduce del registro
+  const { company_id: _, ...updatePayload } = payload;
+
+  const res = await fetch(`${PROFORMAS_API}/${proformaId}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type":  "application/json",
+      "Authorization": `Bearer ${token}`,
+    },
+    body: JSON.stringify(updatePayload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Error actualizando proforma");
+  return data;
+}
+
+// ─── Eliminar proforma ───
+export async function deleteProforma(proformaId: string) {
+  const token = await getAuthToken();
+  const res = await fetch(`${PROFORMAS_API}/${proformaId}`, {
+    method: "DELETE",
+    headers: { "Authorization": `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Error eliminando proforma");
+  return data;
+}
+
+// ─── Timbrar proforma (la convierte en CFDI 'valid') ───
+export async function stampProforma(proformaId: string) {
+  const token = await getAuthToken();
+  const res = await fetch(`${PROFORMAS_API}/${proformaId}/timbrar`, {
+    method: "POST",
+    headers: { "Authorization": `Bearer ${token}` },
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error ?? "Error al timbrar proforma");
+  return data;
+}
+
+// ─── Cargar una proforma con sus conceptos para edición ───
+export async function fetchProformaById(id: string) {
+  const [{ data: cfdi }, { data: concepts }] = await Promise.all([
+    supabase.from("cfdi_documents").select("*").eq("id", id).maybeSingle(),
+    supabase.from("cfdi_concepts").select("*").eq("cfdi_id", id).order("created_at"),
+  ]);
+  if (!cfdi) return null;
+  return { cfdi, concepts: concepts ?? [] };
+}
