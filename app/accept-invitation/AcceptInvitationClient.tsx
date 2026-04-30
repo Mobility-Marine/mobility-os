@@ -239,9 +239,7 @@ export default function AcceptInvitationClient() {
     }
 
     setPhase("success");
-    // Hard reload para que TenantProvider y demás providers se re-inicialicen con la sesión nueva.
-    // router.push() no es suficiente porque los providers se montaron antes de la sesión.
-    setTimeout(() => { window.location.href = "/dashboard"; }, 1500);
+    setTimeout(() => router.push("/dashboard"), 1500);
   }
 
   // ───────── Cerrar sesión (cuando el email no coincide) ─────────
