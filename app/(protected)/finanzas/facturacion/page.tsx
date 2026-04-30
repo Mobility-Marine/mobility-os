@@ -7,6 +7,8 @@ import { useFacturacionController } from "./services/facturacion.controller";
 import { fetchBusinessNotes, createBusinessNote, emitirComplementoPago, emitirNotaCredito } from "./services/facturacion.service";
 import type { CFDITypeOption } from "./types/facturacion.types";
 import type { CFDIDocument } from "./types/facturacion.types";
+// Filtros del dashboard de Facturación (lista principal con chips)
+type ActiveFilter = "all" | "factura" | "proforma" | "nota_credito" | "complemento" | "cancelled";
 import FacturacionDashboard    from "./components/FacturacionDashboard";
 import CFDISelector            from "./components/CFDISelector";
 import FacturacionList         from "./components/FacturacionList";
@@ -43,6 +45,13 @@ export default function FacturacionPage() {
   const [pendingOrders,      setPendingOrders]       = useState<any[]>([]);
   const [preloadShipment,    setPreloadShipment]     = useState<any | null>(null);
   const [nominaDrawerOpen,   setNominaDrawerOpen]    = useState(false);
+
+  // ─── Edición de Proforma ───
+  // Cuando hay un editProformaId, el CFDICreateDrawer se abre en modo edición
+  const [editProformaId,     setEditProformaId]     = useState<string | null>(null);
+
+  // ─── Filtro activo de la lista del dashboard ───
+  const [dashboardFilter,    setDashboardFilter]    = useState<ActiveFilter>("all");
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? ""));
@@ -161,6 +170,30 @@ export default function FacturacionPage() {
     setSelectedCFDIType({ id: "factura" } as any);
   }
 
+// ─── Abrir el drawer en modo edición de Proforma ───
+  function handleEditProforma(cfdi: CFDIDocument) {
+    setEditProformaId(cfdi.id);
+    setSelectedCFDIType({ id: "factura" } as any);
+  }
+
+  // ─── Callback que se dispara cuando una proforma cambia (saved/updated/stamped/deleted) ───
+  async function handleProformaChange(action: "saved" | "updated" | "stamped" | "deleted", cfdi?: any) {
+    // Refrescar la lista en todos los casos
+    await ctrl.load();
+
+    // Si fue timbrada, abrir su detalle (mismo comportamiento que onCreated del flujo timbrado directo)
+    if (action === "stamped" && cfdi) {
+      ctrl.handleSelect(cfdi);
+      setTab("dashboard");
+    }
+
+    // Si fue eliminada o timbrada, recargar también pendientes (por si estaba ligada a un embarque/pedido)
+    if ((action === "stamped" || action === "deleted") && companyId) {
+      supabase.from("shipments").select("id, reference, service_type, currency, total, client:clients(name), quotation:quotations(quote_number)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingShipments(data ?? []));
+      supabase.from("orders").select("id, order_number, currency, total, delivery_date, client:clients(name, legal_name, rfc, email, tax_regime, zip_code), quotation:quotations(quote_number)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingOrders(data ?? []));
+    }
+  }
+  
   async function handleFacturarPedido(order: any) {
     if (!companyId) return;
     const { data: items } = await supabase
@@ -298,9 +331,12 @@ export default function FacturacionPage() {
           pendingShipments={pendingShipments}
           pendingOrders={pendingOrders}
           onSelect={ctrl.handleSelect}
+          onEditProforma={handleEditProforma}
           onEmitir={() => setTab("emitir")}
           onFacturarEmbarque={handleFacturarEmbarque}
           onFacturarPedido={handleFacturarPedido}
+          activeFilter={dashboardFilter}
+          onChangeFilter={setDashboardFilter}
         />
       )}
       {tab === "emitir"     && <CFDISelector onSelect={handleSelectCFDIType} />}
@@ -399,7 +435,9 @@ export default function FacturacionPage() {
         open={selectedCFDIType?.id === "factura"}
         saving={ctrl.saving}
         preloadShipment={preloadShipment}
-        onClose={() => { setSelectedCFDIType(null); setPreloadShipment(null); }}
+        editProformaId={editProformaId}
+        onProformaChange={handleProformaChange}
+        onClose={() => { setSelectedCFDIType(null); setPreloadShipment(null); setEditProformaId(null); }}
         onCreate={ctrl.handleEmitir}
         onCreated={async (cfdi) => {
           // Vincular CFDI al embarque
