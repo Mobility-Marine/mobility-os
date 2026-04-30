@@ -64,7 +64,7 @@ async function getCompanySettings(companyId: string): Promise<CompanySettings | 
     )
     .eq("company_id", companyId)
     .maybeSingle();
-  return data as CompanySettings | null;
+  return data as unknown as CompanySettings | null;
 }
 
 async function getApiKeyForCompany(companyId: string): Promise<string> {
