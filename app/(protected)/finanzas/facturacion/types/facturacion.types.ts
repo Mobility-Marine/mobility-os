@@ -1,5 +1,5 @@
 export type CFDIType = "I" | "E" | "P" | "T" | "N";
-export type CFDIStatus = "valid" | "cancelled" | "cancellation_requested";
+export type CFDIStatus = "valid" | "proforma" | "draft" | "cancelled" | "cancellation_requested";
 export type PaymentMethod = "PUE" | "PPD";
 
 export type CFDIDocument = {
@@ -16,8 +16,8 @@ export type CFDIDocument = {
   cfdi_date:             string;
   issuer_rfc:            string;
   issuer_name:           string;
-  receiver_rfc:          string;
-  receiver_name:         string;
+  receiver_rfc:          string | null;
+  receiver_name:         string | null;
   receiver_email:        string | null;
   receiver_cfdi_use:     string | null;
   subtotal:              number;
