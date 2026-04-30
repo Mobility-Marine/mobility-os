@@ -54,13 +54,11 @@ export default function LoginPage() {
     }
 
     if (!memberships || memberships.length === 0) {
-      // Hard reload para que TenantProvider y demás providers carguen con la sesión nueva.
-      // router.replace() no refresca los providers de React.
-      window.location.href = "/create-company";
+      router.replace("/create-company");
       return;
     }
 
-    window.location.href = "/";
+    router.replace("/");
   }
 
   return (
