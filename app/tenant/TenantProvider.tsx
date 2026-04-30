@@ -5,6 +5,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import { supabase } from "@/lib/supabaseClient";
@@ -41,10 +42,53 @@ export default function TenantProvider({
   const [memberships, setMemberships] = useState<Membership[]>([]);
   const [loadingTenant, setLoadingTenant] = useState(true);
 
+  // Track del user_id actual para evitar reloads redundantes en eventos como TOKEN_REFRESHED.
+  const currentUserIdRef = useRef<string | null>(null);
+
+  // ────────────────────────────────────────────
+  // 1) Carga inicial + listener de cambios de sesión
+  // ────────────────────────────────────────────
   useEffect(() => {
+    let cancelled = false;
+
+    // Carga inicial al montar el componente (cubre F5 / navegación directa)
     initializeTenant();
+
+    // Listener: reacciona a SIGNED_IN, SIGNED_OUT y cambio de usuario
+    const { data: subscription } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (cancelled) return;
+
+        const newUserId = session?.user?.id ?? null;
+
+        // SIGNED_OUT explícito → limpiar todo
+        if (event === "SIGNED_OUT" || !newUserId) {
+          currentUserIdRef.current = null;
+          setCompanyId(null);
+          setMemberships([]);
+          setLoadingTenant(false);
+          return;
+        }
+
+        // SIGNED_IN o cambio de usuario → recargar
+        // Si es el mismo usuario (TOKEN_REFRESHED, USER_UPDATED), NO recargar para evitar parpadeo.
+        if (newUserId !== currentUserIdRef.current) {
+          currentUserIdRef.current = newUserId;
+          initializeTenant();
+        }
+      }
+    );
+
+    return () => {
+      cancelled = true;
+      subscription.subscription.unsubscribe();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ────────────────────────────────────────────
+  // 2) initializeTenant: resuelve el tenant activo
+  // ────────────────────────────────────────────
   async function initializeTenant() {
     setLoadingTenant(true);
 
@@ -53,7 +97,8 @@ export default function TenantProvider({
         await supabase.auth.getUser();
 
       if (authError) {
-        console.error(authError);
+        console.error("[TenantProvider] auth error:", authError);
+        currentUserIdRef.current = null;
         setCompanyId(null);
         setMemberships([]);
         setLoadingTenant(false);
@@ -63,11 +108,14 @@ export default function TenantProvider({
       const user = userData.user;
 
       if (!user) {
+        currentUserIdRef.current = null;
         setCompanyId(null);
         setMemberships([]);
         setLoadingTenant(false);
         return;
       }
+
+      currentUserIdRef.current = user.id;
 
       const { data: membershipRows, error: membershipsError } = await supabase
         .from("company_users")
@@ -83,7 +131,7 @@ export default function TenantProvider({
         .eq("is_active", true);
 
       if (membershipsError) {
-        console.error(membershipsError);
+        console.error("[TenantProvider] memberships error:", membershipsError);
         setCompanyId(null);
         setMemberships([]);
         setLoadingTenant(false);
@@ -114,11 +162,10 @@ export default function TenantProvider({
         .maybeSingle();
 
       if (settingsError) {
-        console.error(settingsError);
+        console.error("[TenantProvider] settings error:", settingsError);
       }
 
       const savedCompanyId = settingsRow?.active_company_id || null;
-
       const savedStillValid = normalizedMemberships.some(
         (m) => m.company_id === savedCompanyId
       );
@@ -129,6 +176,7 @@ export default function TenantProvider({
         return;
       }
 
+      // Fallback: usar la primera empresa y guardarla como activa
       const fallbackCompanyId = normalizedMemberships[0].company_id;
 
       await supabase.from("user_settings").upsert({
@@ -139,7 +187,7 @@ export default function TenantProvider({
 
       setCompanyId(fallbackCompanyId);
     } catch (error) {
-      console.error("initializeTenant error:", error);
+      console.error("[TenantProvider] initializeTenant error:", error);
       setCompanyId(null);
       setMemberships([]);
     } finally {
@@ -147,6 +195,9 @@ export default function TenantProvider({
     }
   }
 
+  // ────────────────────────────────────────────
+  // 3) Cambiar empresa activa
+  // ────────────────────────────────────────────
   async function setActiveCompany(nextCompanyId: string) {
     const { data: userData, error: authError } =
       await supabase.auth.getUser();
@@ -179,6 +230,9 @@ export default function TenantProvider({
     setCompanyId(nextCompanyId);
   }
 
+  // ────────────────────────────────────────────
+  // 4) Refresh manual (lo usan algunos componentes)
+  // ────────────────────────────────────────────
   async function refreshTenant() {
     await initializeTenant();
   }
