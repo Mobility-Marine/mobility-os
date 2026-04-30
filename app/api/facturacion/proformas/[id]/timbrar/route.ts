@@ -31,7 +31,26 @@ function getUserKey(): string | null {
   return process.env.FACTURAPI_USER_KEY ?? null;
 }
 
-async function getCompanySettings(companyId: string) {
+// ─── Tipo explícito para evitar ambigüedad TypeScript con Supabase types ───
+type CompanySettings = {
+  facturapi_org_id:     string | null;
+  facturapi_api_key:    string | null;
+  fiscal_name:          string | null;
+  fiscal_rfc:           string | null;
+  fiscal_regime:        string | null;
+  invoice_series:       string | null;
+  invoice_next_folio:   number | null;
+  egreso_series:        string | null;
+  egreso_next_folio:    number | null;
+  pago_series:          string | null;
+  pago_next_folio:      number | null;
+  traslado_series:      string | null;
+  traslado_next_folio:  number | null;
+  nomina_series:        string | null;
+  nomina_next_folio:    number | null;
+};
+
+async function getCompanySettings(companyId: string): Promise<CompanySettings | null> {
   const { data } = await supabaseAdmin
     .from("company_settings")
     .select(
@@ -45,7 +64,7 @@ async function getCompanySettings(companyId: string) {
     )
     .eq("company_id", companyId)
     .maybeSingle();
-  return data;
+  return data as CompanySettings | null;
 }
 
 async function getApiKeyForCompany(companyId: string): Promise<string> {
