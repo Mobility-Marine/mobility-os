@@ -22,6 +22,9 @@ type PendingOrder = {
   quotation?:   { quote_number: string } | null;
 };
 
+// Filtro activo en la lista principal — se controla localmente y orquesta type+status
+type ActiveFilter = "all" | "factura" | "proforma" | "nota_credito" | "complemento" | "cancelled";
+
 type Props = {
   stats:              FacturacionStats;
   cfdis:              CFDIDocument[];
@@ -29,26 +32,58 @@ type Props = {
   pendingShipments:   PendingShipment[];
   pendingOrders?:     PendingOrder[];
   onSelect:           (c: CFDIDocument) => void;
+  onEditProforma?:    (c: CFDIDocument) => void;
   onEmitir:           () => void;
   onFacturarEmbarque: (s: PendingShipment) => void;
   onFacturarPedido?:  (o: PendingOrder) => void;
+  /** Filtro activo controlado por el padre (opcional). Si no se pasa, default 'all'. */
+  activeFilter?:      ActiveFilter;
+  onChangeFilter?:    (f: ActiveFilter) => void;
 };
 
 const fmt = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+// ── helper: clasificar un CFDI según los filtros disponibles ─────────────
+function matchesFilter(cfdi: CFDIDocument, f: ActiveFilter): boolean {
+  if (f === "all") return true;
+  if (f === "cancelled")    return cfdi.status === "cancelled";
+  if (f === "proforma")     return cfdi.status === "proforma";
+  // Los siguientes solo aplican a CFDIs activos (no cancelados, no proforma)
+  if (cfdi.status !== "valid") return false;
+  if (f === "factura")      return cfdi.type === "I";
+  if (f === "nota_credito") return cfdi.type === "E";
+  if (f === "complemento")  return cfdi.type === "P";
+  return false;
+}
+
 export default function FacturacionDashboard({
   stats: s, cfdis, loading,
   pendingShipments, pendingOrders = [],
-  onSelect, onEmitir, onFacturarEmbarque, onFacturarPedido,
+  onSelect, onEditProforma,
+  onEmitir, onFacturarEmbarque, onFacturarPedido,
+  activeFilter = "all",
+  onChangeFilter,
 }: Props) {
   const { lang } = useTranslation();
   const es = lang !== "en";
 
-  const recent      = cfdis.slice(0, 8);
+  // ── Aplicar filtro localmente ──────────────────────────────────────────
+  const filtered = cfdis.filter((c) => matchesFilter(c, activeFilter));
+  const recent   = filtered.slice(0, 12);
+
+  // Conteos por tipo para mostrar en los chips de filtro
+  const counts = {
+    all:           cfdis.length,
+    factura:       cfdis.filter((c) => c.status === "valid"     && c.type === "I").length,
+    proforma:      cfdis.filter((c) => c.status === "proforma").length,
+    nota_credito:  cfdis.filter((c) => c.status === "valid"     && c.type === "E").length,
+    complemento:   cfdis.filter((c) => c.status === "valid"     && c.type === "P").length,
+    cancelled:     cfdis.filter((c) => c.status === "cancelled").length,
+  };
+
   const ppd_pending = cfdis.filter((c) => c.payment_method === "PPD" && c.status === "valid" && c.type === "I");
   const total_ppd   = ppd_pending.reduce((sum, c) => sum + c.total, 0);
 
-  // Banderas y colores por moneda — para los KPIs multi-moneda
   const FLAGS: Record<string, string> = { MXN: "🇲🇽", USD: "🇺🇸", EUR: "🇪🇺", CAD: "🇨🇦", GBP: "🇬🇧" };
   const monedas = Object.entries(s.por_moneda ?? {}).sort(([a],[b]) => a.localeCompare(b));
 
@@ -73,10 +108,30 @@ export default function FacturacionDashboard({
     seguro: "🛡️", otro: "📦",
   };
 
+  // ── Definición de chips de filtro ──────────────────────────────────────
+  type Chip = { key: ActiveFilter; labelEs: string; labelEn: string; color: string; bg: string };
+  const CHIPS: Chip[] = [
+    { key: "all",          labelEs: "Todos",          labelEn: "All",         color: "var(--color-text-primary)", bg: "var(--color-bg-subtle)" },
+    { key: "factura",      labelEs: "Facturas",       labelEn: "Invoices",    color: "var(--color-success-text)", bg: "var(--color-success-bg)" },
+    { key: "proforma",     labelEs: "Proformas",      labelEn: "Proformas",   color: "var(--color-brand-blue)",   bg: "var(--color-info-bg)" },
+    { key: "nota_credito", labelEs: "N. Crédito",     labelEn: "Credit notes", color: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
+    { key: "complemento",  labelEs: "Complementos",   labelEn: "Payments",    color: "#7c3aed",                   bg: "#ede9fe" },
+    { key: "cancelled",    labelEs: "Canceladas",     labelEn: "Cancelled",   color: "var(--color-danger-text)",  bg: "var(--color-danger-bg)" },
+  ];
+
+  // Click handler: si es proforma → onEditProforma, si no → onSelect
+  function handleRowClick(cfdi: CFDIDocument) {
+    if (cfdi.status === "proforma" && onEditProforma) {
+      onEditProforma(cfdi);
+    } else {
+      onSelect(cfdi);
+    }
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
 
-      {/* KPIs por moneda — un bloque por cada divisa con CFDIs */}
+      {/* KPIs por moneda */}
       {monedas.length === 0 ? (
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "30px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
           {es ? "Aún no se han emitido CFDIs este período" : "No CFDIs issued this period"}
@@ -84,16 +139,11 @@ export default function FacturacionDashboard({
       ) : (
         monedas.map(([cur, m]) => (
           <div key={cur} style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
-            {/* Encabezado de moneda */}
             <div style={{ padding: "8px 18px", background: "var(--color-bg-subtle)", borderBottom: "1px solid var(--color-border-faint)", display: "flex", alignItems: "center", gap: "6px" }}>
               <span style={{ fontSize: "14px" }}>{FLAGS[cur] ?? "💱"}</span>
               <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--color-text-primary)" }}>{cur}</span>
-              <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
-                · {m.count_emitidas} {es ? "documentos activos" : "active documents"}
-              </span>
+              <span style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>· {m.count_emitidas} {es ? "documentos activos" : "active documents"}</span>
             </div>
-
-            {/* 4 tarjetas dentro del bloque de la moneda */}
             <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)" }}>
               {[
                 {
@@ -141,7 +191,7 @@ export default function FacturacionDashboard({
         ))
       )}
 
-      {/* ── PEDIDOS PENDIENTES DE FACTURAR ── */}
+      {/* PEDIDOS PENDIENTES DE FACTURAR */}
       {pendingOrders.length > 0 && (
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(59,130,246,0.05)" }}>
@@ -180,10 +230,8 @@ export default function FacturacionDashboard({
                   {o.currency} ${fmt(o.total ?? 0)}
                 </div>
               </div>
-              <button
-                onClick={() => onFacturarPedido?.(o)}
-                style={{ height: "30px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
-              >
+              <button onClick={() => onFacturarPedido?.(o)}
+                style={{ height: "30px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
                 ⚡ {es ? "Facturar" : "Invoice"}
               </button>
             </div>
@@ -191,7 +239,7 @@ export default function FacturacionDashboard({
         </div>
       )}
 
-      {/* ── SERVICIOS PENDIENTES DE FACTURAR ── */}
+      {/* SERVICIOS PENDIENTES DE FACTURAR */}
       {pendingShipments.length > 0 && (
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(245,158,11,0.05)" }}>
@@ -229,10 +277,8 @@ export default function FacturacionDashboard({
                   {sh.currency} ${fmt(sh.total)}
                 </div>
               </div>
-              <button
-                onClick={() => onFacturarEmbarque(sh)}
-                style={{ height: "30px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-warning-text)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}
-              >
+              <button onClick={() => onFacturarEmbarque(sh)}
+                style={{ height: "30px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-warning-text)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
                 ⚡ {es ? "Facturar" : "Invoice"}
               </button>
             </div>
@@ -256,42 +302,162 @@ export default function FacturacionDashboard({
         </div>
       )}
 
-      {/* Últimos CFDIs + Acciones rápidas */}
+      {/* ════════════════════════════════════════════════════════════════
+          LISTA PRINCIPAL CON FILTROS POR TIPO/ESTADO
+          ════════════════════════════════════════════════════════════════ */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "16px" }}>
-        {/* Recientes */}
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
+
+          {/* Header con título + chips de filtro */}
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--color-border-faint)" }}>
-            <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
-              {es ? "CFDIs recientes" : "Recent CFDIs"}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
+              <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
+                {es ? "Documentos fiscales" : "Tax documents"}
+                {filtered.length > 0 && (
+                  <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 500, color: "var(--color-text-muted)" }}>
+                    · {filtered.length} {es ? "resultado(s)" : "result(s)"}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Chips de filtro */}
+            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+              {CHIPS.map((chip) => {
+                const isActive = activeFilter === chip.key;
+                const count = counts[chip.key];
+                return (
+                  <button
+                    key={chip.key}
+                    onClick={() => onChangeFilter?.(chip.key)}
+                    style={{
+                      height: "28px",
+                      padding: "0 12px",
+                      borderRadius: "var(--radius-full)",
+                      background: isActive ? chip.bg : "var(--color-bg-subtle)",
+                      border: `1px solid ${isActive ? chip.color : "var(--color-border-faint)"}`,
+                      color: isActive ? chip.color : "var(--color-text-muted)",
+                      fontSize: "11px",
+                      fontWeight: isActive ? 800 : 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "6px",
+                      transition: "all 0.15s",
+                    }}
+                  >
+                    <span>{es ? chip.labelEs : chip.labelEn}</span>
+                    {count > 0 && (
+                      <span style={{
+                        background: isActive ? chip.color : "var(--color-border)",
+                        color: isActive ? "#fff" : "var(--color-text-muted)",
+                        fontSize: "9px",
+                        fontWeight: 800,
+                        padding: "1px 6px",
+                        borderRadius: "var(--radius-full)",
+                        minWidth: "16px",
+                        textAlign: "center",
+                      }}>{count}</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </div>
+
+          {/* Lista filtrada */}
           {loading ? (
             <div style={{ padding: "30px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>{es ? "Cargando…" : "Loading…"}</div>
           ) : recent.length === 0 ? (
             <div style={{ padding: "40px", textAlign: "center" }}>
               <div style={{ fontSize: "32px", marginBottom: "8px" }}>📄</div>
-              <div style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>{es ? "Aún no has emitido ningún CFDI" : "No CFDIs issued yet"}</div>
+              <div style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
+                {activeFilter === "all"
+                  ? (es ? "Aún no has emitido ningún CFDI" : "No CFDIs issued yet")
+                  : (es ? "Sin resultados con este filtro" : "No results with this filter")}
+              </div>
             </div>
           ) : (
             recent.map((cfdi, i) => {
-              const tc = TYPE_COLORS[cfdi.type] ?? TYPE_COLORS.I;
-              const tl = TYPE_LABELS[cfdi.type] ?? TYPE_LABELS.I;
+              const tc        = TYPE_COLORS[cfdi.type] ?? TYPE_COLORS.I;
+              const tl        = TYPE_LABELS[cfdi.type] ?? TYPE_LABELS.I;
+              const isProf    = cfdi.status === "proforma";
+              const isCancel  = cfdi.status === "cancelled";
+
               return (
-                <div key={cfdi.id} onClick={() => onSelect(cfdi)}
-                  style={{ display: "flex", alignItems: "center", gap: "12px", padding: "11px 18px", borderBottom: i < recent.length - 1 ? "1px solid var(--color-border-faint)" : "none", cursor: "pointer" }}
+                <div key={cfdi.id} onClick={() => handleRowClick(cfdi)}
+                  style={{ display: "flex", alignItems: "center", gap: "10px", padding: "11px 18px", borderBottom: i < recent.length - 1 ? "1px solid var(--color-border-faint)" : "none", cursor: "pointer" }}
                   onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-bg-subtle)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
-                  <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 7px", borderRadius: "var(--radius-full)", background: tc.bg, color: tc.color, flexShrink: 0 }}>
-                    {es ? tl.es : tl.en}
-                  </span>
+
+                  {/* Badge de estado: Proforma / Cancelado / Timbrado */}
+                  {isProf ? (
+                    <span style={{
+                      fontSize: "9px", fontWeight: 800, padding: "2px 7px",
+                      borderRadius: "var(--radius-full)",
+                      background: "var(--color-info-bg)",
+                      color: "var(--color-brand-blue)",
+                      border: "1px solid var(--color-info-border)",
+                      flexShrink: 0,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.3px",
+                    }}>
+                      📝 {es ? "Proforma" : "Proforma"}
+                    </span>
+                  ) : isCancel ? (
+                    <span style={{
+                      fontSize: "9px", fontWeight: 800, padding: "2px 7px",
+                      borderRadius: "var(--radius-full)",
+                      background: "var(--color-danger-bg)",
+                      color: "var(--color-danger-text)",
+                      border: "1px solid var(--color-danger-border)",
+                      flexShrink: 0,
+                      textTransform: "uppercase",
+                      letterSpacing: "0.3px",
+                    }}>
+                      ❌ {es ? "Cancelado" : "Cancelled"}
+                    </span>
+                  ) : (
+                    <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 7px", borderRadius: "var(--radius-full)", background: tc.bg, color: tc.color, flexShrink: 0 }}>
+                      ✓ {es ? tl.es : tl.en}
+                    </span>
+                  )}
+
+                  {/* Sub-tag de tipo (solo si no es factura normal, para no saturar) */}
+                  {!isProf && !isCancel && cfdi.type !== "I" && (
+                    <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-sm)", background: tc.bg, color: tc.color, flexShrink: 0 }}>
+                      {es ? tl.es : tl.en}
+                    </span>
+                  )}
+
+                  {/* Si es proforma y type != I, mostrar el tipo subordinado */}
+                  {isProf && cfdi.type !== "I" && (
+                    <span style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-text-muted)", flexShrink: 0 }}>
+                      ({es ? tl.es : tl.en})
+                    </span>
+                  )}
+
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{cfdi.receiver_name}</div>
+                    <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {cfdi.receiver_name ?? (es ? "(Sin cliente todavía)" : "(No client yet)")}
+                    </div>
                     <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "1px" }}>
-                      {cfdi.serie ?? ""}{cfdi.folio ?? "—"} · {new Date(cfdi.cfdi_date).toLocaleDateString(es ? "es-MX" : "en-US", { month: "short", day: "2-digit" })}
+                      {isProf
+                        ? (es ? "Borrador editable" : "Editable draft")
+                        : `${cfdi.serie ?? ""}${cfdi.folio ?? "—"}`}
+                      {" · "}
+                      {new Date(cfdi.cfdi_date).toLocaleDateString(es ? "es-MX" : "en-US", { month: "short", day: "2-digit" })}
                     </div>
                   </div>
+
                   <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: "13px", fontWeight: 800, color: cfdi.status === "cancelled" ? "var(--color-text-muted)" : "var(--color-text-primary)", fontVariantNumeric: "tabular-nums", textDecoration: cfdi.status === "cancelled" ? "line-through" : "none" }}>
+                    <div style={{
+                      fontSize: "13px",
+                      fontWeight: 800,
+                      color: isCancel ? "var(--color-text-muted)" : (isProf ? "var(--color-brand-blue)" : "var(--color-text-primary)"),
+                      fontVariantNumeric: "tabular-nums",
+                      textDecoration: isCancel ? "line-through" : "none",
+                    }}>
                       ${fmt(cfdi.total)}
                     </div>
                     <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>{cfdi.currency}</div>
@@ -302,7 +468,7 @@ export default function FacturacionDashboard({
           )}
         </div>
 
-        {/* Acciones rápidas */}
+        {/* Acciones rápidas (igual que antes) */}
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}>
           <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "4px" }}>
             {es ? "Acciones rápidas" : "Quick actions"}
