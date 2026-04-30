@@ -12,6 +12,8 @@ export type CFDIFilters = {
   from: string; to: string;
 };
 
+// status="" significa "todos los estados" (proforma + valid + cancelled)
+// type=""   significa "todos los tipos" (I + E + P + T + N)
 export const DEFAULT_FILTERS: CFDIFilters = {
   search: "", type: "", status: "", from: "", to: "",
 };
