@@ -5,6 +5,7 @@ import { useTenant } from "@/lib/tenant/TenantProvider";
 import { supabase } from "@/lib/supabaseClient";
 import type { NewCFDIForm, NewConcept } from "../types/facturacion.types";
 import { DEFAULT_NEW_CFDI, CFDI_USES, PAYMENT_FORMS, FISCAL_REGIMES, TAX_PRESETS, calcConceptTotals, DEFAULT_TAXES } from "../types/facturacion.types";
+import { saveProforma, updateProforma, deleteProforma, stampProforma, fetchProformaById } from "../services/facturacion.service";
 
 type CurrencyMode = "split" | "all_mxn" | "all_usd" | null;
 
@@ -31,6 +32,10 @@ type Props = {
   onCreate:         (form: NewCFDIForm) => Promise<any>;
   onCreated?:       (cfdi: any) => void;
   preloadShipment?: PreloadShipment | null;
+  /** Si se pasa un ID, el drawer se abre en modo edición de Proforma */
+  editProformaId?:  string | null;
+  /** Callback opcional que se llama después de guardar/actualizar/timbrar/eliminar una proforma */
+  onProformaChange?: (action: "saved" | "updated" | "stamped" | "deleted", cfdi?: any) => void;
 };
 
 type Step = "moneda" | "receptor" | "conceptos" | "config";
@@ -103,7 +108,7 @@ function SATSearch({ value, onChange, type, placeholder, inputStyle }: {
   );
 }
 
-export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCreated, preloadShipment }: Props) {
+export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCreated, preloadShipment, editProformaId, onProformaChange }: Props) {
   const { lang } = useTranslation();
   const { companyId } = useTenant();
   const es = lang !== "en";
@@ -111,6 +116,8 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
   const [step,         setStep]         = useState<Step>("receptor");
   const [form,         setForm]         = useState<NewCFDIForm>(DEFAULT_NEW_CFDI);
   const [error,        setError]        = useState<string | null>(null);
+  const [busyAction,   setBusyAction]   = useState<null | "saving_draft" | "updating" | "stamping" | "deleting">(null);
+  const isEditingProforma = !!editProformaId;
   const [clients,      setClients]      = useState<Client[]>([]);
   const [products,     setProducts]     = useState<any[]>([]);
   const [editingConceptIdx, setEditingConceptIdx] = useState<number | null>(null);
@@ -147,6 +154,66 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
       });
   }, [open, companyId]);
 
+// Precargar datos de una Proforma existente (modo edición)
+  useEffect(() => {
+    if (!open || !editProformaId) return;
+
+    setError(null);
+    fetchProformaById(editProformaId)
+      .then((res) => {
+        if (!res) {
+          setError("No se pudo cargar la proforma");
+          return;
+        }
+        const { cfdi, concepts } = res;
+
+        setForm({
+          ...DEFAULT_NEW_CFDI,
+          client_id:         cfdi.related_client_id ?? "",
+          receiver_rfc:      cfdi.receiver_rfc ?? "",
+          receiver_name:     cfdi.receiver_name ?? "",
+          receiver_email:    cfdi.receiver_email ?? "",
+          receiver_zip:      cfdi.receiver_zip ?? "",
+          receiver_regime:   cfdi.receiver_fiscal_regime ?? "601",
+          receiver_cfdi_use: cfdi.receiver_cfdi_use ?? "G03",
+          currency:          cfdi.currency ?? "MXN",
+          exchange_rate:     Number(cfdi.exchange_rate ?? 1),
+          payment_method:    cfdi.payment_method ?? "PUE",
+          payment_form:      cfdi.payment_form ?? "03",
+          serie:             cfdi.serie ?? "A",
+          notes:             cfdi.notes ?? "",
+          cfdi_date:         cfdi.cfdi_date ? new Date(cfdi.cfdi_date).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+          concepts: concepts.map((c: any) => {
+            // Reconstruir taxes[] desde tax_rate / retention_rate
+            const taxes: any[] = [];
+            if (c.tax_rate !== null && c.tax_rate !== undefined) {
+              taxes.push({ type: "IVA", rate: Number(c.tax_rate), factor: Number(c.tax_rate) === 0 ? "Tasa" : "Tasa", withholding: false });
+            }
+            if (c.retention_rate && Number(c.retention_rate) > 0) {
+              taxes.push({ type: "IVA", rate: Number(c.retention_rate), factor: "Tasa", withholding: true });
+            }
+            const qty = Number(c.quantity);
+            const price = Number(c.unit_price);
+            const discAmount = Number(c.discount ?? 0);
+            const discPct = qty * price > 0 ? (discAmount / (qty * price)) * 100 : 0;
+            return {
+              product_key:  c.product_key,
+              unit_key:     c.unit_key,
+              description:  c.description,
+              unit:         c.unit ?? "Servicio",
+              quantity:     qty,
+              unit_price:   price,
+              discount_pct: Number(discPct.toFixed(2)),
+              taxes:        taxes.length > 0 ? taxes : DEFAULT_TAXES,
+              product_id:   c.product_id ?? undefined,
+            };
+          }),
+        });
+        setStep("receptor");
+      })
+      .catch((e) => setError(e.message ?? "Error cargando proforma"));
+  }, [open, editProformaId]);
+  
   // Precargar datos del embarque
   useEffect(() => {
     if (!open || !preloadShipment) return;
@@ -311,6 +378,69 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
     } catch (e: any) { setError(e.message); }
   }
 
+  // ── PROFORMAS ──
+
+  async function handleSaveAsProforma() {
+    if (!companyId) { setError("Empresa no detectada"); return; }
+    if (form.concepts.length === 0) { setError("Agrega al menos un concepto"); return; }
+    setError(null); setBusyAction("saving_draft");
+    try {
+      const proforma = await saveProforma(companyId, form);
+      onProformaChange?.("saved", proforma);
+      handleClose();
+    } catch (e: any) {
+      setError(e.message);
+    } finally { setBusyAction(null); }
+  }
+
+  async function handleUpdateProforma() {
+    if (!editProformaId || !companyId) return;
+    if (form.concepts.length === 0) { setError("Agrega al menos un concepto"); return; }
+    setError(null); setBusyAction("updating");
+    try {
+      await updateProforma(editProformaId, companyId, form);
+      onProformaChange?.("updated");
+      handleClose();
+    } catch (e: any) {
+      setError(e.message);
+    } finally { setBusyAction(null); }
+  }
+
+  async function handleStampProforma() {
+    if (!editProformaId) return;
+    if (!form.receiver_rfc)  { setError("RFC del receptor requerido para timbrar"); return; }
+    if (!form.receiver_name) { setError("Razón social del receptor requerida para timbrar"); return; }
+    if (form.concepts.length === 0) { setError("Agrega al menos un concepto"); return; }
+
+    if (!confirm("¿Timbrar esta proforma? Esta acción es irreversible y consume folio fiscal.")) return;
+
+    setError(null); setBusyAction("stamping");
+    try {
+      // Si el usuario hizo cambios, primero guardar y después timbrar
+      if (companyId) {
+        await updateProforma(editProformaId, companyId, form);
+      }
+      const result = await stampProforma(editProformaId);
+      onProformaChange?.("stamped", result.cfdi);
+      handleClose();
+    } catch (e: any) {
+      setError(e.message);
+    } finally { setBusyAction(null); }
+  }
+
+  async function handleDeleteProforma() {
+    if (!editProformaId) return;
+    if (!confirm("¿Eliminar esta proforma? Esta acción no se puede deshacer.")) return;
+    setError(null); setBusyAction("deleting");
+    try {
+      await deleteProforma(editProformaId);
+      onProformaChange?.("deleted");
+      handleClose();
+    } catch (e: any) {
+      setError(e.message);
+    } finally { setBusyAction(null); }
+  }
+
   function handleClose() {
     setStep("receptor");
     setForm(DEFAULT_NEW_CFDI);
@@ -355,7 +485,9 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: "14px" }}>
             <div>
               <div style={{ fontSize: "16px", fontWeight: 800, color: "var(--color-text-primary)" }}>
-                {es ? "Nueva Factura CFDI 4.0" : "New Invoice CFDI 4.0"}
+                {isEditingProforma
+                  ? (es ? "Editando Proforma" : "Editing Proforma")
+                  : (es ? "Nueva Factura CFDI 4.0" : "New Invoice CFDI 4.0")}
               </div>
               <div style={{ fontSize: "12px", color: "var(--color-text-muted)", marginTop: "2px" }}>
                 {STEPS.find(s => s.key === step)?.[es ? "labelEs" : "labelEn"]}
@@ -877,22 +1009,24 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
         </div>
 
         {/* FOOTER */}
-        <div style={{ padding: "14px 24px", borderTop: "1px solid var(--color-border-faint)", display: "flex", gap: "10px", flexShrink: 0 }}>
+        <div style={{ padding: "14px 24px", borderTop: "1px solid var(--color-border-faint)", display: "flex", gap: "10px", flexShrink: 0, flexWrap: "wrap" }}>
           {step !== "receptor" && step !== "moneda" && (
             <button onClick={() => {
               if (step === "config")    setStep("conceptos");
               else if (step === "conceptos") setStep(preloadShipment?.hasMultiCurrency ? "moneda" : "receptor");
               else setStep("receptor");
-            }} style={{ height: "40px", padding: "0 18px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", fontSize: "13px", cursor: "pointer" }}>
+            }} disabled={busyAction !== null} style={{ height: "40px", padding: "0 18px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", fontSize: "13px", cursor: busyAction ? "not-allowed" : "pointer", opacity: busyAction ? 0.5 : 1 }}>
               ← {es ? "Atrás" : "Back"}
             </button>
           )}
+
           {step === "moneda" && (
             <button onClick={applyMonedaMode} disabled={!currencyMode}
               style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: currencyMode ? "var(--color-brand-blue)" : "var(--color-bg-subtle)", color: currencyMode ? "#fff" : "var(--color-text-muted)", border: "none", fontSize: "13px", fontWeight: 700, cursor: currencyMode ? "pointer" : "not-allowed" }}>
               {es ? "Continuar" : "Continue"} →
             </button>
           )}
+
           {step === "receptor" && (
             <button onClick={() => {
               if (!form.receiver_rfc || !form.receiver_zip) { setError(es ? "RFC y código postal son requeridos" : "RFC and zip are required"); return; }
@@ -901,6 +1035,7 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
               {es ? "Siguiente" : "Next"} →
             </button>
           )}
+
           {step === "conceptos" && (
             <button onClick={() => {
               if (form.concepts.length === 0) { setError(es ? "Agrega al menos un concepto" : "Add at least one concept"); return; }
@@ -909,13 +1044,51 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
               {es ? "Siguiente" : "Next"} →
             </button>
           )}
-          {step === "config" && (
-            <button onClick={handleCreate} disabled={saving}
-              style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: saving ? "not-allowed" : "pointer", opacity: saving ? 0.7 : 1 }}>
-              {saving ? (es ? "Timbrando con SAT…" : "Stamping with SAT…") : (es ? "Timbrar Factura CFDI 4.0" : "Stamp Invoice CFDI 4.0")}
-            </button>
+
+          {/* ── PASO CONFIG: botones diferenciados según modo crear vs editar proforma ── */}
+          {step === "config" && !isEditingProforma && (
+            <>
+              <button
+                onClick={handleSaveAsProforma}
+                disabled={saving || busyAction !== null}
+                style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-bg-base)", color: "var(--color-text-primary)", border: "1px solid var(--color-border)", fontSize: "13px", fontWeight: 700, cursor: (saving || busyAction) ? "not-allowed" : "pointer", opacity: (saving || busyAction) ? 0.6 : 1 }}>
+                {busyAction === "saving_draft"
+                  ? (es ? "Guardando…" : "Saving…")
+                  : (es ? "📄 Guardar como Proforma" : "📄 Save as Proforma")}
+              </button>
+              <button onClick={handleCreate} disabled={saving || busyAction !== null}
+                style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: (saving || busyAction) ? "not-allowed" : "pointer", opacity: (saving || busyAction) ? 0.7 : 1 }}>
+                {saving ? (es ? "Timbrando con SAT…" : "Stamping with SAT…") : (es ? "⚡ Timbrar ahora" : "⚡ Stamp now")}
+              </button>
+            </>
           )}
-          <button onClick={handleClose} style={{ height: "40px", padding: "0 16px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-muted)", fontSize: "13px", cursor: "pointer" }}>
+
+          {step === "config" && isEditingProforma && (
+            <>
+              <button
+                onClick={handleDeleteProforma}
+                disabled={busyAction !== null}
+                style={{ height: "40px", padding: "0 16px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", color: "var(--color-danger-text)", border: "1px solid var(--color-danger-border)", fontSize: "13px", fontWeight: 700, cursor: busyAction ? "not-allowed" : "pointer", opacity: busyAction ? 0.6 : 1 }}>
+                {busyAction === "deleting" ? "…" : (es ? "🗑️ Eliminar" : "🗑️ Delete")}
+              </button>
+              <button
+                onClick={handleUpdateProforma}
+                disabled={busyAction !== null}
+                style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-bg-base)", color: "var(--color-text-primary)", border: "1px solid var(--color-border)", fontSize: "13px", fontWeight: 700, cursor: busyAction ? "not-allowed" : "pointer", opacity: busyAction ? 0.6 : 1 }}>
+                {busyAction === "updating" ? (es ? "Guardando…" : "Saving…") : (es ? "💾 Actualizar" : "💾 Update")}
+              </button>
+              <button
+                onClick={handleStampProforma}
+                disabled={busyAction !== null}
+                style={{ flex: 1, height: "40px", borderRadius: "var(--radius-md)", background: "var(--color-success-text)", color: "#fff", border: "none", fontSize: "13px", fontWeight: 700, cursor: busyAction ? "not-allowed" : "pointer", opacity: busyAction ? 0.7 : 1 }}>
+                {busyAction === "stamping"
+                  ? (es ? "Timbrando con SAT…" : "Stamping with SAT…")
+                  : (es ? "⚡ Timbrar ahora" : "⚡ Stamp now")}
+              </button>
+            </>
+          )}
+
+          <button onClick={handleClose} disabled={busyAction !== null} style={{ height: "40px", padding: "0 16px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-muted)", fontSize: "13px", cursor: busyAction ? "not-allowed" : "pointer", opacity: busyAction ? 0.5 : 1 }}>
             {es ? "Cancelar" : "Cancel"}
           </button>
         </div>
