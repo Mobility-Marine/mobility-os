@@ -366,3 +366,93 @@ export type CartaPorteParentType = "factura_carta_porte" | "traslado_carta_porte
 
 /** Status local del drawer (antes de enviar a BD). */
 export type CartaPorteDraftStatus = "draft" | "ready" | "stamped";
+
+// ═══════════════════════════════════════════════════════════════════════
+// 10) DATOS DEL CFDI BASE (Cliente + Conceptos + datos fiscales)
+// 
+// Esto es la información que va FUERA del complemento Carta Porte.
+// Junto con CartaPorteData forma el CFDI completo timbrado al SAT.
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface CFDIClienteData {
+  /** ID del cliente en BD (si se seleccionó de la lista). */
+  client_id?: string;
+
+  /** RFC del receptor. Para genéricos: XAXX010101000 (público) o XEXX010101000 (extranjero). */
+  receiver_rfc: string;
+
+  /** Razón social / nombre completo. */
+  receiver_name: string;
+
+  /** Régimen fiscal del receptor (catálogo SAT c_RegimenFiscal). Ej: "601", "612". */
+  receiver_fiscal_regime: string;
+
+  /** Código postal del domicilio fiscal (5 dígitos). */
+  receiver_zip: string;
+
+  /** Email del receptor (opcional, para enviar el CFDI). */
+  receiver_email?: string;
+
+  /** Uso del CFDI (catálogo SAT c_UsoCFDI). Ej: "G03", "S01". */
+  receiver_cfdi_use: string;
+}
+
+export interface CFDIConceptoLine {
+  _temp_id: string;
+
+  /** Clave SAT del producto/servicio (catálogo c_ClaveProdServ). */
+  product_key: string;
+
+  /** Clave SAT de la unidad (catálogo c_ClaveUnidad). */
+  unit_key: string;
+
+  /** Descripción libre del concepto. */
+  description: string;
+
+  /** Unidad descriptiva (ej: "Servicio", "Pieza"). */
+  unit?: string;
+
+  /** Cantidad. */
+  quantity: number;
+
+  /** Precio unitario antes de impuestos. */
+  unit_price: number;
+
+  /** % de descuento sobre el subtotal. */
+  discount_pct: number;
+
+  /** Tasa de IVA traslado (0.16, 0, etc). 0 = exento. */
+  tax_rate: number;
+
+  /** Tasa de IVA retenido (típicamente 0.04 o 0). */
+  retention_rate: number;
+
+  /** ID del producto en BD (si vino de un producto registrado). */
+  product_id?: string | null;
+}
+
+export interface CFDIBaseData {
+  cliente: CFDIClienteData;
+  conceptos: CFDIConceptoLine[];
+
+  /** Moneda del CFDI: MXN, USD, etc. */
+  currency: string;
+
+  /** Tipo de cambio si moneda != MXN. */
+  exchange_rate: number;
+
+  /** Método de pago SAT: PUE (una sola exhibición) o PPD (parcialidades). */
+  payment_method: "PUE" | "PPD";
+
+  /** Forma de pago SAT (catálogo c_FormaPago). Ej: "03", "99". */
+  payment_form: string;
+
+  /** Notas internas (no fiscales). */
+  notes?: string;
+}
+
+/** Estructura RAÍZ que combina CFDI base + Complemento Carta Porte. */
+export interface CFDIConCartaPorteData {
+  base: CFDIBaseData;
+  carta_porte: CartaPorteData;
+}
