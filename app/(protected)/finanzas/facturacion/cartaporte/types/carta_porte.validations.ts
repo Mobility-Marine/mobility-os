@@ -8,7 +8,15 @@
 import type { CartaPorteData } from "./carta_porte.types";
 
 export type ValidationError = {
-  section: "header" | "ubicaciones" | "mercancias" | "modo_transporte" | "figuras" | "regimen_aduanero";
+  section:
+    | "header"
+    | "ubicaciones"
+    | "mercancias"
+    | "modo_transporte"
+    | "figuras"
+    | "regimen_aduanero"
+    | "cliente"
+    | "conceptos";
   field: string;
   message: string;
 };
@@ -316,12 +324,8 @@ import type {
   CFDIConCartaPorteData,
 } from "./carta_porte.types";
 
-export type ValidationErrorExtended = ValidationError & {
-  section: "header" | "ubicaciones" | "mercancias" | "modo_transporte" | "figuras" | "regimen_aduanero" | "cliente" | "conceptos";
-};
-
-export function validateCFDIBase(base: CFDIBaseData): ValidationErrorExtended[] {
-  const errors: ValidationErrorExtended[] = [];
+export function validateCFDIBase(base: CFDIBaseData): ValidationError[] {
+  const errors: ValidationError[] = [];
 
   // ─── Cliente ───
   if (!base.cliente.receiver_rfc || base.cliente.receiver_rfc.length < 12) {
