@@ -1,161 +1,121 @@
 // ═══════════════════════════════════════════════════════════════════════
-// useSATCatalog: hook para consumir catálogos SAT con cache automático
+// GET /api/sat/catalogs?name=<catalog_name>
 // 
-// Uso simple:
-//   const { items, loading, error } = useSATCatalog("tipo_figura");
-//   
-//   // En un select:
-//   {items.map(it => <option key={it.code} value={it.code}>{it.label}</option>)}
+// Sirve catálogos SAT desde la tabla sat_catalogs.
 // 
-// Multi-catálogo (más eficiente cuando necesitas varios):
-//   const { catalogs, loading } = useSATCatalogs(["tipo_figura", "tipo_carga"]);
-//   const figuras = catalogs.tipo_figura ?? [];
+// Query params:
+//   - name (requerido):  nombre del catálogo (ej: "tipo_figura")
+//   - search (opcional): texto para filtrar por code o label
+//   - limit (opcional):  máximo a retornar (default 500)
 // 
-// Cache: en memoria global. Una vez cargado un catálogo, no se vuelve a
-// pedir al servidor en toda la sesión. Si necesitas refresh, llama
-// invalidateSATCatalog(name).
+// Multi-catálogo: si name es lista separada por comas, devuelve un objeto
+// con cada catálogo como key. Ej: ?name=tipo_figura,tipo_carga
 // ═══════════════════════════════════════════════════════════════════════
 
-import { useEffect, useState, useCallback } from "react";
+import { NextResponse } from "next/server";
+import { createClient } from "@supabase/supabase-js";
 
-export type CatalogItem = {
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+);
+
+type CatalogRow = {
   code:       string;
   label:      string;
-  metadata?:  any;
-  sort_order?: number;
+  metadata:   any;
+  sort_order: number;
 };
 
-// ── Cache global en memoria ─────────────────────────────────────────
-const memoryCache: Record<string, CatalogItem[]> = {};
-const inFlight: Record<string, Promise<CatalogItem[]> | undefined> = {};
-
-async function fetchCatalog(name: string): Promise<CatalogItem[]> {
-  // Cache hit
-  if (memoryCache[name]) return memoryCache[name];
-
-  // Si ya hay una request en vuelo para este catálogo, reutilizarla
-  if (inFlight[name]) return inFlight[name]!;
-
-  // Nueva request
-  const promise = (async () => {
-    const res = await fetch(`/api/sat/catalogs?name=${encodeURIComponent(name)}`);
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      throw new Error(err.error ?? `Error cargando catálogo ${name}`);
-    }
-    const data = await res.json();
-    const items: CatalogItem[] = data.items ?? [];
-    memoryCache[name] = items;
-    return items;
-  })();
-
-  inFlight[name] = promise;
+export async function GET(req: Request) {
   try {
-    return await promise;
-  } finally {
-    delete inFlight[name];
+    const { searchParams } = new URL(req.url);
+    const nameParam = searchParams.get("name");
+    const search    = searchParams.get("search")?.trim() ?? "";
+    const limit     = Math.min(Number(searchParams.get("limit") ?? 500), 2000);
+
+    if (!nameParam) {
+      return NextResponse.json(
+        { error: "Parámetro 'name' es requerido. Ej: ?name=tipo_figura" },
+        { status: 400 }
+      );
+    }
+
+    const names = nameParam.split(",").map((n) => n.trim()).filter(Boolean);
+
+    for (const n of names) {
+      if (!/^[a-z0-9_]+$/i.test(n)) {
+        return NextResponse.json(
+          { error: `Nombre de catálogo inválido: '${n}'` },
+          { status: 400 }
+        );
+      }
+    }
+
+    let query = supabaseAdmin
+      .from("sat_catalogs")
+      .select("catalog_name, code, label, metadata, sort_order")
+      .in("catalog_name", names)
+      .eq("active", true)
+      .order("sort_order", { ascending: true })
+      .limit(limit);
+
+    if (search) {
+      query = query.or(`code.ilike.%${search}%,label.ilike.%${search}%`);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      console.error("[/api/sat/catalogs] db error:", error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    if (names.length === 1) {
+      const items: CatalogRow[] = (data ?? []).map((r: any) => ({
+        code:       r.code,
+        label:      r.label,
+        metadata:   r.metadata,
+        sort_order: r.sort_order,
+      }));
+
+      return NextResponse.json(
+        { name: names[0], items, count: items.length },
+        {
+          status: 200,
+          headers: {
+            "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+          },
+        }
+      );
+    }
+
+    const grouped: Record<string, CatalogRow[]> = {};
+    for (const n of names) grouped[n] = [];
+    for (const r of data ?? []) {
+      const item: CatalogRow = {
+        code:       r.code,
+        label:      r.label,
+        metadata:   r.metadata,
+        sort_order: r.sort_order,
+      };
+      if (grouped[r.catalog_name]) grouped[r.catalog_name].push(item);
+    }
+
+    return NextResponse.json(
+      { catalogs: grouped },
+      {
+        status: 200,
+        headers: {
+          "Cache-Control": "public, max-age=3600, stale-while-revalidate=86400",
+        },
+      }
+    );
+  } catch (err: any) {
+    console.error("[/api/sat/catalogs] catch:", err);
+    return NextResponse.json(
+      { error: err.message ?? "Error inesperado" },
+      { status: 500 }
+    );
   }
-}
-
-/** Invalida un catálogo del cache (forzar refetch en próxima llamada) */
-export function invalidateSATCatalog(name: string) {
-  delete memoryCache[name];
-}
-
-/** Invalida todo el cache */
-export function invalidateAllSATCatalogs() {
-  for (const k of Object.keys(memoryCache)) delete memoryCache[k];
-}
-
-/** Hook para un solo catálogo */
-export function useSATCatalog(name: string) {
-  const [items, setItems]     = useState<CatalogItem[]>(() => memoryCache[name] ?? []);
-  const [loading, setLoading] = useState<boolean>(!memoryCache[name]);
-  const [error, setError]     = useState<string | null>(null);
-
-  useEffect(() => {
-    let cancelled = false;
-    if (memoryCache[name]) {
-      setItems(memoryCache[name]);
-      setLoading(false);
-      return;
-    }
-    setLoading(true);
-    fetchCatalog(name)
-      .then((res) => {
-        if (cancelled) return;
-        setItems(res);
-        setError(null);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setError(e.message ?? "Error cargando catálogo");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-    return () => { cancelled = true; };
-  }, [name]);
-
-  // Helper inline para buscar el label de un code
-  const findLabel = useCallback(
-    (code: string): string => items.find((i) => i.code === code)?.label ?? code,
-    [items]
-  );
-
-  return { items, loading, error, findLabel };
-}
-
-/** Hook para varios catálogos a la vez (más eficiente) */
-export function useSATCatalogs(names: string[]) {
-  const [catalogs, setCatalogs] = useState<Record<string, CatalogItem[]>>(() => {
-    const initial: Record<string, CatalogItem[]> = {};
-    for (const n of names) if (memoryCache[n]) initial[n] = memoryCache[n];
-    return initial;
-  });
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError]     = useState<string | null>(null);
-
-  // Memo del key para evitar refetches por re-render
-  const namesKey = names.join(",");
-
-  useEffect(() => {
-    let cancelled = false;
-
-    // Filtrar los que NO están en cache
-    const missing = names.filter((n) => !memoryCache[n]);
-
-    if (missing.length === 0) {
-      // Todos en cache, solo set state
-      const next: Record<string, CatalogItem[]> = {};
-      for (const n of names) next[n] = memoryCache[n];
-      setCatalogs(next);
-      setLoading(false);
-      return;
-    }
-
-    setLoading(true);
-
-    // Cargar los faltantes en paralelo (cada uno con su propio cache)
-    Promise.all(missing.map((n) => fetchCatalog(n)))
-      .then(() => {
-        if (cancelled) return;
-        const next: Record<string, CatalogItem[]> = {};
-        for (const n of names) next[n] = memoryCache[n] ?? [];
-        setCatalogs(next);
-        setError(null);
-      })
-      .catch((e) => {
-        if (cancelled) return;
-        setError(e.message ?? "Error cargando catálogos");
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
-
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [namesKey]);
-
-  return { catalogs, loading, error };
 }
