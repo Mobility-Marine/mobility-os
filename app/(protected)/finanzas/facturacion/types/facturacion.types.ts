@@ -292,20 +292,22 @@ export const CFDI_TYPE_GROUPS: CFDITypeGroup[] = [
     items: [
       {
         id: "factura", type: "I", labelEs: "Factura", labelEn: "Invoice",
-        descEs: "Comprobante de ingreso estándar CFDI 4.0", descEn: "Standard income receipt CFDI 4.0",
+        descEs: "Comprobante de ingreso estándar CFDI 4.0",
+        descEn: "Standard income receipt CFDI 4.0",
         icon: "M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z M14 2v6h6 M16 13H8 M16 17H8 M10 9H8",
       },
       {
-        id: "comercio_exterior", type: "I", labelEs: "Comercio Exterior", labelEn: "Foreign Trade",
-        descEs: "Factura con complemento de Comercio Exterior", descEn: "Invoice with Foreign Trade complement",
-        badge: "Pronto", disabled: true, disabledMsg: "Disponible próximamente",
-        icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
+        id: "factura_carta_porte", type: "I", labelEs: "Factura con Carta Porte", labelEn: "Invoice with Bill of Lading",
+        descEs: "Factura tipo I con Complemento Carta Porte 3.1 — para transportistas que cobran el flete al cliente",
+        descEn: "Type I invoice with Bill of Lading 3.1 complement — for carriers that charge freight to clients",
+        icon: "M1 3h15v13H1z M16 8h4l3 3v5h-7V8z M5.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M18.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z",
       },
       {
-        id: "carta_porte", type: "I", labelEs: "Carta Porte (CCP)", labelEn: "Bill of Lading",
-        descEs: "Factura con Complemento Carta Porte 3.1", descEn: "Invoice with Bill of Lading 3.1",
+        id: "comercio_exterior", type: "I", labelEs: "Factura con Comercio Exterior", labelEn: "Invoice with Foreign Trade",
+        descEs: "Factura tipo I con Complemento de Comercio Exterior — operaciones de exportación",
+        descEn: "Type I invoice with Foreign Trade complement — export operations",
         badge: "Pronto", disabled: true, disabledMsg: "Disponible próximamente",
-        icon: "M1 3h15v13H1z M16 8h4l3 3v5h-7V8z M5.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M18.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z",
+        icon: "M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z",
       },
     ],
   },
@@ -314,7 +316,8 @@ export const CFDI_TYPE_GROUPS: CFDITypeGroup[] = [
     items: [
       {
         id: "nota_credito", type: "E", labelEs: "Nota de Crédito", labelEn: "Credit Note",
-        descEs: "Devolución, descuento o bonificación sobre una factura emitida", descEn: "Return, discount or bonus on an issued invoice",
+        descEs: "Devolución, descuento o bonificación sobre una factura emitida",
+        descEn: "Return, discount or bonus on an issued invoice",
         icon: "M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
       },
     ],
@@ -324,7 +327,8 @@ export const CFDI_TYPE_GROUPS: CFDITypeGroup[] = [
     items: [
       {
         id: "complemento_pago", type: "P", labelEs: "Complemento de Pago (REP)", labelEn: "Payment Complement (REP)",
-        descEs: "Registra el pago de una factura PPD ya emitida", descEn: "Records payment for an already issued PPD invoice",
+        descEs: "Registra el pago de una factura PPD ya emitida",
+        descEn: "Records payment for an already issued PPD invoice",
         icon: "M12 1v22 M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6",
       },
     ],
@@ -333,10 +337,16 @@ export const CFDI_TYPE_GROUPS: CFDITypeGroup[] = [
     group: "traslado", groupEs: "Traslados", groupEn: "Transfers",
     items: [
       {
-        id: "traslado", type: "T", labelEs: "CFDI de Traslado", labelEn: "Transfer CFDI",
-        descEs: "Movimiento de mercancías sin transacción comercial", descEn: "Goods movement without commercial transaction",
-        badge: "Pronto", disabled: true, disabledMsg: "Disponible próximamente",
+        id: "traslado", type: "T", labelEs: "Traslado simple", labelEn: "Simple Transfer",
+        descEs: "Movimiento de mercancía propia sin valor comercial — uso interno (raro sin Carta Porte)",
+        descEn: "Movement of own goods without commercial value — internal use (rare without Bill of Lading)",
         icon: "M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3 M12 21l5-5-5-5 M7 16h10",
+      },
+      {
+        id: "traslado_carta_porte", type: "T", labelEs: "Traslado con Carta Porte", labelEn: "Transfer with Bill of Lading",
+        descEs: "CFDI Tipo T con Complemento Carta Porte 3.1 — para mover mercancía propia o de cliente con vehículos propios",
+        descEn: "Type T CFDI with Bill of Lading 3.1 complement — to move own or client goods with own vehicles",
+        icon: "M1 3h15v13H1z M16 8h4l3 3v5h-7V8z M5.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z M18.5 21a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z",
       },
     ],
   },
@@ -345,7 +355,8 @@ export const CFDI_TYPE_GROUPS: CFDITypeGroup[] = [
     items: [
       {
         id: "nomina", type: "N", labelEs: "Recibo de Nómina", labelEn: "Payroll Receipt",
-        descEs: "Timbra CFDIs de nómina para cada empleado con complemento nómina 1.2", descEn: "Stamp payroll CFDIs for each employee with payroll complement 1.2",
+        descEs: "Timbra CFDIs de nómina para cada empleado con complemento nómina 1.2",
+        descEn: "Stamp payroll CFDIs for each employee with payroll complement 1.2",
         icon: "M20 7H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z M12 12h.01",
       },
     ],
