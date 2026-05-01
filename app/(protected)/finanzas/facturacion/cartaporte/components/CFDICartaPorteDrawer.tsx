@@ -26,6 +26,8 @@ import {
 
 import { DatosGeneralesSection } from "./sections/DatosGeneralesSection";
 
+import { UbicacionesSection } from "./sections/UbicacionesSection";
+
 // ─────────────────────────────────────────────────────────────
 // Definición de pasos del stepper
 // ─────────────────────────────────────────────────────────────
@@ -80,6 +82,13 @@ export function CFDICartaPorteDrawer({ open, parentType, onClose }: Props) {
   const updateHeader = useCallback(
     (patch: Partial<CartaPorteData["header"]>) => {
       setData(prev => ({ ...prev, header: { ...prev.header, ...patch } }));
+    },
+    []
+  );
+
+  const setUbicaciones = useCallback(
+    (next: CartaPorteData["ubicaciones"]) => {
+      setData(prev => ({ ...prev, ubicaciones: next }));
     },
     []
   );
@@ -200,10 +209,11 @@ export function CFDICartaPorteDrawer({ open, parentType, onClose }: Props) {
             />
           )}
           {currentStep === 1 && (
-            <PlaceholderSection
-              title="Ubicaciones"
-              subtitle="Origen y destinos del trayecto con domicilios completos"
-              phase="3.3"
+            <UbicacionesSection
+              data={data}
+              setUbicaciones={setUbicaciones}
+              showValidation={showValidation}
+              errors={groupedErrors.ubicaciones ?? []}
             />
           )}
           {currentStep === 2 && (
