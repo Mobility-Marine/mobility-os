@@ -306,3 +306,64 @@ export function groupErrorsBySection(errors: ValidationError[]): Record<string, 
   }
   return grouped;
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// Validador del CFDI completo (Base + Carta Porte)
+// ═══════════════════════════════════════════════════════════════════════
+
+import type {
+  CFDIBaseData,
+  CFDIConCartaPorteData,
+} from "./carta_porte.types";
+
+export type ValidationErrorExtended = ValidationError & {
+  section: "header" | "ubicaciones" | "mercancias" | "modo_transporte" | "figuras" | "regimen_aduanero" | "cliente" | "conceptos";
+};
+
+export function validateCFDIBase(base: CFDIBaseData): ValidationErrorExtended[] {
+  const errors: ValidationErrorExtended[] = [];
+
+  // ─── Cliente ───
+  if (!base.cliente.receiver_rfc || base.cliente.receiver_rfc.length < 12) {
+    errors.push({ section: "cliente", field: "receiver_rfc", message: "RFC del cliente es obligatorio (12-13 caracteres)." });
+  }
+  if (!base.cliente.receiver_name) {
+    errors.push({ section: "cliente", field: "receiver_name", message: "Razón social del cliente es obligatoria." });
+  }
+  if (!base.cliente.receiver_fiscal_regime) {
+    errors.push({ section: "cliente", field: "receiver_fiscal_regime", message: "Régimen fiscal del cliente es obligatorio." });
+  }
+  if (!base.cliente.receiver_zip || base.cliente.receiver_zip.length !== 5) {
+    errors.push({ section: "cliente", field: "receiver_zip", message: "Código postal del cliente debe tener 5 dígitos." });
+  }
+  if (!base.cliente.receiver_cfdi_use) {
+    errors.push({ section: "cliente", field: "receiver_cfdi_use", message: "Uso de CFDI es obligatorio." });
+  }
+
+  // ─── Conceptos ───
+  if (!base.conceptos || base.conceptos.length === 0) {
+    errors.push({ section: "conceptos", field: "conceptos", message: "Debe haber al menos un concepto a facturar." });
+  }
+  base.conceptos.forEach((c, idx) => {
+    const prefix = `Concepto ${idx + 1}`;
+    if (!c.description) errors.push({ section: "conceptos", field: `conceptos[${idx}].description`, message: `${prefix}: descripción es obligatoria.` });
+    if (!c.product_key) errors.push({ section: "conceptos", field: `conceptos[${idx}].product_key`, message: `${prefix}: clave SAT del producto es obligatoria.` });
+    if (!c.unit_key)    errors.push({ section: "conceptos", field: `conceptos[${idx}].unit_key`,    message: `${prefix}: clave SAT de unidad es obligatoria.` });
+    if (!Number.isFinite(c.quantity)   || c.quantity   <= 0) errors.push({ section: "conceptos", field: `conceptos[${idx}].quantity`,   message: `${prefix}: cantidad debe ser mayor a 0.` });
+    if (!Number.isFinite(c.unit_price) || c.unit_price < 0)  errors.push({ section: "conceptos", field: `conceptos[${idx}].unit_price`, message: `${prefix}: precio unitario debe ser mayor o igual a 0.` });
+  });
+
+  // ─── Pagos ───
+  if (base.payment_method === "PPD" && base.payment_form !== "99") {
+    errors.push({ section: "conceptos", field: "payment_form", message: "Para pago PPD la forma de pago debe ser 99 (Por definir)." });
+  }
+
+  return errors;
+}
+
+export function validateCFDIConCartaPorte(data: CFDIConCartaPorteData): ValidationResult {
+  const baseErrors = validateCFDIBase(data.base);
+  const ccpResult  = validateCartaPorte(data.carta_porte);
+  const allErrors  = [...baseErrors, ...ccpResult.errors];
+  return { ok: allErrors.length === 0, errors: allErrors };
+}
