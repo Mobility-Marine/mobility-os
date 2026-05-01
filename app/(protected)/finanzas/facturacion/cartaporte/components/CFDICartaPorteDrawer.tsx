@@ -28,6 +28,8 @@ import { DatosGeneralesSection } from "./sections/DatosGeneralesSection";
 
 import { UbicacionesSection } from "./sections/UbicacionesSection";
 
+import { MercanciasSection } from "./sections/MercanciasSection";
+
 // ─────────────────────────────────────────────────────────────
 // Definición de pasos del stepper
 // ─────────────────────────────────────────────────────────────
@@ -89,6 +91,20 @@ export function CFDICartaPorteDrawer({ open, parentType, onClose }: Props) {
   const setUbicaciones = useCallback(
     (next: CartaPorteData["ubicaciones"]) => {
       setData(prev => ({ ...prev, ubicaciones: next }));
+    },
+    []
+  );
+
+  const setMercancias = useCallback(
+    (next: CartaPorteData["mercancias"]) => {
+      setData(prev => ({ ...prev, mercancias: next }));
+    },
+    []
+  );
+
+  const setMercanciasAgregado = useCallback(
+    (next: CartaPorteData["mercancias_agregado"]) => {
+      setData(prev => ({ ...prev, mercancias_agregado: next }));
     },
     []
   );
@@ -217,10 +233,12 @@ export function CFDICartaPorteDrawer({ open, parentType, onClose }: Props) {
             />
           )}
           {currentStep === 2 && (
-            <PlaceholderSection
-              title="Mercancías"
-              subtitle="Lista de bienes transportados con peso y características"
-              phase="3.4"
+            <MercanciasSection
+              data={data}
+              setMercancias={setMercancias}
+              setMercanciasAgregado={setMercanciasAgregado}
+              showValidation={showValidation}
+              errors={groupedErrors.mercancias ?? []}
             />
           )}
           {currentStep === 3 && (
