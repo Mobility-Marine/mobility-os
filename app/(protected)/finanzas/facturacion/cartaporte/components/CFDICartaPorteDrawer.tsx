@@ -30,6 +30,8 @@ import { UbicacionesSection } from "./sections/UbicacionesSection";
 
 import { MercanciasSection } from "./sections/MercanciasSection";
 
+import { ModoTransporteSection } from "./sections/ModoTransporteSection";
+
 // ─────────────────────────────────────────────────────────────
 // Definición de pasos del stepper
 // ─────────────────────────────────────────────────────────────
@@ -105,6 +107,34 @@ export function CFDICartaPorteDrawer({ open, parentType, onClose }: Props) {
   const setMercanciasAgregado = useCallback(
     (next: CartaPorteData["mercancias_agregado"]) => {
       setData(prev => ({ ...prev, mercancias_agregado: next }));
+    },
+    []
+  );
+
+  const setAutotransporte = useCallback(
+    (next: CartaPorteData["autotransporte"]) => {
+      setData(prev => ({ ...prev, autotransporte: next }));
+    },
+    []
+  );
+
+  const setMaritimo = useCallback(
+    (next: CartaPorteData["transporte_maritimo"]) => {
+      setData(prev => ({ ...prev, transporte_maritimo: next }));
+    },
+    []
+  );
+
+  const setAereo = useCallback(
+    (next: CartaPorteData["transporte_aereo"]) => {
+      setData(prev => ({ ...prev, transporte_aereo: next }));
+    },
+    []
+  );
+
+  const setFerroviario = useCallback(
+    (next: CartaPorteData["transporte_ferroviario"]) => {
+      setData(prev => ({ ...prev, transporte_ferroviario: next }));
     },
     []
   );
@@ -242,10 +272,14 @@ export function CFDICartaPorteDrawer({ open, parentType, onClose }: Props) {
             />
           )}
           {currentStep === 3 && (
-            <PlaceholderSection
-              title="Modo de Transporte"
-              subtitle="Detalles de autotransporte / marítimo / aéreo / ferroviario"
-              phase="3.5"
+            <ModoTransporteSection
+              data={data}
+              setAutotransporte={setAutotransporte}
+              setMaritimo={setMaritimo}
+              setAereo={setAereo}
+              setFerroviario={setFerroviario}
+              showValidation={showValidation}
+              errors={groupedErrors.modo_transporte ?? []}
             />
           )}
           {currentStep === 4 && (
