@@ -22,10 +22,21 @@ import type {
 import type { ValidationError } from "../../types/carta_porte.validations";
 
 // ─── Metadata visual de los modos de transporte ───
-const MODO_INFO: Record
-  ModoTransporteCode,
-  { label: string; iconPath: string; desc: string; color: string }
-> = {
+type ModoInfoEntry = {
+  label: string;
+  iconPath: string;
+  desc: string;
+  color: string;
+};
+
+type ColorClassEntry = {
+  bg: string;
+  border: string;
+  text: string;
+  iconBg: string;
+};
+
+const MODO_INFO: Record<ModoTransporteCode, ModoInfoEntry> = {
   "04": {
     label: "Autotransporte",
     desc: "Camiones y vehículos terrestres",
@@ -56,7 +67,7 @@ const MODO_INFO: Record
   },
 };
 
-const COLOR_CLASSES: Record<string, { bg: string; border: string; text: string; iconBg: string }> = {
+const COLOR_CLASSES: Record<string, ColorClassEntry> = {
   blue:   { bg: "bg-blue-600/15",   border: "border-blue-500",   text: "text-blue-100",   iconBg: "text-blue-400" },
   cyan:   { bg: "bg-cyan-600/15",   border: "border-cyan-500",   text: "text-cyan-100",   iconBg: "text-cyan-400" },
   indigo: { bg: "bg-indigo-600/15", border: "border-indigo-500", text: "text-indigo-100", iconBg: "text-indigo-400" },
