@@ -25,12 +25,11 @@ import {
 } from "../types/carta_porte.validations";
 
 import { DatosGeneralesSection } from "./sections/DatosGeneralesSection";
-
 import { UbicacionesSection } from "./sections/UbicacionesSection";
-
 import { MercanciasSection } from "./sections/MercanciasSection";
-
 import { ModoTransporteSection } from "./sections/ModoTransporteSection";
+import { FigurasSection } from "./sections/FigurasSection";
+import { RegimenAduaneroSection } from "./sections/RegimenAduaneroSection";
 
 // ─────────────────────────────────────────────────────────────
 // Definición de pasos del stepper
@@ -135,6 +134,20 @@ export function CFDICartaPorteDrawer({ open, parentType, onClose }: Props) {
   const setFerroviario = useCallback(
     (next: CartaPorteData["transporte_ferroviario"]) => {
       setData(prev => ({ ...prev, transporte_ferroviario: next }));
+    },
+    []
+  );
+
+  const setFiguras = useCallback(
+    (next: CartaPorteData["figuras"]) => {
+      setData(prev => ({ ...prev, figuras: next }));
+    },
+    []
+  );
+
+  const setRegimenes = useCallback(
+    (next: CartaPorteData["regimenes_aduaneros"]) => {
+      setData(prev => ({ ...prev, regimenes_aduaneros: next }));
     },
     []
   );
@@ -283,11 +296,26 @@ export function CFDICartaPorteDrawer({ open, parentType, onClose }: Props) {
             />
           )}
           {currentStep === 4 && (
-            <PlaceholderSection
-              title="Figuras de Transporte"
-              subtitle="Operador, propietario, arrendatario o notificado"
-              phase="3.6"
-            />
+            <div className="space-y-8">
+              <FigurasSection
+                data={data}
+                setFiguras={setFiguras}
+                showValidation={showValidation}
+                errors={groupedErrors.figuras ?? []}
+              />
+
+              {/* Régimen Aduanero solo es visible si la operación es internacional */}
+              {data.header.transp_internac === "Sí" && (
+                <div className="pt-6 border-t border-slate-700/50">
+                  <RegimenAduaneroSection
+                    data={data}
+                    setRegimenes={setRegimenes}
+                    showValidation={showValidation}
+                    errors={groupedErrors.regimen_aduanero ?? []}
+                  />
+                </div>
+              )}
+            </div>
           )}
           {currentStep === 5 && (
             <PlaceholderSection
