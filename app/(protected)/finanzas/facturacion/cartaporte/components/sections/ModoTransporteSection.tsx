@@ -31,10 +31,13 @@ import { AereoForm } from "../modos/AereoForm";
 import { FerroviarioForm } from "../modos/FerroviarioForm";
 
 // Metadata visual de los modos
-const MODO_INFO: Record
-  ModoTransporteCode,
-  { label: string; shortLabel: string; color: string }
-> = {
+type ModoInfoEntry = {
+  label: string;
+  shortLabel: string;
+  color: string;
+};
+
+const MODO_INFO: Record<ModoTransporteCode, ModoInfoEntry> = {
   "04": { label: "Autotransporte", shortLabel: "Auto",        color: "blue" },
   "01": { label: "Marítimo",       shortLabel: "Marítimo",    color: "cyan" },
   "02": { label: "Aéreo",          shortLabel: "Aéreo",       color: "indigo" },
