@@ -182,3 +182,58 @@ export function defaultCartaPorteData(): CartaPorteData {
     figuras: [],
   };
 }
+// ═══════════════════════════════════════════════════════════════════════
+// Defaults del CFDI base
+// ═══════════════════════════════════════════════════════════════════════
+
+import type {
+  CFDIClienteData,
+  CFDIConceptoLine,
+  CFDIBaseData,
+  CFDIConCartaPorteData,
+} from "./carta_porte.types";
+
+export function defaultCliente(): CFDIClienteData {
+  return {
+    receiver_rfc: "",
+    receiver_name: "",
+    receiver_fiscal_regime: "601", // Régimen General
+    receiver_zip: "",
+    receiver_email: "",
+    receiver_cfdi_use: "G03", // Gastos en general
+  };
+}
+
+export function newConcepto(): CFDIConceptoLine {
+  return {
+    _temp_id: `con_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+    product_key: "78101800", // Servicios de transporte de carga (default Mobility)
+    unit_key: "E48",          // Servicio
+    description: "",
+    unit: "Servicio",
+    quantity: 1,
+    unit_price: 0,
+    discount_pct: 0,
+    tax_rate: 0.16,           // IVA 16% por default
+    retention_rate: 0,
+  };
+}
+
+export function defaultCFDIBase(): CFDIBaseData {
+  return {
+    cliente: defaultCliente(),
+    conceptos: [newConcepto()],
+    currency: "MXN",
+    exchange_rate: 1,
+    payment_method: "PUE",
+    payment_form: "03", // Transferencia electrónica
+    notes: "",
+  };
+}
+
+export function defaultCFDIConCartaPorte(): CFDIConCartaPorteData {
+  return {
+    base: defaultCFDIBase(),
+    carta_porte: defaultCartaPorteData(),
+  };
+}
