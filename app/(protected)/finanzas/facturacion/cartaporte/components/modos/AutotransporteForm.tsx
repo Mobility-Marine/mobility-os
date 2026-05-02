@@ -2,250 +2,340 @@
 
 // ═══════════════════════════════════════════════════════════════════════
 // AutotransporteForm — Datos del transporte por carretera
-// Catálogos SAT vía useSATCatalog (oficiales completos)
-// Estilos: inline + CSS variables
+//
+// Captura: permiso SCT, vehículo (config, peso, placa, año), seguros,
+// y remolques opcionales (hasta 2).
 // ═══════════════════════════════════════════════════════════════════════
 
 import { useSATCatalog } from "@/lib/hooks/useSATCatalog";
 import type { Autotransporte, Remolque } from "../../types/carta_porte.types";
 
 interface Props {
-  data: Autotransporte;
-  setData: (next: Autotransporte) => void;
-  showValidation: boolean;
-  errors: { field: string; message: string }[];
+  value: Autotransporte;
+  onChange: (next: Autotransporte) => void;
 }
 
-export function AutotransporteForm({ data, setData }: Props) {
-  const { items: permisos,  loading: loadingPermisos }  = useSATCatalog("tipo_permiso_sct");
-  const { items: configs,   loading: loadingConfigs }   = useSATCatalog("config_autotransporte");
-  const { items: subtipos,  loading: loadingSubtipos }  = useSATCatalog("subtipo_remolque");
+export function AutotransporteForm({ value, onChange }: Props) {
+  const { items: permisos, loading: loadingPermisos } = useSATCatalog("tipo_permiso_sct");
+  const { items: configs, loading: loadingConfigs } = useSATCatalog("config_autotransporte");
+  const { items: subtipos, loading: loadingSubtipos } = useSATCatalog("subtipo_remolque");
 
-  const update       = (patch: Partial<Autotransporte>) => setData({ ...data, ...patch });
-  const updateIdent  = (patch: Partial<Autotransporte["identificacion_vehicular"]>) =>
-    setData({ ...data, identificacion_vehicular: { ...data.identificacion_vehicular, ...patch } });
+  // Updaters
+  const update = (patch: Partial<Autotransporte>) => onChange({ ...value, ...patch });
+  const updateIdent = (patch: Partial<Autotransporte["identificacion_vehicular"]>) =>
+    onChange({ ...value, identificacion_vehicular: { ...value.identificacion_vehicular, ...patch } });
   const updateSeguros = (patch: Partial<Autotransporte["seguros"]>) =>
-    setData({ ...data, seguros: { ...data.seguros, ...patch } });
+    onChange({ ...value, seguros: { ...value.seguros, ...patch } });
 
   const addRemolque = () => {
     const nuevo: Remolque = { subtipo_rem: "", placa: "" };
-    update({ remolques: [...(data.remolques ?? []), nuevo] });
+    onChange({ ...value, remolques: [...(value.remolques ?? []), nuevo] });
   };
+
   const updateRemolque = (idx: number, patch: Partial<Remolque>) => {
-    const list = [...(data.remolques ?? [])];
+    const list = [...(value.remolques ?? [])];
     list[idx] = { ...list[idx], ...patch };
-    update({ remolques: list });
+    onChange({ ...value, remolques: list });
   };
+
   const removeRemolque = (idx: number) => {
-    update({ remolques: (data.remolques ?? []).filter((_, i) => i !== idx) });
+    const list = [...(value.remolques ?? [])];
+    list.splice(idx, 1);
+    onChange({ ...value, remolques: list });
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-
-      {/* Permiso SCT */}
-      <Section title="Permiso SCT" subtitle="Permiso de la Secretaría de Comunicaciones y Transportes">
-        <Grid>
-          <FieldS label="Tipo de permiso SCT" required>
-            <select value={data.perm_sct}
+    <div className="space-y-5">
+      {/* ── Permiso SCT ── */}
+      <CardGroup
+        title="Permiso SCT"
+        subtitle="Permiso de la Secretaría de Comunicaciones y Transportes"
+        color="blue"
+      >
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <Label required>Tipo de permiso SCT</Label>
+            <select
+              value={value.perm_sct}
               onChange={e => update({ perm_sct: e.target.value })}
               disabled={loadingPermisos}
-              style={INPUT}>
-              <option value="">{loadingPermisos ? "Cargando..." : "Selecciona..."}</option>
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            >
+              <option value="">{loadingPermisos ? "Cargando..." : "Selecciona tipo de permiso..."}</option>
               {permisos.map(p => (
-                <option key={p.code} value={p.code}>{p.code} — {p.label}</option>
+                <option key={p.code} value={p.code}>
+                  {p.code} — {p.label}
+                </option>
               ))}
             </select>
-          </FieldS>
-          <FieldS label="Número de permiso SCT" required>
-            <input type="text" value={data.num_permiso_sct}
+          </div>
+          <div>
+            <Label required>Número de permiso SCT</Label>
+            <input
+              type="text"
+              value={value.num_permiso_sct}
               onChange={e => update({ num_permiso_sct: e.target.value })}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               placeholder="Ej: A-12345/2024"
-              style={{ ...INPUT, fontFamily: "monospace" }} />
-          </FieldS>
-        </Grid>
-      </Section>
+            />
+          </div>
+        </div>
+      </CardGroup>
 
-      {/* Identificación vehicular */}
-      <Section title="Identificación del vehículo motriz">
-        <FieldS label="Configuración vehicular" required hint="Tipo de unidad: camión, tractocamión, articulado, etc.">
-          <select value={data.identificacion_vehicular.config_vehicular}
-            onChange={e => updateIdent({ config_vehicular: e.target.value })}
-            disabled={loadingConfigs}
-            style={INPUT}>
-            <option value="">{loadingConfigs ? "Cargando..." : "Selecciona configuración..."}</option>
-            {configs.map(c => (
-              <option key={c.code} value={c.code}>{c.code} — {c.label}</option>
-            ))}
-          </select>
-        </FieldS>
-
-        <Grid>
-          <FieldS label="Placa del vehículo motriz" required>
-            <input type="text" value={data.identificacion_vehicular.placa_vm}
+      {/* ── Identificación vehicular ── */}
+      <CardGroup title="Identificación del vehículo motriz" color="blue">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="md:col-span-2">
+            <Label required>Configuración vehicular</Label>
+            <select
+              value={value.identificacion_vehicular.config_vehicular}
+              onChange={e => updateIdent({ config_vehicular: e.target.value })}
+              disabled={loadingConfigs}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            >
+              <option value="">{loadingConfigs ? "Cargando..." : "Selecciona configuración..."}</option>
+              {configs.map(c => (
+                <option key={c.code} value={c.code}>
+                  {c.code} — {c.label}
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-slate-500 mt-1">
+              Indica el tipo de unidad (camión, tractocamión, articulado, etc.)
+            </p>
+          </div>
+          <div>
+            <Label required>Placa del vehículo motriz</Label>
+            <input
+              type="text"
+              value={value.identificacion_vehicular.placa_vm}
               onChange={e => updateIdent({ placa_vm: e.target.value.toUpperCase() })}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               placeholder="ABC-123-D"
-              style={{ ...INPUT, fontFamily: "monospace" }} />
-          </FieldS>
-          <FieldS label="Año modelo" required>
-            <input type="number" min="1900" max="2100"
-              value={data.identificacion_vehicular.anio_modelo_vm}
+            />
+          </div>
+          <div>
+            <Label required>Año modelo</Label>
+            <input
+              type="number"
+              min="1900"
+              max="2100"
+              value={value.identificacion_vehicular.anio_modelo_vm}
               onChange={e => updateIdent({ anio_modelo_vm: parseInt(e.target.value, 10) || new Date().getFullYear() })}
-              style={{ ...INPUT, textAlign: "right", fontVariantNumeric: "tabular-nums" }} />
-          </FieldS>
-          <FieldS label="Peso bruto vehicular (toneladas)" required hint="Capacidad máxima de carga">
-            <input type="number" min="0" step="0.001"
-              value={data.identificacion_vehicular.peso_bruto_vehicular || ""}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label required>Peso bruto vehicular (toneladas)</Label>
+            <input
+              type="number"
+              min="0"
+              step="0.001"
+              value={value.identificacion_vehicular.peso_bruto_vehicular || ""}
               onChange={e => updateIdent({ peso_bruto_vehicular: parseFloat(e.target.value) || 0 })}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               placeholder="0.000"
-              style={{ ...INPUT, textAlign: "right", fontVariantNumeric: "tabular-nums" }} />
-          </FieldS>
-        </Grid>
-      </Section>
+            />
+            <p className="text-[11px] text-slate-500 mt-1">
+              Capacidad máxima de carga del vehículo en toneladas
+            </p>
+          </div>
+        </div>
+      </CardGroup>
 
-      {/* Seguros */}
-      <Section title="Seguros">
-        <Grid>
-          <FieldS label="Aseguradora resp. civil" required>
-            <input type="text" value={data.seguros.asegura_resp_civil}
+      {/* ── Seguros ── */}
+      <CardGroup title="Seguros" color="blue">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div>
+            <Label required>Aseguradora de responsabilidad civil</Label>
+            <input
+              type="text"
+              value={value.seguros.asegura_resp_civil}
               onChange={e => updateSeguros({ asegura_resp_civil: e.target.value })}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               placeholder="Ej: GNP Seguros"
-              style={INPUT} />
-          </FieldS>
-          <FieldS label="Póliza resp. civil" required>
-            <input type="text" value={data.seguros.poliza_resp_civil}
+            />
+          </div>
+          <div>
+            <Label required>Póliza de responsabilidad civil</Label>
+            <input
+              type="text"
+              value={value.seguros.poliza_resp_civil}
               onChange={e => updateSeguros({ poliza_resp_civil: e.target.value })}
-              style={{ ...INPUT, fontFamily: "monospace" }} />
-          </FieldS>
-          <FieldS label="Aseguradora medio ambiente" hint="Solo si transportas materiales peligrosos">
-            <input type="text" value={data.seguros.asegura_med_ambiente ?? ""}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              placeholder="Número de póliza"
+            />
+          </div>
+          <div>
+            <Label>Aseguradora medio ambiente (opcional)</Label>
+            <input
+              type="text"
+              value={value.seguros.asegura_med_ambiente ?? ""}
               onChange={e => updateSeguros({ asegura_med_ambiente: e.target.value || undefined })}
-              style={INPUT} />
-          </FieldS>
-          <FieldS label="Póliza medio ambiente">
-            <input type="text" value={data.seguros.poliza_med_ambiente ?? ""}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              placeholder="Solo si transportas materiales peligrosos"
+            />
+          </div>
+          <div>
+            <Label>Póliza medio ambiente</Label>
+            <input
+              type="text"
+              value={value.seguros.poliza_med_ambiente ?? ""}
               onChange={e => updateSeguros({ poliza_med_ambiente: e.target.value || undefined })}
-              style={{ ...INPUT, fontFamily: "monospace" }} />
-          </FieldS>
-          <FieldS label="Aseguradora carga">
-            <input type="text" value={data.seguros.asegura_carga ?? ""}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+          <div>
+            <Label>Aseguradora de carga (opcional)</Label>
+            <input
+              type="text"
+              value={value.seguros.asegura_carga ?? ""}
               onChange={e => updateSeguros({ asegura_carga: e.target.value || undefined })}
-              style={INPUT} />
-          </FieldS>
-          <FieldS label="Póliza carga">
-            <input type="text" value={data.seguros.poliza_carga ?? ""}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+          <div>
+            <Label>Póliza de carga</Label>
+            <input
+              type="text"
+              value={value.seguros.poliza_carga ?? ""}
               onChange={e => updateSeguros({ poliza_carga: e.target.value || undefined })}
-              style={{ ...INPUT, fontFamily: "monospace" }} />
-          </FieldS>
-          <FieldS label="Prima del seguro">
-            <input type="number" min="0" step="0.01"
-              value={data.seguros.prima_seguro ?? ""}
-              onChange={e => updateSeguros({ prima_seguro: e.target.value ? parseFloat(e.target.value) : undefined })}
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            />
+          </div>
+          <div className="md:col-span-2">
+            <Label>Prima del seguro (opcional)</Label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={value.seguros.prima_seguro ?? ""}
+              onChange={e =>
+                updateSeguros({ prima_seguro: e.target.value ? parseFloat(e.target.value) : undefined })
+              }
+              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-blue-500/50"
               placeholder="0.00"
-              style={{ ...INPUT, textAlign: "right", fontVariantNumeric: "tabular-nums" }} />
-          </FieldS>
-        </Grid>
-      </Section>
+            />
+          </div>
+        </div>
+      </CardGroup>
 
-      {/* Remolques */}
-      <Section title="Remolques (opcional, hasta 2)" subtitle="Remolques o semirremolques que arrastra la unidad motriz">
-        {(data.remolques ?? []).length === 0 ? (
-          <button type="button" onClick={addRemolque} style={DASHED_BUTTON}>
-            + Agregar remolque
+      {/* ── Remolques ── */}
+      <CardGroup
+        title="Remolques (opcional)"
+        subtitle="Hasta 2 remolques o semirremolques que arrastra la unidad motriz"
+        color="blue"
+      >
+        {(value.remolques ?? []).length === 0 ? (
+          <button
+            type="button"
+            onClick={addRemolque}
+            className="w-full py-2 text-sm border border-dashed border-slate-600 rounded-lg text-slate-400 hover:text-blue-300 hover:border-blue-500/50 hover:bg-blue-950/20 transition flex items-center justify-center gap-2"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+            </svg>
+            Agregar remolque
           </button>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-            {(data.remolques ?? []).map((r, idx) => (
-              <div key={idx} style={{
-                padding: "12px", borderRadius: "var(--radius-md)",
-                background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)",
-              }}>
-                <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", marginBottom: "8px" }}>
-                  Remolque #{idx + 1}
+          <div className="space-y-2">
+            {(value.remolques ?? []).map((r, idx) => (
+              <div
+                key={idx}
+                className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2 items-end p-3 bg-slate-800/40 border border-slate-700 rounded-lg"
+              >
+                <div>
+                  <Label required>Subtipo de remolque</Label>
+                  <select
+                    value={r.subtipo_rem}
+                    onChange={e => updateRemolque(idx, { subtipo_rem: e.target.value })}
+                    disabled={loadingSubtipos}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  >
+                    <option value="">{loadingSubtipos ? "Cargando..." : "Selecciona..."}</option>
+                    {subtipos.map(s => (
+                      <option key={s.code} value={s.code}>
+                        {s.code} — {s.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
-                <Grid>
-                  <FieldS label="Subtipo de remolque" required>
-                    <select value={r.subtipo_rem}
-                      onChange={e => updateRemolque(idx, { subtipo_rem: e.target.value })}
-                      disabled={loadingSubtipos}
-                      style={INPUT}>
-                      <option value="">{loadingSubtipos ? "Cargando..." : "Selecciona..."}</option>
-                      {subtipos.map(s => (
-                        <option key={s.code} value={s.code}>{s.code} — {s.label}</option>
-                      ))}
-                    </select>
-                  </FieldS>
-                  <FieldS label="Placa" required>
-                    <input type="text" value={r.placa}
-                      onChange={e => updateRemolque(idx, { placa: e.target.value.toUpperCase() })}
-                      placeholder="ABC-123-D"
-                      style={{ ...INPUT, fontFamily: "monospace" }} />
-                  </FieldS>
-                  <div style={{ display: "flex", alignItems: "flex-end" }}>
-                    <button type="button" onClick={() => removeRemolque(idx)} style={BUTTON_DANGER}>
-                      Eliminar
-                    </button>
-                  </div>
-                </Grid>
+                <div>
+                  <Label required>Placa</Label>
+                  <input
+                    type="text"
+                    value={r.placa}
+                    onChange={e => updateRemolque(idx, { placa: e.target.value.toUpperCase() })}
+                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    placeholder="ABC-123-D"
+                  />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeRemolque(idx)}
+                  className="px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/30 rounded-lg transition"
+                  title="Quitar remolque"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                  </svg>
+                </button>
               </div>
             ))}
-            {(data.remolques?.length ?? 0) < 2 && (
-              <button type="button" onClick={addRemolque} style={DASHED_BUTTON}>
-                + Agregar otro remolque
+            {(value.remolques?.length ?? 0) < 2 && (
+              <button
+                type="button"
+                onClick={addRemolque}
+                className="w-full py-2 text-sm border border-dashed border-slate-600 rounded-lg text-slate-400 hover:text-blue-300 hover:border-blue-500/50 hover:bg-blue-950/20 transition flex items-center justify-center gap-2"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Agregar otro remolque
               </button>
             )}
           </div>
         )}
-      </Section>
+      </CardGroup>
     </div>
   );
 }
 
-const INPUT: React.CSSProperties = {
-  width: "100%", height: "36px", padding: "0 10px",
-  borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)",
-  background: "var(--color-bg-subtle)", color: "var(--color-text-primary)",
-  fontSize: "13px", outline: "none", boxSizing: "border-box",
-};
-const DASHED_BUTTON: React.CSSProperties = {
-  width: "100%", padding: "10px",
-  borderRadius: "var(--radius-md)",
-  border: "1px dashed var(--color-border)",
-  background: "transparent", color: "var(--color-text-muted)",
-  fontSize: "12px", fontWeight: 600, cursor: "pointer",
-};
-const BUTTON_DANGER: React.CSSProperties = {
-  padding: "8px 12px", fontSize: "11px", fontWeight: 600, height: "36px",
-  borderRadius: "var(--radius-md)", border: "1px solid var(--color-danger-border)",
-  background: "var(--color-danger-bg)", color: "var(--color-danger-text)", cursor: "pointer",
-};
-
-function Section({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+// ─── Helpers UI ───
+function CardGroup({
+  title,
+  subtitle,
+  color,
+  children,
+}: {
+  title: string;
+  subtitle?: string;
+  color: "blue" | "cyan" | "indigo" | "amber";
+  children: React.ReactNode;
+}) {
+  const borderColors: Record<string, string> = {
+    blue: "border-blue-800/30",
+    cyan: "border-cyan-800/30",
+    indigo: "border-indigo-800/30",
+    amber: "border-amber-800/30",
+  };
   return (
-    <div>
-      <div style={{ marginBottom: "10px" }}>
-        <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em" }}>
-          {title}
-        </div>
-        {subtitle && <div style={{ fontSize: "11px", color: "var(--color-text-muted)", marginTop: "2px" }}>{subtitle}</div>}
+    <div className={`bg-slate-800/30 border rounded-xl p-4 ${borderColors[color]}`}>
+      <div className="mb-3">
+        <h4 className="text-sm font-semibold text-white">{title}</h4>
+        {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
       </div>
       {children}
     </div>
   );
 }
 
-function Grid({ children }: { children: React.ReactNode }) {
-  return <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>{children}</div>;
-}
-
-function FieldS({ label, required, hint, children }: { label: string; required?: boolean; hint?: string; children: React.ReactNode }) {
+function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
   return (
-    <div>
-      <label style={{ display: "block", fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "5px", fontWeight: 500 }}>
-        {label}{required && <span style={{ color: "#dc2626", marginLeft: "3px" }}>*</span>}
-      </label>
+    <label className="block text-xs text-slate-400 mb-1.5">
       {children}
-      {hint && <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "4px", lineHeight: 1.4 }}>{hint}</div>}
-    </div>
+      {required && <span className="text-red-400 ml-0.5">*</span>}
+    </label>
   );
 }
