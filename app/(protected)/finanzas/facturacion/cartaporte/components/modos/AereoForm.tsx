@@ -2,6 +2,11 @@
 
 // ═══════════════════════════════════════════════════════════════════════
 // AereoForm — Datos del transporte aéreo
+// Estilos: inline + CSS variables (mismo patrón que ConceptosSection)
+//
+// Captura: permiso SCT, aeronave (matrícula, transportista, guía aérea,
+// lugar de contrato), seguros (aseguradora + póliza obligatorios),
+// y datos del embarcador (opcional, residente extranjero).
 // ═══════════════════════════════════════════════════════════════════════
 
 import { useSATCatalog } from "@/lib/hooks/useSATCatalog";
@@ -13,110 +18,113 @@ interface Props {
 }
 
 export function AereoForm({ value, onChange }: Props) {
-  const { items: codigos } = useSATCatalog("codigo_transporte_aereo");
-  const { items: paises } = useSATCatalog("paises_comunes");
+  const { items: codigos, loading: loadingCodigos } = useSATCatalog("codigo_transporte_aereo");
+  const { items: paises, loading: loadingPaises } = useSATCatalog("paises_comunes");
 
   const update = (patch: Partial<TransporteAereo>) =>
     onChange({ ...value, ...patch });
 
   return (
-    <div className="space-y-5">
-      {/* ── Permiso ── */}
-      <CardGroup title="Permiso SCT" color="indigo">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <Label required>Tipo de permiso SCT</Label>
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      {/* ── Permiso SCT ── */}
+      <CardGroup title="Permiso SCT">
+        <div style={GRID2}>
+          <FieldS label="Tipo de permiso SCT" required>
             <input
               type="text"
               value={value.perm_sct}
               onChange={e => update({ perm_sct: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              style={{ ...INPUT, fontFamily: "monospace" }}
             />
-          </div>
-          <div>
-            <Label required>Número de permiso SCT</Label>
+          </FieldS>
+          <FieldS label="Número de permiso SCT" required>
             <input
               type="text"
               value={value.num_permiso_sct}
               onChange={e => update({ num_permiso_sct: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              style={{ ...INPUT, fontFamily: "monospace" }}
             />
-          </div>
+          </FieldS>
         </div>
       </CardGroup>
 
-      {/* ── Aeronave ── */}
-      <CardGroup title="Aeronave y vuelo" color="indigo">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <Label required>Matrícula de la aeronave</Label>
+      {/* ── Aeronave y vuelo ── */}
+      <CardGroup title="Aeronave y vuelo">
+        <div style={GRID2}>
+          <FieldS label="Matrícula de la aeronave" required>
             <input
               type="text"
               value={value.matricula_aeronave}
               onChange={e => update({ matricula_aeronave: e.target.value.toUpperCase() })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
               placeholder="XA-AMP"
+              style={{ ...INPUT, fontFamily: "monospace" }}
             />
-          </div>
-          <div>
-            <Label required>Código de transportista (IATA/ICAO)</Label>
+          </FieldS>
+          <FieldS
+            label="Código de transportista (IATA/ICAO)"
+            required
+            hint="Catálogo c_CodigoTransporteAereo (AAL, AMX, DAL...)"
+          >
             <select
               value={value.codigo_transportista}
               onChange={e => update({ codigo_transportista: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              disabled={loadingCodigos}
+              style={INPUT}
             >
-              <option value="">Selecciona aerolínea...</option>
+              <option value="">{loadingCodigos ? "Cargando..." : "Selecciona aerolínea..."}</option>
               {codigos.map(c => (
                 <option key={c.code} value={c.code}>
                   {c.code} — {c.label}
                 </option>
               ))}
             </select>
-          </div>
-          <div>
-            <Label required>Número de guía aérea</Label>
+          </FieldS>
+          <FieldS
+            label="Número de guía aérea"
+            required
+            hint="Air Waybill (AWB) emitido por la aerolínea"
+          >
             <input
               type="text"
               value={value.numero_guia}
               onChange={e => update({ numero_guia: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              placeholder="Air Waybill (AWB)"
+              placeholder="AWB number"
+              style={{ ...INPUT, fontFamily: "monospace" }}
             />
-          </div>
-          <div>
-            <Label required>Lugar de contrato</Label>
+          </FieldS>
+          <FieldS label="Lugar de contrato" required>
             <input
               type="text"
               value={value.lugar_contrato}
               onChange={e => update({ lugar_contrato: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
               placeholder="Ciudad / Aeropuerto"
+              style={INPUT}
             />
-          </div>
+          </FieldS>
         </div>
       </CardGroup>
 
       {/* ── Seguros ── */}
-      <CardGroup title="Seguros" color="indigo">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <Label required>Aseguradora</Label>
+      <CardGroup title="Seguros">
+        <div style={GRID2}>
+          <FieldS label="Aseguradora" required>
             <input
               type="text"
               value={value.nombre_aseg}
               onChange={e => update({ nombre_aseg: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              placeholder="Ej: AIG Seguros, Chubb..."
+              style={INPUT}
             />
-          </div>
-          <div>
-            <Label required>Número de póliza</Label>
+          </FieldS>
+          <FieldS label="Número de póliza" required>
             <input
               type="text"
               value={value.num_poliza_seguro}
               onChange={e => update({ num_poliza_seguro: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              placeholder="Número de póliza"
+              style={{ ...INPUT, fontFamily: "monospace" }}
             />
-          </div>
+          </FieldS>
         </div>
       </CardGroup>
 
@@ -124,89 +132,153 @@ export function AereoForm({ value, onChange }: Props) {
       <CardGroup
         title="Embarcador (opcional)"
         subtitle="Datos del exportador o expedidor de la mercancía"
-        color="indigo"
       >
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <Label>RFC del embarcador</Label>
+        <div style={GRID2}>
+          <FieldS label="RFC del embarcador">
             <input
               type="text"
               value={value.rfc_embarcador ?? ""}
               onChange={e => update({ rfc_embarcador: e.target.value.toUpperCase() || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              placeholder="ABC850101XXX"
               maxLength={13}
+              style={{ ...INPUT, fontFamily: "monospace" }}
             />
-          </div>
-          <div>
-            <Label>Nombre del embarcador</Label>
+          </FieldS>
+          <FieldS label="Nombre del embarcador">
             <input
               type="text"
               value={value.nombre_embarcador ?? ""}
               onChange={e => update({ nombre_embarcador: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              style={INPUT}
             />
-          </div>
-          <div>
-            <Label>Núm. registro tributario (extranjero)</Label>
+          </FieldS>
+          <FieldS
+            label="Núm. registro tributario"
+            hint="Solo si es residente extranjero"
+          >
             <input
               type="text"
               value={value.num_reg_id_trib_embarc ?? ""}
               onChange={e => update({ num_reg_id_trib_embarc: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              style={INPUT}
             />
-          </div>
-          <div>
-            <Label>Residencia fiscal</Label>
+          </FieldS>
+          <FieldS label="Residencia fiscal">
             <select
               value={value.residencia_fiscal_embarc ?? ""}
               onChange={e => update({ residencia_fiscal_embarc: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+              disabled={loadingPaises}
+              style={INPUT}
             >
               <option value="">No aplica</option>
               {paises.map(p => (
                 <option key={p.code} value={p.code}>{p.label}</option>
               ))}
             </select>
-          </div>
+          </FieldS>
         </div>
       </CardGroup>
     </div>
   );
 }
 
+// ─────────────────────────────────────────────────────────────
+// Helpers de UI compartidos
+// ─────────────────────────────────────────────────────────────
+
+const INPUT: React.CSSProperties = {
+  width: "100%",
+  height: "36px",
+  padding: "0 10px",
+  borderRadius: "var(--radius-md)",
+  border: "1px solid var(--color-border)",
+  background: "var(--color-bg-base)",
+  color: "var(--color-text-primary)",
+  fontSize: "13px",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+const GRID2: React.CSSProperties = {
+  display: "grid",
+  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+  gap: "10px",
+};
+
 function CardGroup({
   title,
   subtitle,
-  color,
   children,
 }: {
   title: string;
   subtitle?: string;
-  color: "blue" | "cyan" | "indigo" | "amber";
   children: React.ReactNode;
 }) {
-  const borderColors: Record<string, string> = {
-    blue: "border-blue-800/30",
-    cyan: "border-cyan-800/30",
-    indigo: "border-indigo-800/30",
-    amber: "border-amber-800/30",
-  };
   return (
-    <div className={`bg-slate-800/30 border rounded-xl p-4 ${borderColors[color]}`}>
-      <div className="mb-3">
-        <h4 className="text-sm font-semibold text-white">{title}</h4>
-        {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+    <div style={{
+      padding: "14px 16px",
+      borderRadius: "var(--radius-md)",
+      background: "var(--color-bg-subtle)",
+      border: "1px solid var(--color-border-faint)",
+    }}>
+      <div style={{ marginBottom: "12px" }}>
+        <div style={{
+          fontSize: "13px",
+          fontWeight: 700,
+          color: "var(--color-text-primary)",
+        }}>
+          {title}
+        </div>
+        {subtitle && (
+          <div style={{
+            fontSize: "11px",
+            color: "var(--color-text-muted)",
+            marginTop: "2px",
+            lineHeight: 1.5,
+          }}>
+            {subtitle}
+          </div>
+        )}
       </div>
       {children}
     </div>
   );
 }
 
-function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
+function FieldS({
+  label,
+  required,
+  hint,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <label className="block text-xs text-slate-400 mb-1.5">
+    <div>
+      <label style={{
+        display: "block",
+        fontSize: "11px",
+        color: "var(--color-text-muted)",
+        marginBottom: "5px",
+        fontWeight: 500,
+      }}>
+        {label}
+        {required && <span style={{ color: "var(--color-danger-text)", marginLeft: "3px" }}>*</span>}
+      </label>
       {children}
-      {required && <span className="text-red-400 ml-0.5">*</span>}
-    </label>
+      {hint && (
+        <div style={{
+          fontSize: "10px",
+          color: "var(--color-text-muted)",
+          marginTop: "4px",
+          lineHeight: 1.4,
+        }}>
+          {hint}
+        </div>
+      )}
+    </div>
   );
 }
