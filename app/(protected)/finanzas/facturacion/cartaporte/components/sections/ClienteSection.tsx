@@ -1,10 +1,8 @@
 "use client";
 
 // ═══════════════════════════════════════════════════════════════════════
-// ClienteSection — Captura datos del receptor del CFDI
-// 
-// Permite seleccionar un cliente existente de BD (autocompleta datos)
-// o capturar manualmente. Multi-tenant: filtra por company_id.
+// ClienteSection — Datos fiscales del receptor del CFDI
+// Estilos: inline + CSS variables (consistente con el resto del proyecto)
 // ═══════════════════════════════════════════════════════════════════════
 
 import { useState, useEffect } from "react";
@@ -12,27 +10,24 @@ import { supabase } from "@/lib/supabaseClient";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import type { CFDIClienteData, CFDIBaseData } from "../../types/carta_porte.types";
 
-// Catálogos cortos hardcoded (estables, raramente cambian)
-type CatalogPair = { code: string; label: string };
-
-const REGIMEN_FISCAL: CatalogPair[] = [
+const REGIMEN_FISCAL: { code: string; label: string }[] = [
   { code: "601", label: "601 — General de Ley Personas Morales" },
   { code: "603", label: "603 — Personas Morales con Fines no Lucrativos" },
-  { code: "605", label: "605 — Sueldos y Salarios e Ingresos Asimilados" },
+  { code: "605", label: "605 — Sueldos y Salarios" },
   { code: "606", label: "606 — Arrendamiento" },
   { code: "612", label: "612 — Personas Físicas con Actividades Empresariales" },
   { code: "621", label: "621 — Incorporación Fiscal" },
-  { code: "626", label: "626 — Régimen Simplificado de Confianza (RESICO)" },
+  { code: "626", label: "626 — RESICO (Régimen Simplificado de Confianza)" },
   { code: "616", label: "616 — Sin obligaciones fiscales" },
 ];
 
-const USO_CFDI: CatalogPair[] = [
+const USO_CFDI: { code: string; label: string }[] = [
   { code: "G01", label: "G01 — Adquisición de mercancías" },
   { code: "G02", label: "G02 — Devoluciones, descuentos o bonificaciones" },
   { code: "G03", label: "G03 — Gastos en general" },
   { code: "I01", label: "I01 — Construcciones" },
-  { code: "I04", label: "I04 — Equipo de cómputo y accesorios" },
-  { code: "I05", label: "I05 — Dados, troqueles, moldes, matrices y herramentales" },
+  { code: "I04", label: "I04 — Equipo de cómputo" },
+  { code: "I05", label: "I05 — Dados, troqueles, moldes" },
   { code: "I08", label: "I08 — Otra maquinaria y equipo" },
   { code: "S01", label: "S01 — Sin efectos fiscales" },
   { code: "CP01", label: "CP01 — Pagos" },
@@ -47,36 +42,27 @@ interface Props {
 
 export function ClienteSection({ data, setCliente, showValidation, errors }: Props) {
   const { companyId } = useTenant();
-  const [clientes, setClientes]     = useState<any[]>([]);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [showList, setShowList]     = useState(false);
+  const [clientes,    setClientes]   = useState<any[]>([]);
+  const [searchTerm,  setSearchTerm] = useState("");
+  const [showList,    setShowList]   = useState(false);
 
   useEffect(() => {
     if (!companyId) return;
-    supabase
-      .from("clients")
+    supabase.from("clients")
       .select("id, name, legal_name, rfc, email, tax_regime, zip_code")
-      .eq("company_id", companyId)
-      .order("name")
-      .limit(200)
+      .eq("company_id", companyId).order("name").limit(200)
       .then(({ data }) => setClientes(data ?? []));
   }, [companyId]);
 
-  const filteredClientes = clientes.filter(c => {
+  const filtered = clientes.filter(c => {
     if (!searchTerm) return true;
     const s = searchTerm.toLowerCase();
-    return (
-      c.name?.toLowerCase().includes(s) ||
-      c.legal_name?.toLowerCase().includes(s) ||
-      c.rfc?.toLowerCase().includes(s)
-    );
+    return c.name?.toLowerCase().includes(s) || c.legal_name?.toLowerCase().includes(s) || c.rfc?.toLowerCase().includes(s);
   });
 
-  const updateCliente = (patch: Partial<CFDIClienteData>) => {
-    setCliente({ ...data.cliente, ...patch });
-  };
+  const update = (patch: Partial<CFDIClienteData>) => setCliente({ ...data.cliente, ...patch });
 
-  const selectFromList = (c: any) => {
+  const selectClient = (c: any) => {
     setCliente({
       client_id:              c.id,
       receiver_rfc:           c.rfc ?? "",
@@ -90,52 +76,54 @@ export function ClienteSection({ data, setCliente, showValidation, errors }: Pro
     setShowList(false);
   };
 
-  const fieldHasError = (field: string) =>
-    showValidation && errors.some(e => e.field === field);
+  const fieldError = (field: string) => showValidation && errors.some(e => e.field === field);
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px", maxWidth: "720px" }}>
 
       {/* Banner */}
-      <div className="bg-gradient-to-br from-blue-950/40 to-cyan-950/40 border border-blue-800/40 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0 text-sm text-blue-100/90 leading-relaxed">
-            Datos fiscales del receptor del CFDI. Selecciona un cliente registrado o
-            captura los datos manualmente.
-          </div>
-        </div>
+      <div style={{
+        padding: "12px 14px", borderRadius: "var(--radius-md)",
+        background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)",
+        fontSize: "12px", color: "var(--color-text-second)", lineHeight: 1.5,
+      }}>
+        Datos fiscales del receptor del CFDI. Selecciona un cliente registrado o captura los datos manualmente.
       </div>
 
-      {/* Selector de cliente */}
-      <section>
-        <h3 className="text-sm font-semibold text-white mb-2">Buscar cliente registrado</h3>
-        <div className="relative">
+      {/* Selector cliente */}
+      <Section title="Buscar cliente registrado">
+        <div style={{ position: "relative" }}>
           <input
             type="text"
             value={searchTerm}
             onChange={e => { setSearchTerm(e.target.value); setShowList(true); }}
             onFocus={() => setShowList(true)}
-            placeholder="Busca por nombre, razón social o RFC..."
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+            onBlur={() => setTimeout(() => setShowList(false), 200)}
+            placeholder="Busca por nombre, razón social o RFC…"
+            style={INPUT}
           />
-          {showList && filteredClientes.length > 0 && (
-            <div className="absolute z-10 left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-lg max-h-64 overflow-y-auto shadow-xl">
-              {filteredClientes.slice(0, 30).map(c => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => selectFromList(c)}
-                  className="w-full px-3 py-2 text-left hover:bg-slate-800 border-b border-slate-800 last:border-0 transition"
+          {showList && filtered.length > 0 && (
+            <div style={{
+              position: "absolute", zIndex: 10, left: 0, right: 0, top: "calc(100% + 4px)",
+              background: "var(--color-bg-base)",
+              border: "1px solid var(--color-border)",
+              borderRadius: "var(--radius-md)",
+              maxHeight: "240px", overflowY: "auto",
+              boxShadow: "var(--shadow-xl)",
+            }}>
+              {filtered.slice(0, 30).map(c => (
+                <button key={c.id} type="button" onClick={() => selectClient(c)}
+                  style={{
+                    width: "100%", padding: "8px 12px", textAlign: "left",
+                    background: "transparent", border: "none", borderBottom: "1px solid var(--color-border-faint)",
+                    cursor: "pointer", color: "var(--color-text-primary)",
+                  }}
+                  onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-bg-subtle)")}
+                  onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                 >
-                  <div className="text-sm text-white">{c.legal_name ?? c.name}</div>
-                  <div className="text-xs text-slate-400 font-mono">
-                    {c.rfc ?? "Sin RFC"} {c.zip_code && `· CP ${c.zip_code}`}
+                  <div style={{ fontSize: "13px", fontWeight: 600 }}>{c.legal_name ?? c.name}</div>
+                  <div style={{ fontSize: "11px", color: "var(--color-text-muted)", fontFamily: "monospace", marginTop: "2px" }}>
+                    {c.rfc ?? "Sin RFC"}{c.zip_code && ` · CP ${c.zip_code}`}
                   </div>
                 </button>
               ))}
@@ -143,120 +131,134 @@ export function ClienteSection({ data, setCliente, showValidation, errors }: Pro
           )}
         </div>
         {data.cliente.client_id && (
-          <p className="text-xs text-emerald-300 mt-1.5 flex items-center gap-1">
-            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-            </svg>
+          <div style={{ fontSize: "11px", color: "#16a34a", marginTop: "6px", display: "flex", alignItems: "center", gap: "4px" }}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
             Cliente vinculado de la base de datos
-          </p>
+          </div>
         )}
-      </section>
+      </Section>
 
       {/* Datos fiscales */}
-      <section>
-        <h3 className="text-sm font-semibold text-white mb-3">Datos fiscales</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div className="md:col-span-2">
-            <Label required>Razón social / Nombre completo</Label>
+      <Section title="Datos fiscales">
+        <Grid>
+          <FieldFull label="Razón social / Nombre completo" required error={fieldError("receiver_name")}>
             <input
               type="text"
               value={data.cliente.receiver_name}
-              onChange={e => updateCliente({ receiver_name: e.target.value })}
-              className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
-                fieldHasError("receiver_name") ? "border-red-500" : "border-slate-700"
-              }`}
+              onChange={e => update({ receiver_name: e.target.value })}
               placeholder="Ej: Empresa S.A. de C.V."
+              style={INPUT}
             />
-          </div>
+          </FieldFull>
 
-          <div>
-            <Label required>RFC</Label>
+          <Field label="RFC" required error={fieldError("receiver_rfc")} hint="Genéricos: XAXX010101000 (público) · XEXX010101000 (extranjero)">
             <input
               type="text"
               value={data.cliente.receiver_rfc}
-              onChange={e => updateCliente({ receiver_rfc: e.target.value.toUpperCase() })}
+              onChange={e => update({ receiver_rfc: e.target.value.toUpperCase() })}
               maxLength={13}
-              className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
-                fieldHasError("receiver_rfc") ? "border-red-500" : "border-slate-700"
-              }`}
               placeholder="ABC850101XXX"
+              style={{ ...INPUT, fontFamily: "monospace" }}
             />
-            <p className="text-[11px] text-slate-500 mt-1">
-              Genéricos: <code className="text-blue-300 bg-blue-950/40 px-1 rounded">XAXX010101000</code> (público) ·{" "}
-              <code className="text-blue-300 bg-blue-950/40 px-1 rounded">XEXX010101000</code> (extranjero)
-            </p>
-          </div>
+          </Field>
 
-          <div>
-            <Label required>Código postal</Label>
+          <Field label="Código postal" required error={fieldError("receiver_zip")}>
             <input
               type="text"
               value={data.cliente.receiver_zip}
-              onChange={e =>
-                updateCliente({ receiver_zip: e.target.value.replace(/\D/g, "").slice(0, 5) })
-              }
+              onChange={e => update({ receiver_zip: e.target.value.replace(/\D/g, "").slice(0, 5) })}
               maxLength={5}
-              className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-sm text-white tabular-nums font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
-                fieldHasError("receiver_zip") ? "border-red-500" : "border-slate-700"
-              }`}
               placeholder="06700"
+              style={{ ...INPUT, fontFamily: "monospace" }}
             />
-          </div>
+          </Field>
 
-          <div>
-            <Label required>Régimen fiscal</Label>
+          <Field label="Régimen fiscal" required error={fieldError("receiver_fiscal_regime")}>
             <select
               value={data.cliente.receiver_fiscal_regime}
-              onChange={e => updateCliente({ receiver_fiscal_regime: e.target.value })}
-              className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
-                fieldHasError("receiver_fiscal_regime") ? "border-red-500" : "border-slate-700"
-              }`}
+              onChange={e => update({ receiver_fiscal_regime: e.target.value })}
+              style={INPUT}
             >
-              {REGIMEN_FISCAL.map(r => (
-                <option key={r.code} value={r.code}>{r.label}</option>
-              ))}
+              {REGIMEN_FISCAL.map(r => <option key={r.code} value={r.code}>{r.label}</option>)}
             </select>
-          </div>
+          </Field>
 
-          <div>
-            <Label required>Uso del CFDI</Label>
+          <Field label="Uso del CFDI" required error={fieldError("receiver_cfdi_use")}>
             <select
               value={data.cliente.receiver_cfdi_use}
-              onChange={e => updateCliente({ receiver_cfdi_use: e.target.value })}
-              className={`w-full px-3 py-2 bg-slate-800 border rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 ${
-                fieldHasError("receiver_cfdi_use") ? "border-red-500" : "border-slate-700"
-              }`}
+              onChange={e => update({ receiver_cfdi_use: e.target.value })}
+              style={INPUT}
             >
-              {USO_CFDI.map(u => (
-                <option key={u.code} value={u.code}>{u.label}</option>
-              ))}
+              {USO_CFDI.map(u => <option key={u.code} value={u.code}>{u.label}</option>)}
             </select>
-          </div>
+          </Field>
 
-          <div className="md:col-span-2">
-            <Label>Email (opcional)</Label>
+          <FieldFull label="Email (opcional)" hint="Si llenas el email, podrás enviar el CFDI directamente al cliente al timbrar.">
             <input
               type="email"
               value={data.cliente.receiver_email ?? ""}
-              onChange={e => updateCliente({ receiver_email: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              onChange={e => update({ receiver_email: e.target.value || undefined })}
               placeholder="contacto@cliente.com"
+              style={INPUT}
             />
-            <p className="text-[11px] text-slate-500 mt-1">
-              Si llenas el email, podrás enviar el CFDI directamente al cliente al timbrar.
-            </p>
-          </div>
-        </div>
-      </section>
+          </FieldFull>
+        </Grid>
+      </Section>
     </div>
   );
 }
 
-function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
+// ─────────────────────────────────────────────────────────────
+// Estilos compartidos y mini-componentes
+// ─────────────────────────────────────────────────────────────
+const INPUT: React.CSSProperties = {
+  width: "100%", height: "36px", padding: "0 10px",
+  borderRadius: "var(--radius-md)",
+  border: "1px solid var(--color-border)",
+  background: "var(--color-bg-subtle)",
+  color: "var(--color-text-primary)",
+  fontSize: "13px", outline: "none", boxSizing: "border-box",
+};
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <label className="block text-xs text-slate-400 mb-1.5">
+    <div>
+      <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>
+        {title}
+      </div>
       {children}
-      {required && <span className="text-red-400 ml-0.5">*</span>}
-    </label>
+    </div>
+  );
+}
+
+function Grid({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "12px" }}>{children}</div>;
+}
+
+function Field({ label, required, error, hint, children }: { label: string; required?: boolean; error?: boolean; hint?: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <label style={{ display: "block", fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "5px", fontWeight: 500 }}>
+        {label}{required && <span style={{ color: "#dc2626", marginLeft: "3px" }}>*</span>}
+      </label>
+      <div style={error ? { boxShadow: "0 0 0 1px #dc2626", borderRadius: "var(--radius-md)" } : undefined}>
+        {children}
+      </div>
+      {hint && <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "4px", lineHeight: 1.4 }}>{hint}</div>}
+    </div>
+  );
+}
+
+function FieldFull({ label, required, error, hint, children }: { label: string; required?: boolean; error?: boolean; hint?: string; children: React.ReactNode }) {
+  return (
+    <div style={{ gridColumn: "1 / -1" }}>
+      <label style={{ display: "block", fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "5px", fontWeight: 500 }}>
+        {label}{required && <span style={{ color: "#dc2626", marginLeft: "3px" }}>*</span>}
+      </label>
+      <div style={error ? { boxShadow: "0 0 0 1px #dc2626", borderRadius: "var(--radius-md)" } : undefined}>
+        {children}
+      </div>
+      {hint && <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "4px", lineHeight: 1.4 }}>{hint}</div>}
+    </div>
   );
 }
