@@ -10,11 +10,14 @@
 // - Totales auto-calculados en vivo
 // - Empty state inteligente para CFDI Tipo Traslado
 //
-// El catálogo de Forma de Pago viene del SAT vía useSATCatalog (22 formas).
+// El catálogo de Forma de Pago viene del SAT vía useSATCatalog.
+// Las claves SAT (producto/servicio + unidad) usan el componente
+// SATSearch reutilizable que conecta con Facturapi.
 // ═══════════════════════════════════════════════════════════════════════
 
 import { useState } from "react";
 import { useSATCatalog } from "@/lib/hooks/useSATCatalog";
+import { SATSearch } from "@/app/components/SATSearch";
 import type {
   CFDIBaseData,
   CFDIConceptoLine,
@@ -568,39 +571,45 @@ function ConceptoCard({
             />
           </FieldS>
 
+          {/* Claves SAT con autocomplete */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "1fr 1fr",
+            gap: "10px",
+          }}>
+            <FieldS
+              label="Clave SAT del producto/servicio"
+              required
+              hint="Busca por nombre: 'transporte', 'logística', 'servicio'…"
+            >
+              <SATSearch
+                type="products"
+                value={concepto.product_key}
+                onChange={code => onUpdate({ product_key: code })}
+                placeholder="Buscar producto/servicio SAT..."
+                required
+              />
+            </FieldS>
+            <FieldS
+              label="Clave SAT de unidad"
+              required
+              hint="Busca: 'servicio', 'pieza', 'kilogramo', 'hora'…"
+            >
+              <SATSearch
+                type="units"
+                value={concepto.unit_key}
+                onChange={code => onUpdate({ unit_key: code })}
+                placeholder="Buscar unidad SAT..."
+                required
+              />
+            </FieldS>
+          </div>
+
           <div style={{
             display: "grid",
             gridTemplateColumns: "repeat(2, 1fr)",
             gap: "10px",
           }}>
-            <FieldS
-              label="Clave SAT producto/servicio"
-              required
-              hint="Para servicios de transporte: 78101800"
-            >
-              <input
-                type="text"
-                value={concepto.product_key}
-                onChange={e => onUpdate({ product_key: e.target.value.toUpperCase() })}
-                maxLength={15}
-                placeholder="78101800"
-                style={{ ...INPUT, fontFamily: "monospace" }}
-              />
-            </FieldS>
-            <FieldS
-              label="Clave SAT unidad"
-              required
-              hint="E48 servicio · H87 pieza · KGM kilo"
-            >
-              <input
-                type="text"
-                value={concepto.unit_key}
-                onChange={e => onUpdate({ unit_key: e.target.value.toUpperCase() })}
-                maxLength={3}
-                placeholder="E48"
-                style={{ ...INPUT, fontFamily: "monospace" }}
-              />
-            </FieldS>
             <FieldS label="Unidad descriptiva">
               <input
                 type="text"
