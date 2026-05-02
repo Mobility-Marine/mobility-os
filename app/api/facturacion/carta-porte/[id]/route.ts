@@ -31,7 +31,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     }
 
     const access = await checkCompanyAccess(userId, cfdi.company_id);
-    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+    if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
 
     const body = await req.json();
     const { data } = body;
@@ -67,7 +67,7 @@ export async function DELETE(req: Request, { params }: { params: { id: string } 
     }
 
     const access = await checkCompanyAccess(userId, cfdi.company_id);
-    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+    if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
 
     await deleteCartaPorteDraft(params.id);
     return NextResponse.json({ success: true });
