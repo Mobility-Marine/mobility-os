@@ -10,10 +10,13 @@
 // - Cards plegables (similar a Ubicaciones)
 // - Tabs internos por mercancía: Datos básicos · Material peligroso · COFEPRIS · Comercio Exterior
 // - Auto-cálculo del total de pesos para reflejar en el agregado
+// - Las claves SAT (bienes transportados + clave unidad) usan el componente
+//   SATSearch reutilizable que conecta con Facturapi.
 // ═══════════════════════════════════════════════════════════════════════
 
 import { useState, useEffect } from "react";
 import { useSATCatalog } from "@/lib/hooks/useSATCatalog";
+import { SATSearch } from "@/app/components/SATSearch";
 import type {
   CartaPorteData,
   CartaPorteMercancia,
@@ -685,23 +688,24 @@ function DatosBasicosTab({
       gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
       gap: "10px",
     }}>
+      {/* Clave SAT del producto - autocomplete */}
       <div style={{ gridColumn: "1 / -1" }}>
         <FieldS
           label="Clave SAT del producto (BienesTransp)"
           required
-          hint="Catálogo c_ClaveProdServCP del SAT. Para autotransporte de carga general usa 78101800."
+          hint="Busca por nombre: 'transporte', 'refacciones', 'equipo'… Catálogo c_ClaveProdServCP del SAT."
         >
-          <input
-            type="text"
+          <SATSearch
+            type="products"
             value={mercancia.bienes_transp}
-            onChange={e => onUpdate({ bienes_transp: e.target.value.toUpperCase() })}
-            placeholder="Ej: 78101800"
-            maxLength={15}
-            style={{ ...INPUT, fontFamily: "monospace" }}
+            onChange={code => onUpdate({ bienes_transp: code })}
+            placeholder="Buscar producto SAT..."
+            required
           />
         </FieldS>
       </div>
 
+      {/* Descripción */}
       <div style={{ gridColumn: "1 / -1" }}>
         <FieldS label="Descripción" required>
           <input
@@ -715,6 +719,7 @@ function DatosBasicosTab({
         </FieldS>
       </div>
 
+      {/* Cantidad y Clave de unidad - en una fila propia para que el dropdown del SATSearch tenga buen espacio */}
       <FieldS label="Cantidad" required>
         <input
           type="number"
@@ -734,15 +739,14 @@ function DatosBasicosTab({
       <FieldS
         label="Clave de unidad SAT"
         required
-        hint="KGM kilo · H87 pieza · XBX caja"
+        hint="Busca: 'kilogramo', 'pieza', 'caja', 'servicio'…"
       >
-        <input
-          type="text"
+        <SATSearch
+          type="units"
           value={mercancia.clave_unidad}
-          onChange={e => onUpdate({ clave_unidad: e.target.value.toUpperCase() })}
-          placeholder="KGM, H87..."
-          maxLength={3}
-          style={{ ...INPUT, fontFamily: "monospace" }}
+          onChange={code => onUpdate({ clave_unidad: code })}
+          placeholder="Buscar unidad SAT..."
+          required
         />
       </FieldS>
 
