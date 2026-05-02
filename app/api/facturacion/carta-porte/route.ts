@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     }
 
     const access = await checkCompanyAccess(userId, company_id);
-    if (!access.ok) {
+    if ("error" in access) {
       return NextResponse.json({ error: access.error }, { status: access.status });
     }
 
