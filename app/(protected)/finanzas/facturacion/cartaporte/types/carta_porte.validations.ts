@@ -319,11 +319,6 @@ export function groupErrorsBySection(errors: ValidationError[]): Record<string, 
 // Validador del CFDI completo (Base + Carta Porte)
 // ═══════════════════════════════════════════════════════════════════════
 
-import type {
-  CFDIBaseData,
-  CFDIConCartaPorteData,
-} from "./carta_porte.types";
-
 /**
  * Valida los datos del CFDI base (cliente + conceptos + pagos).
  * En modo Traslado (parentType="traslado_carta_porte") se skipean validaciones que no aplican:
