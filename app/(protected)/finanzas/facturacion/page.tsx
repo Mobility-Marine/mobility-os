@@ -20,7 +20,6 @@ import CFDIComplementoPago     from "./components/CFDIComplementoPago";
 import CFDINotaCredito         from "./components/CFDINotaCredito";
 import CFDICancelModal         from "./components/CFDICancelModal";
 import CFDINominaDrawer        from "./components/CFDINominaDrawer";
-import CFDINominaDrawer        from "./components/CFDINominaDrawer";
 import { CFDICartaPorteDrawer }                                from "./cartaporte/components/CFDICartaPorteDrawer";
 import { saveCartaPorteDraft, stampCartaPorte }                from "./cartaporte/services/carta_porte.service";
 import type { CFDIConCartaPorteData, CartaPorteParentType }   from "./cartaporte/types/carta_porte.types";
