@@ -1,8 +1,8 @@
 "use client";
 
-import type { CartaPorteData, CartaPorteParentType, ModoTransporteSAT } from "../../types/carta_porte.types";
+import type { CartaPorteData, CartaPorteParentType, ModoTransporteCode } from "../../types/carta_porte.types";
 
-const MODOS_DISPONIBLES: { code: ModoTransporteSAT; label: string; desc: string }[] = [
+const MODOS_DISPONIBLES: { code: ModoTransporteCode; label: string; desc: string }[] = [
   { code: "01", label: "Autotransporte",     desc: "Camiones, tractocamiones y vehículos terrestres" },
   { code: "02", label: "Marítimo",           desc: "Embarcaciones de carga marítima y fluvial" },
   { code: "03", label: "Aéreo",              desc: "Aeronaves de carga" },
@@ -36,7 +36,7 @@ export function DatosGeneralesSection({ data, updateHeader, parentType, showVali
   const isInternational = data.header.transp_internac === "Sí";
   const fieldError = (field: string) => showValidation && errors.some(e => e.field === field);
 
-  const toggleModo = (modo: ModoTransporteSAT) => {
+  const toggleModo = (modo: ModoTransporteCode) => {
     const current = data.header.modos_transporte;
     const next = current.includes(modo) ? current.filter(m => m !== modo) : [...current, modo];
     updateHeader({ modos_transporte: next });
