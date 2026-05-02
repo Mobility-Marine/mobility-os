@@ -305,13 +305,6 @@ export default function FacturacionPage() {
     finally { setSavingExtra(false); }
   }
 
-  async function handleEmitirNotaCredito(payload: any) {
-    setSavingExtra(true);
-    try { await emitirNotaCredito(companyId ?? "", userId, payload); await ctrl.load(); setNotaCreditoOpen(false); }
-    catch (e: any) {}
-    finally { setSavingExtra(false); }
-  }
-
   // ─────────────────────────────────────────────────────────────
   // Handlers de Carta Porte
   // ─────────────────────────────────────────────────────────────
