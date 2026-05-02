@@ -159,21 +159,39 @@ export function buildFacturapiPayload(args: BuildArgs): any {
     }
   }
 
-  // ── Blindaje SAT (PPD/PUE vs payment_form) ──
-  let paymentMethod = cfdi.payment_method ?? "PUE";
-  let paymentForm   = cfdi.payment_form   ?? "03";
-  if (paymentMethod === "PPD") {
-    paymentForm = "99";
-  } else if (paymentMethod === "PUE" && paymentForm === "99") {
-    paymentForm = "03";
+  // ── Blindaje SAT (PPD/PUE/UseCFDI según tipo de comprobante) ──
+  // CFDI Tipo T (Traslado): el SAT exige uso="S01" (Sin efectos fiscales),
+  // payment_method="PUE" (no hay parcialidades en un traslado) y
+  // payment_form="99" (Por definir, no aplica forma de pago).
+  // CFDI Tipo I (Factura): aplicamos el blindaje habitual PPD/PUE.
+  const isTraslado = parentType === "T";
+
+  let paymentMethod: string;
+  let paymentForm:   string;
+
+  if (isTraslado) {
+    paymentMethod = "PUE";
+    paymentForm   = "99";
+  } else {
+    paymentMethod = cfdi.payment_method ?? "PUE";
+    paymentForm   = cfdi.payment_form   ?? "03";
+    if (paymentMethod === "PPD") {
+      paymentForm = "99";
+    } else if (paymentMethod === "PUE" && paymentForm === "99") {
+      paymentForm = "03";
+    }
   }
+
+  const cfdiUse = isTraslado
+    ? "S01"
+    : (cfdi.receiver_cfdi_use ?? "G03");
 
   // ── Payload final ──
   return {
     type:           parentType,
     customer,
     items,
-    use:            cfdi.receiver_cfdi_use ?? "G03",
+    use:            cfdiUse,
     payment_method: paymentMethod,
     payment_form:   paymentForm,
     currency:       cfdi.currency ?? "MXN",
