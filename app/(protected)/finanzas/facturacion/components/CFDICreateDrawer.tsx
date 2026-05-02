@@ -1,11 +1,12 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { supabase } from "@/lib/supabaseClient";
 import type { NewCFDIForm, NewConcept } from "../types/facturacion.types";
 import { DEFAULT_NEW_CFDI, CFDI_USES, PAYMENT_FORMS, FISCAL_REGIMES, TAX_PRESETS, calcConceptTotals, DEFAULT_TAXES } from "../types/facturacion.types";
 import { saveProforma, updateProforma, deleteProforma, stampProforma, fetchProformaById } from "../services/facturacion.service";
+import { SATSearch } from "@/app/components/SATSearch";
 
 type CurrencyMode = "split" | "all_mxn" | "all_usd" | null;
 
@@ -49,64 +50,6 @@ const INPUT: React.CSSProperties = {
 };
 const SELECT: React.CSSProperties = { ...INPUT, cursor: "pointer" };
 const fmt = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-
-// ── SAT SEARCH ───────────────────────────────────────────────
-function SATSearch({ value, onChange, type, placeholder, inputStyle }: {
-  value: string; onChange: (code: string) => void;
-  type: "products" | "units"; placeholder?: string; inputStyle?: React.CSSProperties;
-}) {
-  const [input,   setInput]   = useState(value);
-  const [results, setResults] = useState<{ key: string; name: string }[]>([]);
-  const [open,    setOpen]    = useState(false);
-  const [loading, setLoading] = useState(false);
-  const wrapRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => { setInput(value); }, [value]);
-
-  useEffect(() => {
-    if (!input || input.length < 2) { setResults([]); setOpen(false); return; }
-    const t = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res  = await fetch(`/api/sat?type=${type}&q=${encodeURIComponent(input)}`);
-        const data = await res.json();
-        setResults((data.data ?? []).slice(0, 10));
-        setOpen(true);
-      } catch {} finally { setLoading(false); }
-    }, 350);
-    return () => clearTimeout(t);
-  }, [input, type]);
-
-  useEffect(() => {
-    function handler(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, []);
-
-  return (
-    <div ref={wrapRef} style={{ position: "relative" }}>
-      <input value={input} onChange={(e) => setInput(e.target.value)} placeholder={placeholder} style={{ ...INPUT, ...inputStyle }} />
-      {loading && <div style={{ position: "absolute", right: "8px", top: "50%", transform: "translateY(-50%)", fontSize: "10px", color: "var(--color-text-muted)", pointerEvents: "none" }}>...</div>}
-      {open && results.length > 0 && (
-        <div style={{ position: "absolute", top: "calc(100% + 2px)", left: 0, right: 0, zIndex: 999, background: "var(--color-bg-base)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-md)", boxShadow: "0 8px 24px rgba(0,0,0,0.2)", maxHeight: "200px", overflowY: "auto" }}>
-          {results.map((r) => (
-            <div key={r.key} onMouseDown={(e) => e.preventDefault()}
-              onClick={() => { onChange(r.key); setInput(`${r.key} — ${r.name}`); setOpen(false); }}
-              style={{ padding: "8px 12px", cursor: "pointer", fontSize: "11px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", gap: "8px", alignItems: "center" }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-bg-subtle)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-            >
-              <span style={{ fontWeight: 800, color: "var(--color-brand-blue)", fontFamily: "monospace", flexShrink: 0 }}>{r.key}</span>
-              <span style={{ color: "var(--color-text-second)" }}>{r.name}</span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCreated, preloadShipment, editProformaId, onProformaChange }: Props) {
   const { lang } = useTranslation();
