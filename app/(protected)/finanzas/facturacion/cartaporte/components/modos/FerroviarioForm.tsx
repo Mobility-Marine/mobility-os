@@ -1,422 +1,207 @@
 "use client";
 
-// ═══════════════════════════════════════════════════════════════════════
-// FerroviarioForm — Datos del transporte ferroviario
-// 
-// Captura: tipo de servicio/tráfico, derechos de paso, carros del tren
-// con sus contenedores.
-// ═══════════════════════════════════════════════════════════════════════
-
-import { useSATCatalog } from "@/lib/hooks/useSATCatalog";
-import type {
-  TransporteFerroviario,
-  CarroFerroviario,
-  DerechoDePaso,
-  ContenedorFerroviario,
-} from "../../types/carta_porte.types";
+import type { TransporteFerroviario } from "../../types/carta_porte.types";
 
 interface Props {
-  value: TransporteFerroviario;
-  onChange: (next: TransporteFerroviario) => void;
+  data: TransporteFerroviario;
+  setData: (next: TransporteFerroviario) => void;
+  showValidation: boolean;
+  errors: { field: string; message: string }[];
 }
 
-export function FerroviarioForm({ value, onChange }: Props) {
-  const { items: servicios } = useSATCatalog("tipo_servicio_ferroviario");
-  const { items: traficos }  = useSATCatalog("tipo_trafico_ferroviario");
-  const { items: carros }    = useSATCatalog("tipo_carro");
-  const { items: derechos }  = useSATCatalog("derechos_de_paso");
-
-  const update = (patch: Partial<TransporteFerroviario>) => onChange({ ...value, ...patch });
-
-  // Derechos de paso
-  const addDerecho = () => {
-    const nuevo: DerechoDePaso = { tipo_derecho_de_paso: "", kilometraje_pagado: 0 };
-    onChange({ ...value, derechos_de_paso: [...(value.derechos_de_paso ?? []), nuevo] });
-  };
-  const updateDerecho = (idx: number, patch: Partial<DerechoDePaso>) => {
-    const list = [...(value.derechos_de_paso ?? [])];
-    list[idx] = { ...list[idx], ...patch };
-    onChange({ ...value, derechos_de_paso: list });
-  };
-  const removeDerecho = (idx: number) => {
-    const list = [...(value.derechos_de_paso ?? [])];
-    list.splice(idx, 1);
-    onChange({ ...value, derechos_de_paso: list });
-  };
-
-  // Carros
-  const addCarro = () => {
-    const nuevo: CarroFerroviario = {
-      tipo_carro: "",
-      matricula_carro: "",
-      guia_carro: "",
-      toneladas_netas_carro: 0,
-      contenedores: [],
-    };
-    onChange({ ...value, carros: [...value.carros, nuevo] });
-  };
-  const updateCarro = (idx: number, patch: Partial<CarroFerroviario>) => {
-    const list = [...value.carros];
-    list[idx] = { ...list[idx], ...patch };
-    onChange({ ...value, carros: list });
-  };
-  const removeCarro = (idx: number) => {
-    const list = [...value.carros];
-    list.splice(idx, 1);
-    onChange({ ...value, carros: list });
-  };
-
-  // Contenedores dentro de un carro
-  const addContenedor = (carroIdx: number) => {
-    const list = [...value.carros];
-    const nuevo: ContenedorFerroviario = { tipo_contenedor: "", guia_contenedor: "" };
-    list[carroIdx] = {
-      ...list[carroIdx],
-      contenedores: [...(list[carroIdx].contenedores ?? []), nuevo],
-    };
-    onChange({ ...value, carros: list });
-  };
-  const updateContenedor = (
-    carroIdx: number,
-    contIdx: number,
-    patch: Partial<ContenedorFerroviario>
-  ) => {
-    const list = [...value.carros];
-    const conts = [...(list[carroIdx].contenedores ?? [])];
-    conts[contIdx] = { ...conts[contIdx], ...patch };
-    list[carroIdx] = { ...list[carroIdx], contenedores: conts };
-    onChange({ ...value, carros: list });
-  };
-  const removeContenedor = (carroIdx: number, contIdx: number) => {
-    const list = [...value.carros];
-    const conts = [...(list[carroIdx].contenedores ?? [])];
-    conts.splice(contIdx, 1);
-    list[carroIdx] = { ...list[carroIdx], contenedores: conts };
-    onChange({ ...value, carros: list });
-  };
+export function FerroviarioForm({ data, setData }: Props) {
+  const update = (patch: Partial<TransporteFerroviario>) => setData({ ...data, ...patch });
 
   return (
-    <div className="space-y-5">
-      {/* ── Servicio ── */}
-      <CardGroup title="Tipo de servicio ferroviario" color="amber">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <Label required>Tipo de servicio</Label>
-            <select
-              value={value.tipo_de_servicio}
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+      <Section title="Tipo de servicio">
+        <Grid>
+          <FieldS label="Tipo de servicio" required>
+            <select value={data.tipo_de_servicio}
               onChange={e => update({ tipo_de_servicio: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-            >
-              <option value="">Selecciona...</option>
-              {servicios.map(s => (
-                <option key={s.code} value={s.code}>{s.label}</option>
-              ))}
+              style={INPUT}>
+              <option value="">Selecciona…</option>
+              <option value="01">01 — Servicio público</option>
+              <option value="02">02 — Servicio privado</option>
+              <option value="03">03 — Servicio mixto</option>
             </select>
-          </div>
-          <div>
-            <Label required>Tipo de tráfico</Label>
-            <select
-              value={value.tipo_de_trafico}
+          </FieldS>
+          <FieldS label="Tipo de tráfico" required>
+            <select value={data.tipo_de_trafico}
               onChange={e => update({ tipo_de_trafico: e.target.value })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-            >
-              <option value="">Selecciona...</option>
-              {traficos.map(t => (
-                <option key={t.code} value={t.code}>{t.label}</option>
-              ))}
+              style={INPUT}>
+              <option value="">Selecciona…</option>
+              <option value="01">01 — Tráfico local</option>
+              <option value="02">02 — Tráfico interlineal</option>
+              <option value="03">03 — Tráfico de transbordo</option>
             </select>
-          </div>
-          <div>
-            <Label>Aseguradora (opcional)</Label>
-            <input
-              type="text"
-              value={value.nombre_aseg ?? ""}
+          </FieldS>
+          <FieldS label="Nombre asegurador">
+            <input type="text" value={data.nombre_aseg ?? ""}
               onChange={e => update({ nombre_aseg: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-            />
-          </div>
-          <div>
-            <Label>Número de póliza</Label>
-            <input
-              type="text"
-              value={value.num_poliza_seguro ?? ""}
+              style={INPUT} />
+          </FieldS>
+          <FieldS label="Núm. póliza seguro">
+            <input type="text" value={data.num_poliza_seguro ?? ""}
               onChange={e => update({ num_poliza_seguro: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-            />
-          </div>
+              style={{ ...INPUT, fontFamily: "monospace" }} />
+          </FieldS>
+        </Grid>
+      </Section>
+
+      <Section title="Derechos de paso (opcional)">
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {(data.derechos_de_paso ?? []).map((d, idx) => (
+            <div key={idx} style={{
+              padding: "12px", borderRadius: "var(--radius-md)",
+              background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)",
+            }}>
+              <Grid>
+                <FieldS label="Tipo derecho">
+                  <input type="text" value={d.tipo_derecho_de_paso}
+                    onChange={e => {
+                      const next = [...(data.derechos_de_paso ?? [])];
+                      next[idx] = { ...d, tipo_derecho_de_paso: e.target.value };
+                      update({ derechos_de_paso: next });
+                    }}
+                    style={INPUT} />
+                </FieldS>
+                <FieldS label="Kilometraje">
+                  <input type="number" min="0" step="0.01" value={d.kilometraje_pagado || ""}
+                    onChange={e => {
+                      const next = [...(data.derechos_de_paso ?? [])];
+                      next[idx] = { ...d, kilometraje_pagado: parseFloat(e.target.value) || 0 };
+                      update({ derechos_de_paso: next });
+                    }}
+                    style={{ ...INPUT, textAlign: "right" }} />
+                </FieldS>
+                <div style={{ display: "flex", alignItems: "flex-end" }}>
+                  <button type="button"
+                    onClick={() => update({ derechos_de_paso: (data.derechos_de_paso ?? []).filter((_, i) => i !== idx) })}
+                    style={BUTTON_DANGER}>
+                    Eliminar
+                  </button>
+                </div>
+              </Grid>
+            </div>
+          ))}
+          <button type="button"
+            onClick={() => update({ derechos_de_paso: [...(data.derechos_de_paso ?? []), { tipo_derecho_de_paso: "", kilometraje_pagado: 0 }] })}
+            style={{ ...BUTTON_GHOST, alignSelf: "flex-start" }}>
+            + Agregar derecho de paso
+          </button>
         </div>
-      </CardGroup>
+      </Section>
 
-      {/* ── Derechos de paso ── */}
-      <CardGroup
-        title="Derechos de paso (opcional)"
-        subtitle="Solo si la unidad transita por vías de otro concesionario"
-        color="amber"
-      >
-        {(value.derechos_de_paso ?? []).length === 0 ? (
-          <button
-            type="button"
-            onClick={addDerecho}
-            className="w-full py-2 text-sm border border-dashed border-slate-600 rounded-lg text-slate-400 hover:text-amber-300 hover:border-amber-500/50 hover:bg-amber-950/20 transition flex items-center justify-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Agregar derecho de paso
-          </button>
-        ) : (
-          <div className="space-y-2">
-            {(value.derechos_de_paso ?? []).map((d, idx) => (
-              <div
-                key={idx}
-                className="grid grid-cols-1 md:grid-cols-[1fr_1fr_auto] gap-2 items-end p-3 bg-slate-800/40 border border-slate-700 rounded-lg"
-              >
-                <div>
-                  <Label required>Tipo de derecho</Label>
-                  <select
-                    value={d.tipo_derecho_de_paso}
-                    onChange={e => updateDerecho(idx, { tipo_derecho_de_paso: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-                  >
-                    <option value="">Selecciona...</option>
-                    {derechos.map(r => (
-                      <option key={r.code} value={r.code}>{r.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <Label required>Kilometraje pagado</Label>
-                  <input
-                    type="number"
-                    min="0"
-                    step="0.001"
-                    value={d.kilometraje_pagado || ""}
-                    onChange={e => updateDerecho(idx, { kilometraje_pagado: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => removeDerecho(idx)}
-                  className="px-3 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/30 rounded-lg transition"
-                >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                  </svg>
-                </button>
+      <Section title="Carros ferroviarios (opcional)">
+        <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+          {(data.carro ?? []).map((c, idx) => (
+            <div key={idx} style={{
+              padding: "12px", borderRadius: "var(--radius-md)",
+              background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)",
+            }}>
+              <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", marginBottom: "8px" }}>
+                Carro #{idx + 1}
               </div>
-            ))}
-            <button
-              type="button"
-              onClick={addDerecho}
-              className="w-full py-2 text-sm border border-dashed border-slate-600 rounded-lg text-slate-400 hover:text-amber-300 hover:border-amber-500/50 hover:bg-amber-950/20 transition flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Agregar otro
-            </button>
-          </div>
-        )}
-      </CardGroup>
-
-      {/* ── Carros del tren ── */}
-      <CardGroup
-        title="Carros del tren"
-        subtitle="Mínimo 1 carro. Cada carro puede llevar contenedores."
-        color="amber"
-      >
-        {value.carros.length === 0 ? (
-          <button
-            type="button"
-            onClick={addCarro}
-            className="w-full py-2.5 text-sm border border-dashed border-slate-600 rounded-lg text-slate-400 hover:text-amber-300 hover:border-amber-500/50 hover:bg-amber-950/20 transition flex items-center justify-center gap-2"
-          >
-            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            Agregar primer carro
-          </button>
-        ) : (
-          <div className="space-y-3">
-            {value.carros.map((c, cIdx) => (
-              <div
-                key={cIdx}
-                className="bg-slate-800/40 border border-slate-700 rounded-lg p-3 space-y-3"
-              >
-                <div className="flex items-center justify-between">
-                  <h5 className="text-sm font-medium text-amber-200">Carro {cIdx + 1}</h5>
-                  <button
-                    type="button"
-                    onClick={() => removeCarro(cIdx)}
-                    className="text-xs text-red-400 hover:text-red-300 transition flex items-center gap-1"
-                  >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                        d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
-                    Quitar carro
+              <Grid>
+                <FieldS label="Tipo carro">
+                  <input type="text" value={c.tipo_carro}
+                    onChange={e => {
+                      const next = [...(data.carro ?? [])];
+                      next[idx] = { ...c, tipo_carro: e.target.value };
+                      update({ carro: next });
+                    }}
+                    style={INPUT} />
+                </FieldS>
+                <FieldS label="Matrícula">
+                  <input type="text" value={c.matricula_carro}
+                    onChange={e => {
+                      const next = [...(data.carro ?? [])];
+                      next[idx] = { ...c, matricula_carro: e.target.value.toUpperCase() };
+                      update({ carro: next });
+                    }}
+                    style={{ ...INPUT, fontFamily: "monospace" }} />
+                </FieldS>
+                <FieldS label="Guía / Identificación">
+                  <input type="text" value={c.guia_carro ?? ""}
+                    onChange={e => {
+                      const next = [...(data.carro ?? [])];
+                      next[idx] = { ...c, guia_carro: e.target.value || undefined };
+                      update({ carro: next });
+                    }}
+                    style={INPUT} />
+                </FieldS>
+                <FieldS label="Toneladas netas">
+                  <input type="number" min="0" step="0.001"
+                    value={c.toneladas_netas_carro ?? ""}
+                    onChange={e => {
+                      const next = [...(data.carro ?? [])];
+                      next[idx] = { ...c, toneladas_netas_carro: parseFloat(e.target.value) || undefined };
+                      update({ carro: next });
+                    }}
+                    style={{ ...INPUT, textAlign: "right" }} />
+                </FieldS>
+                <div style={{ display: "flex", alignItems: "flex-end" }}>
+                  <button type="button"
+                    onClick={() => update({ carro: (data.carro ?? []).filter((_, i) => i !== idx) })}
+                    style={BUTTON_DANGER}>
+                    Eliminar
                   </button>
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <Label required>Tipo de carro</Label>
-                    <select
-                      value={c.tipo_carro}
-                      onChange={e => updateCarro(cIdx, { tipo_carro: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-                    >
-                      <option value="">Selecciona...</option>
-                      {carros.map(t => (
-                        <option key={t.code} value={t.code}>{t.label}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <Label required>Matrícula del carro</Label>
-                    <input
-                      type="text"
-                      value={c.matricula_carro}
-                      onChange={e => updateCarro(cIdx, { matricula_carro: e.target.value.toUpperCase() })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-                    />
-                  </div>
-                  <div>
-                    <Label required>Guía del carro</Label>
-                    <input
-                      type="text"
-                      value={c.guia_carro}
-                      onChange={e => updateCarro(cIdx, { guia_carro: e.target.value })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-                    />
-                  </div>
-                  <div>
-                    <Label required>Toneladas netas</Label>
-                    <input
-                      type="number"
-                      min="0"
-                      step="0.001"
-                      value={c.toneladas_netas_carro || ""}
-                      onChange={e => updateCarro(cIdx, { toneladas_netas_carro: parseFloat(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 bg-slate-900 border border-slate-700 rounded-lg text-sm text-white tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-                    />
-                  </div>
-                </div>
-
-                {/* Contenedores del carro */}
-                <div className="pt-3 border-t border-slate-700/50">
-                  <div className="flex items-center justify-between mb-2">
-                    <Label>Contenedores en este carro</Label>
-                    <span className="text-[11px] text-slate-500">
-                      {(c.contenedores ?? []).length}{" "}
-                      {(c.contenedores ?? []).length === 1 ? "contenedor" : "contenedores"}
-                    </span>
-                  </div>
-
-                  {(c.contenedores ?? []).map((cont, contIdx) => (
-                    <div
-                      key={contIdx}
-                      className="grid grid-cols-1 md:grid-cols-[1fr_1fr_1fr_auto] gap-2 items-end p-2 bg-slate-900/60 border border-slate-700 rounded mb-2"
-                    >
-                      <div>
-                        <label className="text-[10px] text-slate-500 block">Tipo</label>
-                        <input
-                          type="text"
-                          value={cont.tipo_contenedor}
-                          onChange={e => updateContenedor(cIdx, contIdx, { tipo_contenedor: e.target.value })}
-                          className="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-amber-500/50"
-                          placeholder="40' HC"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-slate-500 block">Guía</label>
-                        <input
-                          type="text"
-                          value={cont.guia_contenedor}
-                          onChange={e => updateContenedor(cIdx, contIdx, { guia_contenedor: e.target.value })}
-                          className="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-amber-500/50"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-[10px] text-slate-500 block">Placa VM</label>
-                        <input
-                          type="text"
-                          value={cont.placa_vm ?? ""}
-                          onChange={e => updateContenedor(cIdx, contIdx, { placa_vm: e.target.value || undefined })}
-                          className="w-full px-2 py-1.5 bg-slate-900 border border-slate-700 rounded text-xs text-white font-mono focus:outline-none focus:ring-1 focus:ring-amber-500/50"
-                        />
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => removeContenedor(cIdx, contIdx)}
-                        className="px-2 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/30 rounded transition"
-                      >
-                        ✕
-                      </button>
-                    </div>
-                  ))}
-
-                  <button
-                    type="button"
-                    onClick={() => addContenedor(cIdx)}
-                    className="w-full py-1.5 text-xs border border-dashed border-slate-600 rounded text-slate-400 hover:text-amber-300 hover:border-amber-500/50 transition"
-                  >
-                    + Agregar contenedor
-                  </button>
-                </div>
-              </div>
-            ))}
-
-            <button
-              type="button"
-              onClick={addCarro}
-              className="w-full py-2 text-sm border border-dashed border-slate-600 rounded-lg text-slate-400 hover:text-amber-300 hover:border-amber-500/50 hover:bg-amber-950/20 transition flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Agregar otro carro
-            </button>
-          </div>
-        )}
-      </CardGroup>
+              </Grid>
+            </div>
+          ))}
+          <button type="button"
+            onClick={() => update({ carro: [...(data.carro ?? []), { tipo_carro: "", matricula_carro: "" }] })}
+            style={{ ...BUTTON_GHOST, alignSelf: "flex-start" }}>
+            + Agregar carro
+          </button>
+        </div>
+      </Section>
     </div>
   );
 }
 
-function CardGroup({
-  title,
-  subtitle,
-  color,
-  children,
-}: {
-  title: string;
-  subtitle?: string;
-  color: "blue" | "cyan" | "indigo" | "amber";
-  children: React.ReactNode;
-}) {
-  const borderColors: Record<string, string> = {
-    blue: "border-blue-800/30", cyan: "border-cyan-800/30",
-    indigo: "border-indigo-800/30", amber: "border-amber-800/30",
-  };
+const INPUT: React.CSSProperties = {
+  width: "100%", height: "36px", padding: "0 10px",
+  borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)",
+  background: "var(--color-bg-subtle)", color: "var(--color-text-primary)",
+  fontSize: "13px", outline: "none", boxSizing: "border-box",
+};
+const BUTTON_GHOST: React.CSSProperties = {
+  height: "30px", padding: "0 10px", fontSize: "11px", fontWeight: 600,
+  borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)",
+  background: "var(--color-bg-base)", color: "var(--color-text-second)", cursor: "pointer",
+};
+const BUTTON_DANGER: React.CSSProperties = {
+  padding: "8px 12px", fontSize: "11px", fontWeight: 600, height: "36px",
+  borderRadius: "var(--radius-md)", border: "1px solid var(--color-danger-border)",
+  background: "var(--color-danger-bg)", color: "var(--color-danger-text)", cursor: "pointer",
+};
+
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className={`bg-slate-800/30 border rounded-xl p-4 ${borderColors[color]}`}>
-      <div className="mb-3">
-        <h4 className="text-sm font-semibold text-white">{title}</h4>
-        {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
+    <div>
+      <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.08em", marginBottom: "10px" }}>
+        {title}
       </div>
       {children}
     </div>
   );
 }
 
-function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
+function Grid({ children }: { children: React.ReactNode }) {
+  return <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "10px" }}>{children}</div>;
+}
+
+function FieldS({ label, required, children }: { label: string; required?: boolean; children: React.ReactNode }) {
   return (
-    <label className="block text-xs text-slate-400 mb-1.5">
+    <div>
+      <label style={{ display: "block", fontSize: "11px", color: "var(--color-text-muted)", marginBottom: "5px", fontWeight: 500 }}>
+        {label}{required && <span style={{ color: "#dc2626", marginLeft: "3px" }}>*</span>}
+      </label>
       {children}
-      {required && <span className="text-red-400 ml-0.5">*</span>}
-    </label>
+    </div>
   );
 }
