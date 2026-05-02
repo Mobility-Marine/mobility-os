@@ -17,6 +17,15 @@
 //     required
 //   />
 //
+// En tablas compactas (ej: filas de conceptos del CFDI), usar inputStyle
+// para reducir el alto:
+//   <SATSearch
+//     type="products"
+//     value={c.product_key}
+//     onChange={code => setC({...c, product_key: code})}
+//     inputStyle={{ height: "32px", fontSize: "12px" }}
+//   />
+//
 // Si el padre quiere evitar el fetch del nombre al cargar (porque ya lo
 // tiene guardado), puede pasar initialLabel:
 //   <SATSearch
@@ -65,8 +74,8 @@ export type SATSearchProps = {
   initialLabel?: string;
   /** Tamaño del input. md (36px) por default, sm (32px) para listas compactas */
   size?: "sm" | "md";
-  /** Estilo extra opcional (merge con el style base) */
-  style?: React.CSSProperties;
+  /** Estilos extra para el input (height, fontSize, etc.). Se mergea con el style base. */
+  inputStyle?: React.CSSProperties;
   /** ID para accesibilidad y testing */
   id?: string;
 };
@@ -147,7 +156,7 @@ export function SATSearch({
   error,
   initialLabel,
   size = "md",
-  style,
+  inputStyle,
   id,
 }: SATSearchProps) {
   // ─── Estados internos ───
@@ -293,7 +302,7 @@ export function SATSearch({
   const inputHeight = size === "sm" ? 32 : 36;
   const fontSize = size === "sm" ? 12 : 13;
 
-  const inputStyle: React.CSSProperties = {
+  const baseInputStyle: React.CSSProperties = {
     width: "100%",
     height: `${inputHeight}px`,
     padding: hasValue && !open ? "0 64px 0 34px" : "0 34px 0 34px",
@@ -308,7 +317,7 @@ export function SATSearch({
     boxSizing: "border-box",
     cursor: disabled ? "not-allowed" : "text",
     fontFamily: showSelected && resolvedLabel ? "inherit" : "monospace",
-    ...style,
+    ...inputStyle,
   };
 
   return (
@@ -356,7 +365,7 @@ export function SATSearch({
           aria-expanded={open}
           aria-autocomplete="list"
           autoComplete="off"
-          style={inputStyle}
+          style={baseInputStyle}
         />
 
         {/* Indicador loading */}
