@@ -2,6 +2,7 @@
 
 // ═══════════════════════════════════════════════════════════════════════
 // FigurasSection — Sección 5 del drawer Carta Porte 3.1
+// Estilos: inline + CSS variables (mismo patrón que ConceptosSection)
 //
 // Captura las figuras involucradas en el transporte:
 // - 01 Operador (chofer): obligatorio si modo=autotransporte
@@ -24,50 +25,38 @@ import { newFigura } from "../../types/carta_porte.defaults";
 import type { ValidationError } from "../../types/carta_porte.validations";
 
 // ─── Metadata visual de los tipos de figura ───
-type FiguraInfoEntry = {
+type FiguraInfo = {
   label: string;
   shortLabel: string;
   desc: string;
-  color: "blue" | "emerald" | "purple" | "slate";
   iconPath: string;
 };
 
-const FIGURA_INFO: Record<TipoFiguraCode, FiguraInfoEntry> = {
+const FIGURA_INFO: Record<TipoFiguraCode, FiguraInfo> = {
   "01": {
     label: "Operador (chofer)",
     shortLabel: "Operador",
     desc: "Conductor de la unidad. Obligatorio si hay autotransporte.",
-    color: "blue",
     iconPath: "M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z",
   },
   "02": {
     label: "Propietario del vehículo",
     shortLabel: "Propietario",
     desc: "Solo si el vehículo no es del emisor del CFDI.",
-    color: "emerald",
     iconPath: "M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6",
   },
   "03": {
     label: "Arrendatario del vehículo",
     shortLabel: "Arrendatario",
     desc: "Solo si el vehículo está rentado a un tercero.",
-    color: "purple",
     iconPath: "M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z",
   },
   "04": {
     label: "Notificado",
     shortLabel: "Notificado",
     desc: "Parte adicional a notificar del traslado (opcional).",
-    color: "slate",
     iconPath: "M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9",
   },
-};
-
-const COLOR_CLASSES: Record<string, { bg: string; border: string; ringFocus: string; iconBg: string }> = {
-  blue:    { bg: "bg-blue-600/15",    border: "border-blue-500/50",    ringFocus: "focus:ring-blue-500/50",    iconBg: "bg-blue-600/20 text-blue-400" },
-  emerald: { bg: "bg-emerald-600/15", border: "border-emerald-500/50", ringFocus: "focus:ring-emerald-500/50", iconBg: "bg-emerald-600/20 text-emerald-400" },
-  purple:  { bg: "bg-purple-600/15",  border: "border-purple-500/50",  ringFocus: "focus:ring-purple-500/50",  iconBg: "bg-purple-600/20 text-purple-400" },
-  slate:   { bg: "bg-slate-600/15",   border: "border-slate-500/50",   ringFocus: "focus:ring-slate-500/50",   iconBg: "bg-slate-600/20 text-slate-400" },
 };
 
 interface Props {
@@ -135,96 +124,180 @@ export function FigurasSection({
       ? errors.filter(e => e.field.includes(`figuras[${idx}]`)).length
       : 0;
 
-  // Conteos por tipo (para mostrar resumen)
   const countByType = (tipo: TipoFiguraCode): number =>
     data.figuras.filter(f => f.tipo_figura === tipo).length;
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px", maxWidth: "880px" }}>
       {/* ── Banner ── */}
-      <div className="bg-gradient-to-br from-blue-950/40 to-purple-950/40 border border-blue-800/40 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-blue-600/20 flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0 text-sm text-blue-100/90 leading-relaxed">
-            Registra a las personas y empresas involucradas en el traslado.
-            {tieneAutotransporte && (
-              <strong className="text-white"> Con autotransporte, el operador (chofer) es obligatorio.</strong>
-            )}
-          </div>
+      <div style={{
+        padding: "12px 14px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-info-bg)",
+        border: "1px solid var(--color-info-border)",
+        display: "flex",
+        gap: "10px",
+        alignItems: "flex-start",
+      }}>
+        <div style={{
+          width: "28px",
+          height: "28px",
+          borderRadius: "var(--radius-sm)",
+          background: "var(--color-bg-base)",
+          border: "1px solid var(--color-info-border)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-info-text)" strokeWidth="2">
+            <path d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 0, fontSize: "12px", color: "var(--color-text-second)", lineHeight: 1.5 }}>
+          Registra a las personas y empresas involucradas en el traslado.
+          {tieneAutotransporte && (
+            <>
+              {" "}<strong style={{ color: "var(--color-text-primary)" }}>
+                Con autotransporte, el operador (chofer) es obligatorio.
+              </strong>
+            </>
+          )}
         </div>
       </div>
 
       {/* ── Botones para agregar figura por tipo ── */}
-      <section>
-        <h3 className="text-sm font-semibold text-white mb-3">Agregar figura</h3>
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
+      <div>
+        <div style={{
+          fontSize: "13px",
+          fontWeight: 700,
+          color: "var(--color-text-primary)",
+          marginBottom: "10px",
+        }}>
+          Agregar figura
+        </div>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
+          gap: "8px",
+        }}>
           {(["01", "02", "03", "04"] as TipoFiguraCode[]).map(tipo => {
             const info = FIGURA_INFO[tipo];
-            const colors = COLOR_CLASSES[info.color];
             const count = countByType(tipo);
             return (
               <button
                 key={tipo}
                 type="button"
                 onClick={() => addFigura(tipo)}
-                className={`p-3 rounded-lg border bg-slate-800/40 border-slate-700 hover:${colors.border} hover:${colors.bg} transition text-left group`}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "10px",
+                  padding: "12px",
+                  borderRadius: "var(--radius-md)",
+                  background: "var(--color-bg-base)",
+                  border: "1px solid var(--color-border)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  transition: "var(--transition-fast)",
+                }}
+                onMouseEnter={e => {
+                  e.currentTarget.style.borderColor = "var(--color-brand-blue)";
+                  e.currentTarget.style.background = "var(--color-brand-blue-light)";
+                }}
+                onMouseLeave={e => {
+                  e.currentTarget.style.borderColor = "var(--color-border)";
+                  e.currentTarget.style.background = "var(--color-bg-base)";
+                }}
               >
-                <div className="flex items-start gap-2.5">
-                  <div className={`w-8 h-8 rounded-lg ${colors.iconBg} flex items-center justify-center shrink-0`}>
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={info.iconPath} />
-                    </svg>
+                <div style={{
+                  width: "32px",
+                  height: "32px",
+                  borderRadius: "var(--radius-sm)",
+                  background: "var(--color-bg-subtle)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  flexShrink: 0,
+                }}>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-blue)" strokeWidth="1.8">
+                    <path d={info.iconPath} />
+                  </svg>
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    flexWrap: "wrap",
+                  }}>
+                    <span style={{
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      color: "var(--color-text-primary)",
+                    }}>
+                      {info.shortLabel}
+                    </span>
+                    {count > 0 && (
+                      <span style={{
+                        fontSize: "10px",
+                        fontWeight: 600,
+                        padding: "1px 6px",
+                        borderRadius: "10px",
+                        background: "var(--color-brand-blue-light)",
+                        color: "var(--color-brand-blue)",
+                      }}>
+                        {count}
+                      </span>
+                    )}
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium text-white">{info.shortLabel}</span>
-                      {count > 0 && (
-                        <span className="text-[10px] text-slate-400 bg-slate-700/60 px-1.5 rounded">
-                          {count}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[11px] text-slate-400 mt-0.5 leading-tight">{info.desc}</p>
-                  </div>
+                  <p style={{
+                    fontSize: "11px",
+                    color: "var(--color-text-muted)",
+                    marginTop: "3px",
+                    lineHeight: 1.4,
+                  }}>
+                    {info.desc}
+                  </p>
                 </div>
               </button>
             );
           })}
         </div>
-      </section>
+      </div>
 
       {/* ── Lista de figuras ── */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
+      <div>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "10px",
+        }}>
           <div>
-            <h3 className="text-sm font-semibold text-white">Figuras registradas</h3>
-            <p className="text-xs text-slate-400">
+            <div style={{
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "var(--color-text-primary)",
+            }}>
+              Figuras registradas
+            </div>
+            <div style={{
+              fontSize: "11px",
+              color: "var(--color-text-muted)",
+              marginTop: "2px",
+            }}>
               {data.figuras.length === 0
                 ? "Agrega al menos una figura"
                 : `${data.figuras.length} ${data.figuras.length === 1 ? "registrada" : "registradas"}`}
-            </p>
+            </div>
           </div>
         </div>
 
         {data.figuras.length === 0 ? (
-          <div className="border border-dashed border-slate-600 rounded-xl p-8 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-slate-800 mx-auto mb-3 flex items-center justify-center">
-              <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-            </div>
-            <p className="text-sm text-slate-400">
-              Sin figuras registradas. Selecciona arriba el tipo que quieres agregar.
-            </p>
-          </div>
+          <EmptyState />
         ) : (
-          <div className="space-y-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {data.figuras.map((f, idx) => (
               <FiguraCard
                 key={f._temp_id}
@@ -237,14 +310,50 @@ export function FigurasSection({
                 onUpdate={patch => updateFigura(f._temp_id, patch)}
                 onUpdateDomicilio={patch => updateDomicilio(f._temp_id, patch)}
                 onRemove={() => removeFigura(f._temp_id)}
-                showValidation={showValidation}
                 errorCount={errorsByFigura(idx)}
                 ubicaciones={data.ubicaciones}
               />
             ))}
           </div>
         )}
-      </section>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Empty state
+// ─────────────────────────────────────────────────────────────
+function EmptyState() {
+  return (
+    <div style={{
+      padding: "32px 24px",
+      borderRadius: "var(--radius-md)",
+      border: "1px dashed var(--color-border)",
+      background: "var(--color-bg-base)",
+      textAlign: "center",
+    }}>
+      <div style={{
+        width: "44px",
+        height: "44px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-bg-subtle)",
+        margin: "0 auto 10px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="1.5">
+          <circle cx="12" cy="8" r="4" />
+          <path d="M5 21a7 7 0 0114 0" />
+        </svg>
+      </div>
+      <div style={{
+        fontSize: "13px",
+        color: "var(--color-text-second)",
+      }}>
+        Sin figuras registradas. Selecciona arriba el tipo que quieres agregar.
+      </div>
     </div>
   );
 }
@@ -262,20 +371,17 @@ interface FiguraCardProps {
     patch: Partial<NonNullable<CartaPorteFigura["domicilio"]>>
   ) => void;
   onRemove: () => void;
-  showValidation: boolean;
   errorCount: number;
   ubicaciones: CartaPorteData["ubicaciones"];
 }
 
 function FiguraCard({
   figura,
-  index,
   isExpanded,
   onToggleExpand,
   onUpdate,
   onUpdateDomicilio,
   onRemove,
-  showValidation,
   errorCount,
   ubicaciones,
 }: FiguraCardProps) {
@@ -283,7 +389,6 @@ function FiguraCard({
   const { items: estados, loading: loadingEstados } = useSATCatalog("estados_mexico");
 
   const info = FIGURA_INFO[figura.tipo_figura];
-  const colors = COLOR_CLASSES[info.color];
   const isOperador = figura.tipo_figura === "01";
   const requiereParTrans = figura.tipo_figura === "02" || figura.tipo_figura === "03";
 
@@ -304,299 +409,415 @@ function FiguraCard({
   };
 
   return (
-    <div
-      className={`bg-slate-800/30 border rounded-xl overflow-hidden transition ${
-        isExpanded
-          ? colors.border
-          : errorCount > 0
-          ? "border-red-500/40"
-          : "border-slate-700"
-      }`}
-    >
+    <div style={{
+      borderRadius: "var(--radius-md)",
+      overflow: "hidden",
+      background: "var(--color-bg-subtle)",
+      border: isExpanded
+        ? "1px solid var(--color-brand-blue)"
+        : errorCount > 0
+        ? "1px solid var(--color-danger-border)"
+        : "1px solid var(--color-border-faint)",
+    }}>
       {/* Header */}
       <button
         type="button"
         onClick={onToggleExpand}
-        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-800/50 transition text-left"
+        style={{
+          width: "100%",
+          padding: "10px 14px",
+          background: "transparent",
+          border: "none",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          cursor: "pointer",
+          textAlign: "left",
+        }}
       >
-        <div className={`w-8 h-8 rounded-lg ${colors.iconBg} flex items-center justify-center shrink-0`}>
-          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d={info.iconPath} />
+        <div style={{
+          width: "32px",
+          height: "32px",
+          borderRadius: "var(--radius-md)",
+          background: "var(--color-bg-base)",
+          border: "1px solid var(--color-border-faint)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-blue)" strokeWidth="1.8">
+            <path d={info.iconPath} />
           </svg>
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-white">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            flexWrap: "wrap",
+          }}>
+            <span style={{
+              fontSize: "13px",
+              fontWeight: 600,
+              color: "var(--color-text-primary)",
+            }}>
               {info.shortLabel}
             </span>
-            <span className="text-[10px] text-slate-400 bg-slate-700/60 px-1.5 rounded font-mono">
+            <span style={{
+              fontSize: "10px",
+              fontFamily: "monospace",
+              fontWeight: 600,
+              padding: "1px 6px",
+              borderRadius: "10px",
+              background: "var(--color-bg-base)",
+              border: "1px solid var(--color-border-faint)",
+              color: "var(--color-text-muted)",
+            }}>
               Tipo {figura.tipo_figura}
             </span>
           </div>
-          <div className="text-xs text-slate-500 mt-0.5 truncate">{headerSummary}</div>
+          <div style={{
+            fontSize: "11px",
+            color: "var(--color-text-muted)",
+            marginTop: "2px",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}>
+            {headerSummary}
+          </div>
         </div>
         {errorCount > 0 && !isExpanded && (
-          <span className="px-2 py-0.5 text-[11px] bg-red-600/20 text-red-300 rounded shrink-0">
+          <span style={{
+            padding: "2px 7px",
+            borderRadius: "10px",
+            background: "var(--color-danger-bg)",
+            color: "var(--color-danger-text)",
+            fontSize: "10px",
+            fontWeight: 700,
+            flexShrink: 0,
+          }}>
             {errorCount} {errorCount === 1 ? "error" : "errores"}
           </span>
         )}
         <svg
-          className={`w-5 h-5 text-slate-400 shrink-0 transition-transform ${
-            isExpanded ? "rotate-180" : ""
-          }`}
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          viewBox="0 0 24 24"
+          strokeWidth="2"
+          style={{
+            color: "var(--color-text-muted)",
+            flexShrink: 0,
+            transform: isExpanded ? "rotate(180deg)" : "none",
+            transition: "transform 0.2s",
+          }}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
 
       {/* Body */}
       {isExpanded && (
-        <div className="px-4 pb-4 pt-1 space-y-4 border-t border-slate-700/50">
-          {/* Datos personales/empresa */}
-          <div>
-            <h5 className="text-xs uppercase tracking-wider text-slate-400 font-medium mb-2 mt-3">
-              Identificación
-            </h5>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="md:col-span-2">
-                <Label>Nombre / Razón social</Label>
+        <div style={{
+          padding: "12px 14px 14px",
+          borderTop: "1px solid var(--color-border-faint)",
+          display: "flex",
+          flexDirection: "column",
+          gap: "16px",
+        }}>
+          {/* Identificación */}
+          <SubsectionTitle>Identificación</SubsectionTitle>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "10px",
+          }}>
+            <div style={{ gridColumn: "1 / -1" }}>
+              <FieldS label="Nombre / Razón social">
                 <input
                   type="text"
                   value={figura.nombre_figura ?? ""}
                   onChange={e => onUpdate({ nombre_figura: e.target.value || undefined })}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                   placeholder={isOperador ? "Ej: Juan Pérez Hernández" : "Ej: Mobility Marine S.A. de C.V."}
+                  style={INPUT}
                 />
-              </div>
-              <div>
-                <Label>RFC</Label>
-                <input
-                  type="text"
-                  value={figura.rfc_figura ?? ""}
-                  onChange={e => onUpdate({ rfc_figura: e.target.value.toUpperCase() || undefined })}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  placeholder="ABC850101XXX"
-                  maxLength={13}
-                />
-                <p className="text-[11px] text-slate-500 mt-1">
-                  RFC mexicano. Si es extranjero, deja vacío y llena registro tributario.
-                </p>
-              </div>
-              <div>
-                <Label>Núm. registro tributario (extranjero)</Label>
-                <input
-                  type="text"
-                  value={figura.num_reg_id_trib ?? ""}
-                  onChange={e => onUpdate({ num_reg_id_trib: e.target.value || undefined })}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  placeholder="Solo si es residente extranjero"
-                />
-              </div>
-              {!isOperador && (
-                <div className="md:col-span-2">
-                  <Label>Residencia fiscal (país)</Label>
+              </FieldS>
+            </div>
+            <FieldS
+              label="RFC"
+              hint="RFC mexicano. Si es extranjero, deja vacío y llena registro tributario."
+            >
+              <input
+                type="text"
+                value={figura.rfc_figura ?? ""}
+                onChange={e => onUpdate({ rfc_figura: e.target.value.toUpperCase() || undefined })}
+                placeholder="ABC850101XXX"
+                maxLength={13}
+                style={{ ...INPUT, fontFamily: "monospace" }}
+              />
+            </FieldS>
+            <FieldS label="Núm. registro tributario (extranjero)">
+              <input
+                type="text"
+                value={figura.num_reg_id_trib ?? ""}
+                onChange={e => onUpdate({ num_reg_id_trib: e.target.value || undefined })}
+                placeholder="Solo si es residente extranjero"
+                style={INPUT}
+              />
+            </FieldS>
+            {!isOperador && (
+              <div style={{ gridColumn: "1 / -1" }}>
+                <FieldS label="Residencia fiscal (país)">
                   <select
                     value={figura.residencia_fiscal ?? ""}
                     onChange={e => onUpdate({ residencia_fiscal: e.target.value || undefined })}
                     disabled={loadingPaises}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                    style={INPUT}
                   >
                     <option value="">No aplica</option>
                     {paises.map(p => (
                       <option key={p.code} value={p.code}>{p.label}</option>
                     ))}
                   </select>
-                </div>
-              )}
-
-              {/* Núm de licencia (solo operador) */}
-              {isOperador && (
-                <div className="md:col-span-2">
-                  <Label required>Número de licencia de conducir</Label>
+                </FieldS>
+              </div>
+            )}
+            {isOperador && (
+              <div style={{ gridColumn: "1 / -1" }}>
+                <FieldS
+                  label="Número de licencia de conducir"
+                  required
+                  hint="Licencia federal o estatal del operador"
+                >
                   <input
                     type="text"
                     value={figura.num_licencia ?? ""}
                     onChange={e => onUpdate({ num_licencia: e.target.value || undefined })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                     placeholder="Ej: A1234567"
+                    style={{ ...INPUT, fontFamily: "monospace" }}
                   />
-                  <p className="text-[11px] text-slate-500 mt-1">
-                    Licencia federal o estatal del operador
-                  </p>
-                </div>
-              )}
-            </div>
+                </FieldS>
+              </div>
+            )}
           </div>
 
           {/* Domicilio (opcional) */}
-          <div>
-            <h5 className="text-xs uppercase tracking-wider text-slate-400 font-medium mb-2">
-              Domicilio (opcional)
-            </h5>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-              <div className="md:col-span-2">
-                <Label>Calle</Label>
+          <SubsectionTitle>Domicilio (opcional)</SubsectionTitle>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(3, 1fr)",
+            gap: "10px",
+          }}>
+            <div style={{ gridColumn: "span 2" }}>
+              <FieldS label="Calle">
                 <input
                   type="text"
                   value={figura.domicilio?.calle ?? ""}
                   onChange={e => onUpdateDomicilio({ calle: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  style={INPUT}
                 />
-              </div>
-              <div>
-                <Label>Núm. exterior</Label>
-                <input
-                  type="text"
-                  value={figura.domicilio?.numero_exterior ?? ""}
-                  onChange={e => onUpdateDomicilio({ numero_exterior: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                />
-              </div>
-              <div>
-                <Label>Núm. interior</Label>
-                <input
-                  type="text"
-                  value={figura.domicilio?.numero_interior ?? ""}
-                  onChange={e => onUpdateDomicilio({ numero_interior: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                />
-              </div>
-              <div>
-                <Label>Colonia</Label>
-                <input
-                  type="text"
-                  value={figura.domicilio?.colonia ?? ""}
-                  onChange={e => onUpdateDomicilio({ colonia: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                />
-              </div>
-              <div>
-                <Label>Municipio</Label>
-                <input
-                  type="text"
-                  value={figura.domicilio?.municipio ?? ""}
-                  onChange={e => onUpdateDomicilio({ municipio: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                />
-              </div>
-              <div>
-                <Label>Código postal</Label>
-                <input
-                  type="text"
-                  value={figura.domicilio?.codigo_postal ?? ""}
-                  onChange={e =>
-                    onUpdateDomicilio({
-                      codigo_postal: e.target.value.replace(/\D/g, "").slice(0, 5),
-                    })
-                  }
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white tabular-nums focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  maxLength={5}
-                />
-              </div>
-              <div>
-                <Label>Estado</Label>
-                {(figura.domicilio?.pais ?? "MEX") === "MEX" ? (
-                  <select
-                    value={figura.domicilio?.estado ?? ""}
-                    onChange={e => onUpdateDomicilio({ estado: e.target.value })}
-                    disabled={loadingEstados}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  >
-                    <option value="">{loadingEstados ? "Cargando..." : "Selecciona..."}</option>
-                    {estados.map(s => (
-                      <option key={s.code} value={s.code}>{s.label}</option>
-                    ))}
-                  </select>
-                ) : (
-                  <input
-                    type="text"
-                    value={figura.domicilio?.estado ?? ""}
-                    onChange={e => onUpdateDomicilio({ estado: e.target.value })}
-                    className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
-                  />
-                )}
-              </div>
-              <div>
-                <Label>País</Label>
+              </FieldS>
+            </div>
+            <FieldS label="Núm. exterior">
+              <input
+                type="text"
+                value={figura.domicilio?.numero_exterior ?? ""}
+                onChange={e => onUpdateDomicilio({ numero_exterior: e.target.value })}
+                style={INPUT}
+              />
+            </FieldS>
+            <FieldS label="Núm. interior">
+              <input
+                type="text"
+                value={figura.domicilio?.numero_interior ?? ""}
+                onChange={e => onUpdateDomicilio({ numero_interior: e.target.value })}
+                style={INPUT}
+              />
+            </FieldS>
+            <FieldS label="Colonia">
+              <input
+                type="text"
+                value={figura.domicilio?.colonia ?? ""}
+                onChange={e => onUpdateDomicilio({ colonia: e.target.value })}
+                style={INPUT}
+              />
+            </FieldS>
+            <FieldS label="Municipio">
+              <input
+                type="text"
+                value={figura.domicilio?.municipio ?? ""}
+                onChange={e => onUpdateDomicilio({ municipio: e.target.value })}
+                style={INPUT}
+              />
+            </FieldS>
+            <FieldS label="Código postal">
+              <input
+                type="text"
+                value={figura.domicilio?.codigo_postal ?? ""}
+                onChange={e =>
+                  onUpdateDomicilio({
+                    codigo_postal: e.target.value.replace(/\D/g, "").slice(0, 5),
+                  })
+                }
+                maxLength={5}
+                style={{ ...INPUT, fontVariantNumeric: "tabular-nums" }}
+              />
+            </FieldS>
+            <FieldS label="Estado">
+              {(figura.domicilio?.pais ?? "MEX") === "MEX" ? (
                 <select
-                  value={figura.domicilio?.pais ?? "MEX"}
-                  onChange={e =>
-                    onUpdateDomicilio({
-                      pais: e.target.value,
-                      estado: e.target.value === "MEX" ? "" : figura.domicilio?.estado ?? "",
-                    })
-                  }
-                  disabled={loadingPaises}
-                  className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+                  value={figura.domicilio?.estado ?? ""}
+                  onChange={e => onUpdateDomicilio({ estado: e.target.value })}
+                  disabled={loadingEstados}
+                  style={INPUT}
                 >
-                  {paises.map(p => (
-                    <option key={p.code} value={p.code}>{p.label}</option>
+                  <option value="">{loadingEstados ? "Cargando..." : "Selecciona..."}</option>
+                  {estados.map(s => (
+                    <option key={s.code} value={s.code}>{s.label}</option>
                   ))}
                 </select>
-              </div>
-            </div>
+              ) : (
+                <input
+                  type="text"
+                  value={figura.domicilio?.estado ?? ""}
+                  onChange={e => onUpdateDomicilio({ estado: e.target.value })}
+                  style={INPUT}
+                />
+              )}
+            </FieldS>
+            <FieldS label="País">
+              <select
+                value={figura.domicilio?.pais ?? "MEX"}
+                onChange={e =>
+                  onUpdateDomicilio({
+                    pais: e.target.value,
+                    estado: e.target.value === "MEX" ? "" : figura.domicilio?.estado ?? "",
+                  })
+                }
+                disabled={loadingPaises}
+                style={INPUT}
+              >
+                {paises.map(p => (
+                  <option key={p.code} value={p.code}>{p.label}</option>
+                ))}
+              </select>
+            </FieldS>
           </div>
 
-          {/* Partes del transporte (solo Propietario / Arrendatario) */}
+          {/* Tramos del transporte (solo Propietario / Arrendatario) */}
           {requiereParTrans && ubicaciones.length > 0 && (
-            <div>
-              <h5 className="text-xs uppercase tracking-wider text-slate-400 font-medium mb-2">
+            <>
+              <SubsectionTitle hint={`Marca las ubicaciones del trayecto donde el ${info.shortLabel.toLowerCase()} interviene.`}>
                 Tramos donde participa esta figura
-              </h5>
-              <p className="text-[11px] text-slate-500 mb-2">
-                Marca las ubicaciones del trayecto donde el {info.shortLabel.toLowerCase()} interviene.
-              </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              </SubsectionTitle>
+              <div style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: "8px",
+              }}>
                 {ubicaciones.map(u => {
                   const id = u._temp_id;
                   const isChecked = figura.partes_transporte?.includes(id) ?? false;
                   return (
                     <label
                       key={id}
-                      className={`flex items-start gap-2 p-2.5 rounded-lg border cursor-pointer transition ${
-                        isChecked
-                          ? "bg-slate-700/40 border-slate-500"
-                          : "bg-slate-800/40 border-slate-700 hover:border-slate-600"
-                      }`}
+                      style={{
+                        display: "flex",
+                        alignItems: "flex-start",
+                        gap: "8px",
+                        padding: "10px 12px",
+                        borderRadius: "var(--radius-md)",
+                        background: isChecked ? "var(--color-brand-blue-light)" : "var(--color-bg-base)",
+                        border: isChecked
+                          ? "1px solid var(--color-brand-blue)"
+                          : "1px solid var(--color-border-faint)",
+                        cursor: "pointer",
+                        transition: "var(--transition-fast)",
+                      }}
                     >
                       <input
                         type="checkbox"
                         checked={isChecked}
                         onChange={() => togglePartTrans(id)}
-                        className="mt-0.5 accent-blue-500"
+                        style={{
+                          marginTop: "2px",
+                          accentColor: "var(--color-brand-blue)",
+                          cursor: "pointer",
+                        }}
                       />
-                      <div className="flex-1 min-w-0">
-                        <div className="text-xs text-white font-medium">
-                          {u.tipo_ubicacion} ·{" "}
-                          {u.nombre_remitente_destinatario ||
-                            u.rfc_remitente_destinatario ||
-                            "Sin nombre"}
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          color: "var(--color-text-primary)",
+                        }}>
+                          {u.tipo_ubicacion}
+                          {u.nombre_remitente_destinatario && (
+                            <>
+                              {" · "}
+                              <span style={{ fontWeight: 400 }}>
+                                {u.nombre_remitente_destinatario}
+                              </span>
+                            </>
+                          )}
+                          {!u.nombre_remitente_destinatario && u.rfc_remitente_destinatario && (
+                            <>
+                              {" · "}
+                              <span style={{ fontWeight: 400, fontFamily: "monospace" }}>
+                                {u.rfc_remitente_destinatario}
+                              </span>
+                            </>
+                          )}
                         </div>
-                        <div className="text-[11px] text-slate-400 truncate">
+                        <div style={{
+                          fontSize: "11px",
+                          color: "var(--color-text-muted)",
+                          marginTop: "2px",
+                          whiteSpace: "nowrap",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                        }}>
                           {u.domicilio.codigo_postal && `CP ${u.domicilio.codigo_postal} · `}
-                          {u.domicilio.estado}
+                          {u.domicilio.estado || "Sin estado"}
                         </div>
                       </div>
                     </label>
                   );
                 })}
               </div>
-            </div>
+            </>
           )}
 
           {/* Acciones */}
-          <div className="pt-3 border-t border-slate-700/50 flex justify-end">
+          <div style={{
+            paddingTop: "10px",
+            borderTop: "1px solid var(--color-border-faint)",
+            display: "flex",
+            justifyContent: "flex-end",
+          }}>
             <button
               type="button"
               onClick={onRemove}
-              className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/30 rounded-lg transition flex items-center gap-1.5"
+              style={{
+                padding: "6px 12px",
+                fontSize: "11px",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid var(--color-danger-border)",
+                background: "var(--color-danger-bg)",
+                color: "var(--color-danger-text)",
+                cursor: "pointer",
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
               </svg>
               Eliminar figura
             </button>
@@ -607,12 +828,89 @@ function FiguraCard({
   );
 }
 
-// ─── Helpers UI ───
-function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
+// ─────────────────────────────────────────────────────────────
+// Helpers de UI compartidos
+// ─────────────────────────────────────────────────────────────
+
+const INPUT: React.CSSProperties = {
+  width: "100%",
+  height: "36px",
+  padding: "0 10px",
+  borderRadius: "var(--radius-md)",
+  border: "1px solid var(--color-border)",
+  background: "var(--color-bg-base)",
+  color: "var(--color-text-primary)",
+  fontSize: "13px",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+function SubsectionTitle({
+  children,
+  hint,
+}: {
+  children: React.ReactNode;
+  hint?: string;
+}) {
   return (
-    <label className="block text-xs text-slate-400 mb-1.5">
+    <div style={{ marginTop: "-4px" }}>
+      <div style={{
+        fontSize: "10px",
+        fontWeight: 700,
+        color: "var(--color-text-muted)",
+        textTransform: "uppercase",
+        letterSpacing: "0.08em",
+      }}>
+        {children}
+      </div>
+      {hint && (
+        <div style={{
+          fontSize: "11px",
+          color: "var(--color-text-muted)",
+          marginTop: "3px",
+          lineHeight: 1.5,
+        }}>
+          {hint}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function FieldS({
+  label,
+  required,
+  hint,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label style={{
+        display: "block",
+        fontSize: "11px",
+        color: "var(--color-text-muted)",
+        marginBottom: "5px",
+        fontWeight: 500,
+      }}>
+        {label}
+        {required && <span style={{ color: "var(--color-danger-text)", marginLeft: "3px" }}>*</span>}
+      </label>
       {children}
-      {required && <span className="text-red-400 ml-0.5">*</span>}
-    </label>
+      {hint && (
+        <div style={{
+          fontSize: "10px",
+          color: "var(--color-text-muted)",
+          marginTop: "4px",
+          lineHeight: 1.4,
+        }}>
+          {hint}
+        </div>
+      )}
+    </div>
   );
 }
