@@ -5,7 +5,7 @@
 // Retorna lista de errores legibles para mostrar al usuario.
 // ═══════════════════════════════════════════════════════════════════════
 
-import type { CartaPorteData } from "./carta_porte.types";
+import type { CartaPorteData, CFDIBaseData, CFDIConCartaPorteData, CartaPorteParentType } from "./carta_porte.types";
 
 export type ValidationError = {
   section:
@@ -324,8 +324,17 @@ import type {
   CFDIConCartaPorteData,
 } from "./carta_porte.types";
 
-export function validateCFDIBase(base: CFDIBaseData): ValidationError[] {
+/**
+ * Valida los datos del CFDI base (cliente + conceptos + pagos).
+ * En modo Traslado (parentType="traslado_carta_porte") se skipean validaciones que no aplican:
+ * conceptos, payment_method/payment_form (vienen forzados desde el mapper), y receiver_cfdi_use (forzado a S01).
+ */
+export function validateCFDIBase(
+  base: CFDIBaseData,
+  parentType: CartaPorteParentType = "factura_carta_porte"
+): ValidationError[] {
   const errors: ValidationError[] = [];
+  const isTraslado = parentType === "traslado_carta_porte";
 
   // ─── Cliente ───
   if (!base.cliente.receiver_rfc || base.cliente.receiver_rfc.length < 12) {
@@ -340,33 +349,44 @@ export function validateCFDIBase(base: CFDIBaseData): ValidationError[] {
   if (!base.cliente.receiver_zip || base.cliente.receiver_zip.length !== 5) {
     errors.push({ section: "cliente", field: "receiver_zip", message: "Código postal del cliente debe tener 5 dígitos." });
   }
-  if (!base.cliente.receiver_cfdi_use) {
+  if (!isTraslado && !base.cliente.receiver_cfdi_use) {
     errors.push({ section: "cliente", field: "receiver_cfdi_use", message: "Uso de CFDI es obligatorio." });
   }
 
-  // ─── Conceptos ───
-  if (!base.conceptos || base.conceptos.length === 0) {
-    errors.push({ section: "conceptos", field: "conceptos", message: "Debe haber al menos un concepto a facturar." });
+  if (!isTraslado) {
+    // ─── Conceptos ───
+    if (!base.conceptos || base.conceptos.length === 0) {
+      errors.push({ section: "conceptos", field: "conceptos", message: "Debe haber al menos un concepto a facturar." });
+    }
+    base.conceptos.forEach((c, idx) => {
+      const prefix = `Concepto ${idx + 1}`;
+      if (!c.description) errors.push({ section: "conceptos", field: `conceptos[${idx}].description`, message: `${prefix}: descripción es obligatoria.` });
+      if (!c.product_key) errors.push({ section: "conceptos", field: `conceptos[${idx}].product_key`, message: `${prefix}: clave SAT del producto es obligatoria.` });
+      if (!c.unit_key)    errors.push({ section: "conceptos", field: `conceptos[${idx}].unit_key`,    message: `${prefix}: clave SAT de unidad es obligatoria.` });
+      if (!Number.isFinite(c.quantity)   || c.quantity   <= 0) errors.push({ section: "conceptos", field: `conceptos[${idx}].quantity`,   message: `${prefix}: cantidad debe ser mayor a 0.` });
+      if (!Number.isFinite(c.unit_price) || c.unit_price < 0)  errors.push({ section: "conceptos", field: `conceptos[${idx}].unit_price`, message: `${prefix}: precio unitario debe ser mayor o igual a 0.` });
+    });
   }
-  base.conceptos.forEach((c, idx) => {
-    const prefix = `Concepto ${idx + 1}`;
-    if (!c.description) errors.push({ section: "conceptos", field: `conceptos[${idx}].description`, message: `${prefix}: descripción es obligatoria.` });
-    if (!c.product_key) errors.push({ section: "conceptos", field: `conceptos[${idx}].product_key`, message: `${prefix}: clave SAT del producto es obligatoria.` });
-    if (!c.unit_key)    errors.push({ section: "conceptos", field: `conceptos[${idx}].unit_key`,    message: `${prefix}: clave SAT de unidad es obligatoria.` });
-    if (!Number.isFinite(c.quantity)   || c.quantity   <= 0) errors.push({ section: "conceptos", field: `conceptos[${idx}].quantity`,   message: `${prefix}: cantidad debe ser mayor a 0.` });
-    if (!Number.isFinite(c.unit_price) || c.unit_price < 0)  errors.push({ section: "conceptos", field: `conceptos[${idx}].unit_price`, message: `${prefix}: precio unitario debe ser mayor o igual a 0.` });
-  });
 
-  // ─── Pagos ───
-  if (base.payment_method === "PPD" && base.payment_form !== "99") {
-    errors.push({ section: "conceptos", field: "payment_form", message: "Para pago PPD la forma de pago debe ser 99 (Por definir)." });
+  if (!isTraslado) {
+    // ─── Pagos ───
+    if (base.payment_method === "PPD" && base.payment_form !== "99") {
+      errors.push({ section: "conceptos", field: "payment_form", message: "Para pago PPD la forma de pago debe ser 99 (Por definir)." });
+    }
   }
 
   return errors;
 }
 
-export function validateCFDIConCartaPorte(data: CFDIConCartaPorteData): ValidationResult {
-  const baseErrors = validateCFDIBase(data.base);
+/**
+ * Valida un CFDI completo (Carta Porte + base CFDI).
+ * @param parentType "factura_carta_porte" (default) o "traslado_carta_porte" — controla qué validaciones aplican al base CFDI.
+ */
+export function validateCFDIConCartaPorte(
+  data: CFDIConCartaPorteData,
+  parentType: CartaPorteParentType = "factura_carta_porte"
+): ValidationResult {
+  const baseErrors = validateCFDIBase(data.base, parentType);
   const ccpResult  = validateCartaPorte(data.carta_porte);
   const allErrors  = [...baseErrors, ...ccpResult.errors];
   return { ok: allErrors.length === 0, errors: allErrors };
