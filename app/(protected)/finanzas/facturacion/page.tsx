@@ -20,6 +20,10 @@ import CFDIComplementoPago     from "./components/CFDIComplementoPago";
 import CFDINotaCredito         from "./components/CFDINotaCredito";
 import CFDICancelModal         from "./components/CFDICancelModal";
 import CFDINominaDrawer        from "./components/CFDINominaDrawer";
+import CFDINominaDrawer        from "./components/CFDINominaDrawer";
+import { CFDICartaPorteDrawer }                                from "./cartaporte/components/CFDICartaPorteDrawer";
+import { saveCartaPorteDraft, stampCartaPorte }                from "./cartaporte/services/carta_porte.service";
+import type { CFDIConCartaPorteData, CartaPorteParentType }   from "./cartaporte/types/carta_porte.types";
 
 type Tab = "dashboard" | "emitir" | "historial" | "notas" | "calendario";
 
@@ -45,6 +49,10 @@ export default function FacturacionPage() {
   const [pendingOrders,      setPendingOrders]       = useState<any[]>([]);
   const [preloadShipment,    setPreloadShipment]     = useState<any | null>(null);
   const [nominaDrawerOpen,   setNominaDrawerOpen]    = useState(false);
+
+  // ─── Carta Porte (Factura/Traslado con CCP 3.1) ───
+  const [cartaPorteDrawerOpen, setCartaPorteDrawerOpen] = useState<CartaPorteParentType | null>(null);
+  const [savingCartaPorte,     setSavingCartaPorte]     = useState(false);
 
   // ─── Edición de Proforma ───
   // Cuando hay un editProformaId, el CFDICreateDrawer se abre en modo edición
@@ -93,6 +101,22 @@ export default function FacturacionPage() {
     if (opt.id === "complemento_pago") { setCompREPOpen(true); return; }
     if (opt.id === "nota_credito")     { setNotaCreditoOpen(true); return; }
     if (opt.id === "nomina")           { setNominaDrawerOpen(true); return; }
+
+    // ─── Carta Porte: drawer dedicado que combina CFDI base + complemento ───
+    if (opt.id === "factura_carta_porte" || opt.id === "traslado_carta_porte") {
+      setCartaPorteDrawerOpen(opt.id as CartaPorteParentType);
+      return;
+    }
+
+    // ─── Traslado simple (sin CCP): caso muy raro, lo dejamos para después ───
+    if (opt.id === "traslado") {
+      alert(es
+        ? "El Traslado simple (sin Carta Porte) estará disponible próximamente. Para mover mercancía con vehículos, usa 'Traslado con Carta Porte'."
+        : "Simple Transfer (without Bill of Lading) will be available soon. To move goods with vehicles, use 'Transfer with Bill of Lading'."
+      );
+      return;
+    }
+
     setSelectedCFDIType(opt);
   }
 
@@ -280,6 +304,55 @@ export default function FacturacionPage() {
     try { await emitirNotaCredito(companyId ?? "", userId, payload); await ctrl.load(); setNotaCreditoOpen(false); }
     catch (e: any) {}
     finally { setSavingExtra(false); }
+  }
+
+  async function handleEmitirNotaCredito(payload: any) {
+    setSavingExtra(true);
+    try { await emitirNotaCredito(companyId ?? "", userId, payload); await ctrl.load(); setNotaCreditoOpen(false); }
+    catch (e: any) {}
+    finally { setSavingExtra(false); }
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // Handlers de Carta Porte
+  // ─────────────────────────────────────────────────────────────
+  async function handleSaveCartaPorteDraft(data: CFDIConCartaPorteData) {
+    if (!companyId || !cartaPorteDrawerOpen) return;
+    setSavingCartaPorte(true);
+    try {
+      await saveCartaPorteDraft(companyId, cartaPorteDrawerOpen, data);
+      await ctrl.load();
+      setCartaPorteDrawerOpen(null);
+      setTab("historial");
+    } catch (e: any) {
+      alert(e.message ?? (es ? "Error guardando borrador" : "Error saving draft"));
+    } finally {
+      setSavingCartaPorte(false);
+    }
+  }
+
+  async function handleStampCartaPorte(data: CFDIConCartaPorteData) {
+    if (!companyId || !cartaPorteDrawerOpen) return;
+    setSavingCartaPorte(true);
+    try {
+      // 1) Crear el borrador en BD
+      const result = await saveCartaPorteDraft(companyId, cartaPorteDrawerOpen, data);
+      // 2) Timbrar el borrador (lo manda al SAT vía Facturapi)
+      const stamped = await stampCartaPorte(result.cfdi_id);
+      // 3) Refrescar lista y cerrar drawer
+      await ctrl.load();
+      setCartaPorteDrawerOpen(null);
+      setTab("historial");
+      // 4) Abrir detalle del CFDI recién timbrado
+      if (stamped?.cfdi?.id) {
+        const sel = ctrl.cfdis.find((c) => c.id === stamped.cfdi.id) ?? stamped.cfdi;
+        ctrl.handleSelect(sel as any);
+      }
+    } catch (e: any) {
+      alert(e.message ?? (es ? "Error al timbrar Carta Porte" : "Error stamping Bill of Lading"));
+    } finally {
+      setSavingCartaPorte(false);
+    }
   }
 
   const TABS: { key: Tab; labelEs: string; labelEn: string; icon: React.ReactNode }[] = [
@@ -470,6 +543,15 @@ export default function FacturacionPage() {
       <CFDINotaCredito     open={notaCreditoOpen} saving={savingExtra} cfdis={ctrl.cfdis} onClose={() => setNotaCreditoOpen(false)} onCreate={handleEmitirNotaCredito} />
       <CFDINominaDrawer    open={nominaDrawerOpen} onClose={() => setNominaDrawerOpen(false)} onDone={() => { ctrl.load(); setTab("historial"); }} />
 
+      <CFDICartaPorteDrawer
+        open={!!cartaPorteDrawerOpen}
+        parentType={cartaPorteDrawerOpen ?? "factura_carta_porte"}
+        saving={savingCartaPorte}
+        onClose={() => setCartaPorteDrawerOpen(null)}
+        onSaveDraft={handleSaveCartaPorteDraft}
+        onStamp={handleStampCartaPorte}
+      />
+      
       {cancelTarget && (
         <CFDICancelModal
           cfdi={cancelTarget}
