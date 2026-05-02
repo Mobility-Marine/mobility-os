@@ -43,7 +43,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
     // 3) Permisos
     const access = await checkCompanyAccess(userId, cfdiBase.company_id);
-    if (!access.ok) return NextResponse.json({ error: access.error }, { status: access.status });
+    if ("error" in access) return NextResponse.json({ error: access.error }, { status: access.status });
 
     // 4) Cargar todo de BD
     const loaded = await loadCartaPorteForStamping(params.id);
