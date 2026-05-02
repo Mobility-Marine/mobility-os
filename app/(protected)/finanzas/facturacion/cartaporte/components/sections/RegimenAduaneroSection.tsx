@@ -2,6 +2,7 @@
 
 // ═══════════════════════════════════════════════════════════════════════
 // RegimenAduaneroSection — Sección 6 del drawer Carta Porte 3.1
+// Estilos: inline + CSS variables (mismo patrón que ConceptosSection)
 //
 // Solo aplica si transp_internac = "Sí". Para mercancía nacional muestra
 // un empty state explicando que no aplica.
@@ -57,188 +58,518 @@ export function RegimenAduaneroSection({
   // ─── Caso: operación nacional ───
   if (!isInternacional) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[320px] text-center max-w-md mx-auto">
-        <div className="w-16 h-16 rounded-2xl bg-emerald-600/10 border border-emerald-600/30 flex items-center justify-center mb-4">
-          <svg className="w-8 h-8 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-              d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+      <div style={{
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        textAlign: "center",
+        padding: "48px 24px",
+        maxWidth: "480px",
+        margin: "0 auto",
+        minHeight: "320px",
+      }}>
+        <div style={{
+          width: "56px",
+          height: "56px",
+          borderRadius: "var(--radius-md)",
+          background: "var(--color-success-bg)",
+          border: "1px solid var(--color-success-border)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          marginBottom: "14px",
+        }}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--color-success-text)" strokeWidth="1.8">
+            <path d="M9 12l2 2 4-4" />
+            <circle cx="12" cy="12" r="10" />
           </svg>
         </div>
-        <h3 className="text-lg font-semibold text-white mb-1">Régimen aduanero no aplica</h3>
-        <p className="text-sm text-slate-400 leading-relaxed">
-          Esta operación es <strong className="text-emerald-300">nacional</strong> (no cruza
-          fronteras). Solo se requiere régimen aduanero cuando el traslado es internacional.
-        </p>
-        <p className="text-xs text-slate-500 mt-4">
-          Para activarlo, ve a <strong className="text-white">Datos Generales</strong> y
-          marca la operación como Internacional.
-        </p>
+        <div style={{
+          fontSize: "15px",
+          fontWeight: 700,
+          color: "var(--color-text-primary)",
+          marginBottom: "6px",
+        }}>
+          Régimen aduanero no aplica
+        </div>
+        <div style={{
+          fontSize: "12px",
+          color: "var(--color-text-muted)",
+          lineHeight: 1.6,
+          marginBottom: "12px",
+        }}>
+          Esta operación es{" "}
+          <strong style={{ color: "var(--color-success-text)" }}>nacional</strong>{" "}
+          (no cruza fronteras). Solo se requiere régimen aduanero cuando el traslado
+          es internacional.
+        </div>
+        <div style={{
+          fontSize: "11px",
+          color: "var(--color-text-muted)",
+          opacity: 0.85,
+          padding: "8px 12px",
+          borderRadius: "var(--radius-md)",
+          background: "var(--color-bg-subtle)",
+          border: "1px solid var(--color-border-faint)",
+        }}>
+          Para activarlo, ve a{" "}
+          <strong style={{ color: "var(--color-text-primary)" }}>Datos Generales</strong>{" "}
+          y marca la operación como Internacional.
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px", maxWidth: "780px" }}>
       {/* ── Banner ── */}
-      <div className="bg-gradient-to-br from-orange-950/40 to-amber-950/40 border border-orange-800/40 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-orange-600/20 flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0 text-sm text-orange-100/90 leading-relaxed">
-            Indica el régimen aduanero bajo el que está la mercancía. Si es una operación
-            mixta (ej: parte definitiva + parte temporal), puedes agregar varios regímenes.
-          </div>
+      <div style={{
+        padding: "12px 14px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-brand-orange-light)",
+        border: "1px solid var(--color-brand-orange)",
+        display: "flex",
+        gap: "10px",
+        alignItems: "flex-start",
+      }}>
+        <div style={{
+          width: "28px",
+          height: "28px",
+          borderRadius: "var(--radius-sm)",
+          background: "var(--color-bg-base)",
+          border: "1px solid var(--color-brand-orange)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-brand-orange)" strokeWidth="2">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M2 12h20M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z" />
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 0, fontSize: "12px", color: "var(--color-text-second)", lineHeight: 1.5 }}>
+          Indica el régimen aduanero bajo el que está la mercancía. Si es una operación
+          mixta (ej: parte definitiva + parte temporal), puedes agregar varios regímenes.
         </div>
       </div>
 
       {/* ── Lista de regímenes ── */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
+      <div>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "10px",
+        }}>
           <div>
-            <h3 className="text-sm font-semibold text-white">
+            <div style={{
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "var(--color-text-primary)",
+            }}>
               Regímenes aduaneros aplicables
-            </h3>
-            <p className="text-xs text-slate-400">
+            </div>
+            <div style={{
+              fontSize: "11px",
+              color: "var(--color-text-muted)",
+              marginTop: "2px",
+            }}>
               {lineas.length === 0
                 ? "Mínimo 1 régimen"
                 : `${lineas.length} ${lineas.length === 1 ? "registrado" : "registrados"}`}
-            </p>
+            </div>
           </div>
           {showValidation && errors.length > 0 && (
-            <span className="px-2 py-1 text-xs bg-red-600/20 text-red-300 rounded">
+            <span style={{
+              padding: "2px 8px",
+              borderRadius: "10px",
+              background: "var(--color-danger-bg)",
+              color: "var(--color-danger-text)",
+              fontSize: "11px",
+              fontWeight: 700,
+            }}>
               {errors.length} {errors.length === 1 ? "error" : "errores"}
             </span>
           )}
         </div>
 
         {lineas.length === 0 ? (
-          <div className="border border-dashed border-slate-600 rounded-xl p-8 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-slate-800 mx-auto mb-3 flex items-center justify-center">
-              <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-            </div>
-            <p className="text-sm text-slate-400 mb-3">Sin régimen aduanero registrado</p>
-            <button
-              type="button"
-              onClick={addLinea}
-              className="px-4 py-2 text-sm bg-orange-600 hover:bg-orange-500 text-white rounded-lg transition inline-flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Agregar primer régimen
-            </button>
-          </div>
+          <EmptyState onAdd={addLinea} />
         ) : (
-          <div className="space-y-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {lineas.map((linea, idx) => {
               const selected = regimenes.find(r => r.code === linea.regimen_aduanero);
               return (
-                <div
+                <RegimenRow
                   key={linea._temp_id}
-                  className="bg-slate-800/30 border border-slate-700 rounded-xl p-3"
-                >
-                  <div className="grid grid-cols-1 md:grid-cols-[auto_1fr_auto] gap-3 items-start">
-                    {/* Numerador */}
-                    <div className="w-8 h-8 rounded-lg bg-orange-600/20 flex items-center justify-center shrink-0">
-                      <span className="text-xs font-bold text-orange-400 tabular-nums">
-                        {idx + 1}
-                      </span>
-                    </div>
-
-                    {/* Selector */}
-                    <div className="flex-1 min-w-0">
-                      <Label required>Régimen aduanero</Label>
-                      <select
-                        value={linea.regimen_aduanero}
-                        onChange={e => updateLinea(linea._temp_id, e.target.value)}
-                        disabled={loading}
-                        className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
-                      >
-                        <option value="">{loading ? "Cargando..." : "Selecciona régimen..."}</option>
-                        {regimenes.map(r => (
-                          <option key={r.code} value={r.code}>
-                            {r.code} — {r.label}
-                          </option>
-                        ))}
-                      </select>
-                      {selected && (
-                        <p className="text-[11px] text-slate-500 mt-1.5 leading-relaxed">
-                          {selected.label}
-                        </p>
-                      )}
-                    </div>
-
-                    {/* Eliminar */}
-                    <button
-                      type="button"
-                      onClick={() => removeLinea(linea._temp_id)}
-                      className="px-2.5 py-2 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/30 rounded-lg transition self-end"
-                      title="Eliminar régimen"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                          d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                </div>
+                  index={idx}
+                  linea={linea}
+                  regimenes={regimenes}
+                  loading={loading}
+                  description={selected?.label}
+                  onUpdate={value => updateLinea(linea._temp_id, value)}
+                  onRemove={() => removeLinea(linea._temp_id)}
+                />
               );
             })}
-            <button
-              type="button"
-              onClick={addLinea}
-              className="w-full py-2.5 text-sm border border-dashed border-slate-600 rounded-lg text-slate-400 hover:text-orange-300 hover:border-orange-500/50 hover:bg-orange-950/20 transition flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Agregar otro régimen
-            </button>
+            <DashedAdd onClick={addLinea} label="Agregar otro régimen" />
           </div>
         )}
-      </section>
+      </div>
 
       {/* ── Guía de regímenes comunes ── */}
-      <section className="bg-slate-800/40 border border-slate-700 rounded-xl p-4">
-        <h4 className="text-[11px] uppercase tracking-wider text-slate-400 font-medium mb-3">
-          Regímenes más comunes (referencia)
-        </h4>
-        <dl className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-          <div className="bg-slate-900/40 rounded-lg p-2.5">
-            <dt className="font-mono text-orange-300">IMD</dt>
-            <dd className="text-slate-400 mt-0.5">Importación definitiva — la mercancía permanece en el país sin retornar.</dd>
-          </div>
-          <div className="bg-slate-900/40 rounded-lg p-2.5">
-            <dt className="font-mono text-orange-300">EXD</dt>
-            <dd className="text-slate-400 mt-0.5">Exportación definitiva — la mercancía sale del país sin retornar.</dd>
-          </div>
-          <div className="bg-slate-900/40 rounded-lg p-2.5">
-            <dt className="font-mono text-orange-300">ITR / ETR</dt>
-            <dd className="text-slate-400 mt-0.5">Temporales para retornar al estado de origen sin transformación.</dd>
-          </div>
-          <div className="bg-slate-900/40 rounded-lg p-2.5">
-            <dt className="font-mono text-orange-300">ITE / ETE</dt>
-            <dd className="text-slate-400 mt-0.5">Temporales para elaboración, transformación o reparación (programas IMMEX).</dd>
-          </div>
-        </dl>
-      </section>
+      <div style={{
+        padding: "14px 16px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-bg-subtle)",
+        border: "1px solid var(--color-border-faint)",
+      }}>
+        <div style={{
+          fontSize: "10px",
+          fontWeight: 700,
+          color: "var(--color-text-muted)",
+          textTransform: "uppercase",
+          letterSpacing: "0.12em",
+          marginBottom: "10px",
+        }}>
+          Regímenes más comunes (referencia rápida)
+        </div>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+          gap: "8px",
+        }}>
+          <RegimenHelpCard
+            code="IMD"
+            description="Importación definitiva — la mercancía permanece en el país sin retornar."
+          />
+          <RegimenHelpCard
+            code="EXD"
+            description="Exportación definitiva — la mercancía sale del país sin retornar."
+          />
+          <RegimenHelpCard
+            code="ITR / ETR"
+            description="Temporales para retornar al estado de origen sin transformación."
+          />
+          <RegimenHelpCard
+            code="ITE / ETE"
+            description="Temporales para elaboración, transformación o reparación (programas IMMEX)."
+          />
+        </div>
+      </div>
     </div>
   );
 }
 
-// ─── Helpers UI ───
-function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
+// ─────────────────────────────────────────────────────────────
+// Empty state
+// ─────────────────────────────────────────────────────────────
+function EmptyState({ onAdd }: { onAdd: () => void }) {
   return (
-    <label className="block text-xs text-slate-400 mb-1.5">
+    <div style={{
+      padding: "32px 24px",
+      borderRadius: "var(--radius-md)",
+      border: "1px dashed var(--color-border)",
+      background: "var(--color-bg-base)",
+      textAlign: "center",
+    }}>
+      <div style={{
+        width: "44px",
+        height: "44px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-bg-subtle)",
+        margin: "0 auto 10px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="1.5">
+          <path d="M14 3v4a1 1 0 001 1h4" />
+          <path d="M17 21H7a2 2 0 01-2-2V5a2 2 0 012-2h7l5 5v11a2 2 0 01-2 2z" />
+          <line x1="9" y1="13" x2="15" y2="13" />
+          <line x1="9" y1="17" x2="15" y2="17" />
+        </svg>
+      </div>
+      <div style={{
+        fontSize: "13px",
+        color: "var(--color-text-second)",
+        marginBottom: "12px",
+      }}>
+        Sin régimen aduanero registrado
+      </div>
+      <button
+        type="button"
+        onClick={onAdd}
+        style={{
+          padding: "8px 16px",
+          fontSize: "12px",
+          fontWeight: 600,
+          borderRadius: "var(--radius-md)",
+          background: "var(--color-brand-blue)",
+          color: "#FFFFFF",
+          border: "none",
+          cursor: "pointer",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px",
+        }}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+        Agregar primer régimen
+      </button>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Row de un régimen aduanero
+// ─────────────────────────────────────────────────────────────
+function RegimenRow({
+  index,
+  linea,
+  regimenes,
+  loading,
+  description,
+  onUpdate,
+  onRemove,
+}: {
+  index: number;
+  linea: RegimenAduaneroLine;
+  regimenes: { code: string; label: string }[];
+  loading: boolean;
+  description?: string;
+  onUpdate: (value: string) => void;
+  onRemove: () => void;
+}) {
+  return (
+    <div style={{
+      padding: "12px 14px",
+      borderRadius: "var(--radius-md)",
+      background: "var(--color-bg-subtle)",
+      border: "1px solid var(--color-border-faint)",
+    }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "auto 1fr auto",
+        gap: "10px",
+        alignItems: "start",
+      }}>
+        <div style={{
+          width: "28px",
+          height: "28px",
+          borderRadius: "var(--radius-md)",
+          background: "var(--color-brand-orange-light)",
+          border: "1px solid var(--color-brand-orange)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "11px",
+          fontWeight: 700,
+          color: "var(--color-brand-orange)",
+          fontVariantNumeric: "tabular-nums",
+          marginTop: "22px",
+          flexShrink: 0,
+        }}>
+          {index + 1}
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <FieldS label="Régimen aduanero" required>
+            <select
+              value={linea.regimen_aduanero}
+              onChange={e => onUpdate(e.target.value)}
+              disabled={loading}
+              style={INPUT}
+            >
+              <option value="">{loading ? "Cargando..." : "Selecciona régimen..."}</option>
+              {regimenes.map(r => (
+                <option key={r.code} value={r.code}>
+                  {r.code} — {r.label}
+                </option>
+              ))}
+            </select>
+          </FieldS>
+          {description && (
+            <div style={{
+              fontSize: "11px",
+              color: "var(--color-text-muted)",
+              marginTop: "6px",
+              lineHeight: 1.5,
+              padding: "6px 10px",
+              borderRadius: "var(--radius-sm)",
+              background: "var(--color-bg-base)",
+              border: "1px solid var(--color-border-faint)",
+            }}>
+              {description}
+            </div>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onRemove}
+          title="Eliminar régimen"
+          style={{
+            padding: "8px",
+            borderRadius: "var(--radius-md)",
+            border: "1px solid var(--color-danger-border)",
+            background: "var(--color-danger-bg)",
+            color: "var(--color-danger-text)",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            marginTop: "22px",
+            flexShrink: 0,
+          }}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <polyline points="3 6 5 6 21 6" />
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Card de ayuda — régimen común
+// ─────────────────────────────────────────────────────────────
+function RegimenHelpCard({
+  code,
+  description,
+}: {
+  code: string;
+  description: string;
+}) {
+  return (
+    <div style={{
+      padding: "10px 12px",
+      borderRadius: "var(--radius-md)",
+      background: "var(--color-bg-base)",
+      border: "1px solid var(--color-border-faint)",
+    }}>
+      <div style={{
+        fontSize: "12px",
+        fontWeight: 700,
+        color: "var(--color-brand-orange)",
+        fontFamily: "monospace",
+        marginBottom: "4px",
+        letterSpacing: "0.04em",
+      }}>
+        {code}
+      </div>
+      <div style={{
+        fontSize: "11px",
+        color: "var(--color-text-second)",
+        lineHeight: 1.5,
+      }}>
+        {description}
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Helpers de UI compartidos
+// ─────────────────────────────────────────────────────────────
+
+const INPUT: React.CSSProperties = {
+  width: "100%",
+  height: "36px",
+  padding: "0 10px",
+  borderRadius: "var(--radius-md)",
+  border: "1px solid var(--color-border)",
+  background: "var(--color-bg-base)",
+  color: "var(--color-text-primary)",
+  fontSize: "13px",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
+function FieldS({
+  label,
+  required,
+  hint,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div>
+      <label style={{
+        display: "block",
+        fontSize: "11px",
+        color: "var(--color-text-muted)",
+        marginBottom: "5px",
+        fontWeight: 500,
+      }}>
+        {label}
+        {required && <span style={{ color: "var(--color-danger-text)", marginLeft: "3px" }}>*</span>}
+      </label>
       {children}
-      {required && <span className="text-red-400 ml-0.5">*</span>}
-    </label>
+      {hint && (
+        <div style={{
+          fontSize: "10px",
+          color: "var(--color-text-muted)",
+          marginTop: "4px",
+          lineHeight: 1.4,
+        }}>
+          {hint}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DashedAdd({
+  onClick,
+  label,
+}: {
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      style={{
+        width: "100%",
+        padding: "10px",
+        borderRadius: "var(--radius-md)",
+        border: "1px dashed var(--color-border)",
+        background: "transparent",
+        color: "var(--color-text-muted)",
+        fontSize: "12px",
+        fontWeight: 600,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "6px",
+        transition: "var(--transition-fast)",
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.color = "var(--color-brand-orange)";
+        e.currentTarget.style.borderColor = "var(--color-brand-orange)";
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.color = "var(--color-text-muted)";
+        e.currentTarget.style.borderColor = "var(--color-border)";
+      }}
+    >
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+        <line x1="12" y1="5" x2="12" y2="19" />
+        <line x1="5" y1="12" x2="19" y2="12" />
+      </svg>
+      {label}
+    </button>
   );
 }
