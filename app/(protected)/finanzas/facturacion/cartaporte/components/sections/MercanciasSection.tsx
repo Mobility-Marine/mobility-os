@@ -2,6 +2,7 @@
 
 // ═══════════════════════════════════════════════════════════════════════
 // MercanciasSection — Sección 3 del drawer Carta Porte 3.1
+// Estilos: inline + CSS variables (mismo patrón que ConceptosSection)
 //
 // Captura la lista de mercancías transportadas con sus datos SAT.
 //
@@ -9,9 +10,6 @@
 // - Cards plegables (similar a Ubicaciones)
 // - Tabs internos por mercancía: Datos básicos · Material peligroso · COFEPRIS · Comercio Exterior
 // - Auto-cálculo del total de pesos para reflejar en el agregado
-//
-// La búsqueda de claves SAT (ClaveProdServCP, ClaveUnidad) usa el endpoint
-// /api/sat existente que pega contra Facturapi.
 // ═══════════════════════════════════════════════════════════════════════
 
 import { useState, useEffect } from "react";
@@ -50,7 +48,6 @@ export function MercanciasSection({
     const sumaPesos = data.mercancias.reduce((acc, m) => acc + (m.peso_en_kg || 0), 0);
     const numTotal = data.mercancias.length;
 
-    // Solo actualizar si difieren (evitar loops)
     if (
       Math.abs(sumaPesos - data.mercancias_agregado.peso_bruto_total) > 0.001 ||
       numTotal !== data.mercancias_agregado.num_total_mercancias
@@ -93,59 +90,76 @@ export function MercanciasSection({
       : 0;
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div style={{ display: "flex", flexDirection: "column", gap: "20px", maxWidth: "880px" }}>
       {/* ── Banner ── */}
-      <div className="bg-gradient-to-br from-amber-950/40 to-orange-950/40 border border-amber-800/40 rounded-xl p-4">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-lg bg-amber-600/20 flex items-center justify-center shrink-0">
-            <svg className="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-            </svg>
-          </div>
-          <div className="flex-1 min-w-0 text-sm text-amber-100/90 leading-relaxed">
-            Registra cada tipo de mercancía que se transporta. Cada una requiere su{" "}
-            <strong className="text-white">clave SAT del producto</strong>, descripción,
-            cantidad y peso en kg. Si transportas material peligroso o medicamentos, llena
-            las pestañas correspondientes.
-          </div>
+      <div style={{
+        padding: "12px 14px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-info-bg)",
+        border: "1px solid var(--color-info-border)",
+        display: "flex",
+        gap: "10px",
+        alignItems: "flex-start",
+      }}>
+        <div style={{
+          width: "28px",
+          height: "28px",
+          borderRadius: "var(--radius-sm)",
+          background: "var(--color-bg-base)",
+          border: "1px solid var(--color-info-border)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+        }}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--color-info-text)" strokeWidth="2">
+            <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+          </svg>
+        </div>
+        <div style={{ flex: 1, minWidth: 0, fontSize: "12px", color: "var(--color-text-second)", lineHeight: 1.5 }}>
+          Registra cada tipo de mercancía que se transporta. Cada una requiere su{" "}
+          <strong style={{ color: "var(--color-text-primary)" }}>clave SAT del producto</strong>, descripción,
+          cantidad y peso en kg. Si transportas material peligroso o medicamentos, llena las pestañas correspondientes.
         </div>
       </div>
 
       {/* ── Lista de mercancías ── */}
-      <section>
-        <div className="flex items-center justify-between mb-3">
+      <div>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          marginBottom: "10px",
+        }}>
           <div>
-            <h3 className="text-sm font-semibold text-white">Mercancías a transportar</h3>
-            <p className="text-xs text-slate-400">Mínimo 1 mercancía</p>
+            <div style={{
+              fontSize: "13px",
+              fontWeight: 700,
+              color: "var(--color-text-primary)",
+            }}>
+              Mercancías a transportar
+            </div>
+            <div style={{
+              fontSize: "11px",
+              color: "var(--color-text-muted)",
+              marginTop: "2px",
+            }}>
+              Mínimo 1 mercancía
+            </div>
           </div>
-          <span className="text-xs text-slate-500 tabular-nums">
+          <span style={{
+            fontSize: "11px",
+            color: "var(--color-text-muted)",
+            fontVariantNumeric: "tabular-nums",
+          }}>
             {data.mercancias.length} {data.mercancias.length === 1 ? "registrada" : "registradas"}
           </span>
         </div>
 
         {data.mercancias.length === 0 ? (
-          <div className="border border-dashed border-slate-600 rounded-xl p-8 text-center">
-            <div className="w-12 h-12 rounded-2xl bg-slate-800 mx-auto mb-3 flex items-center justify-center">
-              <svg className="w-6 h-6 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
-                  d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-              </svg>
-            </div>
-            <p className="text-sm text-slate-400 mb-3">Sin mercancías registradas</p>
-            <button
-              type="button"
-              onClick={addMercancia}
-              className="px-4 py-2 text-sm bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition inline-flex items-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Agregar primera mercancía
-            </button>
-          </div>
+          <EmptyState onAdd={addMercancia} />
         ) : (
-          <div className="space-y-2">
+          <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
             {data.mercancias.map((m, idx) => (
               <MercanciaCard
                 key={m._temp_id}
@@ -158,63 +172,141 @@ export function MercanciasSection({
                 }
                 onUpdate={patch => updateMercancia(m._temp_id, patch)}
                 onRemove={() => removeMercancia(m._temp_id)}
-                showValidation={showValidation}
                 errorCount={errorsByMercancia(idx)}
               />
             ))}
             <button
               type="button"
               onClick={addMercancia}
-              className="w-full py-2.5 text-sm border border-dashed border-slate-600 rounded-lg text-slate-400 hover:text-amber-300 hover:border-amber-500/50 hover:bg-amber-950/20 transition flex items-center justify-center gap-2"
+              style={{
+                width: "100%",
+                padding: "10px",
+                borderRadius: "var(--radius-md)",
+                border: "1px dashed var(--color-border)",
+                background: "transparent",
+                color: "var(--color-text-muted)",
+                fontSize: "12px",
+                fontWeight: 600,
+                cursor: "pointer",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                gap: "6px",
+                transition: "var(--transition-fast)",
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.color = "var(--color-brand-blue)";
+                e.currentTarget.style.borderColor = "var(--color-brand-blue)";
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.color = "var(--color-text-muted)";
+                e.currentTarget.style.borderColor = "var(--color-border)";
+              }}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <line x1="12" y1="5" x2="12" y2="19" />
+                <line x1="5" y1="12" x2="19" y2="12" />
               </svg>
               Agregar otra mercancía
             </button>
           </div>
         )}
-      </section>
+      </div>
 
       {/* ── Totales agregados ── */}
-      <section className="bg-slate-800/40 border border-slate-700 rounded-xl p-4">
-        <h4 className="text-[11px] uppercase tracking-wider text-slate-400 font-medium mb-3">
+      <div style={{
+        padding: "14px 16px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-bg-subtle)",
+        border: "1px solid var(--color-border-faint)",
+      }}>
+        <div style={{
+          fontSize: "10px",
+          fontWeight: 700,
+          color: "var(--color-text-muted)",
+          textTransform: "uppercase",
+          letterSpacing: "0.12em",
+          marginBottom: "10px",
+        }}>
           Totales agregados (auto-calculados)
-        </h4>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        </div>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
+          gap: "16px",
+        }}>
           <div>
-            <label className="text-xs text-slate-500 block mb-1">Número total de mercancías</label>
-            <div className="text-2xl text-white font-semibold tabular-nums">
+            <div style={{
+              fontSize: "10px",
+              color: "var(--color-text-muted)",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              marginBottom: "4px",
+            }}>
+              Número total de mercancías
+            </div>
+            <div style={{
+              fontSize: "22px",
+              fontWeight: 700,
+              color: "var(--color-text-primary)",
+              fontVariantNumeric: "tabular-nums",
+            }}>
               {data.mercancias_agregado.num_total_mercancias}
             </div>
           </div>
           <div>
-            <label className="text-xs text-slate-500 block mb-1">Peso bruto total</label>
-            <div className="flex items-baseline gap-2">
-              <div className="text-2xl text-white font-semibold tabular-nums">
+            <div style={{
+              fontSize: "10px",
+              color: "var(--color-text-muted)",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.06em",
+              marginBottom: "4px",
+            }}>
+              Peso bruto total
+            </div>
+            <div style={{
+              display: "flex",
+              alignItems: "baseline",
+              gap: "6px",
+            }}>
+              <div style={{
+                fontSize: "22px",
+                fontWeight: 700,
+                color: "var(--color-text-primary)",
+                fontVariantNumeric: "tabular-nums",
+              }}>
                 {data.mercancias_agregado.peso_bruto_total.toLocaleString("es-MX", {
                   maximumFractionDigits: 3,
                 })}
               </div>
-              <div className="text-sm text-slate-400">{data.mercancias_agregado.unidad_peso}</div>
+              <div style={{ fontSize: "12px", color: "var(--color-text-muted)" }}>
+                {data.mercancias_agregado.unidad_peso}
+              </div>
             </div>
           </div>
-          <div>
-            <label className="text-xs text-slate-500 block mb-1.5">Unidad de peso</label>
+          <FieldS label="Unidad de peso">
             <UnidadPesoSelector
               value={data.mercancias_agregado.unidad_peso}
               onChange={u =>
                 setMercanciasAgregado({ ...data.mercancias_agregado, unidad_peso: u })
               }
             />
-          </div>
+          </FieldS>
         </div>
 
-        {/* Peso neto opcional */}
-        <div className="mt-4 pt-4 border-t border-slate-700/50 grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label>Peso neto total (opcional)</Label>
-            <div className="flex items-center gap-2">
+        {/* Peso neto opcional + Logística inversa */}
+        <div style={{
+          marginTop: "14px",
+          paddingTop: "14px",
+          borderTop: "1px solid var(--color-border-faint)",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "10px",
+        }}>
+          <FieldS label="Peso neto total (opcional)">
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               <input
                 type="number"
                 min="0"
@@ -226,14 +318,19 @@ export function MercanciasSection({
                     peso_neto_total: e.target.value ? parseFloat(e.target.value) : undefined,
                   })
                 }
-                className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-blue-500/50"
                 placeholder="0.000"
+                style={{
+                  ...INPUT,
+                  textAlign: "right",
+                  fontVariantNumeric: "tabular-nums",
+                }}
               />
-              <span className="text-xs text-slate-400 px-2">{data.mercancias_agregado.unidad_peso}</span>
+              <span style={{ fontSize: "11px", color: "var(--color-text-muted)", padding: "0 4px" }}>
+                {data.mercancias_agregado.unidad_peso}
+              </span>
             </div>
-          </div>
-          <div>
-            <Label>Logística inversa / recolección / devolución</Label>
+          </FieldS>
+          <FieldS label="Logística inversa / recolección / devolución">
             <select
               value={data.mercancias_agregado.logistica_inversa_recoleccion_devolucion ?? ""}
               onChange={e =>
@@ -242,15 +339,75 @@ export function MercanciasSection({
                   logistica_inversa_recoleccion_devolucion: (e.target.value as "Sí" | "No") || undefined,
                 })
               }
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              style={INPUT}
             >
               <option value="">No aplica</option>
               <option value="Sí">Sí</option>
               <option value="No">No</option>
             </select>
-          </div>
+          </FieldS>
         </div>
-      </section>
+      </div>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Empty state
+// ─────────────────────────────────────────────────────────────
+function EmptyState({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div style={{
+      padding: "32px 24px",
+      borderRadius: "var(--radius-md)",
+      border: "1px dashed var(--color-border)",
+      background: "var(--color-bg-base)",
+      textAlign: "center",
+    }}>
+      <div style={{
+        width: "44px",
+        height: "44px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-bg-subtle)",
+        margin: "0 auto 10px",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+      }}>
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="1.5">
+          <path d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+        </svg>
+      </div>
+      <div style={{
+        fontSize: "13px",
+        color: "var(--color-text-second)",
+        marginBottom: "12px",
+      }}>
+        Sin mercancías registradas
+      </div>
+      <button
+        type="button"
+        onClick={onAdd}
+        style={{
+          padding: "8px 16px",
+          fontSize: "12px",
+          fontWeight: 600,
+          borderRadius: "var(--radius-md)",
+          background: "var(--color-brand-blue)",
+          color: "#FFFFFF",
+          border: "none",
+          cursor: "pointer",
+          display: "inline-flex",
+          alignItems: "center",
+          gap: "6px",
+        }}
+      >
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <line x1="12" y1="5" x2="12" y2="19" />
+          <line x1="5" y1="12" x2="19" y2="12" />
+        </svg>
+        Agregar primera mercancía
+      </button>
     </div>
   );
 }
@@ -268,7 +425,6 @@ interface MercanciaCardProps {
   onToggleExpand: () => void;
   onUpdate: (patch: Partial<CartaPorteMercancia>) => void;
   onRemove: () => void;
-  showValidation: boolean;
   errorCount: number;
 }
 
@@ -280,12 +436,10 @@ function MercanciaCard({
   onToggleExpand,
   onUpdate,
   onRemove,
-  showValidation,
   errorCount,
 }: MercanciaCardProps) {
   const [activeTab, setActiveTab] = useState<MercanciaTab>("basicos");
 
-  // Resumen para header colapsado
   const headerSummary = [
     mercancia.descripcion || "Sin descripción",
     mercancia.cantidad > 0 && `${mercancia.cantidad} ${mercancia.clave_unidad}`,
@@ -295,74 +449,174 @@ function MercanciaCard({
     .join(" · ");
 
   return (
-    <div
-      className={`bg-slate-800/30 border rounded-xl overflow-hidden transition ${
-        isExpanded
-          ? "border-amber-500/50"
-          : errorCount > 0
-          ? "border-red-500/40"
-          : "border-slate-700"
-      }`}
-    >
+    <div style={{
+      borderRadius: "var(--radius-md)",
+      overflow: "hidden",
+      background: "var(--color-bg-subtle)",
+      border: isExpanded
+        ? "1px solid var(--color-brand-blue)"
+        : errorCount > 0
+        ? "1px solid var(--color-danger-border)"
+        : "1px solid var(--color-border-faint)",
+    }}>
       {/* Header */}
       <button
         type="button"
         onClick={onToggleExpand}
-        className="w-full px-4 py-3 flex items-center gap-3 hover:bg-slate-800/50 transition text-left"
+        style={{
+          width: "100%",
+          padding: "10px 14px",
+          background: "transparent",
+          border: "none",
+          display: "flex",
+          alignItems: "center",
+          gap: "10px",
+          cursor: "pointer",
+          textAlign: "left",
+        }}
       >
-        <div className="w-8 h-8 rounded-lg bg-amber-600/20 flex items-center justify-center shrink-0">
-          <span className="text-xs font-bold text-amber-400 tabular-nums">{index + 1}</span>
+        <div style={{
+          width: "26px",
+          height: "26px",
+          borderRadius: "var(--radius-md)",
+          background: "var(--color-bg-base)",
+          border: "1px solid var(--color-border-faint)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: "11px",
+          fontWeight: 700,
+          color: "var(--color-text-second)",
+          fontVariantNumeric: "tabular-nums",
+          flexShrink: 0,
+        }}>
+          {index + 1}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-white">
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            flexWrap: "wrap",
+          }}>
+            <span style={{
+              fontSize: "13px",
+              fontWeight: 600,
+              color: "var(--color-text-primary)",
+            }}>
               Mercancía {index + 1}
             </span>
             {mercancia.bienes_transp && (
-              <span className="text-[10px] text-amber-300 font-mono bg-amber-950/40 px-1.5 py-0.5 rounded">
+              <span style={{
+                fontSize: "10px",
+                fontFamily: "monospace",
+                fontWeight: 600,
+                background: "var(--color-brand-blue-light)",
+                color: "var(--color-brand-blue)",
+                padding: "1px 6px",
+                borderRadius: "10px",
+              }}>
                 {mercancia.bienes_transp}
               </span>
             )}
             {mercancia.material_peligroso && (
-              <span className="text-[10px] text-red-300 bg-red-950/40 px-1.5 py-0.5 rounded">
+              <span style={{
+                fontSize: "10px",
+                fontWeight: 600,
+                background: "var(--color-danger-bg)",
+                color: "var(--color-danger-text)",
+                padding: "1px 6px",
+                borderRadius: "10px",
+              }}>
                 ⚠ Peligroso
               </span>
             )}
           </div>
-          <div className="text-xs text-slate-500 mt-0.5 truncate">{headerSummary}</div>
+          <div style={{
+            fontSize: "11px",
+            color: "var(--color-text-muted)",
+            marginTop: "2px",
+            whiteSpace: "nowrap",
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+          }}>
+            {headerSummary}
+          </div>
         </div>
         {errorCount > 0 && !isExpanded && (
-          <span className="px-2 py-0.5 text-[11px] bg-red-600/20 text-red-300 rounded shrink-0">
+          <span style={{
+            padding: "2px 7px",
+            borderRadius: "10px",
+            background: "var(--color-danger-bg)",
+            color: "var(--color-danger-text)",
+            fontSize: "10px",
+            fontWeight: 700,
+            flexShrink: 0,
+          }}>
             {errorCount} {errorCount === 1 ? "error" : "errores"}
           </span>
         )}
         <svg
-          className={`w-5 h-5 text-slate-400 shrink-0 transition-transform ${
-            isExpanded ? "rotate-180" : ""
-          }`}
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
           fill="none"
           stroke="currentColor"
-          viewBox="0 0 24 24"
+          strokeWidth="2"
+          style={{
+            color: "var(--color-text-muted)",
+            flexShrink: 0,
+            transform: isExpanded ? "rotate(180deg)" : "none",
+            transition: "transform 0.2s",
+          }}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          <polyline points="6 9 12 15 18 9" />
         </svg>
       </button>
 
       {/* Body */}
       {isExpanded && (
-        <div className="border-t border-slate-700/50">
+        <div style={{ borderTop: "1px solid var(--color-border-faint)" }}>
           {/* Tabs */}
-          <div className="flex items-center gap-1 px-2 py-2 bg-slate-900/50 border-b border-slate-700/50 overflow-x-auto">
-            <TabButton active={activeTab === "basicos"} onClick={() => setActiveTab("basicos")} label="Datos básicos" required />
-            <TabButton active={activeTab === "peligroso"} onClick={() => setActiveTab("peligroso")} label="Material peligroso" showDot={mercancia.material_peligroso} />
-            <TabButton active={activeTab === "cofepris"} onClick={() => setActiveTab("cofepris")} label="COFEPRIS" showDot={!!mercancia.sector_cofepris} />
+          <div style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "4px",
+            padding: "8px 10px",
+            background: "var(--color-bg-base)",
+            borderBottom: "1px solid var(--color-border-faint)",
+            overflowX: "auto",
+          }}>
+            <TabButton
+              active={activeTab === "basicos"}
+              onClick={() => setActiveTab("basicos")}
+              label="Datos básicos"
+              required
+            />
+            <TabButton
+              active={activeTab === "peligroso"}
+              onClick={() => setActiveTab("peligroso")}
+              label="Material peligroso"
+              showDot={mercancia.material_peligroso}
+            />
+            <TabButton
+              active={activeTab === "cofepris"}
+              onClick={() => setActiveTab("cofepris")}
+              label="COFEPRIS"
+              showDot={!!mercancia.sector_cofepris}
+            />
             {isInternacional && (
-              <TabButton active={activeTab === "comex"} onClick={() => setActiveTab("comex")} label="Comercio Exterior" showDot={!!mercancia.fraccion_arancelaria} />
+              <TabButton
+                active={activeTab === "comex"}
+                onClick={() => setActiveTab("comex")}
+                label="Comercio Exterior"
+                showDot={!!mercancia.fraccion_arancelaria}
+              />
             )}
           </div>
 
           {/* Tab content */}
-          <div className="p-4">
+          <div style={{ padding: "14px" }}>
             {activeTab === "basicos" && (
               <DatosBasicosTab mercancia={mercancia} onUpdate={onUpdate} />
             )}
@@ -378,15 +632,33 @@ function MercanciaCard({
           </div>
 
           {/* Acciones */}
-          <div className="px-4 pb-4 flex justify-end">
+          <div style={{
+            padding: "10px 14px",
+            display: "flex",
+            justifyContent: "flex-end",
+            borderTop: "1px solid var(--color-border-faint)",
+            background: "var(--color-bg-base)",
+          }}>
             <button
               type="button"
               onClick={onRemove}
-              className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/30 rounded-lg transition flex items-center gap-1.5"
+              style={{
+                padding: "6px 12px",
+                fontSize: "11px",
+                borderRadius: "var(--radius-md)",
+                border: "1px solid var(--color-danger-border)",
+                background: "var(--color-danger-bg)",
+                color: "var(--color-danger-text)",
+                cursor: "pointer",
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
             >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
-                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
               </svg>
               Eliminar mercancía
             </button>
@@ -398,7 +670,7 @@ function MercanciaCard({
 }
 
 // ─────────────────────────────────────────────────────────────
-// Tab 1: Datos básicos (obligatorio)
+// Tab 1: Datos básicos
 // ─────────────────────────────────────────────────────────────
 function DatosBasicosTab({
   mercancia,
@@ -408,138 +680,146 @@ function DatosBasicosTab({
   onUpdate: (patch: Partial<CartaPorteMercancia>) => void;
 }) {
   return (
-    <div className="space-y-4">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        {/* Clave SAT producto */}
-        <div className="md:col-span-2">
-          <Label required>Clave SAT del producto (BienesTransp)</Label>
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+      gap: "10px",
+    }}>
+      <div style={{ gridColumn: "1 / -1" }}>
+        <FieldS
+          label="Clave SAT del producto (BienesTransp)"
+          required
+          hint="Catálogo c_ClaveProdServCP del SAT. Para autotransporte de carga general usa 78101800."
+        >
           <input
             type="text"
             value={mercancia.bienes_transp}
             onChange={e => onUpdate({ bienes_transp: e.target.value.toUpperCase() })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50"
             placeholder="Ej: 78101800"
             maxLength={15}
+            style={{ ...INPUT, fontFamily: "monospace" }}
           />
-          <p className="text-[11px] text-slate-500 mt-1">
-            Catálogo c_ClaveProdServCP del SAT. Para autotransporte de carga general usa{" "}
-            <code className="text-amber-300 bg-amber-950/40 px-1 rounded">78101800</code> o
-            consulta el catálogo SAT.
-          </p>
-        </div>
+        </FieldS>
+      </div>
 
-        {/* Descripción */}
-        <div className="md:col-span-2">
-          <Label required>Descripción</Label>
+      <div style={{ gridColumn: "1 / -1" }}>
+        <FieldS label="Descripción" required>
           <input
             type="text"
             value={mercancia.descripcion}
             onChange={e => onUpdate({ descripcion: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
             placeholder="Ej: Refacciones automotrices ensambladas"
             maxLength={1000}
+            style={INPUT}
           />
-        </div>
+        </FieldS>
+      </div>
 
-        {/* Cantidad + Clave Unidad */}
-        <div>
-          <Label required>Cantidad</Label>
+      <FieldS label="Cantidad" required>
+        <input
+          type="number"
+          min="0"
+          step="0.001"
+          value={mercancia.cantidad || ""}
+          onChange={e => onUpdate({ cantidad: parseFloat(e.target.value) || 0 })}
+          placeholder="0"
+          style={{
+            ...INPUT,
+            textAlign: "right",
+            fontVariantNumeric: "tabular-nums",
+          }}
+        />
+      </FieldS>
+
+      <FieldS
+        label="Clave de unidad SAT"
+        required
+        hint="KGM kilo · H87 pieza · XBX caja"
+      >
+        <input
+          type="text"
+          value={mercancia.clave_unidad}
+          onChange={e => onUpdate({ clave_unidad: e.target.value.toUpperCase() })}
+          placeholder="KGM, H87..."
+          maxLength={3}
+          style={{ ...INPUT, fontFamily: "monospace" }}
+        />
+      </FieldS>
+
+      <FieldS label="Unidad personalizada (opcional)">
+        <input
+          type="text"
+          value={mercancia.unidad ?? ""}
+          onChange={e => onUpdate({ unidad: e.target.value || undefined })}
+          placeholder="Texto descriptivo"
+          style={INPUT}
+        />
+      </FieldS>
+
+      <FieldS label="Dimensiones" hint="Formato: largo/ancho/alto + unidad (plg, cm, m)">
+        <input
+          type="text"
+          value={mercancia.dimensiones ?? ""}
+          onChange={e => onUpdate({ dimensiones: e.target.value })}
+          placeholder="30/40/30plg"
+          style={{ ...INPUT, fontFamily: "monospace" }}
+        />
+      </FieldS>
+
+      <FieldS label="Peso en kilogramos" required>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
           <input
             type="number"
             min="0"
             step="0.001"
-            value={mercancia.cantidad || ""}
-            onChange={e => onUpdate({ cantidad: parseFloat(e.target.value) || 0 })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-            placeholder="0"
+            value={mercancia.peso_en_kg || ""}
+            onChange={e => onUpdate({ peso_en_kg: parseFloat(e.target.value) || 0 })}
+            placeholder="0.000"
+            style={{
+              ...INPUT,
+              textAlign: "right",
+              fontVariantNumeric: "tabular-nums",
+            }}
           />
+          <span style={{ fontSize: "11px", color: "var(--color-text-muted)", padding: "0 4px" }}>
+            kg
+          </span>
         </div>
-        <div>
-          <Label required>Clave de unidad SAT</Label>
+      </FieldS>
+
+      <FieldS label="Valor de la mercancía (opcional)">
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <input
+            type="number"
+            min="0"
+            step="0.01"
+            value={mercancia.valor_mercancia ?? ""}
+            onChange={e =>
+              onUpdate({ valor_mercancia: e.target.value ? parseFloat(e.target.value) : undefined })
+            }
+            placeholder="0.00"
+            style={{
+              ...INPUT,
+              textAlign: "right",
+              fontVariantNumeric: "tabular-nums",
+            }}
+          />
           <input
             type="text"
-            value={mercancia.clave_unidad}
-            onChange={e => onUpdate({ clave_unidad: e.target.value.toUpperCase() })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-            placeholder="KGM, H87, XBX..."
+            value={mercancia.moneda ?? "MXN"}
+            onChange={e => onUpdate({ moneda: e.target.value.toUpperCase() })}
             maxLength={3}
-          />
-          <p className="text-[11px] text-slate-500 mt-1">
-            Catálogo c_ClaveUnidad. Comunes:{" "}
-            <code className="text-amber-300 bg-amber-950/40 px-1 rounded">KGM</code> kilo,{" "}
-            <code className="text-amber-300 bg-amber-950/40 px-1 rounded">H87</code> pieza,{" "}
-            <code className="text-amber-300 bg-amber-950/40 px-1 rounded">XBX</code> caja
-          </p>
-        </div>
-
-        {/* Unidad propia */}
-        <div>
-          <Label>Unidad personalizada (opcional)</Label>
-          <input
-            type="text"
-            value={mercancia.unidad ?? ""}
-            onChange={e => onUpdate({ unidad: e.target.value || undefined })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-            placeholder="Texto descriptivo"
+            placeholder="MXN"
+            style={{
+              ...INPUT,
+              width: "70px",
+              textAlign: "center",
+              fontFamily: "monospace",
+              fontWeight: 600,
+            }}
           />
         </div>
-
-        {/* Dimensiones */}
-        <div>
-          <Label>Dimensiones (formato SAT)</Label>
-          <input
-            type="text"
-            value={mercancia.dimensiones ?? ""}
-            onChange={e => onUpdate({ dimensiones: e.target.value })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-            placeholder="30/40/30plg"
-          />
-          <p className="text-[11px] text-slate-500 mt-1">
-            Formato: largo/ancho/alto + unidad (plg, cm, m)
-          </p>
-        </div>
-
-        {/* Peso */}
-        <div>
-          <Label required>Peso en kilogramos</Label>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min="0"
-              step="0.001"
-              value={mercancia.peso_en_kg || ""}
-              onChange={e => onUpdate({ peso_en_kg: parseFloat(e.target.value) || 0 })}
-              className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-              placeholder="0.000"
-            />
-            <span className="text-xs text-slate-400 px-2">kg</span>
-          </div>
-        </div>
-
-        {/* Valor mercancía */}
-        <div>
-          <Label>Valor de la mercancía (opcional)</Label>
-          <div className="flex items-center gap-2">
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={mercancia.valor_mercancia ?? ""}
-              onChange={e => onUpdate({ valor_mercancia: e.target.value ? parseFloat(e.target.value) : undefined })}
-              className="flex-1 px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-              placeholder="0.00"
-            />
-            <input
-              type="text"
-              value={mercancia.moneda ?? "MXN"}
-              onChange={e => onUpdate({ moneda: e.target.value.toUpperCase() })}
-              maxLength={3}
-              className="w-20 px-2 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white text-center font-mono focus:outline-none focus:ring-2 focus:ring-amber-500/50"
-              placeholder="MXN"
-            />
-          </div>
-        </div>
-      </div>
+      </FieldS>
     </div>
   );
 }
@@ -557,14 +837,32 @@ function MaterialPeligrosoTab({
   const { items: embalajes } = useSATCatalog("tipo_embalaje_comun");
 
   return (
-    <div className="space-y-4">
+    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
       {/* Toggle */}
-      <div className="flex items-center justify-between p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
+      <div style={{
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        padding: "10px 12px",
+        borderRadius: "var(--radius-md)",
+        background: mercancia.material_peligroso ? "var(--color-danger-bg)" : "var(--color-bg-subtle)",
+        border: `1px solid ${mercancia.material_peligroso ? "var(--color-danger-border)" : "var(--color-border-faint)"}`,
+      }}>
         <div>
-          <div className="text-sm font-medium text-white">¿Es material peligroso?</div>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <div style={{
+            fontSize: "13px",
+            fontWeight: 600,
+            color: "var(--color-text-primary)",
+          }}>
+            ¿Es material peligroso?
+          </div>
+          <div style={{
+            fontSize: "11px",
+            color: "var(--color-text-muted)",
+            marginTop: "2px",
+          }}>
             Sustancias químicas, explosivos, inflamables, radioactivos, etc.
-          </p>
+          </div>
         </div>
         <button
           type="button"
@@ -574,39 +872,58 @@ function MaterialPeligrosoTab({
               cve_material_peligroso: mercancia.material_peligroso ? undefined : mercancia.cve_material_peligroso,
             })
           }
-          className={`relative w-11 h-6 rounded-full transition ${
-            mercancia.material_peligroso ? "bg-red-600" : "bg-slate-600"
-          }`}
+          style={{
+            position: "relative",
+            width: "40px",
+            height: "22px",
+            borderRadius: "11px",
+            border: "none",
+            background: mercancia.material_peligroso ? "var(--color-danger-text)" : "var(--color-border-strong)",
+            cursor: "pointer",
+            padding: 0,
+            transition: "var(--transition-fast)",
+          }}
         >
           <span
-            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full transition-transform ${
-              mercancia.material_peligroso ? "translate-x-5" : "translate-x-0"
-            }`}
+            style={{
+              position: "absolute",
+              top: "2px",
+              left: mercancia.material_peligroso ? "20px" : "2px",
+              width: "18px",
+              height: "18px",
+              background: "#FFFFFF",
+              borderRadius: "50%",
+              boxShadow: "var(--shadow-sm)",
+              transition: "left 0.18s ease",
+            }}
           />
         </button>
       </div>
 
       {mercancia.material_peligroso ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          <div>
-            <Label required>Clave SAT del material peligroso</Label>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "10px",
+        }}>
+          <FieldS
+            label="Clave SAT del material peligroso"
+            required
+            hint="Catálogo c_MaterialPeligroso del SAT"
+          >
             <input
               type="text"
               value={mercancia.cve_material_peligroso ?? ""}
               onChange={e => onUpdate({ cve_material_peligroso: e.target.value.toUpperCase() })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-red-500/50"
               placeholder="Ej: 0001"
+              style={{ ...INPUT, fontFamily: "monospace" }}
             />
-            <p className="text-[11px] text-slate-500 mt-1">
-              Catálogo c_MaterialPeligroso del SAT
-            </p>
-          </div>
-          <div>
-            <Label>Tipo de embalaje</Label>
+          </FieldS>
+          <FieldS label="Tipo de embalaje">
             <select
               value={mercancia.embalaje ?? ""}
               onChange={e => onUpdate({ embalaje: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500/50"
+              style={INPUT}
             >
               <option value="">Selecciona embalaje...</option>
               {embalajes.map(e => (
@@ -615,20 +932,26 @@ function MaterialPeligrosoTab({
                 </option>
               ))}
             </select>
-          </div>
-          <div className="md:col-span-2">
-            <Label>Descripción del embalaje</Label>
-            <input
-              type="text"
-              value={mercancia.desc_embalaje ?? ""}
-              onChange={e => onUpdate({ desc_embalaje: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-red-500/50"
-              placeholder="Detalle adicional del embalaje"
-            />
+          </FieldS>
+          <div style={{ gridColumn: "1 / -1" }}>
+            <FieldS label="Descripción del embalaje">
+              <input
+                type="text"
+                value={mercancia.desc_embalaje ?? ""}
+                onChange={e => onUpdate({ desc_embalaje: e.target.value || undefined })}
+                placeholder="Detalle adicional del embalaje"
+                style={INPUT}
+              />
+            </FieldS>
           </div>
         </div>
       ) : (
-        <div className="text-center py-8 text-sm text-slate-500">
+        <div style={{
+          padding: "32px 16px",
+          textAlign: "center",
+          fontSize: "12px",
+          color: "var(--color-text-muted)",
+        }}>
           Activa el toggle si la mercancía es material peligroso
         </div>
       )}
@@ -637,7 +960,7 @@ function MaterialPeligrosoTab({
 }
 
 // ─────────────────────────────────────────────────────────────
-// Tab 3: COFEPRIS (medicamentos / sustancias controladas)
+// Tab 3: COFEPRIS
 // ─────────────────────────────────────────────────────────────
 function CofeprisTab({
   mercancia,
@@ -649,97 +972,102 @@ function CofeprisTab({
   const hasCofepris = !!mercancia.sector_cofepris;
 
   return (
-    <div className="space-y-4">
-      <div className="bg-blue-950/20 border border-blue-800/30 rounded-lg p-3 text-xs text-blue-200/80">
-        Solo aplica para <strong>medicamentos, sustancias químicas reguladas, productos biológicos
+    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      <div style={{
+        padding: "10px 12px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-info-bg)",
+        border: "1px solid var(--color-info-border)",
+        fontSize: "11px",
+        color: "var(--color-text-second)",
+        lineHeight: 1.5,
+      }}>
+        Solo aplica para <strong style={{ color: "var(--color-text-primary)" }}>medicamentos, sustancias químicas reguladas, productos biológicos
         o alimentos perecederos</strong> que requieren registro COFEPRIS.
       </div>
 
-      <div>
-        <Label>Sector COFEPRIS</Label>
+      <FieldS label="Sector COFEPRIS">
         <input
           type="text"
           value={mercancia.sector_cofepris ?? ""}
           onChange={e => onUpdate({ sector_cofepris: e.target.value || undefined })}
-          className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
           placeholder="Catálogo c_SectorCOFEPRIS"
+          style={INPUT}
         />
-      </div>
+      </FieldS>
 
       {hasCofepris && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-2 border-t border-slate-700/50">
-          <div>
-            <Label>Nombre del ingrediente activo</Label>
+        <div style={{
+          paddingTop: "12px",
+          borderTop: "1px solid var(--color-border-faint)",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: "10px",
+        }}>
+          <FieldS label="Nombre del ingrediente activo">
             <input
               type="text"
               value={mercancia.nombre_ingrediente_activo ?? ""}
               onChange={e => onUpdate({ nombre_ingrediente_activo: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              style={INPUT}
             />
-          </div>
-          <div>
-            <Label>Nombre químico</Label>
+          </FieldS>
+          <FieldS label="Nombre químico">
             <input
               type="text"
               value={mercancia.nom_quimico ?? ""}
               onChange={e => onUpdate({ nom_quimico: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              style={INPUT}
             />
-          </div>
-          <div>
-            <Label>Denominación genérica</Label>
+          </FieldS>
+          <FieldS label="Denominación genérica">
             <input
               type="text"
               value={mercancia.denominacion_generica_prod ?? ""}
               onChange={e => onUpdate({ denominacion_generica_prod: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              style={INPUT}
             />
-          </div>
-          <div>
-            <Label>Denominación distintiva</Label>
+          </FieldS>
+          <FieldS label="Denominación distintiva">
             <input
               type="text"
               value={mercancia.denominacion_distintiva_prod ?? ""}
               onChange={e => onUpdate({ denominacion_distintiva_prod: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              style={INPUT}
             />
-          </div>
-          <div>
-            <Label>Fabricante</Label>
+          </FieldS>
+          <FieldS label="Fabricante">
             <input
               type="text"
               value={mercancia.fabricante ?? ""}
               onChange={e => onUpdate({ fabricante: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              style={INPUT}
             />
-          </div>
-          <div>
-            <Label>Fecha de caducidad</Label>
+          </FieldS>
+          <FieldS label="Fecha de caducidad">
             <input
               type="date"
               value={mercancia.fecha_caducidad ?? ""}
               onChange={e => onUpdate({ fecha_caducidad: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              style={INPUT}
             />
-          </div>
-          <div>
-            <Label>Lote del medicamento</Label>
+          </FieldS>
+          <FieldS label="Lote del medicamento">
             <input
               type="text"
               value={mercancia.lote_medicamento ?? ""}
               onChange={e => onUpdate({ lote_medicamento: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              style={INPUT}
             />
-          </div>
-          <div>
-            <Label>Registro sanitario / Folio autorización</Label>
+          </FieldS>
+          <FieldS label="Registro sanitario / Folio autorización">
             <input
               type="text"
               value={mercancia.registro_sanitario_folio_autorizacion ?? ""}
               onChange={e => onUpdate({ registro_sanitario_folio_autorizacion: e.target.value || undefined })}
-              className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+              style={INPUT}
             />
-          </div>
+          </FieldS>
         </div>
       )}
     </div>
@@ -747,7 +1075,7 @@ function CofeprisTab({
 }
 
 // ─────────────────────────────────────────────────────────────
-// Tab 4: Comercio Exterior (solo si transp_internac=Sí)
+// Tab 4: Comercio Exterior
 // ─────────────────────────────────────────────────────────────
 function ComexTab({
   mercancia,
@@ -759,42 +1087,48 @@ function ComexTab({
   const { items: tiposMateria } = useSATCatalog("tipo_materia");
 
   return (
-    <div className="space-y-4">
-      <div className="bg-orange-950/20 border border-orange-800/30 rounded-lg p-3 text-xs text-orange-200/80">
+    <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+      <div style={{
+        padding: "10px 12px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-brand-orange-light)",
+        border: "1px solid var(--color-brand-orange)",
+        fontSize: "11px",
+        color: "var(--color-text-second)",
+        lineHeight: 1.5,
+      }}>
         Datos requeridos por el SAT para mercancía que cruza fronteras.
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-        <div>
-          <Label>Fracción arancelaria</Label>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+        gap: "10px",
+      }}>
+        <FieldS label="Fracción arancelaria" hint="10 dígitos del catálogo c_FraccionArancelaria">
           <input
             type="text"
             value={mercancia.fraccion_arancelaria ?? ""}
             onChange={e => onUpdate({ fraccion_arancelaria: e.target.value || undefined })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/50"
             placeholder="0123456789"
             maxLength={10}
+            style={{ ...INPUT, fontFamily: "monospace" }}
           />
-          <p className="text-[11px] text-slate-500 mt-1">
-            10 dígitos del catálogo c_FraccionArancelaria
-          </p>
-        </div>
-        <div>
-          <Label>UUID de Comercio Exterior</Label>
+        </FieldS>
+        <FieldS label="UUID de Comercio Exterior">
           <input
             type="text"
             value={mercancia.uuid_comercio_ext ?? ""}
             onChange={e => onUpdate({ uuid_comercio_ext: e.target.value || undefined })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white font-mono focus:outline-none focus:ring-2 focus:ring-orange-500/50"
             placeholder="UUID si ya hay CFDI CCE"
+            style={{ ...INPUT, fontFamily: "monospace" }}
           />
-        </div>
-        <div>
-          <Label>Tipo de materia</Label>
+        </FieldS>
+        <FieldS label="Tipo de materia">
           <select
             value={mercancia.tipo_materia ?? ""}
             onChange={e => onUpdate({ tipo_materia: e.target.value || undefined })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
+            style={INPUT}
           >
             <option value="">Selecciona tipo...</option>
             {tiposMateria.map(t => (
@@ -803,25 +1137,38 @@ function ComexTab({
               </option>
             ))}
           </select>
-        </div>
-        <div>
-          <Label>Descripción de la materia</Label>
+        </FieldS>
+        <FieldS label="Descripción de la materia">
           <input
             type="text"
             value={mercancia.descripcion_materia ?? ""}
             onChange={e => onUpdate({ descripcion_materia: e.target.value || undefined })}
-            className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-orange-500/50"
             placeholder="Detalle del tipo de materia"
+            style={INPUT}
           />
-        </div>
+        </FieldS>
       </div>
     </div>
   );
 }
 
 // ─────────────────────────────────────────────────────────────
-// Helpers de UI compartidos
+// Helpers de UI
 // ─────────────────────────────────────────────────────────────
+
+const INPUT: React.CSSProperties = {
+  width: "100%",
+  height: "36px",
+  padding: "0 10px",
+  borderRadius: "var(--radius-md)",
+  border: "1px solid var(--color-border)",
+  background: "var(--color-bg-base)",
+  color: "var(--color-text-primary)",
+  fontSize: "13px",
+  outline: "none",
+  boxSizing: "border-box",
+};
+
 function UnidadPesoSelector({
   value,
   onChange,
@@ -835,7 +1182,7 @@ function UnidadPesoSelector({
       value={value}
       onChange={e => onChange(e.target.value)}
       disabled={loading}
-      className="w-full px-3 py-2 bg-slate-800 border border-slate-700 rounded-lg text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+      style={INPUT}
     >
       {loading ? (
         <option value={value}>Cargando...</option>
@@ -867,26 +1214,71 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`relative px-3 py-1.5 text-xs rounded-md transition whitespace-nowrap ${
-        active
-          ? "bg-amber-600 text-white"
-          : "text-slate-400 hover:text-white hover:bg-slate-800"
-      }`}
+      style={{
+        position: "relative",
+        padding: "6px 12px",
+        fontSize: "12px",
+        fontWeight: 600,
+        borderRadius: "var(--radius-md)",
+        border: "none",
+        background: active ? "var(--color-brand-blue)" : "transparent",
+        color: active ? "#FFFFFF" : "var(--color-text-muted)",
+        cursor: "pointer",
+        whiteSpace: "nowrap",
+        transition: "var(--transition-fast)",
+      }}
     >
       {label}
-      {required && <span className="text-red-400 ml-1">*</span>}
+      {required && <span style={{ color: active ? "#FCA5A5" : "var(--color-danger-text)", marginLeft: "3px" }}>*</span>}
       {showDot && !active && (
-        <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-amber-400 rounded-full" />
+        <span style={{
+          position: "absolute",
+          top: "4px",
+          right: "4px",
+          width: "6px",
+          height: "6px",
+          background: "var(--color-brand-blue)",
+          borderRadius: "50%",
+        }} />
       )}
     </button>
   );
 }
 
-function Label({ children, required }: { children: React.ReactNode; required?: boolean }) {
+function FieldS({
+  label,
+  required,
+  hint,
+  children,
+}: {
+  label: string;
+  required?: boolean;
+  hint?: string;
+  children: React.ReactNode;
+}) {
   return (
-    <label className="block text-xs text-slate-400 mb-1.5">
+    <div>
+      <label style={{
+        display: "block",
+        fontSize: "11px",
+        color: "var(--color-text-muted)",
+        marginBottom: "5px",
+        fontWeight: 500,
+      }}>
+        {label}
+        {required && <span style={{ color: "var(--color-danger-text)", marginLeft: "3px" }}>*</span>}
+      </label>
       {children}
-      {required && <span className="text-red-400 ml-0.5">*</span>}
-    </label>
+      {hint && (
+        <div style={{
+          fontSize: "10px",
+          color: "var(--color-text-muted)",
+          marginTop: "4px",
+          lineHeight: 1.4,
+        }}>
+          {hint}
+        </div>
+      )}
+    </div>
   );
 }
