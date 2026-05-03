@@ -6,9 +6,8 @@ import { supabase } from "@/lib/supabaseClient";
 import { useFacturacionController } from "./services/facturacion.controller";
 import { fetchBusinessNotes, createBusinessNote, emitirComplementoPago, emitirNotaCredito } from "./services/facturacion.service";
 import type { CFDITypeOption } from "./types/facturacion.types";
-import type { CFDIDocument } from "./types/facturacion.types";
-// Filtros del dashboard de Facturación (lista principal con chips)
-type ActiveFilter = "all" | "factura" | "proforma" | "nota_credito" | "complemento" | "cancelled";
+import type { CFDIDocument, DashboardFilters } from "./types/facturacion.types";
+import { DEFAULT_DASHBOARD_FILTERS } from "./types/facturacion.types";
 import FacturacionDashboard    from "./components/FacturacionDashboard";
 import CFDISelector            from "./components/CFDISelector";
 import FacturacionList         from "./components/FacturacionList";
@@ -57,8 +56,8 @@ export default function FacturacionPage() {
   // Cuando hay un editProformaId, el CFDICreateDrawer se abre en modo edición
   const [editProformaId,     setEditProformaId]     = useState<string | null>(null);
 
-  // ─── Filtro activo de la lista del dashboard ───
-  const [dashboardFilter,    setDashboardFilter]    = useState<ActiveFilter>("all");
+  // ─── Filtros multi-dimensionales del Dashboard (4 grupos + búsqueda) ───
+  const [dashboardFilters,   setDashboardFilters]   = useState<DashboardFilters>(DEFAULT_DASHBOARD_FILTERS);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? ""));
@@ -391,8 +390,8 @@ export default function FacturacionPage() {
           onEmitir={() => setTab("emitir")}
           onFacturarEmbarque={handleFacturarEmbarque}
           onFacturarPedido={handleFacturarPedido}
-          activeFilter={dashboardFilter}
-          onChangeFilter={setDashboardFilter}
+          filters={dashboardFilters}
+          onChangeFilters={setDashboardFilters}
         />
       )}
       {tab === "emitir"     && <CFDISelector onSelect={handleSelectCFDIType} />}
