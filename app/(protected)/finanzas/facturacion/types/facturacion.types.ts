@@ -337,12 +337,6 @@ export const CFDI_TYPE_GROUPS: CFDITypeGroup[] = [
     group: "traslado", groupEs: "Traslados", groupEn: "Transfers",
     items: [
       {
-        id: "traslado", type: "T", labelEs: "Traslado simple", labelEn: "Simple Transfer",
-        descEs: "Movimiento de mercancía propia sin valor comercial — uso interno (raro sin Carta Porte)",
-        descEn: "Movement of own goods without commercial value — internal use (rare without Bill of Lading)",
-        icon: "M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11a2 2 0 0 1 2 2v3 M12 21l5-5-5-5 M7 16h10",
-      },
-      {
         id: "traslado_carta_porte", type: "T", labelEs: "Traslado con Carta Porte", labelEn: "Transfer with Bill of Lading",
         descEs: "CFDI Tipo T con Complemento Carta Porte 3.1 — para mover mercancía propia o de cliente con vehículos propios",
         descEn: "Type T CFDI with Bill of Lading 3.1 complement — to move own or client goods with own vehicles",
