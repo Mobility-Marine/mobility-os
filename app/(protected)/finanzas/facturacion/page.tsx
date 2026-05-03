@@ -107,15 +107,6 @@ export default function FacturacionPage() {
       return;
     }
 
-    // ─── Traslado simple (sin CCP): caso muy raro, lo dejamos para después ───
-    if (opt.id === "traslado") {
-      alert(es
-        ? "El Traslado simple (sin Carta Porte) estará disponible próximamente. Para mover mercancía con vehículos, usa 'Traslado con Carta Porte'."
-        : "Simple Transfer (without Bill of Lading) will be available soon. To move goods with vehicles, use 'Transfer with Bill of Lading'."
-      );
-      return;
-    }
-
     setSelectedCFDIType(opt);
   }
 
