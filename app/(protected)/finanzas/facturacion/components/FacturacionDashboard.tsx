@@ -1,6 +1,17 @@
 "use client";
+import { useState, useMemo } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
-import type { CFDIDocument, FacturacionStats } from "../types/facturacion.types";
+import type {
+  CFDIDocument,
+  FacturacionStats,
+  DashboardFilters,
+  ActiveTypeFilter,
+  ActiveStatusFilter,
+  PeriodFilter,
+  CurrencyFilter,
+} from "../types/facturacion.types";
+import { countActiveFilters, DEFAULT_DASHBOARD_FILTERS } from "../types/facturacion.types";
+import DateRangePicker from "@/app/components/DateRangePicker";
 
 type PendingShipment = {
   id:           string;
@@ -22,9 +33,6 @@ type PendingOrder = {
   quotation?:   { quote_number: string } | null;
 };
 
-// Filtro activo en la lista principal — se controla localmente y orquesta type+status
-type ActiveFilter = "all" | "factura" | "proforma" | "nota_credito" | "complemento" | "cancelled";
-
 type Props = {
   stats:              FacturacionStats;
   cfdis:              CFDIDocument[];
@@ -36,24 +44,115 @@ type Props = {
   onEmitir:           () => void;
   onFacturarEmbarque: (s: PendingShipment) => void;
   onFacturarPedido?:  (o: PendingOrder) => void;
-  /** Filtro activo controlado por el padre (opcional). Si no se pasa, default 'all'. */
-  activeFilter?:      ActiveFilter;
-  onChangeFilter?:    (f: ActiveFilter) => void;
+  /** Filtros multi-dimensionales del Dashboard. Si no se pasa, usa defaults internos. */
+  filters?:           DashboardFilters;
+  onChangeFilters?:   (f: DashboardFilters) => void;
 };
 
 const fmt = (n: number) => Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// ── helper: clasificar un CFDI según los filtros disponibles ─────────────
-function matchesFilter(cfdi: CFDIDocument, f: ActiveFilter): boolean {
-  if (f === "all") return true;
-  if (f === "cancelled")    return cfdi.status === "cancelled";
-  if (f === "proforma")     return cfdi.status === "proforma";
-  // Los siguientes solo aplican a CFDIs activos (no cancelados, no proforma)
-  if (cfdi.status !== "valid") return false;
-  if (f === "factura")      return cfdi.type === "I";
-  if (f === "nota_credito") return cfdi.type === "E";
-  if (f === "complemento")  return cfdi.type === "P";
-  return false;
+// ── Helper: traducir PeriodFilter a rango de fechas ──────────────────
+function getDateRangeForPeriod(
+  period: PeriodFilter,
+  customStart?: string,
+  customEnd?: string,
+): { from: Date | null; to: Date | null } {
+  const now = new Date();
+  const startOfDay = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+  const endOfDay   = (d: Date) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+
+  switch (period) {
+    case "today":
+      return { from: startOfDay(now), to: endOfDay(now) };
+    case "week": {
+      // Lunes de esta semana - domingo
+      const day = now.getDay(); // 0 = Dom, 1 = Lun
+      const diffToMon = day === 0 ? -6 : 1 - day;
+      const mon = new Date(now); mon.setDate(now.getDate() + diffToMon);
+      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+      return { from: startOfDay(mon), to: endOfDay(sun) };
+    }
+    case "month":
+      return {
+        from: new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0),
+        to:   new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999),
+      };
+    case "quarter": {
+      const q = Math.floor(now.getMonth() / 3);
+      return {
+        from: new Date(now.getFullYear(), q * 3, 1, 0, 0, 0, 0),
+        to:   new Date(now.getFullYear(), q * 3 + 3, 0, 23, 59, 59, 999),
+      };
+    }
+    case "year":
+      return {
+        from: new Date(now.getFullYear(), 0, 1, 0, 0, 0, 0),
+        to:   new Date(now.getFullYear(), 11, 31, 23, 59, 59, 999),
+      };
+    case "custom":
+      return {
+        from: customStart ? startOfDay(new Date(customStart + "T00:00:00")) : null,
+        to:   customEnd   ? endOfDay(new Date(customEnd   + "T00:00:00")) : null,
+      };
+    case "all":
+    default:
+      return { from: null, to: null };
+  }
+}
+
+// ── Helper: clasificar un CFDI según los 4 filtros + búsqueda ────────
+function matchesAllFilters(cfdi: CFDIDocument, filters: DashboardFilters): boolean {
+  // ── 1. Filtro por TIPO ────────────────────────────────────────────
+  if (filters.type !== "all") {
+    const hasCCP = !!cfdi.has_carta_porte;
+    if (filters.type === "factura"      && !(cfdi.type === "I" && !hasCCP)) return false;
+    if (filters.type === "carta_porte"  && !hasCCP) return false;
+    if (filters.type === "traslado"     && !(cfdi.type === "T" && !hasCCP)) return false;
+    if (filters.type === "nota_credito" && cfdi.type !== "E") return false;
+    if (filters.type === "complemento"  && cfdi.type !== "P") return false;
+    if (filters.type === "nomina"       && cfdi.type !== "N") return false;
+  }
+
+  // ── 2. Filtro por ESTADO ──────────────────────────────────────────
+  if (filters.status !== "all") {
+    if (filters.status === "valid"     && cfdi.status !== "valid") return false;
+    if (filters.status === "proforma"  && cfdi.status !== "proforma") return false;
+    if (filters.status === "cancelled" && cfdi.status !== "cancelled" && cfdi.status !== "cancellation_requested") return false;
+    if (filters.status === "ppd_pending") {
+      if (cfdi.status !== "valid") return false;
+      if (cfdi.payment_method !== "PPD") return false;
+      if (cfdi.type !== "I") return false;
+    }
+  }
+
+  // ── 3. Filtro por PERÍODO ─────────────────────────────────────────
+  if (filters.period !== "all") {
+    const { from, to } = getDateRangeForPeriod(filters.period, filters.customStart, filters.customEnd);
+    if (from || to) {
+      const cfdiDate = new Date(cfdi.cfdi_date);
+      if (from && cfdiDate < from) return false;
+      if (to   && cfdiDate > to)   return false;
+    }
+  }
+
+  // ── 4. Filtro por MONEDA ──────────────────────────────────────────
+  if (filters.currency !== "all" && cfdi.currency !== filters.currency) return false;
+
+  // ── 5. BÚSQUEDA libre (folio, cliente, RFC, notas) ────────────────
+  if (filters.search.trim()) {
+    const q = filters.search.trim().toLowerCase();
+    const haystack = [
+      cfdi.serie ?? "",
+      cfdi.folio ?? "",
+      cfdi.uuid ?? "",
+      cfdi.receiver_name ?? "",
+      cfdi.receiver_rfc  ?? "",
+      cfdi.notes ?? "",
+    ].join(" ").toLowerCase();
+    if (!haystack.includes(q)) return false;
+  }
+
+  return true;
 }
 
 export default function FacturacionDashboard({
@@ -61,27 +160,53 @@ export default function FacturacionDashboard({
   pendingShipments, pendingOrders = [],
   onSelect, onEditProforma,
   onEmitir, onFacturarEmbarque, onFacturarPedido,
-  activeFilter = "all",
-  onChangeFilter,
+  filters = DEFAULT_DASHBOARD_FILTERS,
+  onChangeFilters,
 }: Props) {
   const { lang } = useTranslation();
   const es = lang !== "en";
 
-  // ── Aplicar filtro localmente ──────────────────────────────────────────
-  const filtered = cfdis.filter((c) => matchesFilter(c, activeFilter));
-  const recent   = filtered.slice(0, 12);
+  // ── Estado local: modal del DateRangePicker ──
+  const [dateRangePickerOpen, setDateRangePickerOpen] = useState(false);
 
-  // Conteos por tipo para mostrar en los chips de filtro
-  const counts = {
-    all:           cfdis.length,
-    factura:       cfdis.filter((c) => c.status === "valid"     && c.type === "I").length,
-    proforma:      cfdis.filter((c) => c.status === "proforma").length,
-    nota_credito:  cfdis.filter((c) => c.status === "valid"     && c.type === "E").length,
-    complemento:   cfdis.filter((c) => c.status === "valid"     && c.type === "P").length,
-    cancelled:     cfdis.filter((c) => c.status === "cancelled").length,
+  // ── Aplicar TODOS los filtros ──
+  const filtered = useMemo(() => cfdis.filter(c => matchesAllFilters(c, filters)), [cfdis, filters]);
+  const recent   = filtered.slice(0, 50);
+
+  // ── Helper: actualizar un sub-filtro ──
+  const setF = (patch: Partial<DashboardFilters>) => {
+    if (!onChangeFilters) return;
+    onChangeFilters({ ...filters, ...patch });
   };
 
-  const ppd_pending = cfdis.filter((c) => c.payment_method === "PPD" && c.status === "valid" && c.type === "I");
+  // ── Conteos para los chips de TIPO (siempre cuentan sobre el universo total) ──
+  const typeCounts = useMemo(() => ({
+    all:          cfdis.length,
+    factura:      cfdis.filter(c => c.type === "I" && !c.has_carta_porte && c.status !== "proforma" && c.status !== "cancelled").length,
+    carta_porte:  cfdis.filter(c => !!c.has_carta_porte).length,
+    traslado:     cfdis.filter(c => c.type === "T" && !c.has_carta_porte).length,
+    nota_credito: cfdis.filter(c => c.type === "E" && c.status === "valid").length,
+    complemento:  cfdis.filter(c => c.type === "P" && c.status === "valid").length,
+    nomina:       cfdis.filter(c => c.type === "N" && c.status === "valid").length,
+  }), [cfdis]);
+
+  const statusCounts = useMemo(() => ({
+    all:         cfdis.length,
+    valid:       cfdis.filter(c => c.status === "valid").length,
+    proforma:    cfdis.filter(c => c.status === "proforma").length,
+    ppd_pending: cfdis.filter(c => c.payment_method === "PPD" && c.status === "valid" && c.type === "I").length,
+    cancelled:   cfdis.filter(c => c.status === "cancelled" || c.status === "cancellation_requested").length,
+  }), [cfdis]);
+
+  // ── Monedas disponibles dinámicamente ──
+  const availableCurrencies = useMemo(() => {
+    const set = new Set<string>();
+    cfdis.forEach(c => { if (c.currency) set.add(c.currency); });
+    return Array.from(set).sort();
+  }, [cfdis]);
+
+  // ── Alerta PPD ──
+  const ppd_pending = cfdis.filter(c => c.payment_method === "PPD" && c.status === "valid" && c.type === "I");
   const total_ppd   = ppd_pending.reduce((sum, c) => sum + c.total, 0);
 
   const FLAGS: Record<string, string> = { MXN: "🇲🇽", USD: "🇺🇸", EUR: "🇪🇺", CAD: "🇨🇦", GBP: "🇬🇧" };
@@ -101,22 +226,39 @@ export default function FacturacionDashboard({
     T: { es: "Traslado",  en: "Transfer" },
     N: { es: "Nómina",    en: "Payroll"  },
   };
-
   const SVC_ICONS: Record<string, string> = {
     terrestre_mx: "🚛", terrestre_usa: "🚛", maritimo: "🚢", aereo: "✈️",
     multimodal: "🔄", almacenaje: "🏭", aduanal: "📋", consultoria: "💼",
     seguro: "🛡️", otro: "📦",
   };
 
-  // ── Definición de chips de filtro ──────────────────────────────────────
-  type Chip = { key: ActiveFilter; labelEs: string; labelEn: string; color: string; bg: string };
-  const CHIPS: Chip[] = [
-    { key: "all",          labelEs: "Todos",          labelEn: "All",         color: "var(--color-text-primary)", bg: "var(--color-bg-subtle)" },
-    { key: "factura",      labelEs: "Facturas",       labelEn: "Invoices",    color: "var(--color-success-text)", bg: "var(--color-success-bg)" },
-    { key: "proforma",     labelEs: "Proformas",      labelEn: "Proformas",   color: "var(--color-brand-blue)",   bg: "var(--color-info-bg)" },
-    { key: "nota_credito", labelEs: "N. Crédito",     labelEn: "Credit notes", color: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
-    { key: "complemento",  labelEs: "Complementos",   labelEn: "Payments",    color: "#7c3aed",                   bg: "#ede9fe" },
-    { key: "cancelled",    labelEs: "Canceladas",     labelEn: "Cancelled",   color: "var(--color-danger-text)",  bg: "var(--color-danger-bg)" },
+  // ── Definición de los 4 grupos de chips ──
+  const TYPE_CHIPS: { key: ActiveTypeFilter; labelEs: string; labelEn: string; color: string; bg: string }[] = [
+    { key: "all",          labelEs: "Todos",         labelEn: "All",          color: "var(--color-text-primary)", bg: "var(--color-bg-subtle)" },
+    { key: "factura",      labelEs: "Facturas",      labelEn: "Invoices",     color: "var(--color-success-text)", bg: "var(--color-success-bg)" },
+    { key: "carta_porte",  labelEs: "Carta Porte",   labelEn: "Bill of Lading", color: "var(--color-brand-orange)", bg: "var(--color-brand-orange-light)" },
+    { key: "traslado",     labelEs: "Traslados",     labelEn: "Transfers",    color: "var(--color-text-muted)",   bg: "var(--color-bg-subtle)" },
+    { key: "nota_credito", labelEs: "N. Crédito",    labelEn: "Credit notes", color: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
+    { key: "complemento",  labelEs: "Complementos",  labelEn: "Payments",     color: "var(--color-brand-blue)",   bg: "var(--color-info-bg)" },
+    { key: "nomina",       labelEs: "Nómina",        labelEn: "Payroll",      color: "#7c3aed",                   bg: "#ede9fe" },
+  ];
+
+  const STATUS_CHIPS: { key: ActiveStatusFilter; labelEs: string; labelEn: string; color: string; bg: string }[] = [
+    { key: "all",         labelEs: "Todos",        labelEn: "All",          color: "var(--color-text-primary)", bg: "var(--color-bg-subtle)" },
+    { key: "valid",       labelEs: "Vigentes",     labelEn: "Active",       color: "var(--color-success-text)", bg: "var(--color-success-bg)" },
+    { key: "proforma",    labelEs: "Borradores",   labelEn: "Drafts",       color: "var(--color-brand-blue)",   bg: "var(--color-info-bg)" },
+    { key: "ppd_pending", labelEs: "PPD por cobrar", labelEn: "PPD pending", color: "var(--color-warning-text)", bg: "var(--color-warning-bg)" },
+    { key: "cancelled",   labelEs: "Canceladas",   labelEn: "Cancelled",    color: "var(--color-danger-text)",  bg: "var(--color-danger-bg)" },
+  ];
+
+  const PERIOD_CHIPS: { key: PeriodFilter; labelEs: string; labelEn: string }[] = [
+    { key: "all",     labelEs: "Todo",       labelEn: "All time" },
+    { key: "today",   labelEs: "Hoy",        labelEn: "Today" },
+    { key: "week",    labelEs: "Semana",     labelEn: "Week" },
+    { key: "month",   labelEs: "Mes",        labelEn: "Month" },
+    { key: "quarter", labelEs: "Trimestre",  labelEn: "Quarter" },
+    { key: "year",    labelEs: "Año",        labelEn: "Year" },
+    { key: "custom",  labelEs: "Personalizado…", labelEn: "Custom…" },
   ];
 
   // Click handler: si es proforma → onEditProforma, si no → onSelect
@@ -127,6 +269,14 @@ export default function FacturacionDashboard({
       onSelect(cfdi);
     }
   }
+
+  // Activo si filters !== defaults
+  const activeFilterCount = countActiveFilters(filters);
+
+  // Etiqueta legible del rango personalizado
+  const customRangeLabel = filters.period === "custom" && filters.customStart && filters.customEnd
+    ? `${filters.customStart} → ${filters.customEnd}`
+    : "";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
@@ -303,86 +453,152 @@ export default function FacturacionDashboard({
       )}
 
       {/* ════════════════════════════════════════════════════════════════
-          LISTA PRINCIPAL CON FILTROS POR TIPO/ESTADO
+          LISTA PRINCIPAL CON FILTROS GOD: 4 GRUPOS + BÚSQUEDA
           ════════════════════════════════════════════════════════════════ */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: "16px" }}>
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
 
-          {/* Header con título + chips de filtro */}
+          {/* Header con título + búsqueda + indicador filtros */}
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--color-border-faint)" }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "12px" }}>
-              <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: "12px", marginBottom: "12px" }}>
+              <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)", flexShrink: 0 }}>
                 {es ? "Documentos fiscales" : "Tax documents"}
-                {filtered.length > 0 && (
-                  <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 500, color: "var(--color-text-muted)" }}>
-                    · {filtered.length} {es ? "resultado(s)" : "result(s)"}
-                  </span>
+                <span style={{ marginLeft: "8px", fontSize: "11px", fontWeight: 500, color: "var(--color-text-muted)" }}>
+                  · {filtered.length} {es ? "resultado(s)" : "result(s)"}
+                </span>
+              </div>
+
+              {/* Búsqueda + Limpiar filtros */}
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, justifyContent: "flex-end" }}>
+                <div style={{ position: "relative", maxWidth: "320px", width: "100%" }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2"
+                    style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }}>
+                    <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                  </svg>
+                  <input
+                    type="text"
+                    value={filters.search}
+                    onChange={e => setF({ search: e.target.value })}
+                    placeholder={es ? "Buscar por folio, cliente, RFC…" : "Search by folio, client, RFC…"}
+                    style={{
+                      width: "100%", height: "30px", padding: "0 10px 0 30px",
+                      borderRadius: "var(--radius-md)",
+                      border: "1px solid var(--color-border-faint)",
+                      background: "var(--color-bg-subtle)",
+                      color: "var(--color-text-primary)",
+                      fontSize: "12px", outline: "none",
+                    }}
+                  />
+                  {filters.search && (
+                    <button onClick={() => setF({ search: "" })} aria-label="clear search"
+                      style={{ position: "absolute", right: "6px", top: "50%", transform: "translateY(-50%)", width: "20px", height: "20px", border: "none", background: "transparent", cursor: "pointer", color: "var(--color-text-muted)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  )}
+                </div>
+                {activeFilterCount > 0 && (
+                  <button onClick={() => onChangeFilters?.(DEFAULT_DASHBOARD_FILTERS)}
+                    style={{ height: "30px", padding: "0 12px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-danger-border)", background: "var(--color-danger-bg)", color: "var(--color-danger-text)", fontSize: "11px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", display: "flex", alignItems: "center", gap: "6px" }}>
+                    <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    {es ? `Limpiar ${activeFilterCount}` : `Clear ${activeFilterCount}`}
+                  </button>
                 )}
               </div>
             </div>
 
-            {/* Chips de filtro */}
-            <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
-              {CHIPS.map((chip) => {
-                const isActive = activeFilter === chip.key;
-                const count = counts[chip.key];
+            {/* GRUPO 1: TIPO */}
+            <FilterGroup labelEs="Tipo" labelEn="Type" es={es}>
+              {TYPE_CHIPS.map(chip => {
+                const isActive = filters.type === chip.key;
+                const count    = (typeCounts as any)[chip.key];
                 return (
-                  <button
-                    key={chip.key}
-                    onClick={() => onChangeFilter?.(chip.key)}
-                    style={{
-                      height: "28px",
-                      padding: "0 12px",
-                      borderRadius: "var(--radius-full)",
-                      background: isActive ? chip.bg : "var(--color-bg-subtle)",
-                      border: `1px solid ${isActive ? chip.color : "var(--color-border-faint)"}`,
-                      color: isActive ? chip.color : "var(--color-text-muted)",
-                      fontSize: "11px",
-                      fontWeight: isActive ? 800 : 600,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: "6px",
-                      transition: "all 0.15s",
-                    }}
-                  >
-                    <span>{es ? chip.labelEs : chip.labelEn}</span>
-                    {count > 0 && (
-                      <span style={{
-                        background: isActive ? chip.color : "var(--color-border)",
-                        color: isActive ? "#fff" : "var(--color-text-muted)",
-                        fontSize: "9px",
-                        fontWeight: 800,
-                        padding: "1px 6px",
-                        borderRadius: "var(--radius-full)",
-                        minWidth: "16px",
-                        textAlign: "center",
-                      }}>{count}</span>
-                    )}
-                  </button>
+                  <Chip key={chip.key} active={isActive} onClick={() => setF({ type: chip.key })}
+                    color={chip.color} bg={chip.bg} count={count}
+                    label={es ? chip.labelEs : chip.labelEn} />
                 );
               })}
-            </div>
+            </FilterGroup>
+
+            {/* GRUPO 2: ESTADO */}
+            <FilterGroup labelEs="Estado" labelEn="Status" es={es}>
+              {STATUS_CHIPS.map(chip => {
+                const isActive = filters.status === chip.key;
+                const count    = (statusCounts as any)[chip.key];
+                return (
+                  <Chip key={chip.key} active={isActive} onClick={() => setF({ status: chip.key })}
+                    color={chip.color} bg={chip.bg} count={count}
+                    label={es ? chip.labelEs : chip.labelEn} />
+                );
+              })}
+            </FilterGroup>
+
+            {/* GRUPO 3: PERÍODO */}
+            <FilterGroup labelEs="Período" labelEn="Period" es={es}>
+              {PERIOD_CHIPS.map(chip => {
+                const isActive = filters.period === chip.key;
+                const isCustom = chip.key === "custom";
+                const labelDisplay = isCustom && customRangeLabel
+                  ? customRangeLabel
+                  : (es ? chip.labelEs : chip.labelEn);
+                return (
+                  <Chip key={chip.key} active={isActive}
+                    onClick={() => {
+                      if (isCustom) {
+                        setDateRangePickerOpen(true);
+                      } else {
+                        setF({ period: chip.key, customStart: undefined, customEnd: undefined });
+                      }
+                    }}
+                    color="var(--color-brand-blue)" bg="var(--color-info-bg)"
+                    label={labelDisplay} />
+                );
+              })}
+            </FilterGroup>
+
+            {/* GRUPO 4: MONEDA (solo si hay más de 1 moneda) */}
+            {availableCurrencies.length > 1 && (
+              <FilterGroup labelEs="Moneda" labelEn="Currency" es={es} last>
+                <Chip active={filters.currency === "all"}
+                  onClick={() => setF({ currency: "all" })}
+                  color="var(--color-text-primary)" bg="var(--color-bg-subtle)"
+                  label={es ? "Todas" : "All"} />
+                {availableCurrencies.map(cur => (
+                  <Chip key={cur} active={filters.currency === cur}
+                    onClick={() => setF({ currency: cur })}
+                    color="var(--color-text-primary)" bg="var(--color-bg-subtle)"
+                    label={`${FLAGS[cur] ?? "💱"} ${cur}`} />
+                ))}
+              </FilterGroup>
+            )}
           </div>
 
           {/* Lista filtrada */}
           {loading ? (
-            <div style={{ padding: "30px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>{es ? "Cargando…" : "Loading…"}</div>
+            <div style={{ padding: "30px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
+              {es ? "Cargando…" : "Loading…"}
+            </div>
           ) : recent.length === 0 ? (
             <div style={{ padding: "40px", textAlign: "center" }}>
               <div style={{ fontSize: "32px", marginBottom: "8px" }}>📄</div>
               <div style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
-                {activeFilter === "all"
+                {activeFilterCount === 0
                   ? (es ? "Aún no has emitido ningún CFDI" : "No CFDIs issued yet")
-                  : (es ? "Sin resultados con este filtro" : "No results with this filter")}
+                  : (es ? "Sin resultados con estos filtros" : "No results with these filters")}
               </div>
+              {activeFilterCount > 0 && (
+                <button onClick={() => onChangeFilters?.(DEFAULT_DASHBOARD_FILTERS)}
+                  style={{ marginTop: "12px", height: "28px", padding: "0 14px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border-faint)", background: "var(--color-bg-base)", color: "var(--color-brand-blue)", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>
+                  {es ? "Limpiar filtros" : "Clear filters"}
+                </button>
+              )}
             </div>
           ) : (
             recent.map((cfdi, i) => {
               const tc        = TYPE_COLORS[cfdi.type] ?? TYPE_COLORS.I;
               const tl        = TYPE_LABELS[cfdi.type] ?? TYPE_LABELS.I;
               const isProf    = cfdi.status === "proforma";
-              const isCancel  = cfdi.status === "cancelled";
+              const isCancel  = cfdi.status === "cancelled" || cfdi.status === "cancellation_requested";
+              const hasCCP    = !!cfdi.has_carta_porte;
 
               return (
                 <div key={cfdi.id} onClick={() => handleRowClick(cfdi)}
@@ -390,31 +606,13 @@ export default function FacturacionDashboard({
                   onMouseEnter={(e) => (e.currentTarget.style.background = "var(--color-bg-subtle)")}
                   onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}>
 
-                  {/* Badge de estado: Proforma / Cancelado / Timbrado */}
+                  {/* Badge de estado */}
                   {isProf ? (
-                    <span style={{
-                      fontSize: "9px", fontWeight: 800, padding: "2px 7px",
-                      borderRadius: "var(--radius-full)",
-                      background: "var(--color-info-bg)",
-                      color: "var(--color-brand-blue)",
-                      border: "1px solid var(--color-info-border)",
-                      flexShrink: 0,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.3px",
-                    }}>
+                    <span style={{ fontSize: "9px", fontWeight: 800, padding: "2px 7px", borderRadius: "var(--radius-full)", background: "var(--color-info-bg)", color: "var(--color-brand-blue)", border: "1px solid var(--color-info-border)", flexShrink: 0, textTransform: "uppercase", letterSpacing: "0.3px" }}>
                       📝 {es ? "Proforma" : "Proforma"}
                     </span>
                   ) : isCancel ? (
-                    <span style={{
-                      fontSize: "9px", fontWeight: 800, padding: "2px 7px",
-                      borderRadius: "var(--radius-full)",
-                      background: "var(--color-danger-bg)",
-                      color: "var(--color-danger-text)",
-                      border: "1px solid var(--color-danger-border)",
-                      flexShrink: 0,
-                      textTransform: "uppercase",
-                      letterSpacing: "0.3px",
-                    }}>
+                    <span style={{ fontSize: "9px", fontWeight: 800, padding: "2px 7px", borderRadius: "var(--radius-full)", background: "var(--color-danger-bg)", color: "var(--color-danger-text)", border: "1px solid var(--color-danger-border)", flexShrink: 0, textTransform: "uppercase", letterSpacing: "0.3px" }}>
                       ❌ {es ? "Cancelado" : "Cancelled"}
                     </span>
                   ) : (
@@ -423,17 +621,33 @@ export default function FacturacionDashboard({
                     </span>
                   )}
 
-                  {/* Sub-tag de tipo (solo si no es factura normal, para no saturar) */}
+                  {/* Sub-tag tipo (no factura I) */}
                   {!isProf && !isCancel && cfdi.type !== "I" && (
                     <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-sm)", background: tc.bg, color: tc.color, flexShrink: 0 }}>
                       {es ? tl.es : tl.en}
                     </span>
                   )}
 
-                  {/* Si es proforma y type != I, mostrar el tipo subordinado */}
+                  {/* Sub-tipo cuando es proforma */}
                   {isProf && cfdi.type !== "I" && (
                     <span style={{ fontSize: "9px", fontWeight: 600, color: "var(--color-text-muted)", flexShrink: 0 }}>
                       ({es ? tl.es : tl.en})
+                    </span>
+                  )}
+
+                  {/* Badge Carta Porte */}
+                  {hasCCP && (
+                    <span title="Carta Porte 3.1"
+                      style={{ fontSize: "9px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-sm)", background: "var(--color-brand-orange-light)", color: "var(--color-brand-orange)", flexShrink: 0, display: "flex", alignItems: "center", gap: "3px" }}>
+                      🚛 CCP
+                    </span>
+                  )}
+
+                  {/* Badge PPD pendiente */}
+                  {!isProf && !isCancel && cfdi.payment_method === "PPD" && cfdi.type === "I" && (
+                    <span title={es ? "PPD por cobrar" : "PPD pending"}
+                      style={{ fontSize: "9px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-sm)", background: "var(--color-warning-bg)", color: "var(--color-warning-text)", flexShrink: 0 }}>
+                      PPD
                     </span>
                   )}
 
@@ -468,7 +682,7 @@ export default function FacturacionDashboard({
           )}
         </div>
 
-        {/* Acciones rápidas (igual que antes) */}
+        {/* Acciones rápidas (sidebar) */}
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "18px", display: "flex", flexDirection: "column", gap: "10px" }}>
           <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-text-primary)", marginBottom: "4px" }}>
             {es ? "Acciones rápidas" : "Quick actions"}
@@ -516,6 +730,82 @@ export default function FacturacionDashboard({
           </div>
         </div>
       </div>
+
+      {/* Modal: DateRangePicker para rango personalizado */}
+      <DateRangePicker
+        isOpen={dateRangePickerOpen}
+        onClose={() => setDateRangePickerOpen(false)}
+        onApply={range => {
+          setF({ period: "custom", customStart: range.start, customEnd: range.end });
+        }}
+        initialStart={filters.customStart}
+        initialEnd={filters.customEnd}
+      />
+
     </div>
+  );
+}
+
+// ── Sub-componentes UI: FilterGroup + Chip ─────────────────────────────
+
+function FilterGroup({
+  labelEs, labelEn, es, last, children,
+}: {
+  labelEs: string; labelEn: string; es: boolean; last?: boolean; children: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: last ? 0 : "8px", flexWrap: "wrap" }}>
+      <div style={{ fontSize: "9px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.7px", minWidth: "60px", flexShrink: 0 }}>
+        {es ? labelEs : labelEn}
+      </div>
+      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: 1 }}>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function Chip({
+  active, onClick, color, bg, label, count,
+}: {
+  active: boolean;
+  onClick: () => void;
+  color: string;
+  bg: string;
+  label: string;
+  count?: number;
+}) {
+  return (
+    <button onClick={onClick}
+      style={{
+        height: "26px",
+        padding: "0 10px",
+        borderRadius: "var(--radius-full)",
+        background: active ? bg : "var(--color-bg-subtle)",
+        border: `1px solid ${active ? color : "var(--color-border-faint)"}`,
+        color: active ? color : "var(--color-text-muted)",
+        fontSize: "11px",
+        fontWeight: active ? 800 : 600,
+        cursor: "pointer",
+        display: "flex",
+        alignItems: "center",
+        gap: "5px",
+        transition: "all 0.15s",
+        whiteSpace: "nowrap",
+      }}>
+      <span>{label}</span>
+      {typeof count === "number" && count > 0 && (
+        <span style={{
+          background: active ? color : "var(--color-border)",
+          color: active ? "#fff" : "var(--color-text-muted)",
+          fontSize: "9px",
+          fontWeight: 800,
+          padding: "1px 5px",
+          borderRadius: "var(--radius-full)",
+          minWidth: "16px",
+          textAlign: "center",
+        }}>{count}</span>
+      )}
+    </button>
   );
 }
