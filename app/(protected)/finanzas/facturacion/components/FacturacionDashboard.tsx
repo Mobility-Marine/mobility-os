@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef, useEffect } from "react";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import type {
   CFDIDocument,
@@ -506,71 +506,98 @@ export default function FacturacionDashboard({
               </div>
             </div>
 
-            {/* GRUPO 1: TIPO */}
-            <FilterGroup labelEs="Tipo" labelEn="Type" es={es}>
-              {TYPE_CHIPS.map(chip => {
-                const isActive = filters.type === chip.key;
-                const count    = (typeCounts as any)[chip.key];
-                return (
-                  <Chip key={chip.key} active={isActive} onClick={() => setF({ type: chip.key })}
-                    color={chip.color} bg={chip.bg} count={count}
-                    label={es ? chip.labelEs : chip.labelEn} />
-                );
-              })}
-            </FilterGroup>
+            {/* 4 DROPDOWNS DE FILTRO en una sola fila — limpio y compacto */}
+            <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+              {/* TIPO */}
+              <FilterDropdown
+                labelEs="Tipo" labelEn="Type" es={es}
+                currentLabel={(() => {
+                  const c = TYPE_CHIPS.find(x => x.key === filters.type);
+                  return c ? (es ? c.labelEs : c.labelEn) : (es ? "Todos" : "All");
+                })()}
+                isActive={filters.type !== "all"}
+                activeColor={TYPE_CHIPS.find(x => x.key === filters.type)?.color}
+                activeBg={TYPE_CHIPS.find(x => x.key === filters.type)?.bg}
+                options={TYPE_CHIPS.map(c => ({
+                  value: c.key,
+                  label: es ? c.labelEs : c.labelEn,
+                  color: c.color,
+                  bg: c.bg,
+                  count: (typeCounts as any)[c.key],
+                }))}
+                onChange={(v) => setF({ type: v as ActiveTypeFilter })}
+              />
 
-            {/* GRUPO 2: ESTADO */}
-            <FilterGroup labelEs="Estado" labelEn="Status" es={es}>
-              {STATUS_CHIPS.map(chip => {
-                const isActive = filters.status === chip.key;
-                const count    = (statusCounts as any)[chip.key];
-                return (
-                  <Chip key={chip.key} active={isActive} onClick={() => setF({ status: chip.key })}
-                    color={chip.color} bg={chip.bg} count={count}
-                    label={es ? chip.labelEs : chip.labelEn} />
-                );
-              })}
-            </FilterGroup>
+              {/* ESTADO */}
+              <FilterDropdown
+                labelEs="Estado" labelEn="Status" es={es}
+                currentLabel={(() => {
+                  const c = STATUS_CHIPS.find(x => x.key === filters.status);
+                  return c ? (es ? c.labelEs : c.labelEn) : (es ? "Todos" : "All");
+                })()}
+                isActive={filters.status !== "all"}
+                activeColor={STATUS_CHIPS.find(x => x.key === filters.status)?.color}
+                activeBg={STATUS_CHIPS.find(x => x.key === filters.status)?.bg}
+                options={STATUS_CHIPS.map(c => ({
+                  value: c.key,
+                  label: es ? c.labelEs : c.labelEn,
+                  color: c.color,
+                  bg: c.bg,
+                  count: (statusCounts as any)[c.key],
+                }))}
+                onChange={(v) => setF({ status: v as ActiveStatusFilter })}
+              />
 
-            {/* GRUPO 3: PERÍODO */}
-            <FilterGroup labelEs="Período" labelEn="Period" es={es}>
-              {PERIOD_CHIPS.map(chip => {
-                const isActive = filters.period === chip.key;
-                const isCustom = chip.key === "custom";
-                const labelDisplay = isCustom && customRangeLabel
-                  ? customRangeLabel
-                  : (es ? chip.labelEs : chip.labelEn);
-                return (
-                  <Chip key={chip.key} active={isActive}
-                    onClick={() => {
-                      if (isCustom) {
-                        setDateRangePickerOpen(true);
-                      } else {
-                        setF({ period: chip.key, customStart: undefined, customEnd: undefined });
-                      }
-                    }}
-                    color="var(--color-brand-blue)" bg="var(--color-info-bg)"
-                    label={labelDisplay} />
-                );
-              })}
-            </FilterGroup>
+              {/* PERÍODO */}
+              <FilterDropdown
+                labelEs="Período" labelEn="Period" es={es}
+                currentLabel={
+                  filters.period === "custom" && customRangeLabel
+                    ? customRangeLabel
+                    : (() => {
+                        const c = PERIOD_CHIPS.find(x => x.key === filters.period);
+                        return c ? (es ? c.labelEs : c.labelEn) : (es ? "Todo" : "All time");
+                      })()
+                }
+                isActive={filters.period !== "all"}
+                activeColor="var(--color-brand-blue)"
+                activeBg="var(--color-info-bg)"
+                options={PERIOD_CHIPS.map(c => ({
+                  value: c.key,
+                  label: es ? c.labelEs : c.labelEn,
+                }))}
+                onChange={(v) => {
+                  if (v === "custom") {
+                    setDateRangePickerOpen(true);
+                  } else {
+                    setF({ period: v as PeriodFilter, customStart: undefined, customEnd: undefined });
+                  }
+                }}
+              />
 
-            {/* GRUPO 4: MONEDA (solo si hay más de 1 moneda) */}
-            {availableCurrencies.length > 1 && (
-              <FilterGroup labelEs="Moneda" labelEn="Currency" es={es} last>
-                <Chip active={filters.currency === "all"}
-                  onClick={() => setF({ currency: "all" })}
-                  color="var(--color-text-primary)" bg="var(--color-bg-subtle)"
-                  label={es ? "Todas" : "All"} />
-                {availableCurrencies.map(cur => (
-                  <Chip key={cur} active={filters.currency === cur}
-                    onClick={() => setF({ currency: cur })}
-                    color="var(--color-text-primary)" bg="var(--color-bg-subtle)"
-                    label={`${FLAGS[cur] ?? "💱"} ${cur}`} />
-                ))}
-              </FilterGroup>
-            )}
-          </div>
+              {/* MONEDA (solo si hay más de 1) */}
+              {availableCurrencies.length > 1 && (
+                <FilterDropdown
+                  labelEs="Moneda" labelEn="Currency" es={es}
+                  currentLabel={
+                    filters.currency === "all"
+                      ? (es ? "Todas" : "All")
+                      : `${FLAGS[filters.currency] ?? "💱"} ${filters.currency}`
+                  }
+                  isActive={filters.currency !== "all"}
+                  activeColor="var(--color-text-primary)"
+                  activeBg="var(--color-bg-subtle)"
+                  options={[
+                    { value: "all", label: es ? "Todas" : "All" },
+                    ...availableCurrencies.map(cur => ({
+                      value: cur,
+                      label: `${FLAGS[cur] ?? "💱"} ${cur}`,
+                    })),
+                  ]}
+                  onChange={(v) => setF({ currency: v as CurrencyFilter })}
+                />
+              )}
+            </div>
 
           {/* Lista filtrada */}
           {loading ? (
@@ -746,66 +773,123 @@ export default function FacturacionDashboard({
   );
 }
 
-// ── Sub-componentes UI: FilterGroup + Chip ─────────────────────────────
+// ── Sub-componente UI: FilterDropdown nivel GOD ─────────────────────────
 
-function FilterGroup({
-  labelEs, labelEn, es, last, children,
+function FilterDropdown({
+  labelEs, labelEn, es,
+  currentLabel,
+  isActive, activeColor, activeBg,
+  options,
+  onChange,
 }: {
-  labelEs: string; labelEn: string; es: boolean; last?: boolean; children: React.ReactNode;
+  labelEs: string;
+  labelEn: string;
+  es: boolean;
+  currentLabel: string;
+  isActive: boolean;
+  activeColor?: string;
+  activeBg?: string;
+  options: { value: string; label: string; color?: string; bg?: string; count?: number }[];
+  onChange: (value: string) => void;
 }) {
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: "10px", marginBottom: last ? 0 : "8px", flexWrap: "wrap" }}>
-      <div style={{ fontSize: "9px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.7px", minWidth: "60px", flexShrink: 0 }}>
-        {es ? labelEs : labelEn}
-      </div>
-      <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", flex: 1 }}>
-        {children}
-      </div>
-    </div>
-  );
-}
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
 
-function Chip({
-  active, onClick, color, bg, label, count,
-}: {
-  active: boolean;
-  onClick: () => void;
-  color: string;
-  bg: string;
-  label: string;
-  count?: number;
-}) {
+  // Cerrar al click fuera del dropdown
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [open]);
+
+  const triggerLabel = `${es ? labelEs : labelEn}: ${currentLabel}`;
+
   return (
-    <button onClick={onClick}
-      style={{
-        height: "26px",
-        padding: "0 10px",
-        borderRadius: "var(--radius-full)",
-        background: active ? bg : "var(--color-bg-subtle)",
-        border: `1px solid ${active ? color : "var(--color-border-faint)"}`,
-        color: active ? color : "var(--color-text-muted)",
-        fontSize: "11px",
-        fontWeight: active ? 800 : 600,
-        cursor: "pointer",
-        display: "flex",
-        alignItems: "center",
-        gap: "5px",
-        transition: "all 0.15s",
-        whiteSpace: "nowrap",
-      }}>
-      <span>{label}</span>
-      {typeof count === "number" && count > 0 && (
-        <span style={{
-          background: active ? color : "var(--color-border)",
-          color: active ? "#fff" : "var(--color-text-muted)",
-          fontSize: "9px",
-          fontWeight: 800,
-          padding: "1px 5px",
-          borderRadius: "var(--radius-full)",
-          minWidth: "16px",
-          textAlign: "center",
-        }}>{count}</span>
+    <div ref={ref} style={{ position: "relative" }}>
+      <button onClick={() => setOpen(o => !o)}
+        style={{
+          height: "32px",
+          padding: "0 12px",
+          borderRadius: "var(--radius-md)",
+          background: isActive ? (activeBg ?? "var(--color-info-bg)") : "var(--color-bg-subtle)",
+          border: `1px solid ${isActive ? (activeColor ?? "var(--color-brand-blue)") : "var(--color-border-faint)"}`,
+          color: isActive ? (activeColor ?? "var(--color-brand-blue)") : "var(--color-text-primary)",
+          fontSize: "11px",
+          fontWeight: isActive ? 700 : 600,
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          gap: "6px",
+          whiteSpace: "nowrap",
+          transition: "all 0.15s",
+        }}>
+        <span>{triggerLabel}</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"
+          style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </button>
+
+      {open && (
+        <div style={{
+          position: "absolute",
+          top: "calc(100% + 4px)",
+          left: 0,
+          minWidth: "220px",
+          maxHeight: "340px",
+          overflowY: "auto",
+          background: "var(--color-bg-base)",
+          border: "1px solid var(--color-border)",
+          borderRadius: "var(--radius-md)",
+          boxShadow: "var(--shadow-lg)",
+          zIndex: 100,
+          padding: "4px",
+        }}>
+          {options.map(opt => (
+            <button key={opt.value}
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              style={{
+                width: "100%",
+                padding: "8px 10px",
+                borderRadius: "var(--radius-sm)",
+                background: "transparent",
+                border: "none",
+                color: opt.color ?? "var(--color-text-primary)",
+                fontSize: "12px",
+                fontWeight: 500,
+                cursor: "pointer",
+                textAlign: "left",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: "8px",
+                transition: "background 0.1s",
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = opt.bg ?? "var(--color-bg-subtle)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}>
+              <span>{opt.label}</span>
+              {typeof opt.count === "number" && opt.count > 0 && (
+                <span style={{
+                  background: "var(--color-bg-subtle)",
+                  color: "var(--color-text-muted)",
+                  fontSize: "9px",
+                  fontWeight: 700,
+                  padding: "1px 6px",
+                  borderRadius: "var(--radius-full)",
+                  minWidth: "18px",
+                  textAlign: "center",
+                  flexShrink: 0,
+                }}>{opt.count}</span>
+              )}
+            </button>
+          ))}
+        </div>
       )}
-    </button>
+    </div>
   );
 }
