@@ -37,6 +37,7 @@ export type CFDIDocument = {
   stamp_data:            any;
   created_at:            string;
   updated_at:            string;
+  has_carta_porte?:      boolean;
 };
 
 export type CFDIConcept = {
@@ -388,3 +389,79 @@ export const BUSINESS_NOTE_TYPES: { key: BusinessNoteType; labelEs: string; labe
   { key: "recibo",      labelEs: "Recibo de Pago",       labelEn: "Payment Receipt",    descEs: "Comprobante informal de pago recibido",       descEn: "Informal proof of received payment" },
   { key: "otro",        labelEs: "Otro Documento",       labelEn: "Other Document",     descEs: "Documento personalizado sin valor fiscal",    descEn: "Custom document without fiscal value" },
 ];
+
+// ═══════════════════════════════════════════════════════════════════════
+// FILTROS DEL DASHBOARD DE FACTURACIÓN
+// 
+// Sistema de filtros multi-dimensional para la lista de CFDIs.
+// Se compone de 4 grupos: Tipo, Estado, Período, Moneda + búsqueda libre.
+// 
+// Diseño SaaS-grade: cada filtro es ortogonal (independiente) y se
+// combinan vía AND. La búsqueda libre tiene match parcial en folio,
+// cliente, RFC y notas.
+// ═══════════════════════════════════════════════════════════════════════
+
+/** Filtro por tipo de comprobante CFDI */
+export type ActiveTypeFilter =
+  | "all"
+  | "factura"           // Tipo I sin Carta Porte
+  | "carta_porte"       // Tipo I o T con Complemento Carta Porte 3.1
+  | "traslado"          // Tipo T sin Carta Porte (raro, casi no aplica)
+  | "nota_credito"      // Tipo E (Egreso)
+  | "complemento"       // Tipo P (Pago / REP)
+  | "nomina";           // Tipo N
+
+/** Filtro por estado del CFDI */
+export type ActiveStatusFilter =
+  | "all"
+  | "valid"             // Vigente / Timbrado
+  | "proforma"          // Borrador editable (sin timbrar)
+  | "ppd_pending"       // PPD vigente sin REP completo (alerta de cobranza)
+  | "cancelled";        // Cancelado / cancelación solicitada
+
+/** Filtro por período temporal (se aplica sobre cfdi_date) */
+export type PeriodFilter =
+  | "today"             // Solo hoy
+  | "week"              // Esta semana (lunes a domingo)
+  | "month"             // Este mes calendario
+  | "quarter"           // Este trimestre calendario
+  | "year"              // Este año calendario
+  | "all"               // Sin filtro de fecha
+  | "custom";           // Rango personalizado (usa customStart / customEnd)
+
+/** Filtro por moneda. Las opciones se construyen dinámicamente desde los CFDIs disponibles. */
+export type CurrencyFilter = "all" | string; // "MXN" | "USD" | "EUR" | etc.
+
+/** Estado completo de los filtros del Dashboard */
+export type DashboardFilters = {
+  type:          ActiveTypeFilter;
+  status:        ActiveStatusFilter;
+  period:        PeriodFilter;
+  currency:      CurrencyFilter;
+  /** Si period === "custom", fecha de inicio (formato ISO: YYYY-MM-DD) */
+  customStart?:  string;
+  /** Si period === "custom", fecha de fin (formato ISO: YYYY-MM-DD) */
+  customEnd?:    string;
+  /** Texto libre para buscar por folio, cliente, RFC, notas */
+  search:        string;
+};
+
+/** Estado por defecto: todo abierto, sin búsqueda */
+export const DEFAULT_DASHBOARD_FILTERS: DashboardFilters = {
+  type:     "all",
+  status:   "all",
+  period:   "all",
+  currency: "all",
+  search:   "",
+};
+
+/** Cuenta cuántos filtros están activos (distintos del default). Útil para mostrar el badge "Limpiar filtros". */
+export function countActiveFilters(filters: DashboardFilters): number {
+  let count = 0;
+  if (filters.type     !== "all") count++;
+  if (filters.status   !== "all") count++;
+  if (filters.period   !== "all") count++;
+  if (filters.currency !== "all") count++;
+  if (filters.search.trim().length > 0) count++;
+  return count;
+}
