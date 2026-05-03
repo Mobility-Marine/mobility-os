@@ -598,6 +598,7 @@ export default function FacturacionDashboard({
                 />
               )}
             </div>
+          </div>
 
           {/* Lista filtrada */}
           {loading ? (
