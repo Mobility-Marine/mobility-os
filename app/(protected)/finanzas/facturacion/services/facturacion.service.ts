@@ -20,9 +20,13 @@ export async function fetchCFDIs(companyId: string, filters: {
   type?: string; status?: string; search?: string;
   from?: string; to?: string; limit?: number;
 }): Promise<CFDIDocument[]> {
+  // ── Embed con cfdi_carta_porte para detectar CFDIs con CCP ──
+  // El embed Supabase trae [] si no hay CCP, o [{id: "..."}] si sí lo tiene.
+  // Usamos el alias _ccp para postprocesarlo a boolean has_carta_porte.
+  // FK: cfdi_carta_porte.cfdi_id → cfdi_documents.id (verificada).
   let query = supabase
     .from("cfdi_documents")
-    .select("*")
+    .select("*, _ccp:cfdi_carta_porte(id)")
     .eq("company_id", companyId)
     .order("cfdi_date", { ascending: false })
     .limit(filters.limit ?? 100);
@@ -38,7 +42,15 @@ export async function fetchCFDIs(companyId: string, filters: {
 
   const { data, error } = await query;
   if (error) throw new Error(error.message);
-  return (data ?? []) as CFDIDocument[];
+
+  // ── Postprocesado: convertir embed _ccp en flag has_carta_porte ──
+  // Supabase puede devolver array o objeto según la cardinalidad detectada;
+  // cubrimos ambos casos defensivamente.
+  return (data ?? []).map((item: any) => {
+    const { _ccp, ...rest } = item;
+    const has_carta_porte = !!_ccp && (Array.isArray(_ccp) ? _ccp.length > 0 : true);
+    return { ...rest, has_carta_porte } as CFDIDocument;
+  });
 }
 
 export async function fetchCFDIStats(companyId: string): Promise<FacturacionStats> {
