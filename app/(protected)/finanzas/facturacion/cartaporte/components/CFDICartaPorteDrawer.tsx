@@ -80,7 +80,7 @@ export function CFDICartaPorteDrawer({
     [isTraslado]
   );
 
-  const validation = useMemo(() => validateCFDIConCartaPorte(data), [data]);
+  const validation = useMemo(() => validateCFDIConCartaPorte(data, parentType), [data, parentType]);
   const groupedErrors = useMemo(() => groupErrorsBySection(validation.errors), [validation]);
 
   // ─── Updaters atómicos ───
@@ -234,6 +234,7 @@ export function CFDICartaPorteDrawer({
               data={data.base} setCliente={setCliente}
               showValidation={showValidation}
               errors={(groupedErrors as any).cliente ?? []}
+              parentType={parentType}
             />
           )}
           {currentStepDef.id === "conceptos" && (
