@@ -10,59 +10,143 @@ import type {
 } from "../types/providers.types";
 
 // ── PROVIDERS ────────────────────────────────────────────────
+// Mobility OS unifica los partners en `business_partners`. Los proveedores
+// logísticos son business_partners con is_logistics_provider=true.
+// Algunas columnas tienen nombres distintos en BD vs en el tipo UI legacy:
+//   provider_type   ↔  logistics_provider_type
+//   contact_name    ↔  contact
+//   contact_email   ↔  email
+//   contact_phone   ↔  phone
+// Estos helpers traducen entre ambos formatos.
 
-export async function fetchProviders(companyId: string): Promise<LogisticsProvider[]> {
-  const { data } = await supabase
-    .from("logistics_providers")
-    .select("*")
-    .eq("company_id", companyId)
-    .order("name", { ascending: true });
-  return (data ?? []) as LogisticsProvider[];
+const SELECT_PROVIDER = `
+  id, company_id, name, rfc,
+  provider_type:logistics_provider_type,
+  contact_name:contact,
+  contact_email:email,
+  contact_phone:phone,
+  scac_code, website,
+  coverage_routes, services_offered,
+  is_active, rating, notes, payment_terms,
+  created_by, created_at, updated_at
+`;
+
+/** Mapea payload del tipo UI (LogisticsProvider) al schema BD (business_partners). */
+function uiToBP(payload: any) {
+  const { provider_type, contact_name, contact_email, contact_phone, tax_id, ...rest } = payload;
+  return {
+    ...rest,
+    ...(provider_type  !== undefined ? { logistics_provider_type: provider_type } : {}),
+    ...(contact_name   !== undefined ? { contact: contact_name }                  : {}),
+    ...(contact_email  !== undefined ? { email:   contact_email }                 : {}),
+    ...(contact_phone  !== undefined ? { phone:   contact_phone }                 : {}),
+    // tax_id se descarta: en business_partners solo existe `rfc`.
+  };
 }
 
+/**
+ * Lista proveedores logísticos (business_partners con is_logistics_provider=true).
+ * Multi-tenant safe.
+ */
+export async function fetchProviders(companyId: string): Promise<LogisticsProvider[]> {
+  const { data } = await supabase
+    .from("business_partners")
+    .select(SELECT_PROVIDER)
+    .eq("company_id", companyId)
+    .eq("is_logistics_provider", true)
+    .order("name", { ascending: true });
+  return (data ?? []) as unknown as LogisticsProvider[];
+}
+
+/**
+ * Obtiene un proveedor logístico específico junto con sus documentos y facturas.
+ */
 export async function fetchProvider(
   companyId: string, id: string
 ): Promise<LogisticsProvider | null> {
   const [{ data: provider }, { data: docs }, { data: invoices }] = await Promise.all([
-    supabase.from("logistics_providers").select("*").eq("company_id", companyId).eq("id", id).single(),
-    supabase.from("provider_documents").select("*").eq("provider_id", id).order("created_at", { ascending: false }),
-    supabase.from("provider_invoices").select("*").eq("provider_id", id).eq("company_id", companyId).order("invoice_date", { ascending: false }),
+    supabase.from("business_partners")
+      .select(SELECT_PROVIDER)
+      .eq("company_id", companyId)
+      .eq("id", id)
+      .eq("is_logistics_provider", true)
+      .single(),
+    supabase.from("provider_documents")
+      .select("*")
+      .eq("provider_id", id)
+      .order("created_at", { ascending: false }),
+    supabase.from("provider_invoices")
+      .select("*")
+      .eq("provider_id", id)
+      .eq("company_id", companyId)
+      .order("invoice_date", { ascending: false }),
   ]);
   if (!provider) return null;
-  return { ...provider, documents: docs ?? [], invoices: invoices ?? [] } as LogisticsProvider;
+  return { ...provider, documents: docs ?? [], invoices: invoices ?? [] } as unknown as LogisticsProvider;
 }
 
+/**
+ * Crea un proveedor logístico en business_partners.
+ * Marca explícitamente: is_logistics_provider=true, is_supplier=false, is_customer=false.
+ */
 export async function createProvider(
   companyId: string, userId: string,
   data: Omit<LogisticsProvider, "id" | "company_id" | "created_at" | "updated_at" | "created_by" | "documents" | "invoices">
 ): Promise<LogisticsProvider> {
+  const mapped = uiToBP(data);
   const { data: created, error } = await supabase
-    .from("logistics_providers")
-    .insert({ ...data, company_id: companyId, created_by: userId })
-    .select("*").single();
+    .from("business_partners")
+    .insert({
+      ...mapped,
+      company_id:            companyId,
+      created_by:            userId,
+      is_customer:           false,
+      is_supplier:           false,
+      is_logistics_provider: true,
+    })
+    .select(SELECT_PROVIDER)
+    .single();
   if (error) throw error;
-  return created as LogisticsProvider;
+  return created as unknown as LogisticsProvider;
 }
 
+/**
+ * Actualiza un proveedor logístico. Verifica que sea logístico (no edita otros partners).
+ */
 export async function updateProvider(
   companyId: string, id: string, updates: Partial<LogisticsProvider>
 ): Promise<void> {
-  const { documents, invoices, id: _id, company_id: _cid, created_at: _ca, ...safe } = updates as any;
-  await supabase.from("logistics_providers")
-    .update({ ...safe, updated_at: new Date().toISOString() })
-    .eq("id", id).eq("company_id", companyId);
+  const { documents, invoices, id: _id, company_id: _cid, created_at: _ca, ...rest } = updates as any;
+  const mapped = uiToBP(rest);
+  await supabase.from("business_partners")
+    .update({ ...mapped, updated_at: new Date().toISOString() })
+    .eq("id", id)
+    .eq("company_id", companyId)
+    .eq("is_logistics_provider", true);
 }
 
+/**
+ * Activa o desactiva un proveedor logístico.
+ */
 export async function toggleProviderStatus(
   companyId: string, id: string, isActive: boolean
 ): Promise<void> {
-  await supabase.from("logistics_providers")
+  await supabase.from("business_partners")
     .update({ is_active: isActive, updated_at: new Date().toISOString() })
-    .eq("id", id).eq("company_id", companyId);
+    .eq("id", id)
+    .eq("company_id", companyId)
+    .eq("is_logistics_provider", true);
 }
 
+/**
+ * Elimina un proveedor logístico. Verifica que sea logístico (seguridad).
+ */
 export async function deleteProvider(companyId: string, id: string): Promise<void> {
-  await supabase.from("logistics_providers").delete().eq("id", id).eq("company_id", companyId);
+  await supabase.from("business_partners")
+    .delete()
+    .eq("id", id)
+    .eq("company_id", companyId)
+    .eq("is_logistics_provider", true);
 }
 
 // ── DOCUMENTS ────────────────────────────────────────────────
