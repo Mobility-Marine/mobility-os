@@ -96,7 +96,7 @@ export default function OrderCreateDrawer({ open, onClose, onCreated }: Props) {
   async function loadClients() {
     const { data } = await supabase
       .from("quotations")
-      .select("client_id, client_name, client:clients(id, name, rfc, email)")
+      .select("client_id, client_name, client:business_partners!client_id(id, name, rfc, email)")
       .eq("company_id", companyId!)
       .eq("type", "products")
       .eq("status", "accepted")
@@ -232,7 +232,7 @@ export default function OrderCreateDrawer({ open, onClose, onCreated }: Props) {
           ].filter(Boolean).join(" | ") || null,
           created_by:       user.id,
         })
-        .select("*, client:clients(name, email, rfc), quotation:quotations(quote_number)")
+        .select("*, client:business_partners!client_id(name, email, rfc), quotation:quotations(quote_number)")
         .single();
 
       if (orderErr) throw orderErr;
