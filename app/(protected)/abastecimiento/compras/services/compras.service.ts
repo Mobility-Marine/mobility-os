@@ -20,7 +20,7 @@ export async function fetchAlerts(companyId: string): Promise<ComprasAlert[]> {
   // OCs atrasadas
   const { data: overdue } = await supabase
     .from("purchase_orders")
-    .select("id, po_number, expected_date, supplier:suppliers(name)")
+    .select("id, po_number, expected_date, supplier:business_partners!supplier_id(name)")
     .eq("company_id", companyId)
     .in("status", ["approved", "sent", "partial"])
     .lt("expected_date", new Date().toISOString().split("T")[0])
@@ -41,7 +41,7 @@ export async function fetchAlerts(companyId: string): Promise<ComprasAlert[]> {
   // OCs pendientes de aprobación
   const { data: pendingPOs } = await supabase
     .from("purchase_orders")
-    .select("id, po_number, total, currency, supplier:suppliers(name), created_at")
+    .select("id, po_number, total, currency, supplier:business_partners!supplier_id(name), created_at")
     .eq("company_id", companyId)
     .in("status", ["draft", "pending_approval"])
     .order("created_at")
@@ -81,7 +81,7 @@ export async function fetchAlerts(companyId: string): Promise<ComprasAlert[]> {
   // Recepciones con discrepancias
   const { data: discrep } = await supabase
     .from("purchase_receptions")
-    .select("id, reception_number, supplier:suppliers(name)")
+    .select("id, reception_number, supplier:business_partners!supplier_id(name)")
     .eq("company_id", companyId)
     .eq("has_discrepancies", true)
     .not("status", "eq", "complete")
@@ -108,7 +108,7 @@ export async function fetchRecentActivity(companyId: string): Promise<ComprasAct
   // OCs recientes
   const { data: pos } = await supabase
     .from("purchase_orders")
-    .select("id, po_number, status, total, currency, created_at, updated_at, supplier:suppliers(name)")
+    .select("id, po_number, status, total, currency, created_at, updated_at, supplier:business_partners!supplier_id(name)")
     .eq("company_id", companyId)
     .order("updated_at", { ascending: false })
     .limit(8);
@@ -134,7 +134,7 @@ export async function fetchRecentActivity(companyId: string): Promise<ComprasAct
   // Recepciones recientes
   const { data: recs } = await supabase
     .from("purchase_receptions")
-    .select("id, reception_number, status, created_at, updated_at, supplier:suppliers(name)")
+    .select("id, reception_number, status, created_at, updated_at, supplier:business_partners!supplier_id(name)")
     .eq("company_id", companyId)
     .eq("status", "complete")
     .order("updated_at", { ascending: false })
@@ -158,7 +158,7 @@ export async function fetchRecentActivity(companyId: string): Promise<ComprasAct
 export async function fetchTopSuppliers(companyId: string): Promise<TopSupplier[]> {
   const { data, error } = await supabase
     .from("purchase_orders")
-    .select("supplier_id, total, currency, created_at, supplier:suppliers(id, name)")
+    .select("supplier_id, total, currency, created_at, supplier:business_partners!supplier_id(id, name)")
     .eq("company_id", companyId)
     .not("status", "eq", "cancelled")
     .order("created_at", { ascending: false });

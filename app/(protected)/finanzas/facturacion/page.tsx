@@ -70,7 +70,7 @@ export default function FacturacionPage() {
     ctrl.load();
     supabase
       .from("shipments")
-      .select("id, reference, service_type, currency, total, client:clients(name), quotation:quotations(quote_number)")
+      .select("id, reference, service_type, currency, total, client:business_partners!client_id(name), quotation:quotations(quote_number)")
       .eq("company_id", companyId)
       .eq("status", "delivered")
       .is("invoice_id", null)
@@ -78,7 +78,7 @@ export default function FacturacionPage() {
       .then(({ data }) => setPendingShipments(data ?? []));
     supabase
       .from("orders")
-      .select("id, order_number, currency, total, subtotal, tax_rate, tax_amount, delivery_date, client:clients(name, legal_name, rfc, email, tax_regime, zip_code), quotation:quotations(quote_number)")
+      .select("id, order_number, currency, total, subtotal, tax_rate, tax_amount, delivery_date, client:business_partners!client_id(name, legal_name, rfc, email, tax_regime, zip_code), quotation:quotations(quote_number)")
       .eq("company_id", companyId)
       .eq("status", "delivered")
       .is("invoice_id", null)
@@ -113,7 +113,7 @@ export default function FacturacionPage() {
     if (!companyId) return;
     const { data: sh } = await supabase
       .from("shipments")
-      .select(`*, client:clients(name, legal_name, rfc, email, tax_regime, zip_code), services:shipment_services(description, price, currency, product_id, product:products(name, sat_product_code, sat_unit_code, unit))`)
+      .select(`*, client:business_partners!client_id(name, legal_name, rfc, email, tax_regime, zip_code), services:shipment_services(description, price, currency, product_id, product:products(name, sat_product_code, sat_unit_code, unit))`)
       .eq("id", shipment.id)
       .single();
     if (!sh) return;
@@ -202,8 +202,8 @@ export default function FacturacionPage() {
 
     // Si fue eliminada o timbrada, recargar también pendientes (por si estaba ligada a un embarque/pedido)
     if ((action === "stamped" || action === "deleted") && companyId) {
-      supabase.from("shipments").select("id, reference, service_type, currency, total, client:clients(name), quotation:quotations(quote_number)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingShipments(data ?? []));
-      supabase.from("orders").select("id, order_number, currency, total, delivery_date, client:clients(name, legal_name, rfc, email, tax_regime, zip_code), quotation:quotations(quote_number)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingOrders(data ?? []));
+      supabase.from("shipments").select("id, reference, service_type, currency, total, client:business_partners!client_id(name), quotation:quotations(quote_number)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingShipments(data ?? []));
+      supabase.from("orders").select("id, order_number, currency, total, delivery_date, client:business_partners!client_id(name, legal_name, rfc, email, tax_regime, zip_code), quotation:quotations(quote_number)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingOrders(data ?? []));
     }
   }
   
@@ -515,8 +515,8 @@ export default function FacturacionPage() {
           ctrl.handleSelect(cfdi);
           // Recargar pendientes
           if (companyId) {
-            supabase.from("shipments").select("id, reference, service_type, currency, total, client:clients(name), quotation:quotations(quote_number)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingShipments(data ?? []));
-            supabase.from("orders").select("id, order_number, currency, total, delivery_date, client:clients(name, legal_name, rfc, email, tax_regime, zip_code), quotation:quotations(quote_number)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingOrders(data ?? []));
+            supabase.from("shipments").select("id, reference, service_type, currency, total, client:business_partners!client_id(name), quotation:quotations(quote_number)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingShipments(data ?? []));
+            supabase.from("orders").select("id, order_number, currency, total, delivery_date, client:business_partners!client_id(name, legal_name, rfc, email, tax_regime, zip_code), quotation:quotations(quote_number)").eq("company_id", companyId).eq("status", "delivered").is("invoice_id", null).then(({ data }) => setPendingOrders(data ?? []));
           }
         }}
       />

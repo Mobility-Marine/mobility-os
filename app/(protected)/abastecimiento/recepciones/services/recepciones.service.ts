@@ -60,7 +60,7 @@ export async function fetchPendingPOs(companyId: string): Promise<POForReception
     .from("purchase_orders")
     .select(`
       id, po_number, supplier_id, expected_date, currency, total,
-      supplier:suppliers(name),
+      supplier:business_partners!supplier_id(name),
       items:purchase_order_items(
         id, description, sku, unit,
         quantity, quantity_received, quantity_pending, unit_price
