@@ -260,24 +260,44 @@ export async function updateAPStatus(id: string, companyId: string, status: stri
 }
 
 // ── FETCH SUPPLIERS + PROVIDERS para dropdown ─────────────────
+/**
+ * Trae proveedores de compras + proveedores logísticos para dropdown del drawer "Nueva CXP".
+ * Lee desde business_partners filtrando por flag de rol.
+ */
 export async function fetchSuppliersForAP(companyId: string) {
   const [{ data: suppliers }, { data: providers }] = await Promise.all([
-    supabase.from("suppliers").select("id, name, tax_id, email, type").eq("company_id", companyId).eq("is_active", true).order("name"),
-    supabase.from("logistics_providers").select("id, name, rfc, contact_email").eq("company_id", companyId).eq("is_active", true).order("name"),
+    supabase.from("business_partners")
+      .select("id, name, tax_id:rfc, email")
+      .eq("company_id", companyId)
+      .eq("is_supplier", true)
+      .eq("is_active", true)
+      .order("name"),
+    supabase.from("business_partners")
+      .select("id, name, rfc, contact_email:email")
+      .eq("company_id", companyId)
+      .eq("is_logistics_provider", true)
+      .eq("is_active", true)
+      .order("name"),
   ]);
   return { suppliers: suppliers ?? [], providers: providers ?? [] };
 }
 
 // ── TODOS LOS PROVEEDORES (para vista Por Proveedor) ──────────
 export async function fetchAllProvidersForView(companyId: string): Promise<SupplierAPSummary[]> {
-  // 1. Traer todos los proveedores registrados
+  // 1. Traer todos los partners (logísticos + de compras) desde la tabla unificada
   const [{ data: logProviders }, { data: suppliers }] = await Promise.all([
-    supabase.from("logistics_providers")
+    supabase.from("business_partners")
       .select("id, name, rfc")
-      .eq("company_id", companyId).eq("is_active", true).order("name"),
-    supabase.from("suppliers")
-      .select("id, name, tax_id, type")
-      .eq("company_id", companyId).eq("is_active", true).order("name"),
+      .eq("company_id", companyId)
+      .eq("is_logistics_provider", true)
+      .eq("is_active", true)
+      .order("name"),
+    supabase.from("business_partners")
+      .select("id, name, tax_id:rfc")
+      .eq("company_id", companyId)
+      .eq("is_supplier", true)
+      .eq("is_active", true)
+      .order("name"),
   ]);
 
   // 2. Traer los AP existentes para calcular balances
