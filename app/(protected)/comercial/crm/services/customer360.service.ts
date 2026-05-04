@@ -8,12 +8,18 @@ import { supabase } from "@/lib/supabaseClient";
 
 // ── IDENTIDAD ─────────────────────────────────────────────────
 
+/**
+ * Obtiene la identidad completa del cliente desde business_partners.
+ * Filtro is_customer=true previene leer un proveedor puro por error.
+ * Pieza fundamental del Customer 360.
+ */
 export async function getClient(companyId: string, clientId: string) {
   const { data } = await supabase
-    .from("clients")
+    .from("business_partners")
     .select("*")
     .eq("company_id", companyId)
     .eq("id", clientId)
+    .eq("is_customer", true)
     .single();
   return data ?? null;
 }
@@ -149,19 +155,22 @@ export async function getClientAccountsReceivable(companyId: string, clientId: s
   return data ?? [];
 }
 
+/**
+ * Obtiene la situación crediticia del cliente: límite, días de pago, forma de pago.
+ * Usado en Customer 360 para mostrar el panel de crédito.
+ */
 export async function getClientCreditStatus(companyId: string, clientId: string) {
-  // Límite de crédito y saldo actual del cliente
   const { data } = await supabase
-    .from("clients")
+    .from("business_partners")
     .select("credit_limit, payment_terms, payment_form")
     .eq("company_id", companyId)
     .eq("id", clientId)
+    .eq("is_customer", true)
     .single();
   return data ?? null;
 }
 
 // ── COMPRAS (si el cliente también es proveedor) ──────────────
-
 export async function getClientPurchaseOrders(companyId: string, clientId: string) {
   // Si el cliente también es supplier
   const { data } = await supabase
