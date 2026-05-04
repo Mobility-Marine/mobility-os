@@ -67,7 +67,7 @@ export async function fetchReportEjecutivo(companyId: string, desde: string, has
     supabase.from("accounts_payable").select("balance, currency").eq("company_id", companyId).in("status",["pending","partial"]),
     supabase.from("bank_accounts").select("current_balance, currency, bank_name").eq("company_id", companyId).eq("is_active", true),
     supabase.from("shipments").select("status").eq("company_id", companyId).not("status","in","(cancelled,delivered)"),
-    supabase.from("clients").select("id").eq("company_id", companyId).eq("is_active", true),
+    supabase.from("business_partners").select("id").eq("company_id", companyId).eq("is_customer", true).eq("is_active", true),
     supabase.from("employees").select("id").eq("company_id", companyId).eq("status","active"),
     supabase.from("payroll_periods").select("total_net").eq("company_id", companyId).eq("status","paid").gte("payment_date", desde).lte("payment_date", hasta),
   ]);
@@ -115,7 +115,7 @@ export async function fetchReportComercial(companyId: string, desde: string, has
     supabase.from("quotations").select("id, status, total, currency, client_id").eq("company_id", companyId).gte("created_at", desde).lte("created_at", hasta),
     supabase.from("orders").select("id, total, currency").eq("company_id", companyId).gte("created_at", desde).lte("created_at", hasta),
     supabase.from("cfdi_documents").select("total, currency, receiver_name").eq("company_id", companyId).eq("type","I").eq("status","valid").gte("cfdi_date", desde).lte("cfdi_date", hasta),
-    supabase.from("clients").select("id, name").eq("company_id", companyId),
+    supabase.from("business_partners").select("id, name").eq("company_id", companyId).eq("is_customer", true),
   ]);
 
   const prospectos  = prospects  ?? [];
@@ -184,7 +184,7 @@ export async function fetchReportComercial(companyId: string, desde: string, has
 // ── LOGÍSTICA ─────────────────────────────────────────────────
 export async function fetchReportLogistica(companyId: string, desde: string, hasta: string): Promise<ReportLogistica> {
   const { data: shipments } = await supabase.from("shipments")
-    .select("id, status, total, currency, provider_cost, service_type, client:clients(name)")
+    .select("id, status, total, currency, provider_cost, service_type, client:business_partners!client_id(name)")
     .eq("company_id", companyId).gte("created_at", desde).lte("created_at", hasta);
 
   const sh = shipments ?? [];
@@ -406,8 +406,8 @@ export async function fetchReportRH(companyId: string, desde: string, hasta: str
 // ── ABASTECIMIENTO ────────────────────────────────────────────
 export async function fetchReportAbastecimiento(companyId: string, desde: string, hasta: string): Promise<ReportAbastecimiento> {
   const [{ data: orders }, { data: suppliers }, { data: inventory }] = await Promise.all([
-    supabase.from("purchase_orders").select("id, status, total, currency, supplier:suppliers(name)").eq("company_id", companyId).neq("status","cancelled").gte("order_date", desde).lte("order_date", hasta),
-    supabase.from("suppliers").select("id").eq("company_id", companyId).eq("is_active", true),
+    supabase.from("purchase_orders").select("id, status, total, currency, supplier:business_partners!supplier_id(name)").eq("company_id", companyId).neq("status","cancelled").gte("order_date", desde).lte("order_date", hasta),
+    supabase.from("business_partners").select("id").eq("company_id", companyId).eq("is_supplier", true).eq("is_active", true),
     supabase.from("inventory_items").select("id, unit_cost, quantity").eq("company_id", companyId),
   ]);
 
