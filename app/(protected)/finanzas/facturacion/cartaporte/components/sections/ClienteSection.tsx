@@ -108,9 +108,11 @@ export function ClienteSection({ data, setCliente, showValidation, errors, paren
     if (!companyId) return;
     setLoadingClientes(true);
     supabase
-      .from("clients")
+      .from("business_partners")
       .select("id, name, legal_name, rfc, email, tax_regime, zip_code")
       .eq("company_id", companyId)
+      .eq("is_customer", true)
+      .eq("is_active", true)
       .order("name")
       .limit(200)
       .then(({ data }) => {
