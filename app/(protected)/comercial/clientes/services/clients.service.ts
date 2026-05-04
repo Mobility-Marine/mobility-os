@@ -20,11 +20,10 @@ export async function fetchClients(companyId: string): Promise<Client[]> {
   const { data } = await supabase
     .from("business_partners")
     .select("*")
-    .eq("id", id)
     .eq("company_id", companyId)
     .eq("is_customer", true)
-    .single();
-  return data as Client | null;
+    .order("name", { ascending: true });
+  return (data ?? []) as Client[];
 }
 
 export async function fetchClientById(
@@ -89,7 +88,7 @@ export async function updateClient(
   const { stats, documents, contacts, ...dbUpdates } = updates as any;
   const { error } = await supabase
     .from("business_partners")
-    .update(payload)
+    .update(dbUpdates)
     .eq("id", id)
     .eq("company_id", companyId)
     .eq("is_customer", true);
@@ -167,11 +166,10 @@ export async function deleteClientContact(
   companyId: string, id: string
 ): Promise<void> {
   await supabase
-    .from("business_partners")
+    .from("client_contacts")
     .delete()
     .eq("id", id)
-    .eq("company_id", companyId)
-    .eq("is_customer", true);
+    .eq("company_id", companyId);
 }
 
 // ── DOCUMENTS ──────────────────────────────────────────────
