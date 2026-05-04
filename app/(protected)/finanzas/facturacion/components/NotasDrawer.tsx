@@ -39,7 +39,13 @@ export default function NotasDrawer({ notes, saving, loading, onCreate }: Props)
 
   useEffect(() => {
     if (!companyId) return;
-    supabase.from("clients").select("id, name, legal_name, rfc, email").eq("company_id", companyId).order("name").limit(200)
+    supabase.from("business_partners")
+      .select("id, name, legal_name, rfc, email")
+      .eq("company_id", companyId)
+      .eq("is_customer", true)
+      .eq("is_active", true)
+      .order("name")
+      .limit(200)
       .then(({ data }) => setClients(data ?? []));
   }, [companyId]);
 
