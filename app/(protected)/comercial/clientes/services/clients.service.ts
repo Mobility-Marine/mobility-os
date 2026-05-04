@@ -89,9 +89,10 @@ export async function updateClient(
   const { stats, documents, contacts, ...dbUpdates } = updates as any;
   const { error } = await supabase
     .from("business_partners")
-    .update({ ...dbUpdates, updated_at: new Date().toISOString() })
+    .update(payload)
     .eq("id", id)
-    .eq("company_id", companyId);
+    .eq("company_id", companyId)
+    .eq("is_customer", true);
   if (error) throw error;
 }
 
@@ -166,10 +167,11 @@ export async function deleteClientContact(
   companyId: string, id: string
 ): Promise<void> {
   await supabase
-    .from("client_contacts")
+    .from("business_partners")
     .delete()
     .eq("id", id)
-    .eq("company_id", companyId);
+    .eq("company_id", companyId)
+    .eq("is_customer", true);
 }
 
 // ── DOCUMENTS ──────────────────────────────────────────────
