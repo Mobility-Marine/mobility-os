@@ -49,7 +49,7 @@ export async function fetchQuotations(companyId: string): Promise<Quotation[]> {
   // 1. Traer la lista base de cotizaciones
   const { data: quotations } = await supabase
     .from("quotations")
-    .select("*, client:clients(name, email, rfc)")
+    .select("*, client:business_partners!client_id(name, email, rfc)")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
 
@@ -88,7 +88,7 @@ export async function fetchQuotation(
   const [{ data: quot }, { data: items }, { data: services }, concepts] = await Promise.all([
     supabase.from("quotations").select(`
       *,
-      client:clients(
+      client:business_partners!client_id(
         name, email, rfc,
         contacts:client_contacts(name, is_primary)
       )
