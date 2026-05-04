@@ -43,8 +43,17 @@ export default function FTCreateDrawer({ open, onClose, onCreate }: Props) {
   useEffect(() => {
     if (!open || !companyId) return;
     Promise.all([
-      supabase.from("shipments").select("id, reference, client:clients(name)").eq("company_id", companyId).not("status","eq","cancelled").order("created_at",{ascending:false}),
-      supabase.from("logistics_providers").select("id, provider_name").eq("company_id", companyId).eq("provider_type","customs_broker").eq("is_active",true),
+      supabase.from("shipments")
+        .select("id, reference, client:business_partners!client_id(name)")
+        .eq("company_id", companyId)
+        .not("status", "eq", "cancelled")
+        .order("created_at", { ascending: false }),
+      supabase.from("business_partners")
+        .select("id, provider_name:name")
+        .eq("company_id", companyId)
+        .eq("is_logistics_provider", true)
+        .eq("logistics_provider_type", "customs_broker")
+        .eq("is_active", true),
     ]).then(([{ data: s }, { data: b }]) => {
       setShipments(s ?? []);
       setBrokers(b ?? []);
