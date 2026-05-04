@@ -53,8 +53,12 @@ function ProveedorFacturaPanel({
       .eq("related_shipment_id", shipment.id)
       .order("created_at")
       .then(({ data }) => { setApList(data ?? []); setLoaded(true); });
-    sb.from("logistics_providers")
-      .select("id, name, rfc").eq("company_id", companyId).eq("is_active", true).order("name")
+    sb.from("business_partners")
+      .select("id, name, rfc")
+      .eq("company_id", companyId)
+      .eq("is_logistics_provider", true)
+      .eq("is_active", true)
+      .order("name")
       .then(({ data }) => setProviders(data ?? []));
   }, [shipment.id, companyId]);
 
