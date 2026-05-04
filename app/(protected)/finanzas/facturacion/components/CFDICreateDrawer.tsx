@@ -79,8 +79,13 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
 
     useEffect(() => {
     if (!open || !companyId) return;
-    supabase.from("clients").select("id, name, legal_name, rfc, email, tax_regime, zip_code")
-      .eq("company_id", companyId).order("name").limit(200)
+    supabase.from("business_partners")
+      .select("id, name, legal_name, rfc, email, tax_regime, zip_code")
+      .eq("company_id", companyId)
+      .eq("is_customer", true)
+      .eq("is_active", true)
+      .order("name")
+      .limit(200)
       .then(({ data }) => setClients((data ?? []) as Client[]));
     supabase.from("products").select("id, name, sku, unit, unit_price, cost, tax_rate, sat_product_code, sat_unit_code")
       .eq("company_id", companyId).eq("is_active", true).order("name").limit(200)
