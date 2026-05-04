@@ -79,7 +79,7 @@ export async function fetchShipments(companyId: string): Promise<Shipment[]> {
   // 1. Lista base de embarques
   const { data: shipments } = await supabase
     .from("shipments")
-    .select("*, client:clients(name, email, rfc), quotation:quotations(quote_number), provider:logistics_providers(name, contact_phone)")
+    .select("*, client:business_partners!client_id(name, email, rfc), quotation:quotations(quote_number), provider:business_partners!provider_id(name, contact_phone:phone)")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
 
@@ -111,7 +111,7 @@ export async function fetchShipments(companyId: string): Promise<Shipment[]> {
 export async function fetchShipment(companyId: string, id: string): Promise<Shipment | null> {
   const [{ data: shipment }, { data: services }] = await Promise.all([
     supabase.from("shipments")
-      .select("*, client:clients(name, email, rfc), quotation:quotations(quote_number), provider:logistics_providers(name, contact_phone)")
+      .select("*, client:business_partners!client_id(name, email, rfc), quotation:quotations(quote_number), provider:business_partners!provider_id(name, contact_phone:phone)")
       .eq("company_id", companyId).eq("id", id).single(),
     supabase.from("shipment_services")
       .select("*").eq("shipment_id", id).order("sort_order"),
@@ -186,7 +186,7 @@ export async function createShipment(
       internal_notes:      payload.internal_notes      ?? null,
       created_by:          userId,
     })
-    .select("*, client:clients(name, email, rfc), quotation:quotations(quote_number)")
+    .select("*, client:business_partners!client_id(name, email, rfc), quotation:quotations(quote_number)")
     .single();
 
   if (error) throw error;
@@ -375,10 +375,14 @@ export function computeShipmentKPIs(shipments: Shipment[]): ShipmentKPIs {
 }
 
 // ── ACCEPTED SERVICE QUOTATIONS ───────────────────────────────
+/**
+ * Lista cotizaciones de servicios aceptadas listas para crear embarques.
+ * El JOIN trae datos del cliente desde business_partners.
+ */
 export async function fetchAcceptedServiceQuotations(companyId: string) {
   const { data } = await supabase
     .from("quotations")
-    .select("id, quote_number, client_id, client_name, currency, total, accepted_at, client:clients(name, rfc, email)")
+    .select("id, quote_number, client_id, client_name, currency, total, accepted_at, client:business_partners!client_id(name, rfc, email)")
     .eq("company_id", companyId)
     .eq("type", "services")
     .eq("status", "accepted")
@@ -396,13 +400,18 @@ export async function fetchQuotationServices(quotationId: string) {
 }
 
 // ── PROVEEDORES LOGÍSTICOS ────────────────────────────────────
+/**
+ * Lista proveedores logísticos activos para el dropdown del wizard de embarques.
+ * Lee desde business_partners filtrando por is_logistics_provider=true.
+ */
 export async function fetchLogisticsProviders(
   companyId: string
 ): Promise<{ id: string; name: string; contact_phone?: string }[]> {
   const { data } = await supabase
-    .from("logistics_providers")
-    .select("id, name, contact_phone")
+    .from("business_partners")
+    .select("id, name, contact_phone:phone")
     .eq("company_id", companyId)
+    .eq("is_logistics_provider", true)
     .eq("is_active", true)
     .order("name");
   return (data ?? []) as any[];
