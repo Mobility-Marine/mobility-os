@@ -23,8 +23,8 @@ export async function fetchAP(companyId: string, filters: APFilters): Promise<Ac
   let q = supabase
     .from("accounts_payable")
     .select(`*, 
-      supplier:suppliers(name, tax_id),
-      logistics_provider:logistics_providers(name),
+      supplier:business_partners!supplier_id(name, tax_id:rfc)
+      logistics_provider:business_partners!logistics_provider_id(name)
       po:purchase_orders(po_number),
       shipment:shipments(reference)
     `)
@@ -156,7 +156,7 @@ export async function fetchSupplierAPSummaries(companyId: string): Promise<Suppl
 export async function fetchPendingFromShipments(companyId: string) {
   const { data } = await supabase
     .from("shipments")
-    .select("id, reference, service_type, provider_cost, currency, provider:logistics_providers(id,name), client:clients(name)")
+    .select("id, reference, service_type, provider_cost, currency, provider:business_partners!provider_id(id,name), client:business_partners!client_id(name)")
     .eq("company_id", companyId)
     .in("status", ["delivered", "invoiced"]);  // sin filtrar por provider_cost ni provider_id
 
@@ -175,7 +175,7 @@ export async function fetchPendingFromShipments(companyId: string) {
 export async function fetchPendingFromPOs(companyId: string) {
   const { data } = await supabase
     .from("purchase_orders")
-    .select("id, po_number, total, currency, supplier:suppliers(id,name), order_date")
+    .select("id, po_number, total, currency, supplier:business_partners!supplier_id(id,name), order_date")
     .eq("company_id", companyId)
     .eq("status", "received");
 
