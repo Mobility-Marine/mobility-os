@@ -4,7 +4,7 @@ import type { ShipmentDocument, DocFilters, DocStatus } from "../types/docs.type
 export async function fetchDocuments(companyId: string, shipmentId?: string): Promise<ShipmentDocument[]> {
   let q = supabase
     .from("shipment_documents")
-    .select("*, shipment:shipments(reference, client:clients(name)), client:clients(name)")
+    .select("*, shipment:shipments(reference, client:business_partners!client_id(name)), client:business_partners!client_id(name)")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
   if (shipmentId) q = q.eq("shipment_id", shipmentId);
@@ -15,7 +15,7 @@ export async function fetchDocuments(companyId: string, shipmentId?: string): Pr
 export async function fetchDocument(companyId: string, id: string): Promise<ShipmentDocument | null> {
   const { data } = await supabase
     .from("shipment_documents")
-    .select("*, shipment:shipments(reference, client:clients(name)), client:clients(name)")
+    .select("*, shipment:shipments(reference, client:business_partners!client_id(name)), client:business_partners!client_id(name)")
     .eq("company_id", companyId).eq("id", id).single();
   return data as ShipmentDocument | null;
 }
@@ -27,7 +27,7 @@ export async function createDocument(
   const { data, error } = await supabase
     .from("shipment_documents")
     .insert({ ...safe, company_id: companyId, uploaded_by: userId, status: "pending", version: 1 })
-    .select("*, shipment:shipments(reference, client:clients(name)), client:clients(name)")
+    .select("*, shipment:shipments(reference, client:business_partners!client_id(name)), client:business_partners!client_id(name)")
     .single();
   if (error) throw error;
   return data as ShipmentDocument;

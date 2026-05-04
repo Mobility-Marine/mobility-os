@@ -6,7 +6,7 @@ import type { ServiceOrder, ServiceOrderItem, SOFilters, ServiceOrderType, Servi
 export async function fetchServiceOrders(companyId: string): Promise<ServiceOrder[]> {
   const { data } = await supabase
     .from("service_orders")
-    .select("*, shipment:shipments(reference, client:clients(name))")
+    .select("*, shipment:shipments(reference, client:business_partners!client_id(name))")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
   return (data ?? []) as ServiceOrder[];
@@ -15,7 +15,7 @@ export async function fetchServiceOrders(companyId: string): Promise<ServiceOrde
 export async function fetchServiceOrder(companyId: string, id: string): Promise<ServiceOrder | null> {
   const [{ data: so }, { data: items }] = await Promise.all([
     supabase.from("service_orders")
-      .select("*, shipment:shipments(reference, client:clients(name))")
+      .select("*, shipment:shipments(reference, client:business_partners!client_id(name))")
       .eq("company_id", companyId).eq("id", id).single(),
     supabase.from("service_order_items")
       .select("*").eq("service_order_id", id).order("sort_order"),
@@ -34,7 +34,7 @@ export async function createServiceOrder(
   const { data: created, error } = await supabase
     .from("service_orders")
     .insert({ ...safe, company_id: companyId, created_by: userId, status: "draft" })
-    .select("*, shipment:shipments(reference, client:clients(name))")
+    .select("*, shipment:shipments(reference, client:business_partners!client_id(name))")
     .single();
   if (error) throw error;
   return { ...created, items: [] } as ServiceOrder;

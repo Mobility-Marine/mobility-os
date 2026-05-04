@@ -9,7 +9,7 @@ import type {
 export async function fetchTrackingShipments(companyId: string): Promise<TrackingShipment[]> {
   const { data: shipments } = await supabase
     .from("shipments")
-    .select("id, reference, service_type, origin, destination, status, client:clients(name)")
+    .select("id, reference, service_type, origin, destination, status, client:business_partners!client_id(name)")
     .eq("company_id", companyId)
     .not("status", "in", '("cancelled","invoiced")')
     .order("created_at", { ascending: false });

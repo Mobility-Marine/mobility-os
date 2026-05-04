@@ -137,11 +137,11 @@ export default function ProviderWorkspace({ provider, onUpdate, onToggle, onDele
     // Buscar por provider_id directo + por accounts_payable
     Promise.all([
       supabase.from("shipments")
-        .select("id, reference, service_type, status, currency, total, created_at, client:clients(name)")
+        .select("id, reference, service_type, status, currency, total, created_at, client:business_partners!client_id(name)")
         .eq("company_id", companyId)
         .eq("provider_id", provider.id),
       supabase.from("accounts_payable")
-        .select("related_shipment_id, shipment:shipments(id, reference, service_type, status, currency, total, created_at, client:clients(name))")
+        .select("related_shipment_id, shipment:shipments(id, reference, service_type, status, currency, total, created_at, client:business_partners!client_id(name))")
         .eq("company_id", companyId)
         .eq("logistics_provider_id", provider.id)
         .not("related_shipment_id", "is", null),

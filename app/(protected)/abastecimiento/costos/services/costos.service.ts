@@ -24,7 +24,7 @@ export async function fetchCostItems(companyId: string): Promise<CostItem[]> {
   // Traer último precio histórico por item
   const { data: lastPrices } = await supabase
     .from("product_price_history")
-    .select("item_id, unit_price, recorded_at, supplier:suppliers(name)")
+    .select("item_id, unit_price, recorded_at, supplier:business_partners!supplier_id(name)")
     .eq("company_id", companyId)
     .order("recorded_at", { ascending: false });
 
@@ -86,7 +86,7 @@ export async function fetchCostItems(companyId: string): Promise<CostItem[]> {
 export async function fetchPriceHistory(companyId: string, itemId: string): Promise<PriceHistory[]> {
   const { data, error } = await supabase
     .from("product_price_history")
-    .select("*, supplier:suppliers(name), po:purchase_orders(po_number)")
+    .select("*, supplier:business_partners!supplier_id(name), po:purchase_orders(po_number)")
     .eq("company_id", companyId)
     .eq("item_id", itemId)
     .order("recorded_at", { ascending: false })
@@ -118,7 +118,7 @@ export async function insertManualPrice(
 export async function fetchSupplierComparison(companyId: string, itemId: string): Promise<SupplierComparison[]> {
   const { data, error } = await supabase
     .from("product_price_history")
-    .select("supplier_id, unit_price, recorded_at, supplier:suppliers(name)")
+    .select("supplier_id, unit_price, recorded_at, supplier:business_partners!supplier_id(name)")
     .eq("company_id", companyId)
     .eq("item_id", itemId)
     .not("supplier_id", "is", null)

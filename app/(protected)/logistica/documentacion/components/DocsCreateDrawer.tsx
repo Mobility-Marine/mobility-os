@@ -38,7 +38,7 @@ export default function DocsCreateDrawer({ open, onClose, onCreate, defaultShipm
   useEffect(() => {
     if (!open || !companyId) return;
     supabase.from("shipments")
-      .select("id, reference, client:clients(name)")
+      .select("id, reference, client:business_partners!client_id(name)")
       .eq("company_id", companyId)
       .not("status", "eq", "cancelled")
       .order("created_at", { ascending: false })

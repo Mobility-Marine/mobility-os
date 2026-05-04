@@ -3,9 +3,9 @@ import type { ForeignTradeOperation, ForeignTradeItem, FTFilters, TradeStatus } 
 
 const SELECT_OP = `
   *,
-  shipment:shipments(reference, client:clients(name)),
-  client:clients(name),
-  customs_broker:logistics_providers(provider_name)
+  shipment:shipments(reference, client:business_partners!client_id(name)),
+  client:business_partners!client_id(name),
+  customs_broker:business_partners!customs_broker_id(provider_name:name)
 `;
 
 export async function fetchOperations(companyId: string): Promise<ForeignTradeOperation[]> {
