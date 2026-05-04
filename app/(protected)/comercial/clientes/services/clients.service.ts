@@ -12,20 +12,26 @@ import type {
 
 // ── CLIENTS ────────────────────────────────────────────────
 
+/**
+ * Obtiene la lista de clientes (business_partners con is_customer=true)
+ * para la empresa actual. Multi-tenant safe.
+ */
 export async function fetchClients(companyId: string): Promise<Client[]> {
   const { data } = await supabase
-    .from("clients")
+    .from("business_partners")
     .select("*")
+    .eq("id", id)
     .eq("company_id", companyId)
-    .order("name", { ascending: true });
-  return (data ?? []) as Client[];
+    .eq("is_customer", true)
+    .single();
+  return data as Client | null;
 }
 
 export async function fetchClientById(
   companyId: string, id: string
 ): Promise<Client | null> {
   const { data } = await supabase
-    .from("clients")
+    .from("business_partners")
     .select("*")
     .eq("id", id)
     .eq("company_id", companyId)
@@ -37,7 +43,7 @@ export async function createClient(
   companyId: string, payload: CreateClientPayload
 ): Promise<Client> {
   const { data, error } = await supabase
-    .from("clients")
+    .from("business_partners")
     .insert({
       company_id:           companyId,
       name:                 payload.name,
@@ -51,6 +57,7 @@ export async function createClient(
       country:              payload.country               ?? "México",
       is_customer:          payload.is_customer,
       is_supplier:          payload.is_supplier,
+      is_logistics_provider: false,
       is_active:            true,
       notes:                payload.notes                 ?? null,
       // Fiscal CFDI 4.0
@@ -81,7 +88,7 @@ export async function updateClient(
 ): Promise<void> {
   const { stats, documents, contacts, ...dbUpdates } = updates as any;
   const { error } = await supabase
-    .from("clients")
+    .from("business_partners")
     .update({ ...dbUpdates, updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("company_id", companyId);
@@ -92,7 +99,7 @@ export async function toggleClientStatus(
   companyId: string, id: string, is_active: boolean
 ): Promise<void> {
   await supabase
-    .from("clients")
+    .from("business_partners")
     .update({ is_active, updated_at: new Date().toISOString() })
     .eq("id", id)
     .eq("company_id", companyId);
