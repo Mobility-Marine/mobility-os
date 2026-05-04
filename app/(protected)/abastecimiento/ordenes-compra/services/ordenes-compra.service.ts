@@ -7,11 +7,16 @@ import type {
 
 // ── PROVEEDORES ───────────────────────────────────────────────
 
+/**
+ * Lista proveedores activos para popular el dropdown del wizard de OC.
+ * Lee desde business_partners filtrando por is_supplier=true.
+ */
 export async function fetchSuppliers(companyId: string): Promise<Supplier[]> {
   const { data, error } = await supabase
-    .from("suppliers")
-    .select("*")
+    .from("business_partners")
+    .select("*, tax_id:rfc")
     .eq("company_id", companyId)
+    .eq("is_supplier", true)
     .eq("is_active", true)
     .order("name");
   if (error) throw new Error(error.message);
@@ -23,7 +28,7 @@ export async function fetchSuppliers(companyId: string): Promise<Supplier[]> {
 export async function fetchPOs(companyId: string, filters: POFilters): Promise<PurchaseOrder[]> {
   let q = supabase
     .from("purchase_orders")
-    .select(`*, supplier:suppliers(name, email, tax_id, city)`)
+    .select(`*, supplier:business_partners!supplier_id(name, email, tax_id:rfc, city)`)
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
 
@@ -43,7 +48,7 @@ export async function fetchPOs(companyId: string, filters: POFilters): Promise<P
 export async function fetchPO(id: string): Promise<PurchaseOrder | null> {
   const { data, error } = await supabase
     .from("purchase_orders")
-    .select(`*, supplier:suppliers(name, email, tax_id, city, address, phone), items:purchase_order_items(*)`)
+    .select(`*, supplier:business_partners!supplier_id(name, email, tax_id:rfc, city, address, phone), items:purchase_order_items(*)`)
     .eq("id", id)
     .single();
   if (error) return null;
