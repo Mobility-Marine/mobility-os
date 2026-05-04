@@ -15,7 +15,7 @@ import type {
 export async function fetchAccounts(companyId: string): Promise<CrmAccount[]> {
   const { data } = await supabase
     .from("crm_accounts")
-    .select(`*, client:clients(id, name, email, rfc, is_active)`)
+    .select(`*, client:business_partners!client_id(id, name, email, rfc, is_active)`)
     .eq("company_id", companyId)
     .eq("archived", false)
     .order("created_at", { ascending: false });
@@ -263,13 +263,18 @@ export async function fetchTimeline(
 
 // ── CLIENT MASTER HELPERS ────────────────────────────────────
 
+/**
+ * Busca un cliente existente por nombre exacto (case-insensitive).
+ * Usado durante conversión de prospect a cliente para evitar duplicados.
+ */
 export async function findClientByName(
   companyId: string, name: string
 ) {
   const { data } = await supabase
-    .from("clients")
+    .from("business_partners")
     .select("*")
     .eq("company_id", companyId)
+    .eq("is_customer", true)
     .ilike("name", name)
     .maybeSingle();
   return data ?? null;
@@ -280,17 +285,18 @@ export async function createGlobalClient(
   payload: { name: string; legal_name?: string; country?: string; city?: string; notes?: string }
 ) {
   const { data, error } = await supabase
-    .from("clients")
+    .from("business_partners")
     .insert({
-      company_id:  companyId,
-      name:        payload.name,
-      legal_name:  payload.legal_name ?? null,
-      city:        payload.city       ?? null,
-      country:     payload.country    ?? null,
-      notes:       payload.notes      ?? null,
-      is_active:   true,
-      is_customer: true,
-      is_supplier: false,
+      company_id:            companyId,
+      name:                  payload.name,
+      legal_name:            payload.legal_name ?? null,
+      city:                  payload.city       ?? null,
+      country:               payload.country    ?? null,
+      notes:                 payload.notes      ?? null,
+      is_active:             true,
+      is_customer:           true,
+      is_supplier:           false,
+      is_logistics_provider: false,
     })
     .select("*")
     .single();
