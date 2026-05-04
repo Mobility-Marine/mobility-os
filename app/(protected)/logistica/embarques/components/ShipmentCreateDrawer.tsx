@@ -94,7 +94,12 @@ export default function ShipmentCreateDrawer({ open, onClose, onCreated }: Props
   useEffect(() => {
     if (!open || !companyId) return;
     fetchAcceptedServiceQuotations(companyId).then(setQuotations);
-    supabase.from("clients").select("id, name, rfc, email").eq("company_id", companyId).order("name")
+    supabase.from("business_partners")
+      .select("id, name, rfc, email")
+      .eq("company_id", companyId)
+      .eq("is_customer", true)
+      .eq("is_active", true)
+      .order("name")
       .then(({ data }) => setClients(data ?? []));
   }, [open, companyId]);
 
