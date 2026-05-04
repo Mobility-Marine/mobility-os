@@ -23,8 +23,8 @@ export async function fetchAP(companyId: string, filters: APFilters): Promise<Ac
   let q = supabase
     .from("accounts_payable")
     .select(`*, 
-      supplier:business_partners!supplier_id(name, tax_id:rfc)
-      logistics_provider:business_partners!logistics_provider_id(name)
+      supplier:business_partners!supplier_id(name, tax_id:rfc),
+      logistics_provider:business_partners!logistics_provider_id(name),
       po:purchase_orders(po_number),
       shipment:shipments(reference)
     `)
@@ -50,7 +50,7 @@ export async function fetchAP(companyId: string, filters: APFilters): Promise<Ac
 export async function fetchAPById(id: string): Promise<{ ap: AccountPayable; payments: APPayment[] } | null> {
   const [{ data: ap }, { data: payments }] = await Promise.all([
     supabase.from("accounts_payable")
-      .select(`*, supplier:suppliers(name, tax_id), logistics_provider:logistics_providers(name), po:purchase_orders(po_number), shipment:shipments(reference)`)
+      .select(`*, supplier:business_partners!supplier_id(name, tax_id:rfc), logistics_provider:business_partners!logistics_provider_id(name), po:purchase_orders(po_number), shipment:shipments(reference)`)
       .eq("id", id).single(),
     supabase.from("ap_payments").select("*").eq("ap_id", id).order("payment_date", { ascending: false }),
   ]);
