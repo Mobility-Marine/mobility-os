@@ -25,10 +25,11 @@ export default function StepClient({ state, onChange }: Props) {
     if (searchRef.current) clearTimeout(searchRef.current);
     searchRef.current = setTimeout(async () => {
       const { data } = await supabase
-        .from("clients")
+        .from("business_partners")
         .select("id, name, email, rfc, is_active")
         .eq("company_id", companyId)
-        .ilike("name", `%${search}%`)
+        .eq("is_customer", true)
+        .or(`name.ilike.%${search}%,rfc.ilike.%${search}%`)
         .limit(6);
       setClients(data ?? []);
     }, 300);
