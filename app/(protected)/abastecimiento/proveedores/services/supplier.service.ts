@@ -6,51 +6,81 @@ import type {
 
 // ── SUPPLIERS (tabla suppliers) ───────────────────────────────
 
+/**
+ * Obtiene la lista de proveedores de compras (business_partners con is_supplier=true).
+ * Excluye proveedores logísticos puros (que se manejan en el módulo Logística).
+ * Multi-tenant safe.
+ */
 export async function fetchSuppliers(companyId: string): Promise<Supplier[]> {
   const { data } = await supabase
-    .from("suppliers")
-    .select("id, company_id, name, type, contact, email, phone, address, city, state, country, website, tax_id, currency, payment_terms, credit_days, is_active, rating, notes, created_at, updated_at")
+    .from("business_partners")
+    .select("id, company_id, name, contact, email, phone, address, city, state, country, website, tax_id:rfc, currency, payment_terms, credit_days, is_active, rating, notes, created_at, updated_at")
     .eq("company_id", companyId)
+    .eq("is_supplier", true)
     .eq("is_active", true)
     .order("name");
   return (data ?? []) as Supplier[];
 }
 
+/**
+ * Obtiene un proveedor específico por ID. Verifica que sea proveedor de compras.
+ */
 export async function fetchSupplier(companyId: string, id: string): Promise<Supplier | null> {
   const { data } = await supabase
-    .from("suppliers")
-    .select("*")
+    .from("business_partners")
+    .select("*, tax_id:rfc")
     .eq("company_id", companyId)
     .eq("id", id)
+    .eq("is_supplier", true)
     .single();
   return data as Supplier | null;
 }
 
+/**
+ * Crea un proveedor de compras en business_partners.
+ * Marca explícitamente: is_supplier=true, is_customer=false, is_logistics_provider=false.
+ * Mapea tax_id (legacy) → rfc (columna real).
+ */
 export async function createSupplier(
   companyId: string,
   payload: Partial<Supplier>
 ): Promise<Supplier> {
-  const { id: _id, company_id: _cid, avg_score: _s, ...safe } = payload as any;
+  const { id: _id, company_id: _cid, avg_score: _s, tax_id, type: _t, ...safe } = payload as any;
+  // Mapear tax_id (legacy) → rfc si vino en el payload
+  if (tax_id !== undefined) safe.rfc = tax_id;
   const { data, error } = await supabase
-    .from("suppliers")
-    .insert({ ...safe, company_id: companyId })
-    .select("*")
+    .from("business_partners")
+    .insert({
+      ...safe,
+      company_id:            companyId,
+      is_customer:           false,
+      is_supplier:           true,
+      is_logistics_provider: false,
+    })
+    .select("*, tax_id:rfc")
     .single();
   if (error) throw new Error(error.message);
   return data as Supplier;
 }
 
+/**
+ * Actualiza un proveedor en business_partners.
+ * Verifica que sea proveedor de compras (no permite editar clientes puros por error).
+ * Mapea tax_id (legacy) → rfc.
+ */
 export async function updateSupplier(
   companyId: string,
   id: string,
   updates: Partial<Supplier>
 ): Promise<void> {
-  const { id: _id, company_id: _cid, avg_score: _s, ...safe } = updates as any;
+  const { id: _id, company_id: _cid, avg_score: _s, tax_id, type: _t, ...safe } = updates as any;
+  if (tax_id !== undefined) safe.rfc = tax_id;
   const { error } = await supabase
-    .from("suppliers")
+    .from("business_partners")
     .update({ ...safe, updated_at: new Date().toISOString() })
     .eq("id", id)
-    .eq("company_id", companyId);
+    .eq("company_id", companyId)
+    .eq("is_supplier", true);
   if (error) throw new Error(error.message);
 }
 
