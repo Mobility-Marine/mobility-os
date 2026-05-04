@@ -72,11 +72,12 @@ export default function RFQWorkspace({
     if (!supplierSearch.trim() || !companyId) { setSupplierResults([]); return; }
     const timer = setTimeout(async () => {
       const { data } = await supabase
-        .from("clients")
-        .select("id, name")
+        .from("business_partners")
+        .select("id, name, rfc")
         .eq("company_id", companyId)
-        .contains("roles", ["supplier"])
-        .ilike("name", `%${supplierSearch}%`)
+        .eq("is_supplier", true)
+        .eq("is_active", true)
+        .or(`name.ilike.%${supplierSearch}%,rfc.ilike.%${supplierSearch}%`)
         .limit(8);
       setSupplierResults(data ?? []);
     }, 300);
