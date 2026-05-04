@@ -23,7 +23,7 @@ async function generateOrderNumber(companyId: string): Promise<string> {
 export async function fetchOrders(companyId: string): Promise<Order[]> {
   const { data } = await supabase
     .from("orders")
-    .select("*, client:clients(name, email, rfc), quotation:quotations(quote_number)")
+    .select("*, client:business_partners!client_id(name, email, rfc), quotation:quotations(quote_number)")
     .eq("company_id", companyId)
     .order("created_at", { ascending: false });
   return (data ?? []) as Order[];
@@ -32,7 +32,7 @@ export async function fetchOrders(companyId: string): Promise<Order[]> {
 export async function fetchOrder(companyId: string, id: string): Promise<Order | null> {
   const [{ data: order }, { data: items }] = await Promise.all([
     supabase.from("orders")
-      .select("*, client:clients(name, email, rfc), quotation:quotations(quote_number)")
+      .select("*, client:business_partners!client_id(name, email, rfc), quotation:quotations(quote_number)")
       .eq("company_id", companyId).eq("id", id).single(),
     supabase.from("order_items").select("*")
       .eq("company_id", companyId).eq("order_id", id).order("sort_order"),
