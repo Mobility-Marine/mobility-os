@@ -29,28 +29,52 @@ export async function convertProspectToCustomer(
     || prospect.name
     || "Cliente sin nombre";
 
-  // 2) Verificar si ya existe cliente global
-  const { data: existingClient } = await supabase
-    .from("clients")
-    .select("id, name")
-    .eq("company_id", companyId)
-    .ilike("name", name)
-    .maybeSingle();
+  // 2) Verificar si ya existe cliente global (anti-duplicado nivel ERP)
+  //    Estrategia: primero por RFC (identificador fiscal único), luego por nombre.
+  //    Si el prospect ya tiene RFC, ese match prevalece sobre el match por nombre.
+  const prospectRfc = (prospect as any).rfc ?? null;
+  let existingClient: { id: string; name: string } | null = null;
+
+  if (prospectRfc) {
+    const { data } = await supabase
+      .from("business_partners")
+      .select("id, name")
+      .eq("company_id", companyId)
+      .eq("is_customer", true)
+      .eq("rfc", prospectRfc)
+      .maybeSingle();
+    existingClient = data ?? null;
+  }
+
+  if (!existingClient) {
+    const { data } = await supabase
+      .from("business_partners")
+      .select("id, name")
+      .eq("company_id", companyId)
+      .eq("is_customer", true)
+      .ilike("name", name)
+      .maybeSingle();
+    existingClient = data ?? null;
+  }
 
   let client = existingClient;
 
   // 3) Crear cliente global si no existe
   if (!client) {
     const { data: newClient, error: cErr } = await supabase
-      .from("clients")
+      .from("business_partners")
       .insert({
-        company_id: companyId,
+        company_id:            companyId,
         name,
-        legal_name: payload.company_name || prospect.company_name,
-        email:      payload.email  || prospect.email,
-        phone:      payload.phone  || prospect.phone,
-        notes:      payload.notes  || prospect.notes,
-        is_active:  true,
+        legal_name:            payload.company_name || prospect.company_name,
+        rfc:                   prospectRfc,
+        email:                 payload.email  || prospect.email,
+        phone:                 payload.phone  || prospect.phone,
+        notes:                 payload.notes  || prospect.notes,
+        is_active:             true,
+        is_customer:           true,
+        is_supplier:           false,
+        is_logistics_provider: false,
       })
       .select("id, name")
       .single();
