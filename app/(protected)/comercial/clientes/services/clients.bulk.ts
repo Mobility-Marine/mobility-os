@@ -113,13 +113,19 @@ export async function bulkImportClients(
   const BATCH = 50;
   for (let i = 0; i < valid.length; i += BATCH) {
     const batch = valid.slice(i, i + BATCH).map((r) => ({
-      company_id:    companyId,
-      is_active:     true,
-      payment_form:  "PPD",
-      country:       "México",
+      company_id:            companyId,
+      is_active:             true,
+      payment_form:          "PPD",
+      country:               "México",
       ...r.data,
+      // Flags FORZADOS al final del spread: el módulo "Importar clientes"
+      // SOLO crea clientes, nunca proveedores. Esto previene que un CSV
+      // malicioso (o mal formateado) cree partners con roles incorrectos.
+      is_customer:           true,
+      is_supplier:           false,
+      is_logistics_provider: false,
     }));
-    const { error } = await supabase.from("clients").insert(batch);
+    const { error } = await supabase.from("business_partners").insert(batch);
     if (error) {
       failed += batch.length;
       errors.push({ row: i + 2, error: error.message });
