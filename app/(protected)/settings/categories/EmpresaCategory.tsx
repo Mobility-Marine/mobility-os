@@ -14,6 +14,9 @@ import { useEffect, useState } from "react";
 import SettingCard           from "../components/SettingCard";
 import SettingDrawer         from "../components/SettingDrawer";
 import { useCompanySettings } from "../hooks/useCompanySettings";
+import { useTenant } from "@/lib/tenant/TenantProvider";
+import { supabase } from "@/lib/supabaseClient";
+import { REGIMENES_FISCALES_SAT } from "@/lib/sat/regimenes-fiscales";
 
 type DrawerKey = null | "identidad" | "marca" | "contacto" | "plantillas";
 
@@ -256,13 +259,28 @@ function IdentidadFiscalDrawer({ open, onClose, settings, saving, update }: Draw
         </div>
         <div>
           <label style={labelStyle}>Régimen fiscal</label>
-          <input
-            type="text"
+          <select
             style={inputStyle}
             value={form.fiscal_regime}
             onChange={(e) => setForm({ ...form, fiscal_regime: e.target.value })}
-            placeholder="601 - General Personas Morales"
-          />
+          >
+            <option value="">— Selecciona régimen —</option>
+            <optgroup label="Personas Morales">
+              {REGIMENES_FISCALES_SAT.filter((r) => r.aplica === "PM").map((r) => (
+                <option key={r.clave} value={r.clave}>{r.clave} — {r.descripcion}</option>
+              ))}
+            </optgroup>
+            <optgroup label="Personas Físicas">
+              {REGIMENES_FISCALES_SAT.filter((r) => r.aplica === "PF").map((r) => (
+                <option key={r.clave} value={r.clave}>{r.clave} — {r.descripcion}</option>
+              ))}
+            </optgroup>
+            <optgroup label="Personas Físicas y Morales">
+              {REGIMENES_FISCALES_SAT.filter((r) => r.aplica === "AMBOS").map((r) => (
+                <option key={r.clave} value={r.clave}>{r.clave} — {r.descripcion}</option>
+              ))}
+            </optgroup>
+          </select>
         </div>
       </div>
 
@@ -374,17 +392,11 @@ function MarcaBrandingDrawer({ open, onClose, settings, saving, update }: Drawer
       }
     >
       <div style={fieldGroupStyle}>
-        <label style={labelStyle}>URL del logo</label>
-        <input
-          type="text"
-          style={inputStyle}
-          value={form.logo_url}
-          onChange={(e) => setForm({ ...form, logo_url: e.target.value })}
-          placeholder="https://app.mobility-os.lat/logo.png"
+        <label style={labelStyle}>Logo de la empresa</label>
+        <LogoUploader
+          currentUrl={form.logo_url}
+          onChange={(url) => setForm({ ...form, logo_url: url })}
         />
-        <div style={{ marginTop: "8px", fontSize: "12px", color: "var(--fg-muted)" }}>
-          PNG o SVG, idealmente 400×100 px. La carga directa de archivo se habilitará próximamente.
-        </div>
       </div>
 
       <h3 style={{ fontSize: "13px", fontWeight: 600, color: "var(--fg-muted)", margin: "24px 0 10px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
@@ -608,6 +620,150 @@ function PlantillasDrawer({ open, onClose, settings, saving, update }: DrawerSub
         </div>
       </div>
     </SettingDrawer>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// LOGO UPLOADER — Sube imagen al bucket company-assets de Supabase Storage
+// ════════════════════════════════════════════════════════════════════════
+// Estructura: company-assets/{companyId}/logo-{timestamp}.{ext}
+// El timestamp evita problemas de cache cuando se reemplaza el logo.
+// ════════════════════════════════════════════════════════════════════════
+
+function LogoUploader({
+  currentUrl,
+  onChange,
+}: {
+  currentUrl: string;
+  onChange: (url: string) => void;
+}) {
+  const { companyId } = useTenant();
+  const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleFile = async (file: File) => {
+    if (!companyId) {
+      setError("No se detectó empresa activa.");
+      return;
+    }
+    if (!/^image\/(png|jpe?g|svg\+xml|webp)$/i.test(file.type)) {
+      setError("Formato no soportado. Usa PNG, JPG, SVG o WebP.");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("El archivo no puede pesar más de 2 MB.");
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+    try {
+      const ext = (file.name.split(".").pop() ?? "png").toLowerCase();
+      const path = `${companyId}/logo-${Date.now()}.${ext}`;
+
+      const { error: upErr } = await supabase.storage
+        .from("company-assets")
+        .upload(path, file, { upsert: true, contentType: file.type });
+
+      if (upErr) throw upErr;
+
+      const { data } = supabase.storage.from("company-assets").getPublicUrl(path);
+      onChange(data.publicUrl);
+    } catch (e) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      setError((e as any)?.message ?? "Error al subir el archivo.");
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div>
+      {/* Preview actual */}
+      {currentUrl && (
+        <div
+          style={{
+            display:        "flex",
+            alignItems:     "center",
+            justifyContent: "center",
+            padding:        "20px",
+            marginBottom:   "12px",
+            borderRadius:   "10px",
+            background:     "var(--surface-soft, rgba(148,163,184,0.06))",
+            border:         "1px dashed var(--border, rgba(148,163,184,0.30))",
+            minHeight:      "100px",
+          }}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={currentUrl}
+            alt="Logo actual"
+            style={{ maxHeight: "80px", maxWidth: "100%", objectFit: "contain" }}
+          />
+        </div>
+      )}
+
+      {/* Input file */}
+      <label
+        style={{
+          display:        "inline-flex",
+          alignItems:     "center",
+          gap:            "8px",
+          padding:        "9px 16px",
+          fontSize:       "13px",
+          fontWeight:     500,
+          borderRadius:   "8px",
+          border:         "1px solid var(--border, rgba(148,163,184,0.30))",
+          background:     "var(--surface, #ffffff)",
+          color:          "var(--fg, #0f172a)",
+          cursor:         uploading ? "wait" : "pointer",
+          opacity:        uploading ? 0.6 : 1,
+          transition:     "background 120ms",
+        }}
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+          <polyline points="17 8 12 3 7 8" />
+          <line x1="12" y1="3" x2="12" y2="15" />
+        </svg>
+        {uploading ? "Subiendo…" : currentUrl ? "Reemplazar logo" : "Subir logo"}
+        <input
+          type="file"
+          accept="image/png,image/jpeg,image/svg+xml,image/webp"
+          style={{ display: "none" }}
+          disabled={uploading}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void handleFile(file);
+            e.target.value = "";
+          }}
+        />
+      </label>
+
+      {/* URL manual (opcional) */}
+      <div style={{ marginTop: "12px" }}>
+        <label style={{ ...labelStyle, fontSize: "11px" }}>URL del logo (opcional)</label>
+        <input
+          type="text"
+          style={{ ...inputStyle, fontSize: "12px", fontFamily: "ui-monospace, monospace" }}
+          value={currentUrl}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder="https://…"
+        />
+      </div>
+
+      {/* Errores */}
+      {error && (
+        <div style={{ marginTop: "8px", fontSize: "12px", color: "#b91c1c" }}>
+          {error}
+        </div>
+      )}
+
+      {/* Hint */}
+      <div style={{ marginTop: "10px", fontSize: "11px", color: "var(--fg-muted)", lineHeight: 1.5 }}>
+        Formatos: PNG, JPG, SVG, WebP. Máximo 2 MB. Idealmente 400×100 px con fondo transparente.
+      </div>
+    </div>
   );
 }
 

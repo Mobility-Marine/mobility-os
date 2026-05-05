@@ -246,7 +246,7 @@ export default function TabUsuarios() {
     setLoadingInvites(true);
     const { data } = await supabase.from("company_invitations")
       .select("*").eq("company_id", companyId!)
-      .neq("status", "cancelled").order("created_at", { ascending: false });
+      .eq("status", "pending").order("created_at", { ascending: false });
     setInvitations(data ?? []);
     setLoadingInvites(false);
   }

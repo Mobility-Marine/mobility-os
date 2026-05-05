@@ -45,9 +45,13 @@ export default function FiscalCategory() {
     ? "Configurados"
     : "Pendientes de cargar";
 
+  // El sistema soporta 2 modos de configuración del PAC:
+  //   1) Por empresa (BD): cada tenant define sus propias credenciales
+  //   2) A nivel sistema (.env): credenciales globales en variables de entorno
+  // Si no hay credenciales en BD, asumimos modo "sistema" → mostramos "Configurado".
   const facturapiStatus = settings?.facturapi_api_key
-    ? `${settings?.facturapi_env === "live" ? "🟢 Producción" : "🧪 Pruebas"}`
-    : "Sin configurar";
+    ? (settings?.facturapi_env === "live" ? "🟢 Producción (BD)" : "🧪 Pruebas (BD)")
+    : "🟢 Gestionado por sistema";
 
   return (
     <>
@@ -326,6 +330,7 @@ function FacturapiDrawer({ open, onClose, settings, saving, update }: DrawerSubP
     pac_provider:      "facturapi",
     invoice_series:    "A",  // necesario aquí para algunos flujos
   });
+  const [overrideMode, setOverrideMode] = useState(false);
 
   useEffect(() => {
     if (open && settings) {
@@ -364,6 +369,53 @@ function FacturapiDrawer({ open, onClose, settings, saving, update }: DrawerSubP
         </div>
       </div>
 
+      {/* Banner informativo: configuración a nivel sistema */}
+      {!settings?.facturapi_api_key && !overrideMode && (
+        <div style={{ marginBottom: "20px", padding: "14px 16px", borderRadius: "10px", background: "rgba(16,185,129,0.06)", border: "1px solid rgba(16,185,129,0.20)" }}>
+          <div style={{ fontSize: "13px", fontWeight: 600, color: "#047857", marginBottom: "6px" }}>
+            🟢 PAC configurado a nivel sistema
+          </div>
+          <div style={{ fontSize: "12px", color: "var(--fg-muted)", lineHeight: 1.5 }}>
+            Las credenciales de Facturapi están en variables de entorno del servidor (Vercel),
+            que es lo correcto para una sola empresa. Tus CFDIs se timbran usando esa configuración global.
+          </div>
+          <div style={{ fontSize: "12px", color: "var(--fg-muted)", lineHeight: 1.5, marginTop: "10px" }}>
+            <strong>¿Cuándo configurar credenciales por empresa?</strong> Cuando tengas múltiples empresas
+            (multi-tenant) y cada una necesite su propia cuenta de Facturapi.
+          </div>
+          <button
+            type="button"
+            onClick={() => setOverrideMode(true)}
+            style={{
+              marginTop: "12px",
+              padding:    "6px 12px",
+              fontSize:   "12px",
+              fontWeight: 500,
+              borderRadius: "6px",
+              border:     "1px solid var(--border, rgba(148,163,184,0.30))",
+              background: "transparent",
+              color:      "var(--fg, #0f172a)",
+              cursor:     "pointer",
+            }}
+          >
+            Configurar credenciales específicas para esta empresa
+          </button>
+        </div>
+      )}
+
+      {/* Banner sensible: solo cuando el usuario eligió override */}
+      {(settings?.facturapi_api_key || overrideMode) && (
+        <div style={{ marginBottom: "20px", padding: "12px 14px", borderRadius: "10px", background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.15)" }}>
+          <div style={{ fontSize: "12px", color: "#991b1b", lineHeight: 1.5 }}>
+            <strong>🔒 Información sensible:</strong> el API Key da acceso completo a tu cuenta Facturapi.
+            Nunca lo compartas y rótalo si sospechas que fue expuesto.
+          </div>
+        </div>
+      )}
+
+      {/* Solo mostrar formulario editable si hay credenciales en BD o el usuario eligió override */}
+      {!(settings?.facturapi_api_key || overrideMode) ? null : (
+      <>
       <Section title="Entorno">
         <label style={labelStyle}>Modo de operación</label>
         <select
@@ -407,6 +459,8 @@ function FacturapiDrawer({ open, onClose, settings, saving, update }: DrawerSubP
         />
         <Hint>Identificador único de tu organización en Facturapi.</Hint>
       </Section>
+      </>
+      )}
     </SettingDrawer>
   );
 }
