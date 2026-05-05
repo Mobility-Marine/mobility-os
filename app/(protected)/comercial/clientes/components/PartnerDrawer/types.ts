@@ -121,10 +121,7 @@ export type Partner = {
 };
 
 // ── Payloads para crear/actualizar ───────────────────────────────────
-export type CreatePartnerPayload = Omit
-  Partner,
-  "id" | "created_at" | "updated_at" | "created_by"
->;
+export type CreatePartnerPayload = Omit<Partner, "id" | "created_at" | "updated_at" | "created_by">;
 export type UpdatePartnerPayload = Partial<CreatePartnerPayload>;
 
 // ── Estado de validación por tab ─────────────────────────────────────
@@ -242,10 +239,7 @@ export const INDUSTRY_LABELS: Record<Industry, string> = {
 };
 
 // ── Estado 69-B con riesgo asociado ──────────────────────────────────
-export const VALIDATION_69B_CONFIG: Record
-  Validation69BStatus,
-  { label: string; color: string; risk: "none" | "low" | "medium" | "high" }
-> = {
+export const VALIDATION_69B_CONFIG: Record<Validation69BStatus, { label: string; color: string; risk: "none" | "low" | "medium" | "high" }> = {
   not_verified: { label: "No verificado",        color: "var(--color-text-muted)",   risk: "none"   },
   clean:        { label: "Limpio",               color: "var(--color-success-text)", risk: "none"   },
   detracted:    { label: "Desvirtuado",          color: "var(--color-success-text)", risk: "low"    },
