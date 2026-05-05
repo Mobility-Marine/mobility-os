@@ -18,7 +18,7 @@
 // ════════════════════════════════════════════════════════════════════════
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import type { CSSProperties } from "react";
 import { useTenant } from "@/lib/tenant/TenantProvider";
@@ -78,8 +78,37 @@ const WORKSPACE_PLACEHOLDER: CSSProperties = {
   gap:             "8px",
 };
 
-// ── Página ────────────────────────────────────────────────────────────
+// ── Wrapper con Suspense (requerido por useSearchParams en Next.js 14) ──
+// Next.js 14 requiere que cualquier componente que use useSearchParams()
+// esté envuelto en <Suspense> para soportar el prerender estático.
+// Aunque esta página siempre se renderiza dinámicamente (está dentro de
+// (protected) y depende del tenant activo), el wrapper es obligatorio
+// para que Next.js no marque la build como fallida.
 export default function PartnersPage() {
+  return (
+    <Suspense
+      fallback={
+        <div
+          style={{
+            display:        "flex",
+            alignItems:     "center",
+            justifyContent: "center",
+            height:         "100vh",
+            color:          "var(--color-text-muted)",
+            fontSize:       "13px",
+          }}
+        >
+          ⏳ Cargando módulo Partners...
+        </div>
+      }
+    >
+      <PartnersPageContent />
+    </Suspense>
+  );
+}
+
+// ── Página real ──────────────────────────────────────────────────────
+function PartnersPageContent() {
   const ctrl                  = usePartnersController();
   const searchParams          = useSearchParams();
   const tenant                = useTenant() as Record<string, unknown>;
