@@ -5,7 +5,7 @@ import { useTenant } from "@/lib/tenant/TenantProvider";
 import { supabase } from "@/lib/supabaseClient";
 import { fetchCompanySettings, upsertCompanySettings } from "@/app/(protected)/comercial/cotizaciones/services/quotations.service";
 import type { CompanySettings } from "@/app/(protected)/comercial/cotizaciones/types/quotations.types";
-import { TAX_REGIMES } from "@/app/(protected)/comercial/clientes/types/clients.types";
+import { TAX_REGIMES } from "@/lib/sat/catalogos";
 
 const INPUT: React.CSSProperties = {
   width: "100%", height: "38px", padding: "0 12px",
