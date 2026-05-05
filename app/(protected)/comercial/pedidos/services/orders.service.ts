@@ -5,17 +5,25 @@
 
 import { supabase } from "@/lib/supabaseClient";
 import type { Order, OrderItem, OrderFilters, OrderKPIs, OrderStatus } from "../types/orders.types";
+import { generateOrderNumber as buildOrderFolio } from "@/lib/folios/generators";
 
 // ── CONSECUTIVO ───────────────────────────────────────────────
 
+/**
+ * Genera el siguiente folio de pedido leyendo el formato configurado en
+ * company_settings.order_number_format (default: PED-{EMPRESA}-{NUM}).
+ *
+ * Mantenemos esta función local con la misma firma para no tocar las
+ * llamadas internas (createOrderFromQuotation, etc.). Solo delega al
+ * helper compartido lib/folios/generators.
+ *
+ * Antes contaba "orders" con count: 'exact' y construía PED-${year}-${num}
+ * hardcoded. Ahora respeta el formato configurable por empresa y usa el
+ * contador order_number_counter en company_settings (transaccional).
+ */
 async function generateOrderNumber(companyId: string): Promise<string> {
-  const { count } = await supabase
-    .from("orders")
-    .select("*", { count: "exact", head: true })
-    .eq("company_id", companyId);
-  const num  = String((count ?? 0) + 1).padStart(4, "0");
-  const year = new Date().getFullYear();
-  return `PED-${year}-${num}`;
+  const { folio } = await buildOrderFolio(companyId);
+  return folio;
 }
 
 // ── FETCH ─────────────────────────────────────────────────────

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabaseClient";
+import { generateFolio, generateShipmentRef } from "@/lib/folios/generators";
 import type {
   Shipment, ShipmentService, ShipmentFilters, ShipmentKPIs,
   ShipmentStatus, ShipmentServiceType, CurrencyTotals, CurrencyAmounts,
@@ -40,38 +41,83 @@ function enrichWithTotals(shipment: Shipment & { services?: ShipmentService[] })
 }
 
 // ── REFERENCIA ────────────────────────────────────────────────
+// ── Códigos legacy de tipo de servicio (para formatos anteriores con {TIPO}) ──
+// Mantenemos este map para empresas que aún usan el formato viejo
+// LOG_{CLIENTE}_{TIPO}{NUM}. En el formato nuevo {SUBTIPO}-{EMPRESA}-{NUM},
+// los servicios se agrupan en CON (consultoría/seguro) y LOG (todo lo demás).
+const TYPE_CODES: Record<ShipmentServiceType, string> = {
+  terrestre_mx:  "T", terrestre_usa: "T", maritimo: "M",
+  aereo:         "A", multimodal:    "X", almacenaje: "W",
+  aduanal:       "D", consultoria:   "C", seguro:     "S",
+  otro:          "O",
+};
+
+/**
+ * Genera el folio para un nuevo servicio logístico (embarque).
+ *
+ * El formato es configurable por empresa en company_settings.shipment_ref_format.
+ *
+ * Soporta dos esquemas:
+ * 1) NUEVO (recomendado): formatos con {SUBTIPO}-{EMPRESA}-{NUM}
+ *    Usa contadores separados por subtipo (CON/LOG) para auditoría limpia.
+ *    Ej: "CON-MMA-0001", "LOG-MMA-0042"
+ *
+ * 2) LEGACY: formatos con {CLIENTE} y {TIPO}
+ *    Usa el contador único shipment_ref_counter (compatibilidad backwards).
+ *    Ej: "LOG_FER_C0004"
+ */
 export async function generateShipmentReference(
-  companyId: string, clientName: string, serviceType: ShipmentServiceType
+  companyId:   string,
+  clientName:  string,
+  serviceType: ShipmentServiceType,
 ): Promise<string> {
-  const { data: settings } = await supabase
+  // Determinar el subtipo agregado:
+  // - CON: consultoría y seguro (servicios profesionales sin transporte)
+  // - LOG: todo lo demás (servicios con movimiento de mercancía)
+  const subtipo: "CON" | "LOG" =
+    serviceType === "consultoria" || serviceType === "seguro" ? "CON" : "LOG";
+
+  // Leer el formato actual para detectar si es nuevo o legacy
+  const { data: settings, error } = await supabase
     .from("company_settings")
-    .select("shipment_ref_format, shipment_ref_counter")
+    .select("shipment_ref_format")
     .eq("company_id", companyId)
     .single();
 
-  const format  = settings?.shipment_ref_format ?? "LOG_{CLIENTE}_{TIPO}{NUM}";
-  const counter = settings?.shipment_ref_counter ?? 1;
+  if (error) {
+    throw new Error(
+      `No se pudo leer shipment_ref_format de la empresa: ${error.message}`,
+    );
+  }
 
-  const TYPE_CODES: Record<string, string> = {
-    terrestre_mx:  "T", terrestre_usa: "T", maritimo: "M",
-    aereo:         "A", multimodal:    "X", almacenaje: "W",
-    aduanal:       "D", consultoria:   "C", seguro:     "S",
-    otro:          "O",
-  };
+  const format = String(settings?.shipment_ref_format ?? "{SUBTIPO}-{EMPRESA}-{NUM}");
+  const isLegacyFormat = format.includes("{CLIENTE}") || format.includes("{TIPO}");
 
-  const clientKey = clientName.replace(/\s+/g, "").substring(0, 3).toUpperCase();
-  const reference = format
-    .replace("{CLIENTE}", clientKey)
-    .replace("{TIPO}",    TYPE_CODES[serviceType] ?? "O")
-    .replace("{NUM}",     String(counter).padStart(4, "0"))
-    .replace("{AÑO}",     String(new Date().getFullYear()))
-    .replace("{MES}",     String(new Date().getMonth() + 1).padStart(2, "0"));
+  // ── Caso LEGACY: formato viejo con tokens {CLIENTE} y {TIPO} ──────
+  // Usa el contador único shipment_ref_counter (compatibilidad backwards)
+  if (isLegacyFormat) {
+    const clientCode = (clientName || "")
+      .toUpperCase()
+      .replace(/[^A-ZÑ]/g, "")
+      .substring(0, 3) || "XXX";
 
-  await supabase.from("company_settings")
-    .update({ shipment_ref_counter: counter + 1 })
-    .eq("company_id", companyId);
+    const { folio } = await generateFolio({
+      companyId,
+      formatField:  "shipment_ref_format",
+      counterField: "shipment_ref_counter",
+      tokenValues:  {
+        SUBTIPO: subtipo,
+        CLIENTE: clientCode,
+        TIPO:    TYPE_CODES[serviceType] ?? "O",
+      },
+    });
+    return folio;
+  }
 
-  return reference;
+  // ── Caso NUEVO: formato {SUBTIPO}-{EMPRESA}-{NUM} ─────────────────
+  // Usa contadores separados por subtipo (CON / LOG) para mejor auditoría
+  const { folio } = await generateShipmentRef(companyId, subtipo);
+  return folio;
 }
 
 // ── FETCH ─────────────────────────────────────────────────────
