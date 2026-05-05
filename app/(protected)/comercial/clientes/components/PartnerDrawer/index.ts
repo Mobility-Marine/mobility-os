@@ -40,3 +40,21 @@ export {
 export type { PartnerBanking } from "./services/partner-banking.service";
 export type { PartnerDocument, DocumentTypeOption } from "./services/partner-documents.service";
 export { DOCUMENT_TYPES } from "./services/partner-documents.service";
+
+// Evaluations (multi-criterio histórico)
+export type {
+  PartnerEvaluation,
+  EvaluationRecommendation,
+  PartnerEvaluationStats,
+} from "./services/partner-evaluations.service";
+export {
+  EVALUATION_CRITERIA,
+  RECOMMENDATION_OPTIONS,
+  computeOverallScore,
+  computeEvaluationStats,
+  suggestRecommendation,
+} from "./services/partner-evaluations.service";
+
+// Customer 360
+export type { PartnerSummary, RecentOperation } from "./services/partner-summary.service";
+export { computePartnerSummary } from "./services/partner-summary.service";

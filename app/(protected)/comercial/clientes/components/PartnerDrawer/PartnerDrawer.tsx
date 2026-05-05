@@ -19,6 +19,9 @@ import { TabAddresses } from "./tabs/TabAddresses";
 import { TabCommercial } from "./tabs/TabCommercial";
 import { TabBanking } from "./tabs/TabBanking";
 import { TabDocuments } from "./tabs/TabDocuments";
+import { TabEvaluation } from "./tabs/TabEvaluation";
+import { TabLogistics } from "./tabs/TabLogistics";
+import { TabSummary } from "./tabs/TabSummary";
 
 // ── Props ─────────────────────────────────────────────────────────────
 export type PartnerDrawerProps = {
@@ -125,23 +128,8 @@ const ANIMATION_KEYFRAMES = `
 }
 `;
 
-// ── Helper: placeholder para tabs aún no implementados ───────────────
-function TabPlaceholder({ tabName, phase }: { tabName: string; phase: string }) {
-  return (
-    <div style={PLACEHOLDER_STYLE}>
-      <div style={{ fontSize: "32px", opacity: 0.4 }}>🚧</div>
-      <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-text-primary)" }}>
-        Tab «{tabName}» — Próximamente
-      </div>
-      <div style={{ fontSize: "12px", maxWidth: "440px", lineHeight: 1.55 }}>
-        Este tab se implementará en la {phase}. La estructura del wizard ya está
-        lista para recibirlo.
-      </div>
-    </div>
-  );
-}
-
 // ── Componente principal ──────────────────────────────────────────────
+
 export function PartnerDrawer({
   open,
   onClose,
@@ -249,11 +237,27 @@ export function PartnerDrawer({
           />
         );
       case "evaluation":
-        return <TabPlaceholder tabName="Evaluación"  phase="Sub-fase 7.6" />;
+        return (
+          <TabEvaluation
+            partnerId={drawer.partner.id}
+            companyId={companyId ?? ""}
+            userId={userId}
+          />
+        );
       case "logistics":
-        return <TabPlaceholder tabName="Logística"   phase="Sub-fase 7.6" />;
+        return (
+          <TabLogistics
+            partner={drawer.partner}
+            onPatch={drawer.patchPartner}
+          />
+        );
       case "summary":
-        return <TabPlaceholder tabName="Resumen"     phase="Sub-fase 7.7" />;
+        return (
+          <TabSummary
+            partner={drawer.partner}
+            companyId={companyId ?? ""}
+          />
+        );
       default:
         return null;
     }

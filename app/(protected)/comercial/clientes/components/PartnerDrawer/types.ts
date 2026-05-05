@@ -116,6 +116,10 @@ export type Partner = {
   coverage_routes?:             string;
   services_offered?:            string;
   default_incoterm?:            Incoterm;
+  transport_modes?:             string[];
+  fleet_size?:                  number;
+  has_customs_broker_license?:  boolean;
+  customs_broker_license?:      string;
 
   // Timestamps
   created_at?:                  string;
