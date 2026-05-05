@@ -5,10 +5,14 @@
 //   - Estado del partner (datos principales)
 //   - Estado de contactos múltiples (en memoria, persistencia al save)
 //   - Estado de direcciones múltiples (en memoria, persistencia al save)
+//   - Estado de bancarios múltiples (en memoria, persistencia al save)
 //   - Tab activo y navegación
 //   - Validación inline por tab
 //   - Detección de duplicados por RFC
-//   - Save coordinado (partner → contacts → addresses)
+//   - Save coordinado (partner → contacts → addresses → banking)
+//
+// NOTA: Los documentos legales NO se manejan en este hook. TabDocuments
+// usa CRUD inmediato porque las subidas de archivos no se pueden deferir.
 // ════════════════════════════════════════════════════════════════════════
 "use client";
 
@@ -38,6 +42,12 @@ import {
   bulkInsertAddresses,
   syncAddressesDiff,
 } from "./services/partner-addresses.service";
+import {
+  listPartnerBanking,
+  bulkInsertBanking,
+  syncBankingDiff,
+  type PartnerBanking,
+} from "./services/partner-banking.service";
 
 // ── Estado por defecto en modo CREATE ────────────────────────────────
 function getDefaultPartner(): Partial<Partner> {
@@ -111,6 +121,7 @@ export type UsePartnerDrawerReturn = {
   partner:       Partial<Partner>;
   contacts:      PartnerContact[];
   addresses:     PartnerAddress[];
+  banking:       PartnerBanking[];
 
   // Navegación
   activeTab:     PartnerTab;
@@ -129,6 +140,7 @@ export type UsePartnerDrawerReturn = {
   patchPartner:      (patch: Partial<Partner>) => void;
   setContacts:       (next: PartnerContact[]) => void;
   setAddresses:      (next: PartnerAddress[]) => void;
+  setBanking:        (next: PartnerBanking[]) => void;
   setActiveTab:      (tab: PartnerTab) => void;
   goToNextTab:       () => void;
   goToPreviousTab:   () => void;
@@ -146,6 +158,7 @@ export function usePartnerDrawer(
   const [partner,      setPartner]      = useState<Partial<Partner>>(getDefaultPartner());
   const [contacts,     setContacts]     = useState<PartnerContact[]>([]);
   const [addresses,    setAddresses]    = useState<PartnerAddress[]>([]);
+  const [banking,      setBanking]      = useState<PartnerBanking[]>([]);
   const [activeTab,    setActiveTab]    = useState<PartnerTab>("identity");
   const [loading,      setLoading]      = useState(false);
   const [saving,       setSaving]       = useState(false);
@@ -154,7 +167,7 @@ export function usePartnerDrawer(
 
   const isEditMode = Boolean(partnerId);
 
-  // ── Cargar partner + contacts + addresses si modo EDIT ─────────────
+  // ── Cargar partner + contacts + addresses + banking si modo EDIT ──
   useEffect(() => {
     if (!open) return;
 
@@ -163,6 +176,7 @@ export function usePartnerDrawer(
       setPartner(getDefaultPartner());
       setContacts([]);
       setAddresses([]);
+      setBanking([]);
       setActiveTab("identity");
       setError(null);
       setDuplicateRFC(null);
@@ -178,12 +192,14 @@ export function usePartnerDrawer(
       fetchPartnerById(companyId, partnerId),
       listContactsByPartner(companyId, partnerId),
       listAddressesByPartner(companyId, partnerId),
+      listPartnerBanking(companyId, partnerId).catch(() => [] as PartnerBanking[]),
     ])
-      .then(([p, ctcs, addrs]) => {
+      .then(([p, ctcs, addrs, bnks]) => {
         if (p) {
           setPartner(p);
           setContacts(ctcs);
           setAddresses(addrs);
+          setBanking(bnks);
           setActiveTab("identity");
         } else {
           setError("Partner no encontrado.");
@@ -265,14 +281,15 @@ export function usePartnerDrawer(
     setPartner(getDefaultPartner());
     setContacts([]);
     setAddresses([]);
+    setBanking([]);
     setActiveTab("identity");
     setError(null);
     setDuplicateRFC(null);
   }, []);
 
   // ── Guardar (create o update) ─────────────────────────────────────
-  // En CREATE: insert partner → bulkInsert contacts → bulkInsert addresses
-  // En EDIT:   update partner → syncDiff contacts → syncDiff addresses
+  // En CREATE: insert partner → bulkInsert contacts → addresses → banking
+  // En EDIT:   update partner → syncDiff contacts → addresses → banking
   const save = useCallback(async (): Promise<Partner | null> => {
     if (!companyId) {
       setError("No se ha seleccionado empresa activa.");
@@ -291,9 +308,9 @@ export function usePartnerDrawer(
       if (isEditMode && partnerId) {
         // ── UPDATE ─────────────────────────────────────────────────
         saved = await updatePartner(companyId, partnerId, partner);
-        // Sincronizar contactos y direcciones (insert/update/delete)
         await syncContactsDiff(companyId, partnerId, contacts, userId);
         await syncAddressesDiff(companyId, partnerId, addresses, userId);
+        await syncBankingDiff(companyId, partnerId, banking);
       } else {
         // ── CREATE ─────────────────────────────────────────────────
         const payload: CreatePartnerPayload = {
@@ -306,13 +323,16 @@ export function usePartnerDrawer(
         };
         saved = await createPartner(companyId, payload, userId);
 
-        // Insertar contactos y direcciones referenciando el nuevo partner
+        // Insertar todos los hijos referenciando el nuevo partner
         if (saved.id) {
           if (contacts.length > 0) {
             await bulkInsertContacts(companyId, saved.id, contacts, userId);
           }
           if (addresses.length > 0) {
             await bulkInsertAddresses(companyId, saved.id, addresses, userId);
+          }
+          if (banking.length > 0) {
+            await bulkInsertBanking(companyId, saved.id, banking);
           }
         }
       }
@@ -325,12 +345,13 @@ export function usePartnerDrawer(
     } finally {
       setSaving(false);
     }
-  }, [companyId, canSave, isEditMode, partnerId, partner, contacts, addresses, userId, onSaved]);
+  }, [companyId, canSave, isEditMode, partnerId, partner, contacts, addresses, banking, userId, onSaved]);
 
   return {
     partner,
     contacts,
     addresses,
+    banking,
     activeTab,
     visibleTabs,
     tabValidation,
@@ -343,6 +364,7 @@ export function usePartnerDrawer(
     patchPartner,
     setContacts,
     setAddresses,
+    setBanking,
     setActiveTab,
     goToNextTab,
     goToPreviousTab,

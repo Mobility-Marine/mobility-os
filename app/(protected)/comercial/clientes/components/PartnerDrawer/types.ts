@@ -95,6 +95,8 @@ export type Partner = {
   credit_days?:                 number;
   currency?:                    string;
   rating?:                      number;
+  discount_default?:            number;
+  commercial_notes?:            string;
 
   // Validación SAT (Facturapi)
   validation_sat_status?:       ValidationSATStatus;

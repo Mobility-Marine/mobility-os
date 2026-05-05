@@ -35,3 +35,8 @@ export {
   ADDRESS_TYPE_LABELS,
   VALIDATION_69B_CONFIG,
 } from "./types";
+
+// Banking + Documents (servicios + tipos)
+export type { PartnerBanking } from "./services/partner-banking.service";
+export type { PartnerDocument, DocumentTypeOption } from "./services/partner-documents.service";
+export { DOCUMENT_TYPES } from "./services/partner-documents.service";

@@ -16,6 +16,9 @@ import { TabIdentity } from "./tabs/TabIdentity";
 import { TabFiscal } from "./tabs/TabFiscal";
 import { TabContacts } from "./tabs/TabContacts";
 import { TabAddresses } from "./tabs/TabAddresses";
+import { TabCommercial } from "./tabs/TabCommercial";
+import { TabBanking } from "./tabs/TabBanking";
+import { TabDocuments } from "./tabs/TabDocuments";
 
 // ── Props ─────────────────────────────────────────────────────────────
 export type PartnerDrawerProps = {
@@ -221,11 +224,30 @@ export function PartnerDrawer({
           />
         );
       case "commercial":
-        return <TabPlaceholder tabName="Comerciales" phase="Sub-fase 7.4" />;
+        return (
+          <TabCommercial
+            partner={drawer.partner}
+            onPatch={drawer.patchPartner}
+          />
+        );
       case "banking":
-        return <TabPlaceholder tabName="Bancarios"   phase="Sub-fase 7.4" />;
+        return (
+          <TabBanking
+            banking={drawer.banking}
+            onChange={drawer.setBanking}
+          />
+        );
       case "documents":
-        return <TabPlaceholder tabName="Documentos"  phase="Sub-fase 7.5" />;
+        return (
+          <TabDocuments
+            partnerId={drawer.partner.id}
+            companyId={companyId ?? ""}
+            userId={userId}
+            isCustomer={Boolean(drawer.partner.is_customer)}
+            isSupplier={Boolean(drawer.partner.is_supplier)}
+            isLogistics={Boolean(drawer.partner.is_logistics_provider)}
+          />
+        );
       case "evaluation":
         return <TabPlaceholder tabName="Evaluación"  phase="Sub-fase 7.6" />;
       case "logistics":
