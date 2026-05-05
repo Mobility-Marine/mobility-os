@@ -80,7 +80,7 @@ export type Partner = {
 
   // Dirección fiscal estructurada
   billing_email?:               string;
-  billing_address?:              string;
+  billing_address?:             string;
   billing_street?:              string;
   billing_ext_number?:          string;
   billing_int_number?:          string;
@@ -100,6 +100,7 @@ export type Partner = {
   validation_sat_status?:       ValidationSATStatus;
   validation_sat_date?:         string;
   validation_sat_error?:        string;
+  facturapi_customer_id?:       string;
 
   // Validación 69-B EFOS
   validation_69b_status?:       Validation69BStatus;
@@ -152,6 +153,78 @@ export type PartnerContactRole =
   | "logistics"
   | "general"
   | "other";
+
+// ── Etiquetas en español de los roles de contacto ────────────────────
+export const CONTACT_ROLE_LABELS: Record<PartnerContactRole, string> = {
+  general_manager:    "Director / Gerente general",
+  accounts_payable:   "Cuentas por pagar",
+  invoice_reception:  "Recepción de facturas",
+  purchasing:         "Compras",
+  commercial:         "Comercial / Ventas",
+  operations:         "Operaciones",
+  legal:              "Legal",
+  logistics:          "Logística",
+  general:            "Contacto general",
+  other:              "Otro",
+};
+
+// ── PARTNER CONTACT (refleja tabla client_contacts → partner_contacts) ─
+export type PartnerContact = {
+  id?:           string;       // Undefined cuando es nuevo en memoria
+  company_id?:   string;
+  client_id?:    string;       // FK a business_partners.id
+  name:          string;       // Required
+  role?:         PartnerContactRole | string;
+  title?:        string;
+  email?:        string;
+  phone?:        string;
+  is_primary?:   boolean;
+  notes?:        string;
+  created_at?:   string;
+  created_by?:   string;
+  // Campo solo-frontend para tracking en estado local:
+  _localId?:     string;       // UUID local (modo CREATE, antes de persistir)
+  _isDirty?:     boolean;      // Marca si ha sido modificado
+  _isDeleted?:   boolean;      // Marca si fue eliminado (para diff en EDIT)
+};
+
+// ── Tipos de dirección ────────────────────────────────────────────────
+export type AddressType = "billing" | "shipping" | "warehouse" | "other";
+
+// ── Etiquetas en español de los tipos de dirección ───────────────────
+export const ADDRESS_TYPE_LABELS: Record<AddressType, string> = {
+  billing:    "Fiscal / Facturación",
+  shipping:   "Envío / Entrega",
+  warehouse:  "Almacén",
+  other:      "Otra",
+};
+
+// ── PARTNER ADDRESS (refleja tabla client_addresses → partner_addresses)
+export type PartnerAddress = {
+  id?:            string;       // Undefined cuando es nuevo en memoria
+  company_id?:    string;
+  client_id?:     string;       // FK a business_partners.id
+  type:           AddressType;  // Required
+  alias?:         string;
+  street?:        string;
+  ext_number?:    string;
+  int_number?:    string;
+  neighborhood?:  string;
+  city?:          string;
+  state?:         string;
+  zip_code:       string;       // Required (NOT NULL en BD)
+  country?:       string;
+  is_default?:    boolean;
+  notes?:         string;
+  latitude?:      number;
+  longitude?:     number;
+  created_at?:    string;
+  created_by?:    string;
+  // Campo solo-frontend para tracking en estado local:
+  _localId?:      string;
+  _isDirty?:      boolean;
+  _isDeleted?:    boolean;
+};
 
 // ── Catálogo de TABS del wizard (orden = flujo natural ERP) ──────────
 export const PARTNER_TABS: TabConfig[] = [

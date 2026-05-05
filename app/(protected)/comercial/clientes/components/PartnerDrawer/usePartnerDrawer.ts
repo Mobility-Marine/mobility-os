@@ -2,12 +2,13 @@
 // usePartnerDrawer — Hook con estado del wizard multi-paso
 // ════════════════════════════════════════════════════════════════════════
 // Maneja:
-//   - Estado del partner en edición/creación
+//   - Estado del partner (datos principales)
+//   - Estado de contactos múltiples (en memoria, persistencia al save)
+//   - Estado de direcciones múltiples (en memoria, persistencia al save)
 //   - Tab activo y navegación
 //   - Validación inline por tab
 //   - Detección de duplicados por RFC
-//   - Persistencia (create/update) vía partner.service.ts
-//   - Loading/saving/error states
+//   - Save coordinado (partner → contacts → addresses)
 // ════════════════════════════════════════════════════════════════════════
 "use client";
 
@@ -17,6 +18,8 @@ import type {
   PartnerTab,
   TabValidationState,
   CreatePartnerPayload,
+  PartnerContact,
+  PartnerAddress,
 } from "./types";
 import { PARTNER_TABS } from "./types";
 import {
@@ -25,6 +28,16 @@ import {
   fetchPartnerById,
   findPartnerByRFC,
 } from "./services/partner.service";
+import {
+  listContactsByPartner,
+  bulkInsertContacts,
+  syncContactsDiff,
+} from "./services/partner-contacts.service";
+import {
+  listAddressesByPartner,
+  bulkInsertAddresses,
+  syncAddressesDiff,
+} from "./services/partner-addresses.service";
 
 // ── Estado por defecto en modo CREATE ────────────────────────────────
 function getDefaultPartner(): Partial<Partner> {
@@ -50,32 +63,18 @@ function validateTab(
   switch (tab) {
     case "identity": {
       if (!partner.name || partner.name.trim().length < 2) {
-        return {
-          isValid:      false,
-          isComplete:   false,
-          errorMessage: "El nombre es obligatorio.",
-        };
+        return { isValid: false, isComplete: false, errorMessage: "El nombre es obligatorio." };
       }
-      const hasRole =
-        partner.is_customer ||
-        partner.is_supplier ||
-        partner.is_logistics_provider;
+      const hasRole = partner.is_customer || partner.is_supplier || partner.is_logistics_provider;
       if (!hasRole) {
-        return {
-          isValid:      false,
-          isComplete:   false,
-          errorMessage: "Debe seleccionar al menos un rol.",
-        };
+        return { isValid: false, isComplete: false, errorMessage: "Debe seleccionar al menos un rol." };
       }
       return { isValid: true, isComplete: true };
     }
 
     case "fiscal": {
-      // Solo obligatorio si el partner es cliente (se le facturará).
-      // Si NO es customer, este tab es opcional pero puede llenarse.
-      if (!partner.is_customer) {
-        return { isValid: true, isComplete: true };
-      }
+      // Solo obligatorio para clientes (se les facturará)
+      if (!partner.is_customer) return { isValid: true, isComplete: true };
       const missing: string[] = [];
       if (!partner.rfc)        missing.push("RFC");
       if (!partner.legal_name) missing.push("razón social");
@@ -83,15 +82,14 @@ function validateTab(
       if (!partner.zip_code)   missing.push("CP fiscal");
       if (missing.length > 0) {
         return {
-          isValid:      false,
-          isComplete:   false,
+          isValid: false,
+          isComplete: false,
           errorMessage: `Faltan campos fiscales: ${missing.join(", ")}.`,
         };
       }
       return { isValid: true, isComplete: true };
     }
 
-    // Demás tabs: opcionales en MVP. Sub-fases siguientes agregan reglas.
     default:
       return { isValid: true, isComplete: false };
   }
@@ -101,7 +99,7 @@ function validateTab(
 export type UsePartnerDrawerOptions = {
   open:       boolean;
   companyId?: string;
-  partnerId?: string; // Si viene → modo EDIT. Si no → modo CREATE.
+  partnerId?: string;
   userId?:    string;
   onSaved?:   (p: Partner) => void;
   onClose?:   () => void;
@@ -109,10 +107,17 @@ export type UsePartnerDrawerOptions = {
 
 // ── Resultado del hook ───────────────────────────────────────────────
 export type UsePartnerDrawerReturn = {
+  // Datos
   partner:       Partial<Partner>;
+  contacts:      PartnerContact[];
+  addresses:     PartnerAddress[];
+
+  // Navegación
   activeTab:     PartnerTab;
   visibleTabs:   typeof PARTNER_TABS;
   tabValidation: Record<PartnerTab, TabValidationState>;
+
+  // Estado de UI
   loading:       boolean;
   saving:        boolean;
   error:         string | null;
@@ -120,13 +125,16 @@ export type UsePartnerDrawerReturn = {
   canSave:       boolean;
   isEditMode:    boolean;
 
-  patchPartner:     (patch: Partial<Partner>) => void;
-  setActiveTab:     (tab: PartnerTab) => void;
-  goToNextTab:      () => void;
-  goToPreviousTab:  () => void;
+  // Setters
+  patchPartner:      (patch: Partial<Partner>) => void;
+  setContacts:       (next: PartnerContact[]) => void;
+  setAddresses:      (next: PartnerAddress[]) => void;
+  setActiveTab:      (tab: PartnerTab) => void;
+  goToNextTab:       () => void;
+  goToPreviousTab:   () => void;
   checkDuplicateRFC: (rfc: string) => Promise<void>;
-  save:             () => Promise<Partner | null>;
-  reset:            () => void;
+  save:              () => Promise<Partner | null>;
+  reset:             () => void;
 };
 
 // ── HOOK principal ───────────────────────────────────────────────────
@@ -136,6 +144,8 @@ export function usePartnerDrawer(
   const { open, companyId, partnerId, userId, onSaved } = opts;
 
   const [partner,      setPartner]      = useState<Partial<Partner>>(getDefaultPartner());
+  const [contacts,     setContacts]     = useState<PartnerContact[]>([]);
+  const [addresses,    setAddresses]    = useState<PartnerAddress[]>([]);
   const [activeTab,    setActiveTab]    = useState<PartnerTab>("identity");
   const [loading,      setLoading]      = useState(false);
   const [saving,       setSaving]       = useState(false);
@@ -144,13 +154,15 @@ export function usePartnerDrawer(
 
   const isEditMode = Boolean(partnerId);
 
-  // ── Cargar partner si modo EDIT, reset a defaults si CREATE ───────
+  // ── Cargar partner + contacts + addresses si modo EDIT ─────────────
   useEffect(() => {
     if (!open) return;
 
     if (!partnerId) {
       // Modo CREATE: reset
       setPartner(getDefaultPartner());
+      setContacts([]);
+      setAddresses([]);
       setActiveTab("identity");
       setError(null);
       setDuplicateRFC(null);
@@ -158,13 +170,20 @@ export function usePartnerDrawer(
     }
     if (!companyId) return;
 
-    // Modo EDIT: cargar de BD
+    // Modo EDIT: cargar todo en paralelo
     setLoading(true);
     setError(null);
-    fetchPartnerById(companyId, partnerId)
-      .then((p) => {
+
+    Promise.all([
+      fetchPartnerById(companyId, partnerId),
+      listContactsByPartner(companyId, partnerId),
+      listAddressesByPartner(companyId, partnerId),
+    ])
+      .then(([p, ctcs, addrs]) => {
         if (p) {
           setPartner(p);
+          setContacts(ctcs);
+          setAddresses(addrs);
           setActiveTab("identity");
         } else {
           setError("Partner no encontrado.");
@@ -176,7 +195,7 @@ export function usePartnerDrawer(
       .finally(() => setLoading(false));
   }, [open, companyId, partnerId]);
 
-  // ── Tabs visibles según roles del partner ─────────────────────────
+  // ── Tabs visibles según roles ─────────────────────────────────────
   const visibleTabs = useMemo(() => {
     return PARTNER_TABS.filter((t) => !t.showWhen || t.showWhen(partner));
   }, [partner]);
@@ -190,20 +209,19 @@ export function usePartnerDrawer(
     return map;
   }, [partner]);
 
-  // ── Habilitar guardar (todos los required deben ser válidos) ──────
+  // ── Habilitar guardar ─────────────────────────────────────────────
   const canSave = useMemo(() => {
     return visibleTabs
       .filter((t) => t.required)
       .every((t) => tabValidation[t.id].isValid);
   }, [visibleTabs, tabValidation]);
 
-  // ── Patch parcial al partner ──────────────────────────────────────
+  // ── Patch partner ─────────────────────────────────────────────────
   const patchPartner = useCallback((patch: Partial<Partner>) => {
     setPartner((prev) => ({ ...prev, ...patch }));
   }, []);
 
-  // ── Verificar duplicado por RFC ───────────────────────────────────
-  // Llamar desde el tab Fiscal cuando el RFC pierde foco (onBlur).
+  // ── Verificar duplicado por RFC ────────────────────────────────────
   const checkDuplicateRFC = useCallback(
     async (rfc: string) => {
       if (!companyId) {
@@ -219,7 +237,6 @@ export function usePartnerDrawer(
         const found = await findPartnerByRFC(companyId, cleanRfc, partnerId);
         setDuplicateRFC(found);
       } catch (e) {
-        // Silencioso — el duplicado es advisory, no debe bloquear flujo
         // eslint-disable-next-line no-console
         console.warn("[usePartnerDrawer] checkDuplicateRFC error:", e);
         setDuplicateRFC(null);
@@ -243,15 +260,19 @@ export function usePartnerDrawer(
     }
   }, [visibleTabs, activeTab]);
 
-  // ── Reset completo ────────────────────────────────────────────────
+  // ── Reset ─────────────────────────────────────────────────────────
   const reset = useCallback(() => {
     setPartner(getDefaultPartner());
+    setContacts([]);
+    setAddresses([]);
     setActiveTab("identity");
     setError(null);
     setDuplicateRFC(null);
   }, []);
 
-  // ── Guardar (create o update según modo) ──────────────────────────
+  // ── Guardar (create o update) ─────────────────────────────────────
+  // En CREATE: insert partner → bulkInsert contacts → bulkInsert addresses
+  // En EDIT:   update partner → syncDiff contacts → syncDiff addresses
   const save = useCallback(async (): Promise<Partner | null> => {
     if (!companyId) {
       setError("No se ha seleccionado empresa activa.");
@@ -266,10 +287,15 @@ export function usePartnerDrawer(
     setError(null);
     try {
       let saved: Partner;
+
       if (isEditMode && partnerId) {
+        // ── UPDATE ─────────────────────────────────────────────────
         saved = await updatePartner(companyId, partnerId, partner);
+        // Sincronizar contactos y direcciones (insert/update/delete)
+        await syncContactsDiff(companyId, partnerId, contacts, userId);
+        await syncAddressesDiff(companyId, partnerId, addresses, userId);
       } else {
-        // En CREATE necesitamos un payload con name garantizado
+        // ── CREATE ─────────────────────────────────────────────────
         const payload: CreatePartnerPayload = {
           ...partner,
           name:                  partner.name ?? "",
@@ -279,7 +305,18 @@ export function usePartnerDrawer(
           is_active:             partner.is_active             ?? true,
         };
         saved = await createPartner(companyId, payload, userId);
+
+        // Insertar contactos y direcciones referenciando el nuevo partner
+        if (saved.id) {
+          if (contacts.length > 0) {
+            await bulkInsertContacts(companyId, saved.id, contacts, userId);
+          }
+          if (addresses.length > 0) {
+            await bulkInsertAddresses(companyId, saved.id, addresses, userId);
+          }
+        }
       }
+
       onSaved?.(saved);
       return saved;
     } catch (e) {
@@ -288,10 +325,12 @@ export function usePartnerDrawer(
     } finally {
       setSaving(false);
     }
-  }, [companyId, canSave, isEditMode, partnerId, partner, userId, onSaved]);
+  }, [companyId, canSave, isEditMode, partnerId, partner, contacts, addresses, userId, onSaved]);
 
   return {
     partner,
+    contacts,
+    addresses,
     activeTab,
     visibleTabs,
     tabValidation,
@@ -302,6 +341,8 @@ export function usePartnerDrawer(
     canSave,
     isEditMode,
     patchPartner,
+    setContacts,
+    setAddresses,
     setActiveTab,
     goToNextTab,
     goToPreviousTab,

@@ -3,22 +3,6 @@
 // ════════════════════════════════════════════════════════════════════════
 // Drawer lateral con wizard multi-paso para crear/editar Business Partners.
 // Funciona en modo CREATE (sin partnerId) o EDIT (con partnerId).
-//
-// Estructura visual:
-//   ┌─────────────────────────────────────────┐
-//   │ Header: 🤝 Nuevo partner | Cerrar (✕)   │
-//   ├─────────────────────────────────────────┤
-//   │ TabsNav: 🆔 Identidad | 📋 Fiscal | ... │
-//   ├─────────────────────────────────────────┤
-//   │                                         │
-//   │  Contenido del tab activo               │
-//   │  (TabIdentity, TabFiscal, ...)          │
-//   │                                         │
-//   ├─────────────────────────────────────────┤
-//   │ WizardFooter: ← Anterior | Sig → | Save │
-//   └─────────────────────────────────────────┘
-//
-// Cierre con ESC o clic fuera del drawer.
 // ════════════════════════════════════════════════════════════════════════
 "use client";
 
@@ -29,18 +13,21 @@ import { usePartnerDrawer } from "./usePartnerDrawer";
 import { TabsNav } from "./components/TabsNav";
 import { WizardFooter } from "./components/WizardFooter";
 import { TabIdentity } from "./tabs/TabIdentity";
+import { TabFiscal } from "./tabs/TabFiscal";
+import { TabContacts } from "./tabs/TabContacts";
+import { TabAddresses } from "./tabs/TabAddresses";
 
 // ── Props ─────────────────────────────────────────────────────────────
 export type PartnerDrawerProps = {
   open:       boolean;
   onClose:    () => void;
   companyId?: string;
-  partnerId?: string;            // Si presente: modo EDIT
+  partnerId?: string;
   userId?:    string;
   onSaved?:   (p: Partner) => void;
 };
 
-// ── Estilos: overlay + drawer ─────────────────────────────────────────
+// ── Estilos ───────────────────────────────────────────────────────────
 const OVERLAY_STYLE: CSSProperties = {
   position:        "fixed",
   inset:           0,
@@ -123,7 +110,7 @@ const LOADING_STYLE: CSSProperties = {
   fontSize:        "14px",
 };
 
-// ── Estilo de animación inyectado una sola vez ───────────────────────
+// ── Animación inyectada ──────────────────────────────────────────────
 const ANIMATION_KEYFRAMES = `
 @keyframes partnerDrawerOverlayIn {
   from { opacity: 0; }
@@ -183,14 +170,14 @@ export function PartnerDrawer({
 
   if (!open) return null;
 
-  // ── Click en overlay (no dentro del drawer) cierra ────────────────
+  // ── Click en overlay cierra ───────────────────────────────────────
   const onOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
     if (e.target === e.currentTarget && !drawer.saving) {
       onClose();
     }
   };
 
-  // ── Handler del save: cierra el drawer al guardar exitosamente ────
+  // ── Handler del save ──────────────────────────────────────────────
   const handleSave = async () => {
     const saved = await drawer.save();
     if (saved) onClose();
@@ -211,11 +198,28 @@ export function PartnerDrawer({
           />
         );
       case "fiscal":
-        return <TabPlaceholder tabName="Fiscal"      phase="Sub-fase 7.2" />;
+        return (
+          <TabFiscal
+            partner={drawer.partner}
+            validation={drawer.tabValidation.fiscal}
+            companyId={companyId ?? ""}
+            onPatch={drawer.patchPartner}
+          />
+        );
       case "contacts":
-        return <TabPlaceholder tabName="Contactos"   phase="Sub-fase 7.3" />;
+        return (
+          <TabContacts
+            contacts={drawer.contacts}
+            onChange={drawer.setContacts}
+          />
+        );
       case "addresses":
-        return <TabPlaceholder tabName="Direcciones" phase="Sub-fase 7.3" />;
+        return (
+          <TabAddresses
+            addresses={drawer.addresses}
+            onChange={drawer.setAddresses}
+          />
+        );
       case "commercial":
         return <TabPlaceholder tabName="Comerciales" phase="Sub-fase 7.4" />;
       case "banking":
@@ -233,7 +237,6 @@ export function PartnerDrawer({
     }
   };
 
-  // ── Título dinámico según modo ─────────────────────────────────────
   const titleText = drawer.isEditMode ? "Editar partner" : "Nuevo partner";
 
   return (
@@ -246,7 +249,6 @@ export function PartnerDrawer({
           aria-modal="true"
           aria-labelledby="partner-drawer-title"
         >
-          {/* ── Header ─────────────────────────────────────────────── */}
           <header style={HEADER_STYLE}>
             <div style={TITLE_STYLE} id="partner-drawer-title">
               <span style={{ fontSize: "20px" }}>🤝</span>
@@ -279,7 +281,6 @@ export function PartnerDrawer({
             </button>
           </header>
 
-          {/* ── Tabs nav ────────────────────────────────────────────── */}
           <TabsNav
             tabs={drawer.visibleTabs}
             activeTab={drawer.activeTab}
@@ -287,10 +288,8 @@ export function PartnerDrawer({
             validation={drawer.tabValidation}
           />
 
-          {/* ── Contenido del tab activo ───────────────────────────── */}
           <div style={CONTENT_STYLE}>{renderActiveTab()}</div>
 
-          {/* ── Footer del wizard ──────────────────────────────────── */}
           <WizardFooter
             visibleTabs={drawer.visibleTabs}
             activeTab={drawer.activeTab}
