@@ -4,14 +4,13 @@
 // Muestra los tabs visibles según los roles del partner.
 // Cada tab incluye:
 //   - Ícono emoji
-//   - Label traducido (i18n)
+//   - Label (string en español, definido en types.ts)
 //   - Badge de validación (✓ / ! / •)
 // El tab activo se destaca con borde inferior y color brand.
 // Scroll horizontal automático si hay muchos tabs visibles.
 // ════════════════════════════════════════════════════════════════════════
 "use client";
 
-import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { CSSProperties } from "react";
 import type { PartnerTab, TabConfig, TabValidationState } from "../types";
 import { ValidationBadge } from "./ValidationBadge";
@@ -63,8 +62,6 @@ const TAB_ACTIVE: CSSProperties = {
 
 // ── Componente ────────────────────────────────────────────────────────
 export function TabsNav({ tabs, activeTab, onTabClick, validation }: TabsNavProps) {
-  const { t } = useTranslation();
-
   return (
     <nav style={NAV_STYLE} role="tablist" aria-label="Partner wizard tabs">
       {tabs.map((tab) => {
@@ -83,7 +80,7 @@ export function TabsNav({ tabs, activeTab, onTabClick, validation }: TabsNavProp
             style={style}
           >
             <span style={{ fontSize: "14px", lineHeight: 1 }}>{tab.icon}</span>
-            <span>{t(tab.labelKey)}</span>
+            <span>{tab.label}</span>
             <ValidationBadge state={state} required={tab.required} />
           </button>
         );

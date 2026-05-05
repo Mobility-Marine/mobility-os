@@ -11,7 +11,6 @@
 // ════════════════════════════════════════════════════════════════════════
 "use client";
 
-import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { CSSProperties } from "react";
 import type { PartnerTab, TabConfig } from "../types";
 
@@ -109,8 +108,6 @@ export function WizardFooter({
   onSave,
   onCancel,
 }: WizardFooterProps) {
-  const { t } = useTranslation();
-
   const idx        = visibleTabs.findIndex((tab) => tab.id === activeTab);
   const total      = visibleTabs.length;
   const isFirst    = idx <= 0;
@@ -121,7 +118,7 @@ export function WizardFooter({
     <div style={FOOTER_STYLE}>
       {/* Progreso */}
       <div style={PROGRESS_STYLE}>
-        {t("partner.stepProgress")} {stepNumber} / {total}
+        Paso {stepNumber} / {total}
       </div>
 
       {/* Mensaje de error global */}
@@ -135,7 +132,7 @@ export function WizardFooter({
           disabled={saving}
           style={{ ...BUTTON_GHOST, opacity: saving ? 0.5 : 1 }}
         >
-          {t("common.cancel")}
+          Cancelar
         </button>
 
         <button
@@ -144,7 +141,7 @@ export function WizardFooter({
           disabled={isFirst || saving}
           style={{ ...BUTTON_BASE, opacity: isFirst || saving ? 0.5 : 1 }}
         >
-          ← {t("partner.previous")}
+          ← Anterior
         </button>
 
         {!isLast && (
@@ -154,7 +151,7 @@ export function WizardFooter({
             disabled={saving}
             style={{ ...BUTTON_BASE, opacity: saving ? 0.5 : 1 }}
           >
-            {t("partner.next")} →
+            Siguiente →
           </button>
         )}
 
@@ -168,11 +165,7 @@ export function WizardFooter({
             cursor:  !canSave || saving ? "not-allowed" : "pointer",
           }}
         >
-          {saving
-            ? t("common.saving")
-            : isEditMode
-              ? t("partner.saveChanges")
-              : t("partner.create")}
+          {saving ? "Guardando..." : isEditMode ? "Guardar cambios" : "Crear partner"}
         </button>
       </div>
     </div>

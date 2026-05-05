@@ -16,10 +16,9 @@
 // ════════════════════════════════════════════════════════════════════════
 "use client";
 
-import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { CSSProperties } from "react";
 import type { Partner, TabValidationState } from "../types";
-import { INDUSTRIES } from "../types";
+import { INDUSTRIES, INDUSTRY_LABELS } from "../types";
 import {
   Field,
   FieldGrid,
@@ -117,8 +116,6 @@ function RoleCard({
 
 // ── Componente principal ──────────────────────────────────────────────
 export function TabIdentity({ partner, validation, onPatch }: TabIdentityProps) {
-  const { t } = useTranslation();
-
   const nameInvalid =
     !validation.isValid &&
     (!partner.name || partner.name.trim().length < 2);
@@ -139,11 +136,11 @@ export function TabIdentity({ partner, validation, onPatch }: TabIdentityProps) 
     >
       {/* ─── SECCIÓN 1: Identidad básica ─── */}
       <div>
-        <SectionTitle>{t("partner.sectionBasicInfo")}</SectionTitle>
+        <SectionTitle>Información básica</SectionTitle>
         <div style={{ marginTop: "12px" }}>
           <FieldGrid columns={4}>
             <Field
-              label={t("partner.name")}
+              label="Nombre comercial"
               required
               span={2}
               error={nameInvalid ? validation.errorMessage : undefined}
@@ -152,7 +149,7 @@ export function TabIdentity({ partner, validation, onPatch }: TabIdentityProps) 
                 type="text"
                 value={partner.name ?? ""}
                 onChange={(e) => onPatch({ name: e.target.value })}
-                placeholder={t("partner.namePlaceholder")}
+                placeholder="Ej. Distribuidora del Norte"
                 style={{
                   ...FIELD_INPUT,
                   borderColor: nameInvalid
@@ -162,32 +159,32 @@ export function TabIdentity({ partner, validation, onPatch }: TabIdentityProps) 
               />
             </Field>
 
-            <Field label={t("partner.legalName")} span={2}>
+            <Field label="Razón social" span={2}>
               <input
                 type="text"
                 value={partner.legal_name ?? ""}
                 onChange={(e) => onPatch({ legal_name: e.target.value })}
-                placeholder={t("partner.legalNamePlaceholder")}
+                placeholder="Ej. Distribuidora del Norte S.A. de C.V."
                 style={FIELD_INPUT}
               />
             </Field>
 
-            <Field label={t("partner.industry")}>
+            <Field label="Industria / giro">
               <select
                 value={partner.industry ?? ""}
                 onChange={(e) => onPatch({ industry: e.target.value })}
                 style={FIELD_SELECT}
               >
-                <option value="">{t("partner.industryPlaceholder")}</option>
+                <option value="">— Seleccionar —</option>
                 {INDUSTRIES.map((ind) => (
                   <option key={ind} value={ind}>
-                    {t(`partner.industries.${ind}`)}
+                    {INDUSTRY_LABELS[ind]}
                   </option>
                 ))}
               </select>
             </Field>
 
-            <Field label={t("partner.website")}>
+            <Field label="Sitio web">
               <input
                 type="url"
                 value={partner.website ?? ""}
@@ -198,9 +195,9 @@ export function TabIdentity({ partner, validation, onPatch }: TabIdentityProps) 
             </Field>
 
             <Field
-              label={t("partner.activeStatus")}
+              label="Estado"
               span={2}
-              hint={t("partner.activeStatusHint")}
+              hint="Un partner inactivo no aparece en listas operativas."
             >
               <label
                 style={{
@@ -219,17 +216,15 @@ export function TabIdentity({ partner, validation, onPatch }: TabIdentityProps) 
                   onChange={(e) => onPatch({ is_active: e.target.checked })}
                   style={CHECKBOX_STYLE}
                 />
-                {partner.is_active ?? true
-                  ? t("partner.statusActive")
-                  : t("partner.statusInactive")}
+                {(partner.is_active ?? true) ? "Activo" : "Inactivo"}
               </label>
             </Field>
 
-            <Field label={t("partner.notes")} span={4} hint={t("partner.notesHint")}>
+            <Field label="Notas internas" span={4} hint="Solo visibles para tu equipo.">
               <textarea
                 value={partner.notes ?? ""}
                 onChange={(e) => onPatch({ notes: e.target.value })}
-                placeholder={t("partner.notesPlaceholder")}
+                placeholder="Información relevante, acuerdos, observaciones..."
                 style={FIELD_TEXTAREA}
                 rows={3}
               />
@@ -240,7 +235,7 @@ export function TabIdentity({ partner, validation, onPatch }: TabIdentityProps) 
 
       {/* ─── SECCIÓN 2: Roles del partner ─── */}
       <div>
-        <SectionTitle>{t("partner.sectionRoles")}</SectionTitle>
+        <SectionTitle>Roles del partner</SectionTitle>
         <div
           style={{
             fontSize:   "12px",
@@ -253,8 +248,8 @@ export function TabIdentity({ partner, validation, onPatch }: TabIdentityProps) 
           }}
         >
           {noRoleSelected
-            ? `⚠️ ${t("partner.rolesError")}`
-            : t("partner.rolesHint")}
+            ? "⚠️ Debe seleccionar al menos un rol para continuar."
+            : "Un partner puede ser cliente, proveedor y/o logístico simultáneamente."}
         </div>
 
         <div
@@ -267,24 +262,24 @@ export function TabIdentity({ partner, validation, onPatch }: TabIdentityProps) 
           <RoleCard
             active={!!partner.is_customer}
             icon="🛒"
-            title={t("partner.roleCustomerTitle")}
-            description={t("partner.roleCustomerDesc")}
+            title="Cliente"
+            description="Vendemos productos o servicios a este partner. Aplican datos fiscales y CFDI."
             onChange={(next) => onPatch({ is_customer: next })}
           />
 
           <RoleCard
             active={!!partner.is_supplier}
             icon="📦"
-            title={t("partner.roleSupplierTitle")}
-            description={t("partner.roleSupplierDesc")}
+            title="Proveedor"
+            description="Compramos productos o servicios a este partner. Aplica catálogo de compras y CXP."
             onChange={(next) => onPatch({ is_supplier: next })}
           />
 
           <RoleCard
             active={!!partner.is_logistics_provider}
             icon="🚚"
-            title={t("partner.roleLogisticsTitle")}
-            description={t("partner.roleLogisticsDesc")}
+            title="Logístico"
+            description="Provee servicios de transporte, aduana o almacenaje. Aplican rutas y tarifarios."
             onChange={(next) =>
               onPatch({ is_logistics_provider: next })
             }

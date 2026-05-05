@@ -6,7 +6,7 @@
 //
 // Estructura visual:
 //   ┌─────────────────────────────────────────┐
-//   │ Header: 🆔 Nuevo partner | Cerrar (✕)   │
+//   │ Header: 🤝 Nuevo partner | Cerrar (✕)   │
 //   ├─────────────────────────────────────────┤
 //   │ TabsNav: 🆔 Identidad | 📋 Fiscal | ... │
 //   ├─────────────────────────────────────────┤
@@ -23,7 +23,6 @@
 "use client";
 
 import { useEffect } from "react";
-import { useTranslation } from "@/lib/i18n/useTranslation";
 import type { CSSProperties } from "react";
 import type { Partner } from "./types";
 import { usePartnerDrawer } from "./usePartnerDrawer";
@@ -137,12 +136,12 @@ const ANIMATION_KEYFRAMES = `
 `;
 
 // ── Helper: placeholder para tabs aún no implementados ───────────────
-function TabPlaceholder({ tabId, phase }: { tabId: string; phase: string }) {
+function TabPlaceholder({ tabName, phase }: { tabName: string; phase: string }) {
   return (
     <div style={PLACEHOLDER_STYLE}>
       <div style={{ fontSize: "32px", opacity: 0.4 }}>🚧</div>
       <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--color-text-primary)" }}>
-        Tab «{tabId}» — Próximamente
+        Tab «{tabName}» — Próximamente
       </div>
       <div style={{ fontSize: "12px", maxWidth: "440px", lineHeight: 1.55 }}>
         Este tab se implementará en la {phase}. La estructura del wizard ya está
@@ -161,8 +160,6 @@ export function PartnerDrawer({
   userId,
   onSaved,
 }: PartnerDrawerProps) {
-  const { t } = useTranslation();
-
   const drawer = usePartnerDrawer({
     open,
     companyId,
@@ -202,7 +199,7 @@ export function PartnerDrawer({
   // ── Render del tab activo ──────────────────────────────────────────
   const renderActiveTab = () => {
     if (drawer.loading) {
-      return <div style={LOADING_STYLE}>⏳ {t("common.loading")}</div>;
+      return <div style={LOADING_STYLE}>⏳ Cargando...</div>;
     }
     switch (drawer.activeTab) {
       case "identity":
@@ -214,32 +211,30 @@ export function PartnerDrawer({
           />
         );
       case "fiscal":
-        return <TabPlaceholder tabId="fiscal" phase="Sub-fase 7.2" />;
+        return <TabPlaceholder tabName="Fiscal"      phase="Sub-fase 7.2" />;
       case "contacts":
-        return <TabPlaceholder tabId="contacts" phase="Sub-fase 7.3" />;
+        return <TabPlaceholder tabName="Contactos"   phase="Sub-fase 7.3" />;
       case "addresses":
-        return <TabPlaceholder tabId="addresses" phase="Sub-fase 7.3" />;
+        return <TabPlaceholder tabName="Direcciones" phase="Sub-fase 7.3" />;
       case "commercial":
-        return <TabPlaceholder tabId="commercial" phase="Sub-fase 7.4" />;
+        return <TabPlaceholder tabName="Comerciales" phase="Sub-fase 7.4" />;
       case "banking":
-        return <TabPlaceholder tabId="banking" phase="Sub-fase 7.4" />;
+        return <TabPlaceholder tabName="Bancarios"   phase="Sub-fase 7.4" />;
       case "documents":
-        return <TabPlaceholder tabId="documents" phase="Sub-fase 7.5" />;
+        return <TabPlaceholder tabName="Documentos"  phase="Sub-fase 7.5" />;
       case "evaluation":
-        return <TabPlaceholder tabId="evaluation" phase="Sub-fase 7.6" />;
+        return <TabPlaceholder tabName="Evaluación"  phase="Sub-fase 7.6" />;
       case "logistics":
-        return <TabPlaceholder tabId="logistics" phase="Sub-fase 7.6" />;
+        return <TabPlaceholder tabName="Logística"   phase="Sub-fase 7.6" />;
       case "summary":
-        return <TabPlaceholder tabId="summary" phase="Sub-fase 7.7" />;
+        return <TabPlaceholder tabName="Resumen"     phase="Sub-fase 7.7" />;
       default:
         return null;
     }
   };
 
   // ── Título dinámico según modo ─────────────────────────────────────
-  const titleText = drawer.isEditMode
-    ? t("partner.editTitle")
-    : t("partner.createTitle");
+  const titleText = drawer.isEditMode ? "Editar partner" : "Nuevo partner";
 
   return (
     <>
@@ -278,7 +273,7 @@ export function PartnerDrawer({
                 opacity: drawer.saving ? 0.4 : 1,
                 cursor:  drawer.saving ? "not-allowed" : "pointer",
               }}
-              aria-label={t("common.close")}
+              aria-label="Cerrar"
             >
               ✕
             </button>

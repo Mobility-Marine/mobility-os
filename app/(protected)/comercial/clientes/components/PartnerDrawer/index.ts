@@ -31,6 +31,7 @@ export {
   PARTNER_TABS,
   INCOTERMS,
   INDUSTRIES,
+  INDUSTRY_LABELS,
   VALIDATION_69B_CONFIG,
 } from "./types";
 

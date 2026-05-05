@@ -137,7 +137,7 @@ export type TabValidationState = {
 // ── Configuración declarativa de cada tab ────────────────────────────
 export type TabConfig = {
   id:        PartnerTab;
-  labelKey:  string;
+  label:     string;
   icon:      string;
   required:  boolean;
   showWhen?: (p: Partial<Partner>) => boolean;
@@ -158,17 +158,17 @@ export type PartnerContactRole =
 
 // ── Catálogo de TABS del wizard (orden = flujo natural ERP) ──────────
 export const PARTNER_TABS: TabConfig[] = [
-  { id: "identity",   labelKey: "partner.tabIdentity",   icon: "🆔", required: true  },
-  { id: "fiscal",     labelKey: "partner.tabFiscal",     icon: "📋", required: true  },
-  { id: "contacts",   labelKey: "partner.tabContacts",   icon: "📞", required: false },
-  { id: "addresses",  labelKey: "partner.tabAddresses",  icon: "📍", required: false },
-  { id: "commercial", labelKey: "partner.tabCommercial", icon: "💰", required: false },
-  { id: "banking",    labelKey: "partner.tabBanking",    icon: "🏦", required: false },
-  { id: "documents",  labelKey: "partner.tabDocuments",  icon: "📑", required: false },
+  { id: "identity",   label: "Identidad",   icon: "🆔", required: true  },
+  { id: "fiscal",     label: "Fiscal",      icon: "📋", required: true  },
+  { id: "contacts",   label: "Contactos",   icon: "📞", required: false },
+  { id: "addresses",  label: "Direcciones", icon: "📍", required: false },
+  { id: "commercial", label: "Comerciales", icon: "💰", required: false },
+  { id: "banking",    label: "Bancarios",   icon: "🏦", required: false },
+  { id: "documents",  label: "Documentos",  icon: "📑", required: false },
   // Tab evaluación: solo cuando es proveedor o logístico
   {
     id: "evaluation",
-    labelKey: "partner.tabEvaluation",
+    label: "Evaluación",
     icon: "⭐",
     required: false,
     showWhen: (p) => Boolean(p.is_supplier || p.is_logistics_provider),
@@ -176,27 +176,27 @@ export const PARTNER_TABS: TabConfig[] = [
   // Tab logística: solo cuando es proveedor logístico
   {
     id: "logistics",
-    labelKey: "partner.tabLogistics",
+    label: "Logística",
     icon: "🚚",
     required: false,
     showWhen: (p) => Boolean(p.is_logistics_provider),
   },
-  { id: "summary",    labelKey: "partner.tabSummary",    icon: "📊", required: false },
+  { id: "summary",    label: "Resumen",     icon: "📊", required: false },
 ];
 
 // ── Catálogo de INCOTERMS ─────────────────────────────────────────────
-export const INCOTERMS: { code: Incoterm; descKey: string }[] = [
-  { code: "EXW", descKey: "incoterms.exw" },
-  { code: "FCA", descKey: "incoterms.fca" },
-  { code: "CPT", descKey: "incoterms.cpt" },
-  { code: "CIP", descKey: "incoterms.cip" },
-  { code: "DAP", descKey: "incoterms.dap" },
-  { code: "DPU", descKey: "incoterms.dpu" },
-  { code: "DDP", descKey: "incoterms.ddp" },
-  { code: "FAS", descKey: "incoterms.fas" },
-  { code: "FOB", descKey: "incoterms.fob" },
-  { code: "CFR", descKey: "incoterms.cfr" },
-  { code: "CIF", descKey: "incoterms.cif" },
+export const INCOTERMS: { code: Incoterm; description: string }[] = [
+  { code: "EXW", description: "En fábrica" },
+  { code: "FCA", description: "Franco transportista" },
+  { code: "CPT", description: "Transporte pagado hasta" },
+  { code: "CIP", description: "Transporte y seguro pagados hasta" },
+  { code: "DAP", description: "Entregado en lugar" },
+  { code: "DPU", description: "Entregado en lugar descargado" },
+  { code: "DDP", description: "Entregado con derechos pagados" },
+  { code: "FAS", description: "Franco al costado del buque" },
+  { code: "FOB", description: "Franco a bordo" },
+  { code: "CFR", description: "Costo y flete" },
+  { code: "CIF", description: "Costo, seguro y flete" },
 ];
 
 // ── Industrias (catálogo genérico, ampliable) ────────────────────────
@@ -221,15 +221,35 @@ export const INDUSTRIES = [
 
 export type Industry = typeof INDUSTRIES[number];
 
+// ── Etiquetas en español de las industrias ───────────────────────────
+export const INDUSTRY_LABELS: Record<Industry, string> = {
+  manufacturing:      "Manufactura",
+  retail:             "Retail / Venta al detalle",
+  wholesale:          "Mayoreo",
+  logistics:          "Logística",
+  construction:       "Construcción",
+  automotive:         "Automotriz",
+  agriculture:        "Agricultura",
+  technology:         "Tecnología",
+  consulting:         "Consultoría",
+  healthcare:         "Salud",
+  education:          "Educación",
+  finance:            "Finanzas",
+  real_estate:        "Bienes raíces",
+  energy:             "Energía",
+  telecommunications: "Telecomunicaciones",
+  other:              "Otro",
+};
+
 // ── Estado 69-B con riesgo asociado ──────────────────────────────────
 export const VALIDATION_69B_CONFIG: Record
   Validation69BStatus,
-  { labelKey: string; color: string; risk: "none" | "low" | "medium" | "high" }
+  { label: string; color: string; risk: "none" | "low" | "medium" | "high" }
 > = {
-  not_verified: { labelKey: "validation.69b.notVerified", color: "var(--color-text-muted)",   risk: "none"   },
-  clean:        { labelKey: "validation.69b.clean",       color: "var(--color-success-text)", risk: "none"   },
-  detracted:    { labelKey: "validation.69b.detracted",   color: "var(--color-success-text)", risk: "low"    },
-  favorable:    { labelKey: "validation.69b.favorable",   color: "var(--color-info-text)",    risk: "low"    },
-  alleged:      { labelKey: "validation.69b.alleged",     color: "var(--color-warning-text)", risk: "medium" },
-  definitive:   { labelKey: "validation.69b.definitive",  color: "var(--color-danger-text)",  risk: "high"   },
+  not_verified: { label: "No verificado",        color: "var(--color-text-muted)",   risk: "none"   },
+  clean:        { label: "Limpio",               color: "var(--color-success-text)", risk: "none"   },
+  detracted:    { label: "Desvirtuado",          color: "var(--color-success-text)", risk: "low"    },
+  favorable:    { label: "Sentencia favorable",  color: "var(--color-info-text)",    risk: "low"    },
+  alleged:      { label: "Presunto EFOS",        color: "var(--color-warning-text)", risk: "medium" },
+  definitive:   { label: "Definitivo EFOS",      color: "var(--color-danger-text)",  risk: "high"   },
 };
