@@ -18,7 +18,7 @@
 // deep-linking y refresh sin perder estado.
 // ════════════════════════════════════════════════════════════════════════
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { usePermissions } from "@/lib/auth/usePermissions";
 
@@ -96,7 +96,7 @@ const CATEGORIES: CategoryDef[] = [
 // COMPONENTE PRINCIPAL
 // ════════════════════════════════════════════════════════════════════════
 
-export default function SettingsPage() {
+function SettingsContent() {
   const { canManageCompany, loading: permLoading } = usePermissions();
   const router       = useRouter();
   const pathname     = usePathname();
@@ -315,5 +315,29 @@ export default function SettingsPage() {
         </section>
       </div>
     </div>
+  );
+}
+
+// ════════════════════════════════════════════════════════════════════════
+// EXPORT DEFAULT — Wrapper con Suspense boundary (requerido por Next.js 14)
+// ════════════════════════════════════════════════════════════════════════
+// useSearchParams() necesita estar dentro de un <Suspense> para que la
+// página pueda generarse correctamente en build. Sin esto, Next.js falla
+// con "missing-suspense-with-csr-bailout" durante el prerender estático.
+// ════════════════════════════════════════════════════════════════════════
+
+export default function SettingsPage() {
+  return (
+    <Suspense
+      fallback={
+        <div style={{ display: "grid", placeItems: "center", minHeight: "60vh" }}>
+          <div style={{ fontSize: "14px", color: "var(--fg-muted, #64748b)" }}>
+            Cargando…
+          </div>
+        </div>
+      }
+    >
+      <SettingsContent />
+    </Suspense>
   );
 }
