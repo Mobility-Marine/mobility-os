@@ -47,6 +47,7 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
     due_date:         "",
     expense_category: "",
     currency:         "MXN",
+    has_tax:          true,
     subtotal:         "",
     tax_amount:       "",
     total:            "",
@@ -68,15 +69,19 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
   useEffect(() => {
     if (!preloadFromShipment) return;
     const sh = preloadFromShipment;
+    const cur    = sh.currency ?? "USD";
+    const hasTax = cur === "MXN";
+    const cost   = Number(sh.provider_cost ?? 0);
     setForm(p => ({
       ...p,
       supplier_type:         "logistics",
       logistics_provider_id: sh.provider?.id ?? "",
       supplier_name:         sh.provider?.name ?? "",
-      total:                 String(sh.provider_cost ?? ""),
-      subtotal:              String((sh.provider_cost ?? 0) / 1.16),
-      tax_amount:            String((sh.provider_cost ?? 0) - (sh.provider_cost ?? 0) / 1.16),
-      currency:              sh.currency ?? "USD",
+      currency:              cur,
+      has_tax:               hasTax,
+      total:                 String(cost || ""),
+      subtotal:              String(hasTax ? (cost / 1.16) : cost),
+      tax_amount:            String(hasTax ? (cost - cost / 1.16) : 0),
       related_shipment_id:   sh.id,
       notes:                 `Servicio logístico — ${sh.reference}`,
     }));
@@ -85,16 +90,20 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
   // Precargar desde PO
   useEffect(() => {
     if (!preloadFromPO) return;
-    const po = preloadFromPO;
+    const po     = preloadFromPO;
+    const cur    = po.currency ?? "MXN";
+    const hasTax = cur === "MXN";
+    const total  = Number(po.total ?? 0);
     setForm(p => ({
       ...p,
       supplier_type:  "procurement",
       supplier_id:    po.supplier?.id ?? "",
       supplier_name:  po.supplier?.name ?? "",
-      total:          String(po.total ?? ""),
-      subtotal:       String(po.subtotal ?? (po.total ?? 0) / 1.16),
-      tax_amount:     String(po.tax_amount ?? (po.total ?? 0) - (po.total ?? 0) / 1.16),
-      currency:       po.currency ?? "MXN",
+      currency:       cur,
+      has_tax:        hasTax,
+      total:          String(total || ""),
+      subtotal:       String(po.subtotal   ?? (hasTax ? (total / 1.16)        : total)),
+      tax_amount:     String(po.tax_amount ?? (hasTax ? (total - total / 1.16) : 0)),
       related_po_id:  po.id,
       document_date:  po.order_date ?? new Date().toISOString().split("T")[0],
       notes:          `Orden de compra — ${po.po_number}`,
@@ -115,15 +124,35 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
 
   function calcTotals(field: "subtotal" | "tax_amount" | "total", val: string) {
     const n = parseFloat(val) || 0;
-    if (field === "subtotal") {
-      const tax = n * 0.16;
-      setForm(p => ({ ...p, subtotal: val, tax_amount: tax.toFixed(2), total: (n + tax).toFixed(2) }));
-    } else if (field === "total") {
-      const sub = n / 1.16;
-      setForm(p => ({ ...p, total: val, subtotal: sub.toFixed(2), tax_amount: (n - sub).toFixed(2) }));
-    } else {
-      setForm(p => ({ ...p, [field]: val }));
-    }
+    setForm(p => {
+      const hasTax = p.has_tax;
+      if (field === "subtotal") {
+        if (hasTax) {
+          const tax = n * 0.16;
+          return { ...p, subtotal: val, tax_amount: tax.toFixed(2), total: (n + tax).toFixed(2) };
+        }
+        return { ...p, subtotal: val, tax_amount: "0", total: val };
+      }
+      if (field === "total") {
+        if (hasTax) {
+          const sub = n / 1.16;
+          return { ...p, total: val, subtotal: sub.toFixed(2), tax_amount: (n - sub).toFixed(2) };
+        }
+        return { ...p, total: val, subtotal: val, tax_amount: "0" };
+      }
+      return { ...p, [field]: val };
+    });
+  }
+
+  function setHasTax(value: boolean) {
+    setForm(p => {
+      const sub = parseFloat(p.subtotal) || 0;
+      if (value) {
+        const tax = sub * 0.16;
+        return { ...p, has_tax: true, tax_amount: tax.toFixed(2), total: (sub + tax).toFixed(2) };
+      }
+      return { ...p, has_tax: false, tax_amount: "0", total: p.subtotal || "0" };
+    });
   }
 
   async function uploadFile(file: File, type: "pdf" | "xml"): Promise<string | null> {
@@ -162,6 +191,7 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
         due_date:              form.due_date        || undefined,
         expense_category:      form.expense_category || undefined,
         currency:              form.currency,
+        has_tax:               form.has_tax,
         subtotal:              parseFloat(form.subtotal) || 0,
         tax_amount:            parseFloat(form.tax_amount) || 0,
         total:                 parseFloat(form.total),
@@ -270,7 +300,11 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
             </div>
             <div>
               <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>Moneda</div>
-              <select value={form.currency} onChange={e => setF("currency", e.target.value)} style={{ ...INPUT, cursor: "pointer" }}>
+              <select value={form.currency} onChange={e => {
+                const cur = e.target.value;
+                setForm(p => ({ ...p, currency: cur }));
+                setHasTax(cur === "MXN");
+              }} style={{ ...INPUT, cursor: "pointer" }}>
                 {["MXN","USD","EUR"].map(c => <option key={c} value={c}>{c}</option>)}
               </select>
             </div>
@@ -284,6 +318,19 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
             </div>
           </div>
 
+          {/* Toggle has_tax */}
+          <div style={{ padding: "10px 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)" }}>
+            <label style={{ display: "flex", alignItems: "center", gap: "10px", cursor: "pointer" }}>
+              <input type="checkbox" checked={form.has_tax} onChange={e => setHasTax(e.target.checked)} style={{ width: "16px", height: "16px", cursor: "pointer" }} />
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)" }}>Calcular IVA (16%)</div>
+                <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginTop: "2px" }}>
+                  {form.has_tax ? "El IVA se calculará y sumará al subtotal" : "Sin IVA — total = subtotal (típico USD/EUR)"}
+                </div>
+              </div>
+            </label>
+          </div>
+
           {/* Importes */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px" }}>
             {[
@@ -293,7 +340,14 @@ export default function CxPNewDrawer({ open, saving, preloadFromShipment, preloa
             ].map(f => (
               <div key={f.k}>
                 <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--color-text-muted)", marginBottom: "4px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{f.label}</div>
-                <input type="number" min="0" value={(form as any)[f.k]} onChange={e => calcTotals(f.k as any, e.target.value)} placeholder="0.00" style={INPUT} />
+                <input
+                  type="number" min="0"
+                  value={(form as any)[f.k]}
+                  onChange={e => calcTotals(f.k as any, e.target.value)}
+                  disabled={f.k === "tax_amount" && !form.has_tax}
+                  placeholder="0.00"
+                  style={{ ...INPUT, opacity: (f.k === "tax_amount" && !form.has_tax) ? 0.5 : 1 }}
+                />
               </div>
             ))}
           </div>
