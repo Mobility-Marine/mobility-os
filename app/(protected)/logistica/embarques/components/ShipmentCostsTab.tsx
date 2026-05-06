@@ -21,6 +21,11 @@ type Props = {
   onReload: () => Promise<void>;
 };
 
+type DrawerState =
+  | { mode: "create"; preselectType: "cost_pending" | "invoice" }
+  | { mode: "edit"; cost: ShipmentCost }
+  | { mode: "convert"; cost: ShipmentCost };
+
 const fmt = (n: number) =>
   Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2 });
 
@@ -46,12 +51,7 @@ export default function ShipmentCostsTab({ shipment, onReload }: Props) {
   const [financials, setFinancials] = useState<ShipmentFinancials | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingFlag, setSavingFlag] = useState(false);
-  const [drawer, setDrawer] = useState
-    | { mode: "create"; preselectType: "cost_pending" | "invoice" }
-    | { mode: "edit"; cost: ShipmentCost }
-    | { mode: "convert"; cost: ShipmentCost }
-    | null
-  >(null);
+  const [drawer, setDrawer] = useState<DrawerState | null>(null);
 
   // Default true si no está seteado (compatibilidad backwards)
   const requiresInvoice = shipment.requires_supplier_invoice !== false;
