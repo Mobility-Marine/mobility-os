@@ -274,13 +274,21 @@ export async function POST(
         email:      proforma.receiver_email ?? undefined,
       },
       items,
-      use:            proforma.receiver_cfdi_use,
-      payment_method: paymentMethod,
-      payment_form:   paymentForm,
-      currency:       proforma.currency ?? "MXN",
-      exchange:       Number(proforma.exchange_rate ?? 1),
-      series:         serie,
-      folio_number:   folio,
+      use:               proforma.receiver_cfdi_use,
+      payment_method:    paymentMethod,
+      payment_form:      paymentForm,
+      currency:          proforma.currency ?? "MXN",
+      exchange:          Number(proforma.exchange_rate ?? 1),
+      series:            serie,
+      folio_number:      folio,
+      // ════════════════════════════════════════════════════════════════
+      // Notas/observaciones del usuario → PDF del CFDI
+      // ════════════════════════════════════════════════════════════════
+      // Facturapi renderiza este texto en una sección personalizada del
+      // PDF (no afecta el XML fiscal — es informativo).
+      // Si la proforma no tiene notas, omitimos el campo (undefined).
+      // ════════════════════════════════════════════════════════════════
+      pdf_custom_section: proforma.notes ?? undefined,
     };
 
     // ─── 9. Llamar a Facturapi ───
