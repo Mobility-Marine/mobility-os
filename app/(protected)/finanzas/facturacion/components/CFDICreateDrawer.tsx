@@ -7,6 +7,12 @@ import type { NewCFDIForm, NewConcept } from "../types/facturacion.types";
 import { DEFAULT_NEW_CFDI, CFDI_USES, PAYMENT_FORMS, FISCAL_REGIMES, TAX_PRESETS, calcConceptTotals, DEFAULT_TAXES } from "../types/facturacion.types";
 import { saveProforma, updateProforma, deleteProforma, stampProforma, fetchProformaById } from "../services/facturacion.service";
 import { SATSearch } from "@/app/components/SATSearch";
+import { pdf } from "@react-pdf/renderer";
+import TemplateProforma, {
+  type ProformaDocument,
+  type ProformaConcept,
+  type ProformaCompanySettings,
+} from "./templates/TemplateProforma";
 
 type CurrencyMode = "split" | "all_mxn" | "all_usd" | null;
 
@@ -59,10 +65,11 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
   const [step,         setStep]         = useState<Step>("receptor");
   const [form,         setForm]         = useState<NewCFDIForm>(DEFAULT_NEW_CFDI);
   const [error,        setError]        = useState<string | null>(null);
-  const [busyAction,   setBusyAction]   = useState<null | "saving_draft" | "updating" | "stamping" | "deleting">(null);
+  const [busyAction,   setBusyAction]   = useState<null | "saving_draft" | "updating" | "stamping" | "deleting" | "downloading_pdf">(null);
   const isEditingProforma = !!editProformaId;
   const [clients,      setClients]      = useState<Client[]>([]);
   const [products,     setProducts]     = useState<any[]>([]);
+  const [companySettings, setCompanySettings] = useState<ProformaCompanySettings | null>(null);
   const [editingConceptIdx, setEditingConceptIdx] = useState<number | null>(null);
   const [editConceptForm,   setEditConceptForm]   = useState<any>({});
     const [conceptForm,  setConceptForm]  = useState<Omit<NewConcept, "product_id"> & { product_id?: string }>({
@@ -90,15 +97,27 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
     supabase.from("products").select("id, name, sku, unit, unit_price, cost, tax_rate, sat_product_code, sat_unit_code")
       .eq("company_id", companyId).eq("is_active", true).order("name").limit(200)
       .then(({ data }) => setProducts(data ?? []));
-    // Cargar serie configurada en settings
+    // Cargar configuración de la empresa (serie CFDI + datos fiscales + colores de marca para PDFs)
     supabase.from("company_settings")
-      .select("invoice_series")
+      .select("invoice_series, fiscal_rfc, fiscal_name, fiscal_regime, fiscal_zip, logo_url, brand_color, brand_color_dark, brand_accent")
       .eq("company_id", companyId)
       .maybeSingle()
       .then(({ data }) => {
-        if (data?.invoice_series) {
+        if (!data) return;
+        if (data.invoice_series) {
           setForm((p) => ({ ...p, serie: data.invoice_series }));
         }
+        // Guardar datos completos para generación de PDFs (proforma, etc.)
+        setCompanySettings({
+          fiscal_rfc:        data.fiscal_rfc        ?? null,
+          fiscal_name:       data.fiscal_name       ?? null,
+          fiscal_regime:     data.fiscal_regime     ?? null,
+          fiscal_zip:        data.fiscal_zip        ?? null,
+          logo_url:          data.logo_url          ?? null,
+          brand_color:       data.brand_color       ?? null,
+          brand_color_dark:  data.brand_color_dark  ?? null,
+          brand_accent:      data.brand_accent      ?? null,
+        });
       });
   }, [open, companyId]);
 
@@ -386,6 +405,106 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
       handleClose();
     } catch (e: any) {
       setError(e.message);
+    } finally { setBusyAction(null); }
+  }
+
+  /**
+   * Descarga la proforma como PDF con marca de agua "PROFORMA - SIN VALIDEZ FISCAL".
+   * Se usa para mandar al cliente o al agente aduanal y validar antes de timbrar.
+   *
+   * Lee los datos persistidos en BD (no del form en memoria) para garantizar
+   * consistencia con lo que está realmente guardado. Si el usuario hizo cambios
+   * sin guardar, debe presionar "Actualizar" primero.
+   */
+  async function handleDownloadPDF() {
+    if (!editProformaId) {
+      setError("Solo se puede descargar PDF de proformas guardadas.");
+      return;
+    }
+    if (!companySettings) {
+      setError("Datos de la empresa no cargados aún. Espera un momento e intenta de nuevo.");
+      return;
+    }
+
+    setError(null); setBusyAction("downloading_pdf");
+    try {
+      // Cargar datos completos desde BD (totales calculados, conceptos persistidos)
+      const result = await fetchProformaById(editProformaId);
+      if (!result) {
+        setError("No se pudo cargar la proforma desde la base de datos.");
+        return;
+      }
+      const { cfdi, concepts: dbConcepts } = result;
+
+      const documentForPdf: ProformaDocument = {
+        id:                   cfdi.id,
+        serie:                cfdi.serie ?? null,
+        folio:                cfdi.folio ?? null,
+        type:                 cfdi.type ?? "I",
+        status:               cfdi.status ?? "proforma",
+        cfdi_date:            cfdi.cfdi_date ?? null,
+        issuer_rfc:           cfdi.issuer_rfc ?? null,
+        issuer_name:          cfdi.issuer_name ?? null,
+        issuer_fiscal_regime: cfdi.issuer_fiscal_regime ?? null,
+        receiver_rfc:         cfdi.receiver_rfc ?? null,
+        receiver_name:        cfdi.receiver_name ?? null,
+        receiver_fiscal_regime: cfdi.receiver_fiscal_regime ?? null,
+        receiver_cfdi_use:    cfdi.receiver_cfdi_use ?? null,
+        receiver_zip:         cfdi.receiver_zip ?? null,
+        receiver_email:       cfdi.receiver_email ?? null,
+        subtotal:             cfdi.subtotal ?? 0,
+        discount:             cfdi.discount ?? 0,
+        tax_amount:           cfdi.tax_amount ?? 0,
+        retention_amount:     cfdi.retention_amount ?? 0,
+        total:                cfdi.total ?? 0,
+        currency:             cfdi.currency ?? "MXN",
+        exchange_rate:        cfdi.exchange_rate ?? 1,
+        payment_method:       cfdi.payment_method ?? null,
+        payment_form:         cfdi.payment_form ?? null,
+        notes:                cfdi.notes ?? null,
+      };
+
+      const conceptsForPdf: ProformaConcept[] = (dbConcepts ?? []).map((c: any) => ({
+        id:                c.id,
+        product_key:       c.product_key ?? null,
+        unit_key:          c.unit_key ?? null,
+        description:       c.description ?? null,
+        unit:              c.unit ?? null,
+        quantity:          c.quantity ?? 0,
+        unit_price:        c.unit_price ?? 0,
+        discount:          c.discount ?? 0,
+        subtotal:          c.subtotal ?? 0,
+        tax_rate:          c.tax_rate ?? 0,
+        tax_amount:        c.tax_amount ?? 0,
+        retention_rate:    c.retention_rate ?? 0,
+        retention_amount:  c.retention_amount ?? 0,
+        total:             c.total ?? 0,
+      }));
+
+      const blob = await pdf(
+        <TemplateProforma
+          document={documentForPdf}
+          concepts={conceptsForPdf}
+          companySettings={companySettings}
+        />
+      ).toBlob();
+
+      // Trigger de descarga en el navegador
+      const url = URL.createObjectURL(blob);
+      const safeName = (cfdi.receiver_name ?? "cliente")
+        .replace(/[^a-zA-Z0-9]+/g, "_")
+        .substring(0, 40);
+      const folioPart = cfdi.folio ? `-${cfdi.folio}` : "";
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Proforma-${cfdi.serie ?? "PRO"}${folioPart}-${safeName}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (e: any) {
+      console.error("[CFDI] Error generando PDF de proforma:", e);
+      setError("Error al generar PDF: " + (e?.message ?? "desconocido"));
     } finally { setBusyAction(null); }
   }
 
@@ -1018,6 +1137,12 @@ export default function CFDICreateDrawer({ open, saving, onClose, onCreate, onCr
                 disabled={busyAction !== null}
                 style={{ height: "40px", padding: "0 16px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", color: "var(--color-danger-text)", border: "1px solid var(--color-danger-border)", fontSize: "13px", fontWeight: 700, cursor: busyAction ? "not-allowed" : "pointer", opacity: busyAction ? 0.6 : 1 }}>
                 {busyAction === "deleting" ? "…" : (es ? "🗑️ Eliminar" : "🗑️ Delete")}
+              </button>
+              <button
+                onClick={handleDownloadPDF}
+                disabled={busyAction !== null || !companySettings}
+                style={{ height: "40px", padding: "0 16px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", color: "var(--color-info-text)", border: "1px solid var(--color-info-border)", fontSize: "13px", fontWeight: 700, cursor: (busyAction || !companySettings) ? "not-allowed" : "pointer", opacity: (busyAction || !companySettings) ? 0.6 : 1 }}>
+                {busyAction === "downloading_pdf" ? (es ? "Generando…" : "Generating…") : (es ? "📄 Descargar PDF" : "📄 Download PDF")}
               </button>
               <button
                 onClick={handleUpdateProforma}

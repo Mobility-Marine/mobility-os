@@ -112,7 +112,7 @@ export async function POST(req: Request) {
     // ════════════════════════════════════════════════════════════════
     const [companyRes, settingsRes] = await Promise.all([
       supabase.from("companies").select("id, name").eq("id", payload.company_id).maybeSingle(),
-      supabase.from("company_settings").select("fiscal_rfc, fiscal_name, fiscal_regime, fiscal_zip").eq("company_id", payload.company_id).maybeSingle(),
+      supabase.from("company_settings").select("fiscal_rfc, fiscal_name, fiscal_regime, fiscal_zip, invoice_series, egreso_series, pago_series, traslado_series, nomina_series").eq("company_id", payload.company_id).maybeSingle(),
     ]);
 
     if (companyRes.error || !companyRes.data) {
@@ -131,13 +131,38 @@ export async function POST(req: Request) {
       fiscal_regime:  settingsRes.data.fiscal_regime,
     };
 
-    // ─── 5. Insertar la proforma en cfdi_documents ───
+    // ════════════════════════════════════════════════════════════════
+    // Resolver la SERIE CFDI según el tipo de comprobante
+    // ════════════════════════════════════════════════════════════════
+    // Cada tipo de CFDI tiene su propia serie configurable en
+    // Settings → Fiscal y CFDI → Series CFDI:
+    //   - I (Ingreso/Factura)   → invoice_series  (default "F")
+    //   - E (Egreso/Nota crédito) → egreso_series   (default "E")
+    //   - P (Pago/REP)          → pago_series     (default "P")
+    //   - T (Traslado)          → traslado_series (default "T")
+    //   - N (Nómina)            → nomina_series   (default "N")
+    //
+    // El folio NO se asigna aquí — se asigna al timbrar la proforma
+    // (consume invoice_next_folio incrementando el contador).
+    // ════════════════════════════════════════════════════════════════
+    const cfdiType = payload.type ?? "I";
+    const seriesByType: Record<string, string | null | undefined> = {
+      I: settingsRes.data.invoice_series,
+      E: settingsRes.data.egreso_series,
+      P: settingsRes.data.pago_series,
+      T: settingsRes.data.traslado_series,
+      N: settingsRes.data.nomina_series,
+    };
+    const resolvedSerie = seriesByType[cfdiType] ?? "A";
+
+    // Insertar la proforma en cfdi_documents
     const { data: cfdi, error: cfdiErr } = await supabase
       .from("cfdi_documents")
       .insert({
         company_id: payload.company_id,
-        type: payload.type ?? "I",
+        type: cfdiType,
         status: "proforma",
+        serie: resolvedSerie,
         issuer_rfc: company.rfc ?? null,
         issuer_name: company.name ?? null,
         issuer_fiscal_regime: company.fiscal_regime ?? null,
