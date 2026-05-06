@@ -60,7 +60,8 @@ export default function FacturacionPage() {
   const [dashboardFilters,   setDashboardFilters]   = useState<DashboardFilters>(DEFAULT_DASHBOARD_FILTERS);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? ""));
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (supabase.auth as any).getUser().then(({ data }: any) => setUserId(data.user?.id ?? ""));
   }, []);
 
   const ctrl = useFacturacionController(companyId ?? "", userId);
@@ -129,20 +130,43 @@ export default function FacturacionPage() {
     }));
 
     if (services.length === 0 && sh.quotation_id) {
+      // ════════════════════════════════════════════════════════════════
+      // RESOLUCIÓN SAT EN CASCADA (Mobility OS)
+      // ════════════════════════════════════════════════════════════════
+      // Un servicio de cotización puede tener su clave SAT vinculada por
+      // dos rutas alternativas:
+      //   1) product_id directo  →  products.sat_*
+      //   2) billing_concept_id  →  quotation_billing_concepts.product_id  →  products.sat_*
+      //
+      // Si no encuentra ninguna, cae a "01010101" (clave SAT genérica
+      // permitida por el SAT para "Servicios no clasificados").
+      // ════════════════════════════════════════════════════════════════
       const { data: qsvcs } = await supabase
         .from("quotation_services")
-        .select("description, price, currency, product_id, product:products(name, sat_product_code, sat_unit_code, unit)")
+        .select(`
+          description, price, currency, product_id, billing_concept_id,
+          product:products(name, sat_product_code, sat_unit_code, unit),
+          billing_concept:quotation_billing_concepts!billing_concept_id(
+            description,
+            product:products(name, sat_product_code, sat_unit_code, unit)
+          )
+        `)
         .eq("quotation_id", sh.quotation_id)
         .order("sort_order");
-      services = (qsvcs ?? []).map((s: any) => ({
-        description:      s.product?.name             ?? s.description,
-        price:            s.price,
-        currency:         s.currency,
-        product_id:       s.product_id                ?? null,
-        sat_product_code: s.product?.sat_product_code ?? "84111506",
-        sat_unit_code:    s.product?.sat_unit_code     ?? "E48",
-        unit:             s.product?.unit              ?? "Servicio",
-      }));
+
+      services = (qsvcs ?? []).map((s: any) => {
+        // Cascada: producto directo → producto del concepto de facturación → null
+        const resolvedProduct = s.product ?? s.billing_concept?.product ?? null;
+        return {
+          description:      resolvedProduct?.name        ?? s.billing_concept?.description ?? s.description,
+          price:            s.price,
+          currency:         s.currency,
+          product_id:       s.product_id ?? null,
+          sat_product_code: resolvedProduct?.sat_product_code ?? "01010101",
+          sat_unit_code:    resolvedProduct?.sat_unit_code    ?? "E48",
+          unit:             resolvedProduct?.unit             ?? "Servicio",
+        };
+      });
     }
 
     if (services.length === 0) {
