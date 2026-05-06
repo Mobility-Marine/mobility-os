@@ -128,11 +128,23 @@ function buildItemsFromConcepts(concepts: any[]): any[] {
 
     return {
       product: {
-        description: c.description,
-        product_key: c.product_key,
-        unit_key:    c.unit_key,
-        unit_name:   c.unit ?? undefined,
-        price:       Number(c.unit_price),
+        description:  c.description,
+        product_key:  c.product_key,
+        unit_key:     c.unit_key,
+        unit_name:    c.unit ?? undefined,
+        price:        Number(c.unit_price),
+        // ════════════════════════════════════════════════════════════════
+        // CRÍTICO: tax_included = false
+        // ════════════════════════════════════════════════════════════════
+        // Facturapi por default asume tax_included=true para servicios
+        // (porque la facturación de servicios suele incluir IVA en el precio).
+        // Si NO mandamos este flag explícitamente, divide el precio / 1.16
+        // y emite un CFDI con montos incorrectos:
+        //   $50,068 → subtotal $43,162.07 + IVA $6,905.93 = total $50,068 ❌
+        // Con tax_included:false, Facturapi suma el IVA encima del precio:
+        //   $50,068 + IVA $8,010.88 = total $58,078.88 ✅
+        // ════════════════════════════════════════════════════════════════
+        tax_included: false,
         taxes,
       },
       quantity: Number(c.quantity),
