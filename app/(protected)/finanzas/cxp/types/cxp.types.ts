@@ -6,7 +6,7 @@
 export type APStatus = "pending" | "partial" | "paid" | "disputed" | "cancelled";
 export type APPaymentStatus = "not_scheduled" | "scheduled" | "paid";
 export type APSupplierType = "procurement" | "logistics" | "operating";
-export type APDocumentType = "invoice" | "expense" | "manual";
+export type APDocumentType = "invoice" | "cost_pending" | "credit_note" | "debit_note" | "expense" | "manual";
 export type APAging = "0-30" | "31-60" | "61-90" | "+90";
 
 export const EXPENSE_CATEGORIES = [
@@ -64,6 +64,7 @@ export type AccountPayable = {
   due_date?:             string | null;
   expense_category?:     string | null;
   currency:              string;
+  has_tax?:              boolean;       // si false, total = subtotal (factura sin IVA, típico USD/EUR)
   subtotal:              number;
   tax_amount:            number;
   total:                 number;

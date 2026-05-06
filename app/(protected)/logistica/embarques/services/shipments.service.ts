@@ -462,3 +462,257 @@ export async function fetchLogisticsProviders(
     .order("name");
   return (data ?? []) as any[];
 }
+
+// ─────────────────────────────────────────────────────────────
+// COSTOS MULTI-FACTURA EN EMBARQUES
+// Modelo: shipments (1) ── (N) accounts_payable
+// document_type: 'cost_pending' (registro provisional sin factura)
+//                'invoice'      (factura recibida del proveedor)
+// ─────────────────────────────────────────────────────────────
+
+export interface ShipmentCost {
+  id:                    string;
+  related_shipment_id:   string;
+  document_type:         "invoice" | "cost_pending" | "credit_note" | "debit_note" | "expense";
+  document_number:       string | null;
+  document_date:         string;
+  due_date:              string | null;
+  supplier_type:         string;
+  supplier_id:           string | null;
+  logistics_provider_id: string | null;
+  supplier_name:         string;
+  supplier_rfc:          string | null;
+  supplier_email:        string | null;
+  currency:              string;
+  has_tax:               boolean;
+  subtotal:              number;
+  tax_amount:            number;
+  total:                 number;
+  paid_amount:           number;
+  balance:               number;
+  status:                string;
+  payment_status:        string;
+  xml_url:               string | null;
+  pdf_url:               string | null;
+  notes:                 string | null;
+  created_at:            string;
+  updated_at:            string;
+  supplier?:             { name: string; rfc?: string | null } | null;
+  logistics_provider?:   { name: string } | null;
+}
+
+export interface ShipmentFinancials {
+  shipment_id:               string;
+  company_id:                string;
+  reference:                 string;
+  service_type:              string;
+  currency:                  string;
+  status:                    string;
+  requires_supplier_invoice: boolean;
+  revenue:                   number;
+  total_costs:               number;
+  confirmed_costs:           number;
+  pending_costs:             number;
+  invoices_count:            number;
+  pending_count:             number;
+  margin:                    number;
+  margin_pct:                number;
+}
+
+/**
+ * Lee la vista shipment_financials para un embarque.
+ * Devuelve revenue, costos totales/confirmados/provisionales y márgenes calculados.
+ */
+export async function fetchShipmentFinancials(
+  companyId: string,
+  shipmentId: string,
+): Promise<ShipmentFinancials | null> {
+  const { data } = await supabase
+    .from("shipment_financials")
+    .select("*")
+    .eq("company_id", companyId)
+    .eq("shipment_id", shipmentId)
+    .maybeSingle();
+  return (data as ShipmentFinancials | null) ?? null;
+}
+
+/**
+ * Lista todos los costos asociados a un embarque (cost_pending + invoices),
+ * ordenados por fecha descendente. Excluye cancelados.
+ */
+export async function listShipmentCosts(
+  companyId: string,
+  shipmentId: string,
+): Promise<ShipmentCost[]> {
+  const { data, error } = await supabase
+    .from("accounts_payable")
+    .select(`
+      *,
+      supplier:business_partners!supplier_id(name, rfc),
+      logistics_provider:business_partners!logistics_provider_id(name)
+    `)
+    .eq("company_id", companyId)
+    .eq("related_shipment_id", shipmentId)
+    .neq("status", "cancelled")
+    .order("document_date", { ascending: false });
+  if (error) throw new Error(error.message);
+  return (data ?? []) as ShipmentCost[];
+}
+
+/**
+ * Crea un nuevo costo asociado a un embarque.
+ *  - document_type='cost_pending' → registro provisional sin factura
+ *  - document_type='invoice'      → factura recibida (con o sin XML/PDF)
+ *
+ * Soporta múltiples llamadas para el mismo shipment_id (modelo multi-factura).
+ */
+export async function createShipmentCost(
+  companyId: string,
+  userId:    string,
+  payload: {
+    shipment_id:            string;
+    document_type:          "cost_pending" | "invoice";
+    supplier_type:          "logistics" | "procurement" | "operating";
+    supplier_id?:           string | null;
+    logistics_provider_id?: string | null;
+    supplier_name:          string;
+    supplier_rfc?:          string | null;
+    supplier_email?:        string | null;
+    document_number?:       string | null;
+    document_date:          string;            // ISO YYYY-MM-DD
+    due_date?:              string | null;
+    currency:               string;
+    has_tax:                boolean;
+    subtotal:               number;
+    tax_amount:             number;
+    total:                  number;
+    notes?:                 string | null;
+    xml_url?:               string | null;
+    pdf_url?:               string | null;
+    expense_category?:      string | null;
+  },
+): Promise<ShipmentCost> {
+  const { shipment_id, ...rest } = payload;
+  const { data, error } = await supabase
+    .from("accounts_payable")
+    .insert({
+      company_id:          companyId,
+      created_by:          userId,
+      related_shipment_id: shipment_id,
+      ...rest,
+      paid_amount:    0,
+      balance:        rest.total,
+      status:         "pending",
+      payment_status: "not_scheduled",
+    })
+    .select(`
+      *,
+      supplier:business_partners!supplier_id(name, rfc),
+      logistics_provider:business_partners!logistics_provider_id(name)
+    `)
+    .single();
+  if (error) throw new Error(error.message);
+  return data as ShipmentCost;
+}
+
+/**
+ * Actualiza un costo existente. Si cambia `total`, recalcula `balance` y `status`
+ * respetando lo ya pagado.
+ */
+export async function updateShipmentCost(
+  companyId: string,
+  costId:    string,
+  patch: Partial<{
+    document_type:         "cost_pending" | "invoice";
+    document_number:       string | null;
+    document_date:         string;
+    due_date:              string | null;
+    supplier_id:           string | null;
+    logistics_provider_id: string | null;
+    supplier_name:         string;
+    supplier_rfc:          string | null;
+    supplier_email:        string | null;
+    currency:              string;
+    has_tax:               boolean;
+    subtotal:              number;
+    tax_amount:            number;
+    total:                 number;
+    notes:                 string | null;
+    xml_url:               string | null;
+    pdf_url:               string | null;
+    expense_category:      string | null;
+  }>,
+): Promise<void> {
+  const updates: any = { ...patch, updated_at: new Date().toISOString() };
+
+  if (patch.total !== undefined) {
+    const { data: current } = await supabase
+      .from("accounts_payable")
+      .select("paid_amount")
+      .eq("id", costId)
+      .eq("company_id", companyId)
+      .single();
+    const paid = Number(current?.paid_amount ?? 0);
+    updates.balance = Math.max(0, patch.total - paid);
+    updates.status  = paid <= 0.01            ? "pending"
+                    : paid >= patch.total - 0.01 ? "paid"
+                    : "partial";
+  }
+
+  const { error } = await supabase
+    .from("accounts_payable")
+    .update(updates)
+    .eq("id", costId)
+    .eq("company_id", companyId);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Elimina un costo. Solo permitido si NO tiene pagos registrados.
+ * Para registros con pagos, usar updateAPStatus(id, 'cancelled') desde CXP.
+ */
+export async function deleteShipmentCost(
+  companyId: string,
+  costId:    string,
+): Promise<void> {
+  const { data: ap } = await supabase
+    .from("accounts_payable")
+    .select("paid_amount")
+    .eq("id", costId)
+    .eq("company_id", companyId)
+    .single();
+  if (!ap) throw new Error("Costo no encontrado");
+  if (Number(ap.paid_amount ?? 0) > 0.01) {
+    throw new Error(
+      "No se puede eliminar un costo con pagos registrados. " +
+      "Cancélalo desde Cuentas por Pagar.",
+    );
+  }
+  const { error } = await supabase
+    .from("accounts_payable")
+    .delete()
+    .eq("id", costId)
+    .eq("company_id", companyId);
+  if (error) throw new Error(error.message);
+}
+
+/**
+ * Activa o desactiva el flag `requires_supplier_invoice` de un embarque.
+ *  - false: el embarque NO genera costos ni aparece en CXP.
+ *  - true:  el embarque espera una o más facturas de proveedor.
+ */
+export async function toggleRequiresSupplierInvoice(
+  companyId:  string,
+  shipmentId: string,
+  value:      boolean,
+): Promise<void> {
+  const { error } = await supabase
+    .from("shipments")
+    .update({
+      requires_supplier_invoice: value,
+      updated_at:                new Date().toISOString(),
+    })
+    .eq("id", shipmentId)
+    .eq("company_id", companyId);
+  if (error) throw new Error(error.message);
+}

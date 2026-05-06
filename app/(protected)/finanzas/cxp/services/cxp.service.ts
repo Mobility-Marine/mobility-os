@@ -153,23 +153,54 @@ export async function fetchSupplierAPSummaries(companyId: string): Promise<Suppl
 }
 
 // ── PENDIENTES DE REGISTRAR ───────────────────────────────────
+/**
+ * Lista embarques que requieren captura de costos para CXP.
+ * Filtra por:
+ *   - requires_supplier_invoice = true (consultoría/seguro NO aparecen)
+ *   - status delivered / invoiced
+ *
+ * Modelo multi-factura: NO excluye los que ya tienen AP — la UI decide qué
+ * mostrar según el conteo de invoices/cost_pending por embarque.
+ */
 export async function fetchPendingFromShipments(companyId: string) {
-  const { data } = await supabase
+  const { data: shipments } = await supabase
     .from("shipments")
-    .select("id, reference, service_type, provider_cost, currency, provider:business_partners!provider_id(id,name), client:business_partners!client_id(name)")
+    .select(`
+      id, reference, service_type, currency, total, status,
+      requires_supplier_invoice,
+      provider:business_partners!provider_id(id, name),
+      client:business_partners!client_id(name)
+    `)
     .eq("company_id", companyId)
-    .in("status", ["delivered", "invoiced"]);  // sin filtrar por provider_cost ni provider_id
+    .eq("requires_supplier_invoice", true)
+    .in("status", ["delivered", "invoiced"]);
 
-  // Filtrar los que ya tienen AP
-  const ids = (data ?? []).map(s => s.id);
+  const ids = (shipments ?? []).map(s => s.id);
   if (!ids.length) return [];
-  const { data: existing } = await supabase
+
+  // Conteo de AP relacionados por embarque (no cancelados)
+  const { data: ap } = await supabase
     .from("accounts_payable")
-    .select("related_shipment_id")
+    .select("related_shipment_id, document_type, total")
     .eq("company_id", companyId)
-    .in("related_shipment_id", ids);
-  const existingIds = new Set((existing ?? []).map(e => e.related_shipment_id));
-  return (data ?? []).filter(s => !existingIds.has(s.id));
+    .in("related_shipment_id", ids)
+    .neq("status", "cancelled");
+
+  const apMap: Record<string, { invoices_count: number; pending_count: number; total_captured: number }> = {};
+  for (const row of (ap ?? [])) {
+    const sid = row.related_shipment_id!;
+    if (!apMap[sid]) apMap[sid] = { invoices_count: 0, pending_count: 0, total_captured: 0 };
+    if      (row.document_type === "invoice")      apMap[sid].invoices_count++;
+    else if (row.document_type === "cost_pending") apMap[sid].pending_count++;
+    apMap[sid].total_captured += Number(row.total ?? 0);
+  }
+
+  return (shipments ?? []).map(s => ({
+    ...s,
+    invoices_count: apMap[s.id]?.invoices_count ?? 0,
+    pending_count:  apMap[s.id]?.pending_count  ?? 0,
+    total_captured: apMap[s.id]?.total_captured ?? 0,
+  }));
 }
 
 export async function fetchPendingFromPOs(companyId: string) {
@@ -204,19 +235,27 @@ export async function createAP(companyId: string, userId: string, payload: {
   due_date?:             string;
   expense_category?:     string;
   currency:              string;
+  has_tax?:              boolean;          // ← NUEVO: si false, total = subtotal (sin IVA)
   subtotal:              number;
   tax_amount:            number;
   total:                 number;
   related_po_id?:        string;
   related_shipment_id?:  string;
   notes?:                string;
+  xml_url?:              string;           // ← NUEVO
+  pdf_url?:              string;           // ← NUEVO
 }): Promise<AccountPayable> {
   const { data, error } = await supabase
     .from("accounts_payable")
     .insert({
-      company_id: companyId, created_by: userId,
-      balance: payload.total, status: "pending", payment_status: "not_scheduled",
+      company_id: companyId,
+      created_by: userId,
       ...payload,
+      // Después del spread para no ser sobreescritos por payload:
+      has_tax:        payload.has_tax ?? (payload.currency === "MXN"),
+      balance:        payload.total,
+      status:         "pending",
+      payment_status: "not_scheduled",
     })
     .select("*").single();
   if (error) throw new Error(error.message);
@@ -359,4 +398,65 @@ export async function fetchAllProvidersForView(companyId: string): Promise<Suppl
   }
 
   return result.sort((a, b) => b.balance - a.balance);
+}
+
+// ── CONVERSIÓN COST_PENDING → INVOICE ─────────────────────────
+/**
+ * Convierte un costo provisional (cost_pending) en factura recibida (invoice).
+ * Caso típico: primero se registra el monto estimado del proveedor, después
+ * llega el CFDI con número de folio + fecha real.
+ * Mantiene los pagos previos si los hubiera y recalcula balance/status.
+ */
+export async function convertCostPendingToInvoice(
+  companyId: string,
+  costId:    string,
+  invoice: {
+    document_number: string;
+    document_date:   string;
+    due_date?:       string | null;
+    has_tax?:        boolean;
+    subtotal:        number;
+    tax_amount:      number;
+    total:           number;
+    xml_url?:        string | null;
+    pdf_url?:        string | null;
+    notes?:          string | null;
+  },
+): Promise<void> {
+  const { data: current, error: e1 } = await supabase
+    .from("accounts_payable")
+    .select("document_type, paid_amount, currency")
+    .eq("id", costId)
+    .eq("company_id", companyId)
+    .single();
+  if (e1 || !current) throw new Error("Costo no encontrado");
+  if (current.document_type !== "cost_pending") {
+    throw new Error("Este registro ya no es un costo provisional");
+  }
+
+  const paid    = Number(current.paid_amount ?? 0);
+  const balance = Math.max(0, invoice.total - paid);
+  const status  = balance <= 0.01 ? "paid"
+                : paid > 0        ? "partial"
+                : "pending";
+
+  const { error } = await supabase.from("accounts_payable").update({
+    document_type:   "invoice",
+    document_number: invoice.document_number,
+    document_date:   invoice.document_date,
+    due_date:        invoice.due_date ?? null,
+    has_tax:         invoice.has_tax  ?? (current.currency === "MXN"),
+    subtotal:        invoice.subtotal,
+    tax_amount:      invoice.tax_amount,
+    total:           invoice.total,
+    balance,
+    status,
+    xml_url:         invoice.xml_url ?? null,
+    pdf_url:         invoice.pdf_url ?? null,
+    notes:           invoice.notes   ?? null,
+    updated_at:      new Date().toISOString(),
+  })
+  .eq("id", costId)
+  .eq("company_id", companyId);
+  if (error) throw new Error(error.message);
 }

@@ -85,6 +85,7 @@ export type Shipment = {
   incoterm?:            string | null;
   provider_id?:         string | null;
   transport_unit_id?:   string | null;
+  requires_supplier_invoice?: boolean;  // false para consultoría/seguro · true por default
   // Moneda de referencia (campo BD — puede ser moneda principal del embarque)
   currency:             string;
   subtotal:             number;
