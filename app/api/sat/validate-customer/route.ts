@@ -61,17 +61,41 @@ function serverError(message: string, status = 500) {
   );
 }
 
-// ── Obtener API key de Facturapi para la empresa ─────────────────────
-// Cada empresa configura su propia org Facturapi en Settings → Empresa.
+// ════════════════════════════════════════════════════════════════════
+// Obtener API key de Facturapi (modo BD ó modo sistema)
+// ════════════════════════════════════════════════════════════════════
+// Hay dos formas válidas de configurar Facturapi en Mobility OS:
+//
+//   1) Por empresa (BD): cada tenant define su propia API key en
+//      company_settings.facturapi_api_key. Útil para multi-empresa
+//      donde cada una tiene su propia cuenta Facturapi.
+//
+//   2) A nivel sistema (.env): credenciales globales en variables de
+//      entorno del servidor. Útil cuando el SaaS opera con una sola
+//      cuenta Facturapi para todos los tenants (caso Mobility Marine
+//      hoy).
+//
+// Prioridad: BD primero. Si la empresa NO tiene credenciales propias,
+// caemos a la configuración del sistema. Solo si ambas faltan, error.
+// ════════════════════════════════════════════════════════════════════
 async function getCompanyFacturapiKey(companyId: string): Promise<string | null> {
+  // 1) Intentar credenciales específicas de la empresa
   const { data, error } = await supabaseAdmin
     .from("company_settings")
     .select("facturapi_api_key")
     .eq("company_id", companyId)
     .maybeSingle();
 
-  if (error || !data) return null;
-  return (data as { facturapi_api_key: string | null }).facturapi_api_key ?? null;
+  if (!error && data) {
+    const dbKey = (data as { facturapi_api_key: string | null }).facturapi_api_key;
+    if (dbKey && dbKey.trim()) return dbKey.trim();
+  }
+
+  // 2) Fallback: variables de entorno del sistema
+  const envKey = process.env.FACTURAPI_API_KEY?.trim();
+  if (envKey) return envKey;
+
+  return null;
 }
 
 // ── Persistir resultado de validación en BD ───────────────────────────
@@ -128,15 +152,15 @@ export async function POST(req: NextRequest) {
   // 3. Obtener API key Facturapi de la empresa
   const apiKey = await getCompanyFacturapiKey(companyId);
   if (!apiKey) {
-    return NextResponse.json(
-      {
-        ok:     false,
-        status: "error",
-        error:  "Esta empresa no tiene configurada su cuenta de Facturapi. Ve a Settings → Empresa y completa la configuración antes de validar partners con SAT.",
-      },
-      { status: 400 },
-    );
-  }
+      return NextResponse.json(
+        {
+          ok: false,
+          status: "error",
+          error: "La cuenta de Facturapi de tu empresa (emisor) no está configurada. Ve a Settings → Fiscal y CFDI → Configuración PAC para activarla. Esto NO afecta al partner que estás validando.",
+        },
+        { status: 400 },
+      );
+    }
 
   // 4. Si partnerId presente, obtener facturapi_customer_id existente
   let existingFacturapiId: string | null = null;
