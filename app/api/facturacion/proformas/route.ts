@@ -102,16 +102,34 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No tienes permiso para crear proformas" }, { status: 403 });
     }
 
-    // ─── 4. Obtener datos de la empresa para issuer ───
-    const { data: company, error: compErr } = await supabase
-      .from("companies")
-      .select("id, name, rfc, fiscal_regime")
-      .eq("id", payload.company_id)
-      .maybeSingle();
+    // ════════════════════════════════════════════════════════════════
+    // Obtener datos fiscales del emisor desde company_settings
+    // ════════════════════════════════════════════════════════════════
+    // Los datos fiscales (RFC, régimen, razón social) son administrados
+    // desde Settings → Empresa → Identidad fiscal y se guardan en
+    // company_settings, NO en companies. Esta es la fuente de verdad.
+    // La tabla companies solo guarda metadatos generales (name, owner).
+    // ════════════════════════════════════════════════════════════════
+    const [companyRes, settingsRes] = await Promise.all([
+      supabase.from("companies").select("id, name").eq("id", payload.company_id).maybeSingle(),
+      supabase.from("company_settings").select("fiscal_rfc, fiscal_name, fiscal_regime, fiscal_zip").eq("company_id", payload.company_id).maybeSingle(),
+    ]);
 
-    if (compErr || !company) {
+    if (companyRes.error || !companyRes.data) {
       return NextResponse.json({ error: "Empresa no encontrada" }, { status: 404 });
     }
+    if (!settingsRes.data?.fiscal_rfc) {
+      return NextResponse.json({
+        error: "Datos fiscales del emisor incompletos. Configúralos en Settings → Empresa → Identidad fiscal."
+      }, { status: 400 });
+    }
+
+    const company = {
+      id:             companyRes.data.id,
+      name:           settingsRes.data.fiscal_name ?? companyRes.data.name,
+      rfc:            settingsRes.data.fiscal_rfc,
+      fiscal_regime:  settingsRes.data.fiscal_regime,
+    };
 
     // ─── 5. Insertar la proforma en cfdi_documents ───
     const { data: cfdi, error: cfdiErr } = await supabase
