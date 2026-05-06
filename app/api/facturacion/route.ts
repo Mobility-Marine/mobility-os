@@ -305,7 +305,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, cfdi: saved, invoice });
     }
 
-    // ── CANCELAR CFDI ─────────────────────────────────────────────────────────
     if (action === "cancelar") {
       const { cfdi_id, facturapi_id, motive, substitution } = payload;
 
@@ -324,15 +323,49 @@ export async function POST(req: NextRequest) {
 
       await facturapi(apiKey, `/invoices/${facturapi_id}?${queryParts.join("&")}`, "DELETE", undefined, effectiveOrgId);
 
+      // ════════════════════════════════════════════════════════════════
+      // Actualizar el CFDI en BD
+      // ════════════════════════════════════════════════════════════════
+      // cancellation_status refleja qué dice el SAT:
+      //   - motivo "01" (con relación): "pending" — espera 72h del receptor
+      //   - motivos "02", "03", "04":  "accepted" — cancelación inmediata sin aceptación
       await supabaseAdmin
         .from("cfdi_documents")
         .update({
           status:                         "cancelled",
+          cancellation_status:            motive === "01" ? "pending" : "accepted",
           cancellation_motive:            motive,
           cancellation_substitution_uuid: substitution ?? null,
           updated_at:                     new Date().toISOString(),
         })
         .eq("id", cfdi_id)
+        .eq("company_id", companyId);
+
+      // ════════════════════════════════════════════════════════════════
+      // Liberar shipments y orders ligados a esta factura cancelada
+      // ════════════════════════════════════════════════════════════════
+      // El panel "Servicios pendientes de facturar" filtra por:
+      //   status = 'delivered' AND invoice_id IS NULL
+      // Si no limpiamos invoice_id, el shipment queda huérfano apuntando a
+      // la factura cancelada y nunca vuelve a aparecer en el panel.
+      await supabaseAdmin
+        .from("shipments")
+        .update({
+          invoice_id: null,
+          status:     "delivered",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("invoice_id", cfdi_id)
+        .eq("company_id", companyId);
+
+      await supabaseAdmin
+        .from("orders")
+        .update({
+          invoice_id: null,
+          status:     "delivered",
+          updated_at: new Date().toISOString(),
+        })
+        .eq("invoice_id", cfdi_id)
         .eq("company_id", companyId);
 
       return NextResponse.json({ success: true });
