@@ -62,24 +62,26 @@ function serverError(message: string, status = 500) {
 }
 
 // ════════════════════════════════════════════════════════════════════
-// Obtener API key de Facturapi (modo BD ó modo sistema)
+// Obtener API key de Facturapi (multi-tenant ó modo Mobility Marine)
 // ════════════════════════════════════════════════════════════════════
-// Hay dos formas válidas de configurar Facturapi en Mobility OS:
+// Prioridad de resolución:
 //
-//   1) Por empresa (BD): cada tenant define su propia API key en
-//      company_settings.facturapi_api_key. Útil para multi-empresa
-//      donde cada una tiene su propia cuenta Facturapi.
+//   1) company_settings.facturapi_api_key
+//      → Para empresas registradas en Mobility OS como SaaS multi-tenant.
+//        Cada empresa tiene su propia organización Facturapi creada
+//        automáticamente al registrarse (vía FACTURAPI_USER_KEY).
 //
-//   2) A nivel sistema (.env): credenciales globales en variables de
-//      entorno del servidor. Útil cuando el SaaS opera con una sola
-//      cuenta Facturapi para todos los tenants (caso Mobility Marine
-//      hoy).
+//   2) process.env.FACTURAPI_LIVE_KEY
+//      → Para Mobility Marine (cuenta anfitriona del SaaS, timbre directo
+//        con su RFC propio). Es el caso histórico inicial.
 //
-// Prioridad: BD primero. Si la empresa NO tiene credenciales propias,
-// caemos a la configuración del sistema. Solo si ambas faltan, error.
+//   3) process.env.FACTURAPI_SECRET_KEY
+//      → Test key para entornos de desarrollo (fallback final).
+//
+// Solo si los 3 fallan, el endpoint responde con error de configuración.
 // ════════════════════════════════════════════════════════════════════
 async function getCompanyFacturapiKey(companyId: string): Promise<string | null> {
-  // 1) Intentar credenciales específicas de la empresa
+  // 1) API key específica de la empresa (multi-tenant)
   const { data, error } = await supabaseAdmin
     .from("company_settings")
     .select("facturapi_api_key")
@@ -91,9 +93,13 @@ async function getCompanyFacturapiKey(companyId: string): Promise<string | null>
     if (dbKey && dbKey.trim()) return dbKey.trim();
   }
 
-  // 2) Fallback: variables de entorno del sistema
-  const envKey = process.env.FACTURAPI_API_KEY?.trim();
-  if (envKey) return envKey;
+  // 2) Cuenta anfitriona Mobility Marine (LIVE)
+  const liveKey = process.env.FACTURAPI_LIVE_KEY?.trim();
+  if (liveKey) return liveKey;
+
+  // 3) Test key (desarrollo)
+  const testKey = process.env.FACTURAPI_SECRET_KEY?.trim();
+  if (testKey) return testKey;
 
   return null;
 }
