@@ -308,10 +308,21 @@ export async function POST(req: NextRequest) {
     // ── CANCELAR CFDI ─────────────────────────────────────────────────────────
     if (action === "cancelar") {
       const { cfdi_id, facturapi_id, motive, substitution } = payload;
-      const cancelPayload: any = { motive };
-      if (substitution) cancelPayload.substitution_id = substitution;
 
-      await facturapi(apiKey, `/invoices/${facturapi_id}/cancel`, "DELETE", cancelPayload, effectiveOrgId);
+      // ════════════════════════════════════════════════════════════════
+      // Cancelación CFDI vía Facturapi v2
+      // ════════════════════════════════════════════════════════════════
+      // Formato oficial (https://docs.facturapi.io/api):
+      //   DELETE /v2/invoices/{id}?motive={motivo}&substitution={uuid}
+      //
+      // - motive y substitution van como QUERY STRING, no como body JSON
+      // - NO hay subpath /cancel — el DELETE va al recurso raíz
+      // - substitution solo aplica para motivo "01" (con relación)
+      // ════════════════════════════════════════════════════════════════
+      const queryParts: string[] = [`motive=${encodeURIComponent(motive)}`];
+      if (substitution) queryParts.push(`substitution=${encodeURIComponent(substitution)}`);
+
+      await facturapi(apiKey, `/invoices/${facturapi_id}?${queryParts.join("&")}`, "DELETE", undefined, effectiveOrgId);
 
       await supabaseAdmin
         .from("cfdi_documents")
