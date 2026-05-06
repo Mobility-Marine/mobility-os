@@ -9,6 +9,12 @@ import type {
   CreateBillingConceptPayload,
 } from "../types/quotations.types";
 import type { ShipmentServiceType } from "../../../logistica/embarques/types/shipments.types";
+import {
+  mapServiceSubtypeToShipmentType,
+  extractRouteFromGeneralInfo,
+  extractCargoFromGeneralInfo,
+  LOGISTICS_SHIPMENT_TYPES,
+} from "@/lib/logistics/quotationToShipment";
 
 // ── CONSECUTIVO ───────────────────────────────────────────────
 export async function generateQuoteNumber(
@@ -410,44 +416,9 @@ export async function upsertCompanySettings(
   if (error) throw new Error(error.message);
 }
 
-// ── HELPER: detectar tipo de servicio desde líneas de cotización ──
-const LOGISTICS_SERVICE_TYPES = [
-  "terrestre", "aereo", "maritimo", "almacenaje", "aduanal",
-  "terrestre_mx", "terrestre_usa", "multimodal",
-];
-
-function detectShipmentServiceType(
-  quotServices: any[]
-): ShipmentServiceType {
-  if (!quotServices.length) return "consultoria";
-
-  // Buscar si hay algún servicio logístico
-  const hasLogistics = quotServices.some((s) =>
-    LOGISTICS_SERVICE_TYPES.includes(s.service_type?.toLowerCase() ?? "")
-  );
-  if (!hasLogistics) return "consultoria";
-
-  // Determinar el tipo logístico predominante
-  const typeMap: Record<string, ShipmentServiceType> = {
-    terrestre:    "terrestre_mx",
-    terrestre_mx: "terrestre_mx",
-    terrestre_usa:"terrestre_usa",
-    aereo:        "aereo",
-    maritimo:     "maritimo",
-    almacenaje:   "almacenaje",
-    aduanal:      "aduanal",
-    multimodal:   "multimodal",
-  };
-
-  for (const svc of quotServices) {
-    const mapped = typeMap[svc.service_type?.toLowerCase() ?? ""];
-    if (mapped) return mapped;
-  }
-
-  return "terrestre_mx";
-}
-
 // ── ACEPTAR COTIZACIÓN ────────────────────────────────────────
+// El mapeo de service_subtype → service_type vive en
+// lib/logistics/quotationToShipment.ts (compartido con ShipmentCreateDrawer)
 export async function acceptQuotation(
   companyId: string, quotation: Quotation, userId: string,
   deliveryInfo?: {
@@ -554,10 +525,19 @@ export async function acceptQuotation(
   } else {
     // ── Cotización de servicios → crear Embarque/Servicio ─────
 
-    // 1. Leer las líneas de servicios para detectar el tipo
-    const quotServices = await fetchQuotationServices(quotation.id);
-    const serviceType  = detectShipmentServiceType(quotServices);
-    const isLogistics  = LOGISTICS_SERVICE_TYPES.includes(serviceType);
+    // 1. Extraer datos derivados de la cotización (ruta, mercancía, tipo)
+    const generalInfo = (quotation as any).general_info ?? null;
+    const route       = extractRouteFromGeneralInfo(generalInfo);
+    const cargo       = extractCargoFromGeneralInfo(generalInfo);
+    const subtype     = (quotation as any).service_subtype ?? null;
+    const serviceType = mapServiceSubtypeToShipmentType(
+      subtype, route.origin, route.destination,
+    );
+    const isLogistics = LOGISTICS_SHIPMENT_TYPES.includes(serviceType);
+
+    // Servicios de consultoría/seguro NO requieren factura de proveedor
+    const requiresSupplierInvoice =
+      serviceType !== "consultoria" && serviceType !== "seguro";
 
     // 2. Generar referencia
     const { generateShipmentReference } = await import(
@@ -566,7 +546,7 @@ export async function acceptQuotation(
     const clientName = (quotation as any).client?.name ?? quotation.client_name ?? "GEN";
     const reference  = await generateShipmentReference(companyId, clientName, serviceType);
 
-    // 3. Crear el registro
+    // 3. Crear el embarque con TODOS los datos derivados de la cotización
     const { data: shipment, error } = await supabase
       .from("shipments")
       .insert({
@@ -576,19 +556,32 @@ export async function acceptQuotation(
         status:        "draft",
         reference,
         service_type:  serviceType,
-        // Campos logísticos — solo si aplica
-        origin:        isLogistics ? (quotation.origin      ?? null) : null,
-        destination:   isLogistics ? (quotation.destination ?? null) : null,
-        incoterm:      isLogistics ? (quotation.incoterm    ?? null) : null,
-        // Financiero
-        total:         quotation.total,
+        requires_supplier_invoice: requiresSupplierInvoice,
+        // Ruta — extraída de general_info.rutas[0] (no de quotation.origin/destination que están NULL)
+        origin:              isLogistics ? route.origin              : null,
+        destination:         isLogistics ? route.destination         : null,
+        origin_country:      isLogistics ? route.origin_country      : null,
+        destination_country: isLogistics ? route.destination_country : null,
+        incoterm:            isLogistics ? (route.incoterm ?? quotation.incoterm ?? null) : null,
+        // Datos físicos de la mercancía (visibles para logística sin pedir info al área comercial)
+        cargo_merchandise:    cargo.cargo_merchandise,
+        cargo_pieces:         cargo.cargo_pieces,
+        cargo_weight_kg:      cargo.cargo_weight_kg,
+        cargo_length_cm:      cargo.cargo_length_cm,
+        cargo_width_cm:       cargo.cargo_width_cm,
+        cargo_height_cm:      cargo.cargo_height_cm,
+        cargo_volume_m3:      cargo.cargo_volume_m3,
+        cargo_value:          cargo.cargo_value,
+        cargo_value_currency: cargo.cargo_value_currency,
+        // Financiero — copia 1:1 (respeta tax_rate=0 si la cotización es sin IVA)
+        currency:      quotation.currency,
         subtotal:      quotation.subtotal   ?? quotation.total,
         tax_rate:      quotation.tax_rate   ?? 16,
         tax_amount:    quotation.tax_amount ?? 0,
+        total:         quotation.total,
         provider_cost: 0,
         provider_currency: quotation.currency ?? "USD",
         profit:        quotation.total,
-        currency:      quotation.currency,
         notes:         quotation.notes      ?? null,
         created_by:    userId,
       })
@@ -596,8 +589,38 @@ export async function acceptQuotation(
       .single();
 
     if (!error && shipment) {
-      await supabase.from("quotations").update({ shipment_id: shipment.id }).eq("id", quotation.id);
+      // 4. Copiar quotation_services → shipment_services (CON tax_rate)
+      //    Sin esto, la pestaña Servicios y los totales del workspace
+      //    quedaban vacíos en los embarques nuevos.
+      const quotServices = await fetchQuotationServices(quotation.id);
+      if (quotServices.length > 0) {
+        await supabase.from("shipment_services").insert(
+          quotServices.map((qs: any, idx: number) => ({
+            company_id:   companyId,
+            shipment_id:  shipment.id,
+            sort_order:   qs.sort_order ?? idx,
+            service_type: qs.service_type,
+            description:  qs.description,
+            origin:       qs.origin       ?? null,
+            destination:  qs.destination  ?? null,
+            incoterm:     qs.incoterm     ?? null,
+            transit_time: qs.transit_time ?? null,
+            currency:     qs.currency     ?? quotation.currency ?? "USD",
+            price:        qs.price        ?? 0,
+            cost:         0,
+            tax_rate:     qs.tax_rate     ?? 16,
+            notes:        qs.notes        ?? null,
+            product_id:   qs.product_id   ?? null,
+          })),
+        );
+      }
 
+      // 5. Vincular cotización ↔ embarque
+      await supabase.from("quotations")
+        .update({ shipment_id: shipment.id })
+        .eq("id", quotation.id);
+
+      // 6. Timeline
       const eventTitle = isLogistics
         ? "Cotización aceptada → Embarque creado"
         : "Cotización aceptada → Servicio de consultoría creado";

@@ -7,6 +7,11 @@ import type { Shipment, ShipmentServiceType } from "../types/shipments.types";
 import { SHIPMENT_SERVICE_TYPES, SERVICE_TYPE_CONFIG, SERVICE_TYPE_CATEGORY, INCOTERMS, CURRENCIES } from "../types/shipments.types";
 import { fetchAcceptedServiceQuotations, fetchQuotationServices, fetchAvgPrice } from "../services/shipments.service";
 import { supabase } from "@/lib/supabaseClient";
+import {
+  mapServiceSubtypeToShipmentType,
+  extractRouteFromGeneralInfo,
+  extractCargoFromGeneralInfo,
+} from "@/lib/logistics/quotationToShipment";
 
 type CreateMode = "quotation" | "direct";
 type Props = {
@@ -111,6 +116,32 @@ export default function ShipmentCreateDrawer({ open, onClose, onCreated }: Props
       .then(setAvgPrice);
   }, [companyId, form.service_type, form.origin, form.destination, isLogistics]);
 
+  // Pre-poblar form cuando se selecciona una cotización (modo "quotation")
+  // Usa los helpers compartidos para mapear service_subtype, ruta y mercancía.
+  useEffect(() => {
+    if (!selectedQuot) return;
+    const generalInfo = (selectedQuot as any).general_info ?? null;
+    const route       = extractRouteFromGeneralInfo(generalInfo);
+    const subtype     = (selectedQuot as any).service_subtype ?? null;
+    const newType     = mapServiceSubtypeToShipmentType(
+      subtype, route.origin, route.destination,
+    );
+    const baseAmount = (selectedQuot as any).subtotal ?? selectedQuot.total ?? 0;
+
+    setForm((prev) => ({
+      ...prev,
+      service_type:        newType,
+      origin:              route.origin              ?? "",
+      destination:         route.destination         ?? "",
+      origin_country:      route.origin_country      ?? "",
+      destination_country: route.destination_country ?? "",
+      incoterm:            route.incoterm ?? (selectedQuot as any).incoterm ?? "",
+      currency:            selectedQuot.currency ?? "USD",
+      total:               String(baseAmount),
+      notes:               (selectedQuot as any).notes ?? prev.notes ?? "",
+    }));
+  }, [selectedQuot]);
+
   function handleClose() {
     setMode("direct"); setSelectedQuot(null); setSelectedClient(null);
     setQuotSearch(""); setClientSearch(""); setAvgPrice(null);
@@ -126,8 +157,35 @@ export default function ShipmentCreateDrawer({ open, onClose, onCreated }: Props
   async function handleCreate() {
     if (!companyId || !user) return;
     const clientName = selectedClient?.name ?? selectedQuot?.client?.name ?? "GEN";
-    const total      = parseFloat(form.total) || 0;
+    const subtotal   = parseFloat(form.total) || 0;
     const provCost   = parseFloat(form.provider_cost) || 0;
+
+    // tax_rate: viene de la cotización (respeta 0% en USD/EUR de comercio exterior)
+    // En modo directo: USD/EUR → 0%, MXN → 16% (por defecto típico logístico).
+    const taxRate =
+      mode === "quotation" && selectedQuot
+        ? Number((selectedQuot as any).tax_rate ?? 16)
+        : (form.currency === "USD" || form.currency === "EUR" ? 0 : 16);
+    const taxAmount    = subtotal * (taxRate / 100);
+    const totalWithTax = subtotal + taxAmount;
+
+    // Datos físicos de la mercancía (solo si viene de cotización)
+    let cargoData: any = {};
+    if (mode === "quotation" && selectedQuot) {
+      const cargo = extractCargoFromGeneralInfo((selectedQuot as any).general_info);
+      cargoData = {
+        cargo_merchandise:    cargo.cargo_merchandise,
+        cargo_pieces:         cargo.cargo_pieces,
+        cargo_weight_kg:      cargo.cargo_weight_kg,
+        cargo_length_cm:      cargo.cargo_length_cm,
+        cargo_width_cm:       cargo.cargo_width_cm,
+        cargo_height_cm:      cargo.cargo_height_cm,
+        cargo_volume_m3:      cargo.cargo_volume_m3,
+        cargo_value:          cargo.cargo_value,
+        cargo_value_currency: cargo.cargo_value_currency,
+      };
+    }
+
     setSaving(true); setError(null);
     try {
       const { createShipment } = await import("../services/shipments.service");
@@ -136,23 +194,57 @@ export default function ShipmentCreateDrawer({ open, onClose, onCreated }: Props
         quotation_id:        selectedQuot?.id                              ?? null,
         client_id:           selectedClient?.id ?? selectedQuot?.client_id ?? null,
         service_type:        form.service_type,
-        origin:              isLogistics ? (form.origin       || null) : null,
-        destination:         isLogistics ? (form.destination  || null) : null,
-        origin_country:      isLogistics ? (form.origin_country  || "México") : null,
-        destination_country: isLogistics ? (form.destination_country || "México") : null,
-        incoterm:            isLogistics ? (form.incoterm     || null) : null,
+        requires_supplier_invoice:
+          form.service_type !== "consultoria" && form.service_type !== "seguro",
+        origin:              isLogistics ? (form.origin              || null) : null,
+        destination:         isLogistics ? (form.destination         || null) : null,
+        origin_country:      isLogistics ? (form.origin_country      || null) : null,
+        destination_country: isLogistics ? (form.destination_country || null) : null,
+        incoterm:            isLogistics ? (form.incoterm            || null) : null,
         currency:            form.currency,
-        subtotal:            total,
-        tax_rate:            16,
-        tax_amount:          total * 0.16,
-        total:               total * 1.16,
+        subtotal,
+        tax_rate:            taxRate,
+        tax_amount:          taxAmount,
+        total:               totalWithTax,
         provider_cost:       provCost,
         provider_currency:   form.currency,
-        profit:              total * 1.16 - provCost,
+        profit:              totalWithTax - provCost,
         pickup_date:         isLogistics ? (form.pickup_date        || null) : null,
         estimated_delivery:  isLogistics ? (form.estimated_delivery || null) : null,
         notes:               form.notes || null,
+        ...cargoData,
       });
+
+      // Si viene de cotización: copiar quotation_services → shipment_services
+      // (con tax_rate por línea) + vincular shipment_id en la cotización
+      if (mode === "quotation" && selectedQuot) {
+        const quotServices = await fetchQuotationServices(selectedQuot.id);
+        if (quotServices.length > 0) {
+          await supabase.from("shipment_services").insert(
+            quotServices.map((qs: any, idx: number) => ({
+              company_id:   companyId,
+              shipment_id:  shipment.id,
+              sort_order:   qs.sort_order ?? idx,
+              service_type: qs.service_type,
+              description:  qs.description,
+              origin:       qs.origin       ?? null,
+              destination:  qs.destination  ?? null,
+              incoterm:     qs.incoterm     ?? null,
+              transit_time: qs.transit_time ?? null,
+              currency:     qs.currency     ?? form.currency ?? "USD",
+              price:        qs.price        ?? 0,
+              cost:         0,
+              tax_rate:     qs.tax_rate     ?? 16,
+              notes:        qs.notes        ?? null,
+              product_id:   qs.product_id   ?? null,
+            })),
+          );
+        }
+        await supabase.from("quotations")
+          .update({ shipment_id: shipment.id })
+          .eq("id", selectedQuot.id);
+      }
+
       onCreated(shipment);
       handleClose();
     } catch (e: any) {

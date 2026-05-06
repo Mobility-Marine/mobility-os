@@ -43,9 +43,11 @@ export default function ShipmentCopilot({ shipment }: Props) {
     ? shipment.provider_cost
     : apProviders.reduce((s, ap) => s + Number(ap.total ?? 0), 0);
 
-  const totalRevForMargin = shipment.totals_by_currency
-    ? Object.values(shipment.totals_by_currency).reduce((s, v) => s + v.total, 0)
-    : (shipment.total ?? 0);
+  // Guard contra {} (objeto vacío evalúa truthy → reduce devuelve 0 erróneamente)
+  const totalRevForMargin =
+    shipment.totals_by_currency && Object.keys(shipment.totals_by_currency).length > 0
+      ? Object.values(shipment.totals_by_currency).reduce((s, v) => s + v.total, 0)
+      : (shipment.total ?? 0);
 
   const realProfit = totalRevForMargin - realCost;
   const profitPct  = totalRevForMargin > 0 ? (realProfit / totalRevForMargin) * 100 : 0;
@@ -188,6 +190,36 @@ export default function ShipmentCopilot({ shipment }: Props) {
       {isReadyToInvoice && (
         <div style={{ padding: "8px 10px", borderRadius: "var(--radius-sm)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", fontSize: "11px", color: "var(--color-success-text)", fontWeight: 700 }}>
           ⚡ {tl.readyToInvoice ?? "Listo para facturar"} — Ve a Finanzas
+        </div>
+      )}
+
+      {/* MERCANCÍA — solo logística cuando hay datos */}
+      {!isConsulting && Boolean(
+        shipment.cargo_merchandise || shipment.cargo_weight_kg ||
+        shipment.cargo_pieces      || shipment.cargo_volume_m3
+      ) && (
+        <div>
+          <div style={{ fontSize: "10px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "5px" }}>
+            📦 Mercancía
+          </div>
+          <div style={{ padding: "8px 10px", borderRadius: "var(--radius-sm)", background: "var(--color-bg-subtle)", display: "grid", gap: "5px" }}>
+            {shipment.cargo_merchandise && (
+              <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-primary)" }}>
+                {shipment.cargo_merchandise}
+              </div>
+            )}
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px 10px", fontSize: "10px", color: "var(--color-text-muted)" }}>
+              {shipment.cargo_pieces    && <span>📦 {shipment.cargo_pieces} bulto{shipment.cargo_pieces !== 1 ? "s" : ""}</span>}
+              {shipment.cargo_weight_kg && <span>⚖️ {shipment.cargo_weight_kg} kg</span>}
+              {shipment.cargo_volume_m3 && <span>📏 {shipment.cargo_volume_m3} m³</span>}
+              {shipment.cargo_length_cm && shipment.cargo_width_cm && shipment.cargo_height_cm && (
+                <span>📐 {shipment.cargo_length_cm}×{shipment.cargo_width_cm}×{shipment.cargo_height_cm} cm</span>
+              )}
+              {shipment.cargo_value && (
+                <span>💵 {shipment.cargo_value_currency ?? shipment.currency} ${Number(shipment.cargo_value).toLocaleString(locale, { minimumFractionDigits: 2 })}</span>
+              )}
+            </div>
+          </div>
         </div>
       )}
 

@@ -263,10 +263,12 @@ useEffect(() => {
     { key: "timeline",  label: tl.tabTimeline  ?? "Historial" },
   ];
 
-  // profitPct — usa totals_by_currency si disponible, si no el campo total legacy
-  const totalRevForMargin = shipment.totals_by_currency
-    ? Object.values(shipment.totals_by_currency).reduce((s, v) => s + v.total, 0)
-    : (shipment.total ?? 0);
+  // profitPct — usa totals_by_currency si disponible, si no el campo total legacy.
+  // Guard contra {} (objeto vacío evalúa truthy → reduce devuelve 0 erróneamente).
+  const totalRevForMargin =
+    shipment.totals_by_currency && Object.keys(shipment.totals_by_currency).length > 0
+      ? Object.values(shipment.totals_by_currency).reduce((s, v) => s + v.total, 0)
+      : (shipment.total ?? 0);
   const profitPct = totalRevForMargin > 0 ? ((shipment.profit ?? 0) / totalRevForMargin) * 100 : 0;
 
   return (
@@ -532,10 +534,10 @@ useEffect(() => {
 
                 {/* Campos solo logística */}
                 {!isConsulting && ([
-                  { k: "origin",              label: "Origen",              type: "text" },
-                  { k: "destination",         label: "Destino",             type: "text" },
-                  { k: "origin_country",      label: "País origen",         type: "text" },
-                  { k: "destination_country", label: "País destino",        type: "text" },
+                  { k: "origin",              label: "Lugar origen",        type: "text", placeholder: "Ciudad, Estado CP (ej. Monterey Park, CA 91754)" },
+                  { k: "destination",         label: "Lugar destino",       type: "text", placeholder: "Ciudad, Estado CP (ej. Laredo, TX 78045)" },
+                  { k: "origin_country",      label: "País origen",         type: "text", placeholder: "ej. México / Estados Unidos" },
+                  { k: "destination_country", label: "País destino",        type: "text", placeholder: "ej. México / Estados Unidos" },
                   { k: "pickup_date",         label: "Fecha recolección",   type: "date" },
                   { k: "estimated_delivery",  label: "Entrega estimada",    type: "date" },
                   { k: "tracking_number",     label: "No. rastreo",         type: "text" },
@@ -549,7 +551,7 @@ useEffect(() => {
                         {INCOTERMS.map((inc) => <option key={inc} value={inc}>{inc}</option>)}
                       </select>
                     ) : (
-                      <input type={f.type} value={(form as any)[f.k] ?? ""} onChange={(e) => setForm((p) => ({ ...p, [f.k]: f.type === "number" ? parseFloat(e.target.value) || 0 : e.target.value }))} style={INPUT} />
+                      <input type={f.type} placeholder={f.placeholder ?? ""} value={(form as any)[f.k] ?? ""} onChange={(e) => setForm((p) => ({ ...p, [f.k]: f.type === "number" ? parseFloat(e.target.value) || 0 : e.target.value }))} style={INPUT} />
                     )}
                   </div>
                 ))}
@@ -568,8 +570,8 @@ useEffect(() => {
                   { label: "Moneda",       value: shipment.currency },
                   // Campos logísticos
                   ...(!isConsulting ? [
-                    { label: "Origen",         value: shipment.origin },
-                    { label: "Destino",        value: shipment.destination },
+                    { label: "Lugar origen",   value: shipment.origin },
+                    { label: "Lugar destino",  value: shipment.destination },
                     { label: "País origen",    value: shipment.origin_country },
                     { label: "País destino",   value: shipment.destination_country },
                     { label: "Incoterm",       value: shipment.incoterm },
@@ -589,6 +591,41 @@ useEffect(() => {
                     <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)" }}>{r.value}</div>
                   </div>
                 ) : null)}
+              </div>
+            )}
+
+            {/* DATOS DE LA MERCANCÍA — solo logística cuando hay datos */}
+            {!isConsulting && !editing && Boolean(
+              shipment.cargo_merchandise || shipment.cargo_weight_kg ||
+              shipment.cargo_pieces      || shipment.cargo_volume_m3
+            ) && (
+              <div style={{ background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-md)", padding: "14px" }}>
+                <div style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "0.5px", marginBottom: "10px", display: "flex", alignItems: "center", gap: "6px" }}>
+                  📦 Datos de la mercancía
+                </div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "10px" }}>
+                  {[
+                    { label: "Mercancía",      value: shipment.cargo_merchandise, span: 2 },
+                    { label: "Bultos",         value: shipment.cargo_pieces ? `${shipment.cargo_pieces}` : null },
+                    { label: "Peso",           value: shipment.cargo_weight_kg ? `${shipment.cargo_weight_kg} kg` : null },
+                    { label: "Largo",          value: shipment.cargo_length_cm ? `${shipment.cargo_length_cm} cm` : null },
+                    { label: "Ancho",          value: shipment.cargo_width_cm  ? `${shipment.cargo_width_cm} cm`  : null },
+                    { label: "Alto",           value: shipment.cargo_height_cm ? `${shipment.cargo_height_cm} cm` : null },
+                    { label: "Volumen",        value: shipment.cargo_volume_m3 ? `${shipment.cargo_volume_m3} m³` : null },
+                    {
+                      label: "Valor comercial",
+                      value: shipment.cargo_value
+                        ? `${shipment.cargo_value_currency ?? shipment.currency} $${Number(shipment.cargo_value).toLocaleString(locale, { minimumFractionDigits: 2 })}`
+                        : null,
+                      span: 2,
+                    },
+                  ].map((r) => r.value ? (
+                    <div key={r.label} style={{ gridColumn: r.span ? `span ${r.span}` : "auto" }}>
+                      <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "2px", textTransform: "uppercase", letterSpacing: "0.5px" }}>{r.label}</div>
+                      <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)" }}>{r.value}</div>
+                    </div>
+                  ) : null)}
+                </div>
               </div>
             )}
 

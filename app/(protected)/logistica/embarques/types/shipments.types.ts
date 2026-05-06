@@ -110,6 +110,17 @@ export type Shipment = {
   created_by?:          string | null;
   created_at:           string;
   updated_at?:          string | null;
+  // ── Datos de la mercancía (copiados desde quotation.general_info al aceptar) ──
+  // Visibles para logística sin tener que pedir info al área comercial.
+  cargo_merchandise?:    string | null;  // ej. "Marcos de aluminio"
+  cargo_pieces?:         number | null;  // # de bultos
+  cargo_weight_kg?:      number | null;  // peso total en kg
+  cargo_length_cm?:      number | null;  // largo en cm
+  cargo_width_cm?:       number | null;  // ancho en cm
+  cargo_height_cm?:      number | null;  // alto en cm
+  cargo_volume_m3?:      number | null;  // volumen calculado en m³
+  cargo_value?:          number | null;  // valor comercial declarado
+  cargo_value_currency?: string | null;  // moneda del valor comercial
   // Joined
   client?:    { name: string; email?: string; rfc?: string } | null;
   quotation?: { quote_number: string } | null;
@@ -131,6 +142,7 @@ export type ShipmentService = {
   currency:      string;
   price:         number;
   cost:          number;
+  tax_rate?:     number;     // % de IVA por línea (default 16). 0=sin IVA, -1=exento.
   notes?:        string | null;
   created_at:    string;
 };

@@ -6,12 +6,22 @@ import type {
 } from "../types/shipments.types";
 
 // ── HELPERS MULTI-MONEDA ──────────────────────────────────────
+// Cada línea respeta su propio tax_rate (espejo de quotation_services):
+//   tax_rate = 16            → IVA estándar MX
+//   tax_rate = 0             → sin IVA (típico USD/EUR de comercio exterior)
+//   tax_rate = -1            → exento (no causa IVA, declarable en CFDI)
+//   tax_rate = null/undefined → fallback 16% (retrocompatibilidad)
 export function calcTotalsByCurrency(services: ShipmentService[]): CurrencyTotals {
   const byCurrency: CurrencyTotals = {};
   for (const svc of services) {
     const cur   = svc.currency ?? "USD";
     const price = Number(svc.price ?? 0);
-    const tax   = price * 0.16; // IVA estándar por línea
+    const rate  = svc.tax_rate;
+    const taxRate =
+      rate === null || rate === undefined ? 16 :
+      rate === -1                          ?  0 :
+      Number(rate);
+    const tax = price * (taxRate / 100);
     if (!byCurrency[cur]) byCurrency[cur] = { subtotal: 0, tax: 0, total: 0 };
     byCurrency[cur].subtotal += price;
     byCurrency[cur].tax      += tax;
@@ -318,25 +328,33 @@ export async function deleteShipmentService(
   await recalcShipmentTotals(companyId, shipmentId);
 }
 
-// Recalcula totales respetando moneda por línea
-// El campo total/subtotal de la tabla usa la moneda de referencia del embarque
+// Recalcula totales respetando moneda y tax_rate por línea.
+// El campo total/subtotal de la tabla usa la moneda de referencia del embarque.
+// Cada línea aporta su propio IVA según su tax_rate (no se aplica tasa global).
 async function recalcShipmentTotals(companyId: string, shipmentId: string): Promise<void> {
   const [{ data: shipment }, { data: services }] = await Promise.all([
-    supabase.from("shipments").select("currency, tax_rate").eq("id", shipmentId).single(),
-    supabase.from("shipment_services").select("price, cost, currency").eq("shipment_id", shipmentId),
+    supabase.from("shipments").select("currency").eq("id", shipmentId).single(),
+    supabase.from("shipment_services").select("price, cost, currency, tax_rate").eq("shipment_id", shipmentId),
   ]);
 
   const mainCurrency = shipment?.currency ?? "USD";
   const lines        = services ?? [];
 
-  // Subtotal solo de líneas en la moneda principal del embarque
-  const mainLines    = lines.filter(l => (l.currency ?? "USD") === mainCurrency);
-  const subtotal     = mainLines.reduce((s, l) => s + (l.price ?? 0), 0);
-  const taxAmt       = subtotal * 0.16;
-  const total        = subtotal + taxAmt;
+  // Subtotal e IVA solo de líneas en la moneda principal del embarque
+  const mainLines = lines.filter(l => (l.currency ?? "USD") === mainCurrency);
+  const subtotal  = mainLines.reduce((s, l) => s + Number(l.price ?? 0), 0);
+  const taxAmt    = mainLines.reduce((s, l) => {
+    const rate = (l as any).tax_rate;
+    const r =
+      rate === null || rate === undefined ? 16 :
+      rate === -1                          ?  0 :
+      Number(rate);
+    return s + Number(l.price ?? 0) * (r / 100);
+  }, 0);
+  const total = subtotal + taxAmt;
 
-  // Costo total en moneda del proveedor (puede ser distinta)
-  const providerCost = lines.reduce((s, l) => s + (l.cost ?? 0), 0);
+  // Costo total (sumado sin importar moneda — la moneda del proveedor puede diferir)
+  const providerCost = lines.reduce((s, l) => s + Number(l.cost ?? 0), 0);
   const profit       = total - providerCost;
 
   await supabase.from("shipments").update({
@@ -423,12 +441,20 @@ export function computeShipmentKPIs(shipments: Shipment[]): ShipmentKPIs {
 // ── ACCEPTED SERVICE QUOTATIONS ───────────────────────────────
 /**
  * Lista cotizaciones de servicios aceptadas listas para crear embarques.
- * El JOIN trae datos del cliente desde business_partners.
+ * Incluye general_info, service_subtype y datos financieros para que el
+ * drawer "Desde cotización" pueda pre-poblar el form correctamente.
  */
 export async function fetchAcceptedServiceQuotations(companyId: string) {
   const { data } = await supabase
     .from("quotations")
-    .select("id, quote_number, client_id, client_name, currency, total, accepted_at, client:business_partners!client_id(name, rfc, email)")
+    .select(`
+      id, quote_number, client_id, client_name, currency,
+      subtotal, tax_rate, tax_amount, total,
+      origin, destination, incoterm, notes,
+      service_subtype, general_info,
+      accepted_at, shipment_id,
+      client:business_partners!client_id(name, rfc, email)
+    `)
     .eq("company_id", companyId)
     .eq("type", "services")
     .eq("status", "accepted")
