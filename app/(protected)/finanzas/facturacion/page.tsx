@@ -22,6 +22,10 @@ import CFDINominaDrawer        from "./components/CFDINominaDrawer";
 import { CFDICartaPorteDrawer }                                from "./cartaporte/components/CFDICartaPorteDrawer";
 import { saveCartaPorteDraft, stampCartaPorte }                from "./cartaporte/services/carta_porte.service";
 import type { CFDIConCartaPorteData, CartaPorteParentType }   from "./cartaporte/types/carta_porte.types";
+import ComplementoSelectorModal, {
+  type ComplementoType,
+  type ComplementoSelectorContext,
+} from "./components/ComplementoSelectorModal";
 
 type Tab = "dashboard" | "emitir" | "historial" | "notas" | "calendario";
 
@@ -51,6 +55,12 @@ export default function FacturacionPage() {
   // ─── Carta Porte (Factura/Traslado con CCP 3.1) ───
   const [cartaPorteDrawerOpen, setCartaPorteDrawerOpen] = useState<CartaPorteParentType | null>(null);
   const [savingCartaPorte,     setSavingCartaPorte]     = useState(false);
+
+  // ─── Selector de complementos al facturar embarques/pedidos ───
+  // Cuando el usuario hace clic en "Facturar" desde el Dashboard, primero
+  // se le pregunta si el CFDI lleva complemento (Carta Porte o Comex).
+  const [complementoSelectorCtx, setComplementoSelectorCtx] = useState<ComplementoSelectorContext | null>(null);
+  const [pendingPreloadShipment, setPendingPreloadShipment] = useState<any | null>(null);
 
   // ─── Edición de Proforma ───
   // Cuando hay un editProformaId, el CFDICreateDrawer se abre en modo edición
@@ -189,7 +199,7 @@ export default function FacturacionPage() {
       return acc;
     }, {} as Record<string, any[]>);
 
-    setPreloadShipment({
+    const preloadPayload = {
       shipment_id:     sh.id,
       reference:       sh.reference,
       client_id:       sh.client_id,
@@ -203,8 +213,37 @@ export default function FacturacionPage() {
       services:        mappedServices,
       hasMultiCurrency,
       servicesByCurrency,
+    };
+
+    // Guardar payload pendiente y abrir el selector de complementos
+    setPendingPreloadShipment(preloadPayload);
+    setComplementoSelectorCtx({
+      source:     "shipment",
+      reference:  sh.reference,
+      clientName: (sh.client as any)?.legal_name ?? (sh.client as any)?.name ?? undefined,
+      currency:   sh.currency ?? "MXN",
+      total:      sh.total ?? 0,
     });
-    setSelectedCFDIType({ id: "factura" } as any);
+  }
+
+  // ─── Confirmación del selector de complementos ───
+  // Decide qué drawer abrir según la elección del usuario.
+  function handleConfirmComplemento(complemento: ComplementoType) {
+    const payload = pendingPreloadShipment;
+    setComplementoSelectorCtx(null); // cerrar el modal
+
+    if (complemento === "none") {
+      // Factura simple → CFDICreateDrawer (con preload)
+      setPreloadShipment(payload);
+      setSelectedCFDIType({ id: "factura" } as any);
+    } else if (complemento === "carta_porte") {
+      // Factura con Carta Porte 3.1 → CFDICartaPorteDrawer
+      // NOTA: el drawer empieza con valores default. En sprint posterior
+      // agregaremos pre-poblado desde el shipment vinculado.
+      setCartaPorteDrawerOpen("factura_carta_porte");
+      setPendingPreloadShipment(null);
+    }
+    // comercio_exterior está deshabilitado en el selector — no llega aquí
   }
 
 // ─── Abrir el drawer en modo edición de Proforma ───
@@ -273,7 +312,7 @@ export default function FacturacionPage() {
       unit:             "",
     }];
 
-    setPreloadShipment({
+    const preloadPayload = {
       order_id:        order.id,
       reference:       order.order_number,
       client_id:       order.client_id,
@@ -287,8 +326,17 @@ export default function FacturacionPage() {
       services,
       hasMultiCurrency:    false,
       servicesByCurrency: { [order.currency ?? "MXN"]: services },
+    };
+
+    // Guardar payload pendiente y abrir el selector de complementos
+    setPendingPreloadShipment(preloadPayload);
+    setComplementoSelectorCtx({
+      source:     "order",
+      reference:  order.order_number,
+      clientName: order.client?.legal_name ?? order.client?.name ?? undefined,
+      currency:   order.currency ?? "MXN",
+      total:      order.total ?? 0,
     });
-    setSelectedCFDIType({ id: "factura" } as any);
   }
 
   async function handleSendEmail() {
@@ -553,11 +601,19 @@ export default function FacturacionPage() {
         open={!!cartaPorteDrawerOpen}
         parentType={cartaPorteDrawerOpen ?? "factura_carta_porte"}
         saving={savingCartaPorte}
-        onClose={() => setCartaPorteDrawerOpen(null)}
+        onClose={() => { setCartaPorteDrawerOpen(null); setPendingPreloadShipment(null); }}
         onSaveDraft={handleSaveCartaPorteDraft}
         onStamp={handleStampCartaPorte}
       />
-      
+
+      {/* ─── Selector de complementos al facturar embarques/pedidos ─── */}
+      <ComplementoSelectorModal
+        open={!!complementoSelectorCtx}
+        context={complementoSelectorCtx}
+        onClose={() => { setComplementoSelectorCtx(null); setPendingPreloadShipment(null); }}
+        onConfirm={handleConfirmComplemento}
+      />
+
       {cancelTarget && (
         <CFDICancelModal
           cfdi={cancelTarget}

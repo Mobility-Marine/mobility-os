@@ -12,6 +12,7 @@ import type {
 } from "../types/facturacion.types";
 import { countActiveFilters, DEFAULT_DASHBOARD_FILTERS } from "../types/facturacion.types";
 import DateRangePicker from "@/app/components/DateRangePicker";
+import { Icon, getServiceIcon } from "./Icons";
 
 type PendingShipment = {
   id:           string;
@@ -226,11 +227,7 @@ export default function FacturacionDashboard({
     T: { es: "Traslado",  en: "Transfer" },
     N: { es: "Nómina",    en: "Payroll"  },
   };
-  const SVC_ICONS: Record<string, string> = {
-    terrestre_mx: "🚛", terrestre_usa: "🚛", maritimo: "🚢", aereo: "✈️",
-    multimodal: "🔄", almacenaje: "🏭", aduanal: "📋", consultoria: "💼",
-    seguro: "🛡️", otro: "📦",
-  };
+  // ── SVC_ICONS migrado a getServiceIcon() en ./Icons (SVG profesional) ──
 
   // ── Definición de los 4 grupos de chips ──
   const TYPE_CHIPS: { key: ActiveTypeFilter; labelEs: string; labelEn: string; color: string; bg: string }[] = [
@@ -346,7 +343,9 @@ export default function FacturacionDashboard({
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(59,130,246,0.05)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontSize: "16px" }}>📦</span>
+              <span style={{ color: "var(--color-brand-blue)", display: "flex" }}>
+                <Icon name="package" size={18} />
+              </span>
               <div>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-brand-blue)" }}>
                   {pendingOrders.length} {es ? "pedido(s) entregados pendientes de facturar" : "delivered order(s) pending invoicing"}
@@ -362,7 +361,9 @@ export default function FacturacionDashboard({
           </div>
           {pendingOrders.map((o, i) => (
             <div key={o.id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "11px 18px", borderBottom: i < pendingOrders.length - 1 ? "1px solid var(--color-border-faint)" : "none" }}>
-              <span style={{ fontSize: "18px", flexShrink: 0 }}>🛍️</span>
+              <span style={{ flexShrink: 0, color: "var(--color-brand-blue)", display: "flex" }}>
+                <Icon name="shoppingBag" size={20} />
+              </span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--color-text-primary)", fontFamily: "monospace" }}>{o.order_number}</span>
@@ -381,8 +382,9 @@ export default function FacturacionDashboard({
                 </div>
               </div>
               <button onClick={() => onFacturarPedido?.(o)}
-                style={{ height: "30px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-                ⚡ {es ? "Facturar" : "Invoice"}
+                style={{ height: "30px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                <Icon name="bolt" size={11} strokeWidth={2.5} />
+                {es ? "Facturar" : "Invoice"}
               </button>
             </div>
           ))}
@@ -394,7 +396,9 @@ export default function FacturacionDashboard({
         <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", overflow: "hidden" }}>
           <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--color-border-faint)", display: "flex", justifyContent: "space-between", alignItems: "center", background: "rgba(245,158,11,0.05)" }}>
             <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-              <span style={{ fontSize: "16px" }}>⚡</span>
+              <span style={{ color: "var(--color-warning-text)", display: "flex" }}>
+                <Icon name="bolt" size={18} />
+              </span>
               <div>
                 <div style={{ fontSize: "13px", fontWeight: 700, color: "var(--color-warning-text)" }}>
                   {pendingShipments.length} {es ? "servicio(s) completados pendientes de facturar" : "completed service(s) pending invoicing"}
@@ -410,7 +414,9 @@ export default function FacturacionDashboard({
           </div>
           {pendingShipments.map((sh, i) => (
             <div key={sh.id} style={{ display: "flex", alignItems: "center", gap: "12px", padding: "11px 18px", borderBottom: i < pendingShipments.length - 1 ? "1px solid var(--color-border-faint)" : "none" }}>
-              <span style={{ fontSize: "18px", flexShrink: 0 }}>{SVC_ICONS[sh.service_type] ?? "📦"}</span>
+              <span style={{ flexShrink: 0, color: "var(--color-warning-text)", display: "flex" }}>
+                <Icon name={getServiceIcon(sh.service_type)} size={20} />
+              </span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
                   <span style={{ fontSize: "12px", fontWeight: 800, color: "var(--color-text-primary)", fontFamily: "monospace" }}>{sh.reference}</span>
@@ -428,8 +434,9 @@ export default function FacturacionDashboard({
                 </div>
               </div>
               <button onClick={() => onFacturarEmbarque(sh)}
-                style={{ height: "30px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-warning-text)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-                ⚡ {es ? "Facturar" : "Invoice"}
+                style={{ height: "30px", padding: "0 14px", borderRadius: "var(--radius-md)", background: "var(--color-warning-text)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "5px" }}>
+                <Icon name="bolt" size={11} strokeWidth={2.5} />
+                {es ? "Facturar" : "Invoice"}
               </button>
             </div>
           ))}
@@ -607,7 +614,9 @@ export default function FacturacionDashboard({
             </div>
           ) : recent.length === 0 ? (
             <div style={{ padding: "40px", textAlign: "center" }}>
-              <div style={{ fontSize: "32px", marginBottom: "8px" }}>📄</div>
+              <div style={{ marginBottom: "10px", color: "var(--color-text-muted)", display: "flex", justifyContent: "center" }}>
+                <Icon name="fileText" size={38} strokeWidth={1.4} />
+              </div>
               <div style={{ fontSize: "13px", color: "var(--color-text-muted)" }}>
                 {activeFilterCount === 0
                   ? (es ? "Aún no has emitido ningún CFDI" : "No CFDIs issued yet")
@@ -636,16 +645,19 @@ export default function FacturacionDashboard({
 
                   {/* Badge de estado */}
                   {isProf ? (
-                    <span style={{ fontSize: "9px", fontWeight: 800, padding: "2px 7px", borderRadius: "var(--radius-full)", background: "var(--color-info-bg)", color: "var(--color-brand-blue)", border: "1px solid var(--color-info-border)", flexShrink: 0, textTransform: "uppercase", letterSpacing: "0.3px" }}>
-                      📝 {es ? "Proforma" : "Proforma"}
+                    <span style={{ fontSize: "9px", fontWeight: 800, padding: "2px 7px", borderRadius: "var(--radius-full)", background: "var(--color-info-bg)", color: "var(--color-brand-blue)", border: "1px solid var(--color-info-border)", flexShrink: 0, textTransform: "uppercase", letterSpacing: "0.3px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <Icon name="edit" size={9} strokeWidth={2.5} />
+                      {es ? "Proforma" : "Proforma"}
                     </span>
                   ) : isCancel ? (
-                    <span style={{ fontSize: "9px", fontWeight: 800, padding: "2px 7px", borderRadius: "var(--radius-full)", background: "var(--color-danger-bg)", color: "var(--color-danger-text)", border: "1px solid var(--color-danger-border)", flexShrink: 0, textTransform: "uppercase", letterSpacing: "0.3px" }}>
-                      ❌ {es ? "Cancelado" : "Cancelled"}
+                    <span style={{ fontSize: "9px", fontWeight: 800, padding: "2px 7px", borderRadius: "var(--radius-full)", background: "var(--color-danger-bg)", color: "var(--color-danger-text)", border: "1px solid var(--color-danger-border)", flexShrink: 0, textTransform: "uppercase", letterSpacing: "0.3px", display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <Icon name="x" size={9} strokeWidth={2.5} />
+                      {es ? "Cancelado" : "Cancelled"}
                     </span>
                   ) : (
-                    <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 7px", borderRadius: "var(--radius-full)", background: tc.bg, color: tc.color, flexShrink: 0 }}>
-                      ✓ {es ? tl.es : tl.en}
+                    <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 7px", borderRadius: "var(--radius-full)", background: tc.bg, color: tc.color, flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <Icon name="check" size={9} strokeWidth={3} />
+                      {es ? tl.es : tl.en}
                     </span>
                   )}
 
@@ -666,8 +678,9 @@ export default function FacturacionDashboard({
                   {/* Badge Carta Porte */}
                   {hasCCP && (
                     <span title="Carta Porte 3.1"
-                      style={{ fontSize: "9px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-sm)", background: "var(--color-brand-orange-light)", color: "var(--color-brand-orange)", flexShrink: 0, display: "flex", alignItems: "center", gap: "3px" }}>
-                      🚛 CCP
+                      style={{ fontSize: "9px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-sm)", background: "var(--color-brand-orange-light)", color: "var(--color-brand-orange)", flexShrink: 0, display: "inline-flex", alignItems: "center", gap: "4px" }}>
+                      <Icon name="truck" size={10} strokeWidth={2} />
+                      CCP
                     </span>
                   )}
 
