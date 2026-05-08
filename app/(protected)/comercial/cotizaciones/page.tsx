@@ -259,18 +259,13 @@ export default function CotizacionesPage() {
           height: "640px",
         }}
       >
-        {/* SIDEBAR */}
+        {/* SIDEBAR — virtualizado, maneja sus propios filtros internamente */}
         <div style={{ minHeight: 0, overflow: "hidden" }}>
           <QuotationsSidebar
-            quotations={filtered}
+            quotations={ctrl.quotations}
             selected={selected}
             setSelected={setSelected}
-            search={filters.search}
-            setSearch={(v) => setFilters((p) => ({ ...p, search: v }))}
-            filterType={filters.type}
-            setFilterType={(v) => setFilters((p) => ({ ...p, type: v }))}
-            filterStatus={filters.status}
-            setFilterStatus={(v) => setFilters((p) => ({ ...p, status: v }))}
+            onCreateNew={() => setShowCreate(true)}
           />
         </div>
 
