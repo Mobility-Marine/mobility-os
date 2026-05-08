@@ -118,6 +118,7 @@ export default function StepConceptos({ billingConcepts, setBillingConcepts, svc
     setBillingConcepts(p => p.map(c => c.tempId === conceptId ? {
       ...c,
       lines: c.lines.map((l, j) => j === lineIdx ? {
+        ...l,                                   // ← preserva id, product_id, origin, etc.
         service_type: lineForm.service_type,
         description:  lineForm.description,
         currency:     lineForm.currency,
@@ -210,22 +211,42 @@ export default function StepConceptos({ billingConcepts, setBillingConcepts, svc
                 <div style={{ fontSize: "14px", fontWeight: 800, color: "var(--color-success-text)" }}>
                   {concept.currency} ${total.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
                 </div>
-                <span style={{ color: "var(--color-text-muted)" }}>{isActive ? "▲" : "▼"}</span>
-                {/* Botón EDITAR concepto */}
+                <span style={{ color: "var(--color-text-muted)", marginRight: "4px" }}>{isActive ? "▲" : "▼"}</span>
+                {/* Botón EDITAR concepto — grande con texto */}
                 <button
                   onClick={(e) => { e.stopPropagation(); startEditConcept(concept); }}
-                  title="Editar concepto"
-                  style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", cursor: "pointer", color: "var(--color-info-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                  title="Editar nombre y configuración del concepto"
+                  style={{
+                    height: "30px", padding: "0 12px", borderRadius: "var(--radius-md)",
+                    background: "var(--color-brand-blue)", border: "none", cursor: "pointer",
+                    color: "#fff", display: "flex", alignItems: "center", justifyContent: "center",
+                    gap: "5px", flexShrink: 0, fontSize: "11px", fontWeight: 700,
+                  }}
                 >
-                  <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                  Editar
                 </button>
-                {/* Botón ELIMINAR concepto */}
+                {/* Botón ELIMINAR concepto — con confirmación obligatoria */}
                 <button
-                  onClick={(e) => { e.stopPropagation(); setBillingConcepts(p => p.filter((_, i) => i !== ci)); }}
-                  title="Eliminar concepto"
-                  style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", cursor: "pointer", color: "var(--color-danger-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    const linesCount = concept.lines.length;
+                    const msg = linesCount > 0
+                      ? `¿Eliminar el concepto "${concept.description}" y sus ${linesCount} línea${linesCount !== 1 ? "s" : ""} de detalle?\n\nEsta acción no se puede deshacer.`
+                      : `¿Eliminar el concepto "${concept.description}"?`;
+                    if (window.confirm(msg)) {
+                      setBillingConcepts(p => p.filter((_, i) => i !== ci));
+                    }
+                  }}
+                  title="Eliminar concepto y todas sus líneas"
+                  style={{
+                    width: "30px", height: "30px", borderRadius: "var(--radius-md)",
+                    background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)",
+                    cursor: "pointer", color: "var(--color-danger-text)",
+                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                  }}
                 >
-                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                 </button>
               </div>
             )}
@@ -237,13 +258,29 @@ export default function StepConceptos({ billingConcepts, setBillingConcepts, svc
                 {concept.lines.map((line, li) => {
                   const taxLabel = (line as any).tax_rate === -1 ? "Exento" : (line as any).tax_rate === 0 ? "0%" : `IVA ${(line as any).tax_rate ?? 16}%`;
                   return (
-                    <div key={li} style={{ display: "flex", gap: "8px", padding: "8px 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", alignItems: "center" }}>
+                    <div
+                      key={(line as any).id ?? `tmp-${li}`}
+                      style={{
+                        display: "flex", gap: "8px", padding: "8px 10px",
+                        borderRadius: "var(--radius-md)",
+                        background: editingLine?.conceptId === concept.tempId && editingLine?.lineIdx === li
+                          ? "var(--color-warning-bg)"
+                          : "var(--color-bg-subtle)",
+                        border: `${editingLine?.conceptId === concept.tempId && editingLine?.lineIdx === li ? "2px solid var(--color-warning-border)" : "1px solid var(--color-border-faint)"}`,
+                        alignItems: "center",
+                      }}
+                    >
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)" }}>{line.description}</div>
+                        <div style={{ fontSize: "12px", fontWeight: 600, color: "var(--color-text-primary)", display: "flex", alignItems: "center", gap: "6px" }}>
+                          {editingLine?.conceptId === concept.tempId && editingLine?.lineIdx === li && (
+                            <span style={{ fontSize: "9px", fontWeight: 800, padding: "1px 6px", borderRadius: "var(--radius-full)", background: "var(--color-warning-text)", color: "#fff", letterSpacing: "0.5px" }}>EDITANDO</span>
+                          )}
+                          {line.description}
+                        </div>
                         <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>
-                        {line.service_type} · {taxLabel} · {line.currency}
-                        {(line as any).unit_label && <span style={{ marginLeft: "4px", padding: "1px 5px", borderRadius: "var(--radius-full)", background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)" }}>{(line as any).unit_label}</span>}
-                      </div>
+                          {line.service_type} · {taxLabel} · {line.currency}
+                          {(line as any).unit_label && <span style={{ marginLeft: "4px", padding: "1px 5px", borderRadius: "var(--radius-full)", background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)" }}>{(line as any).unit_label}</span>}
+                        </div>
                       </div>
                       <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-success-text)", flexShrink: 0 }}>
                         ${Number(line.price).toLocaleString("es-MX", { minimumFractionDigits: 2 })}
@@ -253,27 +290,29 @@ export default function StepConceptos({ billingConcepts, setBillingConcepts, svc
                         title="Editar línea"
                         disabled={editingLine !== null && (editingLine.conceptId !== concept.tempId || editingLine.lineIdx !== li)}
                         style={{
-                          width: "22px",
-                          height: "22px",
-                          borderRadius: "var(--radius-sm)",
-                          background: editingLine?.conceptId === concept.tempId && editingLine?.lineIdx === li ? "var(--color-warning-bg)" : "var(--color-info-bg)",
-                          border: `1px solid ${editingLine?.conceptId === concept.tempId && editingLine?.lineIdx === li ? "var(--color-warning-border)" : "var(--color-info-border)"}`,
-                          cursor: "pointer",
-                          color: editingLine?.conceptId === concept.tempId && editingLine?.lineIdx === li ? "var(--color-warning-text)" : "var(--color-info-text)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                          flexShrink: 0,
+                          height: "26px", padding: "0 10px", borderRadius: "var(--radius-sm)",
+                          background: editingLine?.conceptId === concept.tempId && editingLine?.lineIdx === li
+                            ? "var(--color-warning-text)"
+                            : "var(--color-brand-blue)",
+                          border: "none", cursor: "pointer", color: "#fff",
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          gap: "4px", flexShrink: 0, fontSize: "10px", fontWeight: 700,
                           opacity: editingLine !== null && (editingLine.conceptId !== concept.tempId || editingLine.lineIdx !== li) ? 0.4 : 1,
                         }}
                       >
-                        <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        Editar
                       </button>
                       <button
-                        onClick={() => setBillingConcepts(p => p.map((c, i) => i === ci ? { ...c, lines: c.lines.filter((_, j) => j !== li) } : c))}
-                        style={{ width: "22px", height: "22px", borderRadius: "var(--radius-sm)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", cursor: "pointer", color: "var(--color-danger-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
+                        onClick={() => {
+                          if (window.confirm(`¿Eliminar la línea "${line.description}"?\n\nEsta acción no se puede deshacer.`)) {
+                            setBillingConcepts(p => p.map((c, i) => i === ci ? { ...c, lines: c.lines.filter((_, j) => j !== li) } : c));
+                          }
+                        }}
+                        title="Eliminar línea"
+                        style={{ width: "26px", height: "26px", borderRadius: "var(--radius-sm)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", cursor: "pointer", color: "var(--color-danger-text)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}
                       >
-                        <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
                       </button>
                     </div>
                   );

@@ -149,11 +149,18 @@ export default function QuotationEditDrawer({
     setActiveTab("client");
     setError(null);
 
-    // Cliente
+    // Cliente — hidratar AMBOS estados (selectedClient para modo sistema,
+    // manualClient para modo manual). El editor decide cuál usar según
+    // useManual, pero los datos siempre deben estar disponibles.
+    const isManual = !quotation.client_id;
     setClientState({
       selectedClient: (quotation as any).client ?? null,
-      manualClient: { name: "", email: "", rfc: "" },
-      useManual: !quotation.client_id,
+      manualClient: {
+        name:  isManual ? (quotation.client_name ?? "") : "",
+        email: isManual ? ((quotation as any).client_email ?? "") : "",
+        rfc:   isManual ? ((quotation as any).client_rfc ?? "") : "",
+      },
+      useManual: isManual,
       contactId: "",
       contactName: quotation.contact_name ?? "",
       contactEmail: quotation.contact_email ?? "",
