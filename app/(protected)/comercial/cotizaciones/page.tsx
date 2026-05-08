@@ -276,8 +276,12 @@ export default function CotizacionesPage() {
             detailLoading={detailLoading}
             onUpdateStatus={updateStatus}
             onUpdateFields={updateFields}
-            onUpdateItem={updateItemFn}
-            onUpdateService={updateServiceFn}
+            onUpdateItem={(id, quotationId, payload) =>
+              updateItemFn(id, payload, quotationId)
+            }
+            onUpdateService={(id, quotationId, payload) =>
+              updateServiceFn(id, payload, quotationId)
+            }
             onAccept={acceptQuotation}
             onRemoveItem={removeItem}
             onRemoveService={removeService}
