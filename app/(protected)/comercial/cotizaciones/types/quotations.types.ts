@@ -66,6 +66,10 @@ export type Quotation = {
   viewed_at?:      string | null;
   accepted_at?:    string | null;
   rejected_at?:    string | null;
+  // Tracking multi-envío por correo (Sprint Email — patrón ERP SAP/Oracle)
+  last_sent_at?:        string | null;   // última fecha/hora de envío
+  last_sent_to_email?:  string | null;   // último destinatario principal
+  sent_count?:          number | null;   // total de veces enviada
   created_by?:     string | null;
   created_at:      string;
   updated_at?:     string;
