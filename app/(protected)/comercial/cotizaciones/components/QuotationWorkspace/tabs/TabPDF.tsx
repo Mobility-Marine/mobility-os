@@ -68,7 +68,7 @@ export default function TabPDF({ quotation, onDownload, saving }: Props) {
   useEffect(() => {
     if (!currentUser) return;
     const contactName = quotation.contact_name?.trim() || quotation.client_name?.trim() || "";
-    const validUntil = quotation.valid_until ?? quotation.expires_at;
+    const validUntil = quotation.valid_until;
     const validUntilStr = validUntil
       ? new Date(validUntil).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })
       : "";

@@ -140,7 +140,7 @@ export async function sendQuotationEmail(
       // Cotización
       quote_number:         quotation.quote_number ?? "",
       quote_date:           formatDateLong((quotation as any).created_at),
-      valid_until:          formatDateLong(quotation.valid_until ?? quotation.expires_at),
+      valid_until:          formatDateLong(quotation.valid_until),
       total_formatted:      formatTotal(totalNum, quotation.currency ?? "MXN"),
       // Usuario emisor (firma)
       user_full_name:       currentUser.full_name ?? "",
