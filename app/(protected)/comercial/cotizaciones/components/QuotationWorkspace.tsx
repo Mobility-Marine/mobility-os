@@ -8,6 +8,7 @@ import { INCOTERMS, CURRENCIES } from "../types/quotations.types";
 import type { CreateItemPayload } from "../types/quotations.types";
 import { fetchProductBySearch } from "../services/quotations.service";
 import { useTenant } from "@/lib/tenant/TenantProvider";
+import QuotationActionBar from "./QuotationActionBar";
 
 type Tab = "detail" | "items" | "totals" | "preview";
 
@@ -24,6 +25,8 @@ type Props = {
   onRemoveQuotation: (id: string) => Promise<void>;
   onAddItem:         (payload: CreateItemPayload) => Promise<QuotationItem | undefined>;
   onOpenPDF:         (q: Quotation) => void;
+  onEdit?:           () => void;
+  onDuplicate?:      () => Promise<void>;
   saving:            boolean;
 };
 
@@ -76,6 +79,7 @@ export default function QuotationWorkspace({
   quotation, detailLoading, onUpdateStatus, onUpdateFields, onAccept,
   onRemoveItem, onRemoveService, onUpdateItem, onUpdateService,
   onRemoveQuotation, onAddItem, onOpenPDF, saving,
+  onEdit, onDuplicate,
 }: Props) {
   const { t, lang }   = useTranslation();
   const { companyId } = useTenant();
@@ -224,6 +228,29 @@ export default function QuotationWorkspace({
 
   return (
     <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", display: "flex", flexDirection: "column", height: "100%", minHeight: 0, overflow: "hidden" }}>
+
+      {/* ── ACTION BAR (ERP-grade) ── */}
+      {(onEdit || onDuplicate) && (
+        <div style={{ padding: "10px 14px 0", flexShrink: 0 }}>
+          <QuotationActionBar
+            quotation={quotation}
+            onEdit={onEdit ?? (() => {})}
+            onDuplicate={onDuplicate ?? (async () => {})}
+            onDownloadPDF={() => onOpenPDF(quotation)}
+            onDelete={async () => {
+              await onRemoveQuotation(quotation.id);
+            }}
+            onAccept={
+              quotation.status === "draft" ||
+              quotation.status === "sent" ||
+              quotation.status === "viewed"
+                ? () => onAccept(quotation)
+                : undefined
+            }
+            saving={saving}
+          />
+        </div>
+      )}
 
       {/* ── HEADER ── */}
       <div style={{ padding: "14px 18px", borderBottom: "1px solid var(--color-border-faint)", flexShrink: 0 }}>

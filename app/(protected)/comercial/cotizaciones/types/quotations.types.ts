@@ -69,8 +69,14 @@ export type Quotation = {
   created_by?:     string | null;
   created_at:      string;
   updated_at?:     string;
+  // Audit trail (SAP-style: quién hizo la última modificación)
+  updated_by?:     string | null;
+  // Joined — names para audit panel
+  created_by_name?: string | null;
+  updated_by_name?: string | null;
+  client_contact_name?: string | null;
   // Joined
-  items?:             QuotationItem[];
+  items?: QuotationItem[];
   services?:          QuotationService[];
   billing_concepts?:  QuotationBillingConcept[];
   client?:            { name: string; email?: string; rfc?: string } | null;
@@ -411,14 +417,73 @@ export interface QuotationContact {
 // ── FILTERS ──────────────────────────────────────────────────
 
 export type QuotationFilters = {
-  search:  string;
-  type:    QuotationType | "all";
-  status:  QuotationStatus | "all";
+  search: string;
+  type: QuotationType | "all";
+  status: QuotationStatus | "all";
 };
 
 export const DEFAULT_QUOTATION_FILTERS: QuotationFilters = {
-  search: "", type: "all", status: "all",
+  search: "",
+  type: "all",
+  status: "all",
 };
+
+// ── HELPERS DE PERMISO (audit trail SAP-style) ──────────────
+// Una cotización aceptada NO se puede editar (preserva audit trail).
+// La forma de "modificarla" es duplicarla → nueva con folio nuevo.
+export function isQuotationEditable(q: Quotation | null | undefined): boolean {
+  if (!q) return false;
+  return q.status !== "accepted" && q.status !== "cancelled";
+}
+
+export function getQuotationEditBlockReason(
+  q: Quotation,
+  lang: QuotationLanguage = "es",
+): string | null {
+  if (q.status === "accepted") {
+    return lang === "es"
+      ? "Cotización aceptada — no editable. Usa Duplicar para crear una nueva con los mismos datos."
+      : "Quotation accepted — not editable. Use Duplicate to create a new one with the same data.";
+  }
+  if (q.status === "cancelled") {
+    return lang === "es"
+      ? "Cotización cancelada — no editable."
+      : "Quotation cancelled — not editable.";
+  }
+  return null;
+}
+
+// ── SCORING DATA QUALITY (KPI nivel ERP) ────────────────────
+// Calcula calidad de datos de una cotización.
+// Patrón SAP MDG: una cotización completa tiene cliente con RFC,
+// concepts con product_id (= SAT codes), y notas/términos.
+export function computeQuotationDataQuality(q: Quotation): {
+  score: number; // 0-100
+  hasClientRfc: boolean;
+  hasSatCodes: boolean;
+  hasContact: boolean;
+  hasTerms: boolean;
+} {
+  const hasClientRfc = !!(q.client_rfc?.trim() || q.client?.rfc?.trim());
+  const concepts = (q as any).billing_concepts ?? [];
+  const items = q.items ?? [];
+  const totalLines =
+    concepts.reduce((s: number, c: any) => s + (c.lines?.length ?? 0), 0) + items.length;
+  const linesWithSat =
+    concepts.reduce((s: number, c: any) => s + (c.product_id ? (c.lines?.length ?? 0) : 0), 0) +
+    items.filter((i: any) => i.product_id).length;
+  const hasSatCodes = totalLines > 0 && linesWithSat === totalLines;
+  const hasContact = !!(q.contact_name?.trim() || q.contact_email?.trim());
+  const hasTerms = !!(q.terms?.trim() && q.notes?.trim());
+
+  let score = 0;
+  if (hasClientRfc) score += 35;
+  if (hasSatCodes) score += 35;
+  if (hasContact) score += 15;
+  if (hasTerms) score += 15;
+
+  return { score, hasClientRfc, hasSatCodes, hasContact, hasTerms };
+}
 
 // ── CATÁLOGOS ─────────────────────────────────────────────────
 

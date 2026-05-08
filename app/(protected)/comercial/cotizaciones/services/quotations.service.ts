@@ -745,3 +745,281 @@ export async function deleteQuotation(
   const { error } = await supabase.from("quotations").delete().eq("id", id).eq("company_id", companyId);
   if (error) throw error;
 }
+
+// ============================================================
+// DUPLICAR COTIZACIÓN — NUEVO FOLIO + COPIA TOTAL
+// ============================================================
+// Patrón SAP/Oracle: clonado preservando el original.
+// Crea una cotización NUEVA con el siguiente folio del consecutivo,
+// copiando cliente, datos, items, billing_concepts y lines de la source.
+// Ideal para: re-cotizar a un cliente recurrente, crear V2 de aceptada,
+// usar template de una cotización compleja.
+export async function duplicateQuotation(
+  companyId: string,
+  sourceId: string,
+  userId: string,
+): Promise<Quotation> {
+  // 1. Fetch source completa con todas sus relaciones
+  const source = await fetchQuotation(companyId, sourceId);
+  if (!source) throw new Error("Cotización source no encontrada");
+
+  // 2. Calcular nueva valid_until (recálculo desde hoy con vigencia configurada)
+  const { data: settings } = await supabase
+    .from("company_settings")
+    .select("quote_validity_days")
+    .eq("company_id", companyId)
+    .maybeSingle();
+  const validity = settings?.quote_validity_days ?? 15;
+  const newValidUntil = new Date(Date.now() + validity * 86400000)
+    .toISOString()
+    .slice(0, 10);
+
+  // 3. Crear cotización nueva (genera folio nuevo automáticamente vía generateQuoteNumber)
+  const newQuot = await createQuotation(
+    companyId,
+    userId,
+    {
+      type: source.type,
+      client_id: source.client_id ?? undefined,
+      crm_account_id: source.crm_account_id ?? undefined,
+      opportunity_id: source.opportunity_id ?? undefined,
+      template: source.template,
+      currency: source.currency,
+      client_name: source.client_name ?? undefined,
+      client_email: source.client_email ?? undefined,
+      client_rfc: source.client_rfc ?? undefined,
+      notes: source.notes ?? undefined,
+      terms: source.terms ?? undefined,
+      valid_until: newValidUntil,
+      incoterm: source.incoterm ?? undefined,
+      origin: source.origin ?? undefined,
+      destination: source.destination ?? undefined,
+      discount_amount: source.discount_amount,
+      tax_rate: source.tax_rate,
+      service_subtype: source.service_subtype ?? undefined,
+      language: source.language,
+      general_info: source.general_info as any,
+      contact_name: source.contact_name ?? undefined,
+      contact_email: source.contact_email ?? undefined,
+      contact_title: source.contact_title ?? undefined,
+    },
+    source.client_name ?? undefined,
+  );
+
+  // 4. Copiar items (productos) — preservando sort_order
+  if (source.type === "products" && source.items?.length) {
+    for (let i = 0; i < source.items.length; i++) {
+      const item = source.items[i];
+      await addItem(companyId, {
+        quotation_id: newQuot.id,
+        product_id: item.product_id ?? undefined,
+        sku: item.sku ?? undefined,
+        description: item.description,
+        details: item.details ?? undefined,
+        quantity: item.quantity,
+        unit: item.unit,
+        unit_price: item.unit_price,
+        discount_pct: item.discount_pct,
+      });
+    }
+  }
+
+  // 5. Copiar billing_concepts + lines (servicios) — secuencial para preservar orden
+  if (source.type === "services" && source.billing_concepts?.length) {
+    for (let ci = 0; ci < source.billing_concepts.length; ci++) {
+      const concept = source.billing_concepts[ci];
+      const newConcept = await createBillingConcept(companyId, {
+        quotation_id: newQuot.id,
+        sort_order: ci,
+        product_id: concept.product_id ?? undefined,
+        description: concept.description,
+        currency: concept.currency,
+      });
+      const lines = (concept as any).lines ?? [];
+      for (let li = 0; li < lines.length; li++) {
+        const line = lines[li];
+        await addService(companyId, {
+          quotation_id: newQuot.id,
+          sort_order: li,
+          billing_concept_id: newConcept.id,
+          service_type: line.service_type,
+          description: line.description,
+          origin: line.origin ?? undefined,
+          destination: line.destination ?? undefined,
+          incoterm: line.incoterm ?? undefined,
+          transit_time: line.transit_time ?? undefined,
+          currency: line.currency,
+          price: line.price,
+          notes: line.notes ?? undefined,
+          product_id: line.product_id ?? undefined,
+          tax_rate: line.tax_rate ?? 16,
+          unit_label: line.unit_label ?? undefined,
+          quantity: line.quantity ?? undefined,
+          unit_price: line.unit_price ?? undefined,
+        });
+      }
+      await recalcBillingConceptTotal(companyId, newConcept.id, newQuot.id);
+    }
+  }
+
+  return newQuot;
+}
+
+// ============================================================
+// EDICIÓN COMPLETA (replace-all) — para borradores/enviadas/rechazadas
+// ============================================================
+// Patrón SAP: replace-all en lugar de diff. Más simple, robusto y
+// alineado con el flujo de negocio: editas la cotización ANTES de
+// que el cliente la acepte, así que no hay relaciones críticas que preservar.
+//
+// REGLA: Cotización aceptada NO es editable (audit trail SAP). Si necesitas
+// modificar una aceptada, usa duplicateQuotation para crear una nueva versión.
+export async function updateQuotationFull(
+  companyId: string,
+  userId: string,
+  id: string,
+  payload: CreateQuotationPayload,
+  items?: Omit<CreateItemPayload, "quotation_id">[],
+  billingConcepts?: {
+    tempId?: string;
+    product_id?: string;
+    description: string;
+    currency: string;
+    lines: Omit<CreateServicePayload, "quotation_id">[];
+  }[],
+): Promise<void> {
+  // 1. Verificar que NO esté aceptada (audit trail SAP)
+  const { data: current } = await supabase
+    .from("quotations")
+    .select("status")
+    .eq("id", id)
+    .eq("company_id", companyId)
+    .single();
+  if (current?.status === "accepted") {
+    throw new Error(
+      "No se puede editar una cotización aceptada. Para modificarla, usa Duplicar para crear una nueva versión.",
+    );
+  }
+
+  // 2. UPDATE quotations — payload completo + audit fields
+  await supabase
+    .from("quotations")
+    .update({
+      type: payload.type,
+      client_id: payload.client_id ?? null,
+      crm_account_id: payload.crm_account_id ?? null,
+      opportunity_id: payload.opportunity_id ?? null,
+      template: payload.template ?? "elegante",
+      currency: payload.currency ?? "MXN",
+      client_name: payload.client_name ?? null,
+      client_email: payload.client_email ?? null,
+      client_rfc: payload.client_rfc ?? null,
+      notes: payload.notes ?? null,
+      terms: payload.terms ?? null,
+      valid_until: payload.valid_until ?? null,
+      incoterm: payload.incoterm ?? null,
+      origin: payload.origin ?? null,
+      destination: payload.destination ?? null,
+      discount_amount: payload.discount_amount ?? 0,
+      tax_rate: payload.tax_rate ?? 16,
+      service_subtype: payload.service_subtype ?? null,
+      language: payload.language ?? "es",
+      general_info: payload.general_info ?? null,
+      contact_name: payload.contact_name ?? null,
+      contact_email: payload.contact_email ?? null,
+      contact_title: payload.contact_title ?? null,
+      updated_by: userId,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .eq("company_id", companyId);
+
+  // 3. DELETE all items
+  await supabase
+    .from("quotation_items")
+    .delete()
+    .eq("quotation_id", id)
+    .eq("company_id", companyId);
+
+  // 4. DELETE all billing_concepts (incluye lines vinculadas vía deleteBillingConcept)
+  const { data: existingConcepts } = await supabase
+    .from("quotation_billing_concepts")
+    .select("id")
+    .eq("quotation_id", id)
+    .eq("company_id", companyId);
+  if (existingConcepts?.length) {
+    for (const c of existingConcepts) {
+      await deleteBillingConcept(companyId, c.id, id);
+    }
+  }
+  // Por seguridad, limpia services huérfanos (sin billing_concept_id)
+  await supabase
+    .from("quotation_services")
+    .delete()
+    .eq("quotation_id", id)
+    .eq("company_id", companyId)
+    .is("billing_concept_id", null);
+
+  // 5. INSERT new items (si productos)
+  if (payload.type === "products" && items?.length) {
+    for (let i = 0; i < items.length; i++) {
+      await addItem(companyId, { ...items[i], quotation_id: id });
+    }
+  }
+
+  // 6. INSERT new billing_concepts + lines (si servicios) — secuencial
+  if (payload.type === "services" && billingConcepts?.length) {
+    for (let ci = 0; ci < billingConcepts.length; ci++) {
+      const concept = billingConcepts[ci];
+      const created = await createBillingConcept(companyId, {
+        quotation_id: id,
+        sort_order: ci,
+        product_id: concept.product_id,
+        description: concept.description,
+        currency: concept.currency,
+      });
+      for (let li = 0; li < concept.lines.length; li++) {
+        await addService(companyId, {
+          ...concept.lines[li],
+          quotation_id: id,
+          sort_order: li,
+          billing_concept_id: created.id,
+        });
+      }
+      await recalcBillingConceptTotal(companyId, created.id, id);
+    }
+  }
+}
+
+// ============================================================
+// AUDIT TRAIL — fetch user names (created_by + updated_by)
+// ============================================================
+export async function fetchQuotationAuditNames(
+  quotation: Quotation,
+): Promise<{ created_by_name: string | null; updated_by_name: string | null }> {
+  const updatedBy = (quotation as any).updated_by as string | null | undefined;
+  const ids = [quotation.created_by, updatedBy].filter(Boolean) as string[];
+  if (ids.length === 0) return { created_by_name: null, updated_by_name: null };
+
+  const uniqueIds = Array.from(new Set(ids));
+  const { data } = await supabase
+    .from("tenant_users")
+    .select("user_id, full_name, email")
+    .in("user_id", uniqueIds);
+
+  // Tipado explícito Map<string, string>: sin esto TS infiere Map<unknown, unknown>
+  // por el `any[]` del array origen y .get(...) retorna `unknown` en lugar de `string | undefined`.
+  const nameMap = new Map<string, string>();
+  for (const u of (data ?? []) as Array<{
+    user_id: string;
+    full_name: string | null;
+    email: string | null;
+  }>) {
+    nameMap.set(u.user_id, u.full_name ?? u.email ?? "Usuario");
+  }
+
+  return {
+    created_by_name: quotation.created_by ? nameMap.get(quotation.created_by) ?? null : null,
+    updated_by_name: updatedBy ? nameMap.get(updatedBy) ?? null : null,
+  };
+}

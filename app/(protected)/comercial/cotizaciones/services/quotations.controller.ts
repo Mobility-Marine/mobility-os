@@ -11,13 +11,26 @@ import type {
 } from "../types/quotations.types";
 import { DEFAULT_QUOTATION_FILTERS } from "../types/quotations.types";
 import {
-  fetchQuotations, fetchQuotation,
-  createQuotation as createSvc, updateQuotation, updateQuotationStatus,
-  addItem, updateItem, deleteItem,
-  addService, updateService, deleteService,
-  fetchCompanySettings, acceptQuotation as acceptSvc,
+  fetchQuotations,
+  fetchQuotation,
+  createQuotation as createSvc,
+  updateQuotation,
+  updateQuotationStatus,
+  addItem,
+  updateItem,
+  deleteItem,
+  addService,
+  updateService,
+  deleteService,
+  fetchCompanySettings,
+  acceptQuotation as acceptSvc,
   deleteQuotation as deleteSvc,
-  createBillingConcept, deleteBillingConcept, recalcBillingConceptTotal,
+  createBillingConcept,
+  deleteBillingConcept,
+  recalcBillingConceptTotal,
+  duplicateQuotation as duplicateSvc,
+  updateQuotationFull as updateFullSvc,
+  fetchQuotationAuditNames,
 } from "./quotations.service";
 import type { CreateBillingConceptPayload } from "../types/quotations.types";
 
@@ -241,6 +254,55 @@ async function removeQuotation(id: string) {
     await load();
   }
 
+  // ── DUPLICAR (folio nuevo + clonado completo) ─────────────
+  // Patrón SAP: clonar preservando original. La duplicada es
+  // independiente y puede editarse libremente.
+  async function duplicateQuotation(sourceId: string): Promise<Quotation | undefined> {
+    if (!companyId || !user) return;
+    setSaving(true);
+    try {
+      const newQuot = await duplicateSvc(companyId, sourceId, user.id);
+      await load();
+      // Auto-seleccionar la nueva cotización para edición inmediata
+      const fresh = await fetchQuotation(companyId, newQuot.id);
+      if (fresh) setSelected(fresh);
+      return fresh ?? newQuot;
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ── EDICIÓN COMPLETA (replace-all) ────────────────────────
+  // Solo permitido si la cotización NO está aceptada.
+  // Reemplaza items, billing_concepts y lines completos.
+  async function updateQuotationFull(
+    id: string,
+    payload: CreateQuotationPayload,
+    items?: Omit<CreateItemPayload, "quotation_id">[],
+    billingConcepts?: {
+      tempId?: string;
+      product_id?: string;
+      description: string;
+      currency: string;
+      lines: Omit<CreateServicePayload, "quotation_id">[];
+    }[],
+  ): Promise<void> {
+    if (!companyId || !user) return;
+    setSaving(true);
+    try {
+      await updateFullSvc(companyId, user.id, id, payload, items, billingConcepts);
+      await loadDetail(id);
+      await load();
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // ── AUDIT TRAIL — fetch user names ────────────────────────
+  async function loadAuditNames(quotation: Quotation) {
+    return await fetchQuotationAuditNames(quotation);
+  }
+
   // ── FILTERED ──────────────────────────────────────────────
 
   const filtered = quotations.filter((q) => {
@@ -267,10 +329,20 @@ async function removeQuotation(id: string) {
     // Services
     createService, updateService: handleUpdateService, removeService,
     // Billing concepts
-    createBillingConcept: (p: CreateBillingConceptPayload) => createBillingConcept(companyId ?? "", p),
-    deleteBillingConcept: (id: string, quotationId: string) => deleteBillingConcept(companyId ?? "", id, quotationId),
+    createBillingConcept: (p: CreateBillingConceptPayload) =>
+      createBillingConcept(companyId ?? "", p),
+    deleteBillingConcept: (id: string, quotationId: string) =>
+      deleteBillingConcept(companyId ?? "", id, quotationId),
+
+    // Duplicar + edición completa (replace-all)
+    duplicateQuotation,
+    updateQuotationFull,
+
+    // Audit trail
+    loadAuditNames,
+
     // Utils
-    reload:       load,
+    reload: load,
     reloadDetail: loadDetail,
     removeQuotation,
   };

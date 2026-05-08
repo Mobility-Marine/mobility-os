@@ -250,6 +250,111 @@ export default function QuotationCopilot({ quotation }: Props) {
           )}
         </div>
       </div>
+
+      {/* ── AUDIT TRAIL PANEL (SAP-style) ── */}
+      <div style={{
+        marginTop: "12px",
+        padding: "12px",
+        borderRadius: "var(--radius-md)",
+        background: "var(--color-bg-subtle)",
+        border: "1px solid var(--color-border-faint)",
+      }}>
+        <div style={{
+          fontSize: "9px",
+          fontWeight: 700,
+          color: "var(--color-text-muted)",
+          textTransform: "uppercase",
+          letterSpacing: "0.6px",
+          marginBottom: "8px",
+        }}>
+          Audit trail
+        </div>
+        <div style={{ display: "flex", flexDirection: "column", gap: "5px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px" }}>
+            <span style={{ color: "var(--color-text-muted)" }}>Creada</span>
+            <span style={{
+              color: "var(--color-text-second)",
+              fontVariantNumeric: "tabular-nums",
+              fontWeight: 600,
+            }}>
+              {new Date(quotation.created_at).toLocaleDateString("es-MX", {
+                day: "numeric",
+                month: "short",
+                year: "2-digit",
+              })}
+            </span>
+          </div>
+
+          {quotation.updated_at &&
+            quotation.updated_at !== quotation.created_at && (
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px" }}>
+                <span style={{ color: "var(--color-text-muted)" }}>Modificada</span>
+                <span style={{
+                  color: "var(--color-text-second)",
+                  fontVariantNumeric: "tabular-nums",
+                  fontWeight: 600,
+                }}>
+                  {new Date(quotation.updated_at).toLocaleDateString("es-MX", {
+                    day: "numeric",
+                    month: "short",
+                    year: "2-digit",
+                  })}
+                </span>
+              </div>
+            )}
+
+          {quotation.sent_at && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px" }}>
+              <span style={{ color: "var(--color-info-text)", fontWeight: 600 }}>Enviada</span>
+              <span style={{
+                color: "var(--color-info-text)",
+                fontVariantNumeric: "tabular-nums",
+                fontWeight: 600,
+              }}>
+                {new Date(quotation.sent_at).toLocaleDateString("es-MX", {
+                  day: "numeric",
+                  month: "short",
+                  year: "2-digit",
+                })}
+              </span>
+            </div>
+          )}
+
+          {quotation.accepted_at && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px" }}>
+              <span style={{ color: "var(--color-success-text)", fontWeight: 700 }}>Aceptada</span>
+              <span style={{
+                color: "var(--color-success-text)",
+                fontVariantNumeric: "tabular-nums",
+                fontWeight: 700,
+              }}>
+                {new Date(quotation.accepted_at).toLocaleDateString("es-MX", {
+                  day: "numeric",
+                  month: "short",
+                  year: "2-digit",
+                })}
+              </span>
+            </div>
+          )}
+
+          {quotation.rejected_at && (
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px" }}>
+              <span style={{ color: "var(--color-danger-text)", fontWeight: 700 }}>Rechazada</span>
+              <span style={{
+                color: "var(--color-danger-text)",
+                fontVariantNumeric: "tabular-nums",
+                fontWeight: 700,
+              }}>
+                {new Date(quotation.rejected_at).toLocaleDateString("es-MX", {
+                  day: "numeric",
+                  month: "short",
+                  year: "2-digit",
+                })}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
