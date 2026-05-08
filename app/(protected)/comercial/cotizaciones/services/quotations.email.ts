@@ -6,8 +6,9 @@ import type { Quotation } from "../types/quotations.types";
 import type { CurrentUser } from "@/lib/auth/useCurrentUser";
 
 // Templates PDF (la generación de PDF se hace aquí mismo a partir del componente)
+// Nota: nombres asimétricos en el repo — TemplateEleganteProductos vs TemplateServicios
 import TemplateEleganteProductos from "../components/templates/TemplateEleganteProductos";
-import TemplateEleganteServicios from "../components/templates/TemplateEleganteServicios";
+import TemplateServicios from "../components/templates/TemplateServicios";
 
 // ═══════════════════════════════════════════════════════════════════
 // QUOTATION EMAIL SERVICE
@@ -95,7 +96,7 @@ async function generateQuotationPDFBlob(
 ): Promise<Blob> {
   const Doc = quotation.type === "products"
     ? (TemplateEleganteProductos as any)({ quotation, settings })
-    : (TemplateEleganteServicios as any)({ quotation, settings });
+    : (TemplateServicios as any)({ quotation, settings });
 
   return await pdf(Doc).toBlob();
 }
