@@ -282,11 +282,15 @@ export default function CotizacionesPage() {
             onUpdateService={(id, quotationId, payload) =>
               updateServiceFn(id, payload, quotationId)
             }
-            onAccept={acceptQuotation}
+            onAccept={async (q) => {
+              await acceptQuotation(q);
+            }}
             onRemoveItem={removeItem}
             onRemoveService={removeService}
             onRemoveQuotation={removeQuotation}
-            onAddItem={createItem}
+            onAddItem={async (quotationId, payload) => {
+              await createItem({ ...payload, quotation_id: quotationId });
+            }}
             onOpenPDF={handleOpenPDF}
             onEdit={() => setShowEdit(true)}
             onDuplicate={handleDuplicate}
