@@ -6,13 +6,27 @@ import type {
 
 // ── SHIPMENTS para sidebar ─────────────────────────────────────
 
-export async function fetchTrackingShipments(companyId: string): Promise<TrackingShipment[]> {
-  const { data: shipments } = await supabase
+export async function fetchTrackingShipments(
+  companyId: string,
+  viewMode: "active" | "completed" | "all" = "active"
+): Promise<TrackingShipment[]> {
+  let q = supabase
     .from("shipments")
     .select("id, reference, service_type, origin, destination, status, client:business_partners!client_id(name)")
-    .eq("company_id", companyId)
-    .not("status", "in", '("cancelled","invoiced")')
-    .order("created_at", { ascending: false });
+    .eq("company_id", companyId);
+
+  if (viewMode === "active") {
+    // Embarques en curso: excluye drafts, cancelados y los ya facturados
+    q = q.in("status", ["pending", "coordinating", "pickup_scheduled", "in_transit", "at_destination", "delivered"]);
+  } else if (viewMode === "completed") {
+    // Solo facturados / cerrados
+    q = q.in("status", ["delivered", "invoiced"]);
+  } else {
+    // "all": todo el historial excepto borradores y cancelados
+    q = q.not("status", "in", '("draft","cancelled")');
+  }
+
+  const { data: shipments } = await q.order("created_at", { ascending: false });
 
   if (!shipments?.length) return [];
 

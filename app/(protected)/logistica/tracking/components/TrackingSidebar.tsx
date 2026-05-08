@@ -33,7 +33,7 @@ export default function TrackingSidebar({ shipments, selected, onSelect, filters
           <span style={{ fontSize: "11px", fontWeight: 700, padding: "1px 7px", borderRadius: "var(--radius-full)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", color: "var(--color-text-muted)" }}>{shipments.length}</span>
         </div>
 
-        <div style={{ position: "relative" }}>
+        <div style={{ position: "relative", marginBottom: "8px" }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2" style={{ position: "absolute", left: "9px", top: "50%", transform: "translateY(-50%)" }}>
             <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
           </svg>
@@ -43,6 +43,34 @@ export default function TrackingSidebar({ shipments, selected, onSelect, filters
             onChange={(e) => setFilters({ ...filters, search: e.target.value })}
             style={{ width: "100%", height: "32px", paddingLeft: "28px", paddingRight: "8px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
           />
+        </div>
+
+        {/* VIEW MODE PILLS — Active / Completed / All */}
+        <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
+          {([
+            { v: "active",    l: tl.trackingViewActive    ?? "Activos"     },
+            { v: "completed", l: tl.trackingViewCompleted ?? "Completados" },
+            { v: "all",       l: tl.trackingViewAll       ?? "Todos"       },
+          ] as { v: "active" | "completed" | "all"; l: string }[]).map((f) => (
+            <button
+              key={f.v}
+              onClick={() => setFilters({ ...filters, view_mode: f.v })}
+              style={{
+                height: "22px",
+                padding: "0 9px",
+                borderRadius: "var(--radius-full)",
+                cursor: "pointer",
+                fontSize: "10px",
+                fontWeight: filters.view_mode === f.v ? 700 : 500,
+                background:  filters.view_mode === f.v ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
+                border:     `1px solid ${filters.view_mode === f.v ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
+                color:       filters.view_mode === f.v ? "#fff" : "var(--color-text-muted)",
+                transition: "var(--transition-fast)",
+              }}
+            >
+              {f.l}
+            </button>
+          ))}
         </div>
       </div>
 

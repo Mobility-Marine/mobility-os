@@ -6,6 +6,25 @@ export type DocCategory =
 
 export type DocStatus = "pending" | "received" | "validated" | "rejected" | "approved";
 
+// ─── Document Manager 360° — origen del documento ───
+export type DocSource =
+  | "direct"     // shipment_documents (editable)
+  | "cxp_pdf"    // accounts_payable PDF (factura proveedor)
+  | "cxp_xml"    // accounts_payable XML
+  | "cfdi_pdf"   // cfdi_documents PDF (CFDI emitido al cliente)
+  | "cfdi_xml";  // cfdi_documents XML
+
+// Filtro UI agrupado (PDF + XML juntos)
+export type DocSourceFilter = "all" | "direct" | "cxp" | "cfdi";
+
+export const SOURCE_CONFIG: Record<DocSource, { label: string; color: string; bg: string; border: string }> = {
+  direct:   { label: "Embarque",     color: "#2563eb", bg: "#dbeafe", border: "#93c5fd" },
+  cxp_pdf:  { label: "Factura CXP",  color: "#d97706", bg: "#fef3c7", border: "#fcd34d" },
+  cxp_xml:  { label: "XML CXP",      color: "#d97706", bg: "#fef3c7", border: "#fcd34d" },
+  cfdi_pdf: { label: "CFDI emitido", color: "#0891b2", bg: "#cffafe", border: "#67e8f9" },
+  cfdi_xml: { label: "XML CFDI",     color: "#0891b2", bg: "#cffafe", border: "#67e8f9" },
+};
+
 export const DOC_CATEGORY_CONFIG: Record<DocCategory, { labelKey: string; color: string; bg: string; border: string }> = {
   commercial_invoice: { labelKey: "logistics.catCommercialInvoice", color: "#2563eb",  bg: "#dbeafe",  border: "#93c5fd" },
   packing_list:       { labelKey: "logistics.catPackingList",       color: "#7c3aed",  bg: "#ede9fe",  border: "#c4b5fd" },
@@ -51,6 +70,11 @@ export type ShipmentDocument = {
   uploaded_by?: string | null;
   created_at:   string;
   updated_at?:  string | null;
+  // ─── Document Manager 360° ───
+  source:       DocSource;
+  source_id:    string;
+  source_label: string;
+  is_editable:  boolean;
   // joined
   shipment?:    { reference: string; client?: { name: string } | null } | null;
   client?:      { name: string } | null;
@@ -61,8 +85,9 @@ export type DocFilters = {
   category:  DocCategory | "all";
   status:    DocStatus | "all";
   shipment:  string | "all";
+  source:    DocSourceFilter;
 };
 
 export const DEFAULT_DOC_FILTERS: DocFilters = {
-  search: "", category: "all", status: "all", shipment: "all",
+  search: "", category: "all", status: "all", shipment: "all", source: "all",
 };

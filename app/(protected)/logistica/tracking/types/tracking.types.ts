@@ -88,12 +88,13 @@ export type TrackingShipment = {
 };
 
 export type TrackingFilters = {
-  search: string;
-  status: string;
+  search:    string;
+  status:    string;
+  view_mode: "active" | "completed" | "all";
 };
 
 export const DEFAULT_TRACKING_FILTERS: TrackingFilters = {
-  search: "", status: "all",
+  search: "", status: "all", view_mode: "active",
 };
 
 // Genera el cuerpo HTML del email de notificación

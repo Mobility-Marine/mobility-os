@@ -103,6 +103,24 @@ export default function DocsSidebar({ docs, selected, setSelected, filters, setF
             }}>{f.l}</button>
           ))}
         </div>
+
+        {/* SOURCE FILTER — Document Manager 360° */}
+        <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
+          {([
+            { v: "all",    l: "Todos"     },
+            { v: "direct", l: "Embarque"  },
+            { v: "cxp",    l: "CXP"       },
+            { v: "cfdi",   l: "CFDI"      },
+          ] as { v: "all" | "direct" | "cxp" | "cfdi"; l: string }[]).map((f) => (
+            <button key={f.v} onClick={() => setFilters({ ...filters, source: f.v })} style={{
+              height: "22px", padding: "0 7px", borderRadius: "var(--radius-full)", cursor: "pointer",
+              fontSize: "10px", fontWeight: filters.source === f.v ? 700 : 500,
+              background: filters.source === f.v ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
+              border: `1px solid ${filters.source === f.v ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
+              color: filters.source === f.v ? "#fff" : "var(--color-text-muted)",
+            }}>{f.l}</button>
+          ))}
+        </div>
       </div>
 
       {/* LIST — agrupado por embarque */}

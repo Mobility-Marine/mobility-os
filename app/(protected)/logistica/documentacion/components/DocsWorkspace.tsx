@@ -1,10 +1,41 @@
 "use client";
 import { useState, useRef } from "react";
 import type { ShipmentDocument, DocCategory, DocStatus } from "../types/docs.types";
-import { DOC_CATEGORY_CONFIG, DOC_STATUS_CONFIG } from "../types/docs.types";
+import { DOC_CATEGORY_CONFIG, DOC_STATUS_CONFIG, SOURCE_CONFIG } from "../types/docs.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import { useTenant }      from "@/lib/tenant/TenantProvider";
+import { supabase }       from "@/lib/supabaseClient";
 import { updateDocStatus, uploadDocumentFile } from "../services/docs.service";
+
+// Descarga autenticada para URLs internas /api/* (CFDI on-demand desde Facturapi)
+async function downloadAuthenticated(url: string, filename?: string): Promise<void> {
+  // Obtenemos el token con cast para evitar conflictos de tipos del LSP
+  // El método getSession() existe en runtime (@supabase/supabase-js v2.45+)
+  const auth = supabase.auth as any;
+  const sessionResult = await auth.getSession();
+  const token: string | undefined = sessionResult?.data?.session?.access_token;
+  if (!token) {
+    alert("Sesión expirada. Inicia sesión de nuevo.");
+    return;
+  }
+  const r = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+  if (!r.ok) {
+    const errBody = await r.text().catch(() => "");
+    console.error("Error descarga:", r.status, errBody);
+    alert("Error descargando el documento");
+    return;
+  }
+  const blob = await r.blob();
+  const blobUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = blobUrl;
+  if (filename) a.download = filename;
+  else a.target = "_blank";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(blobUrl), 60_000);
+}
 
 type Props = {
   doc:       ShipmentDocument | null;
@@ -93,6 +124,9 @@ export default function DocsWorkspace({ doc, onUpdate, onDelete, onReload, savin
               <span style={{ fontSize: "13px", fontWeight: 800, color: "var(--color-text-primary)", overflow: "hidden", textOverflow: "ellipsis" }}>{doc.name}</span>
               <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 7px", borderRadius: "var(--radius-full)", background: catCfg.bg, border: `1px solid ${catCfg.border}`, color: catCfg.color }}>{catLabel}</span>
               <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-full)", background: stCfg.bg, border: `1px solid ${stCfg.border}`, color: stCfg.color }}>{stLabel}</span>
+              {/* Badge de origen — Document Manager 360° */}
+              <span style={{ fontSize: "10px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-full)", background: SOURCE_CONFIG[doc.source].bg, border: `1px solid ${SOURCE_CONFIG[doc.source].border}`, color: SOURCE_CONFIG[doc.source].color }}>{SOURCE_CONFIG[doc.source].label}</span>
+              {!doc.is_editable && <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-full)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", color: "var(--color-text-muted)" }}>Solo lectura</span>}
               {doc.required && <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-full)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", color: "var(--color-warning-text)" }}>Requerido</span>}
               {isExpired  && <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-full)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)" }}>VENCIDO</span>}
               {isExpiring && <span style={{ fontSize: "9px", fontWeight: 700, padding: "2px 6px", borderRadius: "var(--radius-full)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", color: "var(--color-warning-text)" }}>Por vencer</span>}
@@ -105,9 +139,10 @@ export default function DocsWorkspace({ doc, onUpdate, onDelete, onReload, savin
           </div>
         </div>
 
-        {/* ACTIONS */}
+        {/* ACTIONS — Document Manager 360° */}
         <div style={{ display: "flex", gap: "6px", flexWrap: "wrap", alignItems: "center" }}>
-          {!editing ? (
+          {/* EDITAR — solo para docs directos (is_editable) */}
+          {doc.is_editable && (!editing ? (
             <button onClick={() => { setForm({ ...doc }); setEditing(true); }} style={{ height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
               {t.general.edit}
@@ -121,15 +156,15 @@ export default function DocsWorkspace({ doc, onUpdate, onDelete, onReload, savin
                 {t.general.cancel}
               </button>
             </>
-          )}
+          ))}
 
-          {/* Status transitions */}
-          {doc.status === "pending" && (
+          {/* TRANSICIONES DE STATUS — solo para docs directos */}
+          {doc.is_editable && doc.status === "pending" && (
             <button onClick={async () => { await updateDocStatus(companyId!, doc.id, "received"); await onReload(); }} style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-info-bg)", border: "1px solid var(--color-info-border)", color: "var(--color-info-text)", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
               Marcar recibido
             </button>
           )}
-          {doc.status === "received" && (
+          {doc.is_editable && doc.status === "received" && (
             <>
               <button onClick={async () => { await updateDocStatus(companyId!, doc.id, "validated"); await onReload(); }} style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-success-bg)", border: "1px solid var(--color-success-border)", color: "var(--color-success-text)", fontSize: "11px", fontWeight: 600, cursor: "pointer" }}>
                 {tl.validateDoc ?? "Validar"}
@@ -140,23 +175,39 @@ export default function DocsWorkspace({ doc, onUpdate, onDelete, onReload, savin
             </>
           )}
 
-          {/* File actions */}
+          {/* DESCARGA + SUBIR */}
           <div style={{ marginLeft: "auto", display: "flex", gap: "6px" }}>
+            {/* Descarga: disponible siempre que haya file_url */}
             {doc.file_url && (
-              <a href={doc.file_url} target="_blank" rel="noopener noreferrer" style={{ height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", fontSize: "11px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", textDecoration: "none" }}>
-                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                Descargar
-              </a>
+              doc.file_url.startsWith("/api/") ? (
+                // CFDI on-demand: descarga autenticada con Bearer token
+                <button onClick={() => downloadAuthenticated(doc.file_url!, doc.name)} style={{ height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", fontSize: "11px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Descargar
+                </button>
+              ) : (
+                // URL externa (Storage public): link directo
+                <a href={doc.file_url} target="_blank" rel="noopener noreferrer" style={{ height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", fontSize: "11px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px", textDecoration: "none" }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Descargar
+                </a>
+              )
             )}
-            <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{ height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
-              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-              {uploading ? "Subiendo…" : (tl.uploadFile ?? "Subir archivo")}
-            </button>
-            <input ref={fileRef} type="file" style={{ display: "none" }} onChange={handleUploadFile} accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.xml" />
+
+            {/* SUBIR ARCHIVO — solo para docs directos */}
+            {doc.is_editable && (
+              <>
+                <button onClick={() => fileRef.current?.click()} disabled={uploading} style={{ height: "28px", padding: "0 12px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                  {uploading ? "Subiendo…" : (tl.uploadFile ?? "Subir archivo")}
+                </button>
+                <input ref={fileRef} type="file" style={{ display: "none" }} onChange={handleUploadFile} accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg,.xml" />
+              </>
+            )}
           </div>
 
-          {/* Delete */}
-          {!confirmDel ? (
+          {/* ELIMINAR — solo para docs directos */}
+          {doc.is_editable && (!confirmDel ? (
             <button onClick={() => setConfirmDel(true)} style={{ height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)", background: "var(--color-danger-bg)", border: "1px solid var(--color-danger-border)", color: "var(--color-danger-text)", fontSize: "11px", cursor: "pointer" }}>
               {t.general.delete}
             </button>
@@ -165,7 +216,7 @@ export default function DocsWorkspace({ doc, onUpdate, onDelete, onReload, savin
               <button onClick={() => onDelete(doc.id)} style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-danger-text)", color: "#fff", border: "none", fontSize: "11px", fontWeight: 700, cursor: "pointer" }}>¿Eliminar?</button>
               <button onClick={() => setConfirmDel(false)} style={{ height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-muted)", fontSize: "11px", cursor: "pointer" }}>{(t.general as any).no ?? "No"}</button>
             </>
-          )}
+          ))}
         </div>
       </div>
 

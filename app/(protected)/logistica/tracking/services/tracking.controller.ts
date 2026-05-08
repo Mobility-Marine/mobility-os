@@ -30,13 +30,13 @@ export function useTrackingController() {
   const loadShipments = useCallback(async () => {
     if (!companyId) return;
     const [ships, pending] = await Promise.all([
-      fetchTrackingShipments(companyId),
+      fetchTrackingShipments(companyId, filters.view_mode),
       fetchPendingNotifications(companyId),
     ]);
     setShipments(ships);
     setPendingGlobal(pending);
     setLoading(false);
-  }, [companyId]);
+  }, [companyId, filters.view_mode]);
 
   const loadDetail = useCallback(async (shipmentId: string) => {
     if (!companyId) return;
