@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import { Field, Grid2, Grid3, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
 import { INCOTERMS, TRUCK_TYPES, CURRENCIES, SERVICE_TYPES, SERVICE_TYPE_CONFIG } from "../../../types/quotations.types";
 import type { ServiceType } from "../../../types/quotations.types";
@@ -53,28 +52,6 @@ export default function ContentTerrestre({ info, setInfo, billingConcepts, setBi
   const volAuto = (info.largo_cm && info.ancho_cm && info.alto_cm)
     ? ((Number(info.largo_cm) * Number(info.ancho_cm) * Number(info.alto_cm)) / 1_000_000).toFixed(3)
     : null;
-
-  function addLine(ci: number, concept: BillingConceptDraft) {
-    if (!lineForm.description.trim() || !lineForm.price) return;
-    setBillingConcepts(p => p.map((c, i) => i === ci ? {
-      ...c, lines: [...c.lines, {
-        service_type: lineForm.service_type, description: lineForm.description,
-        currency: lineForm.currency, price: Number(lineForm.price),
-        tax_rate: lineForm.tax_rate, notes: lineForm.notes || undefined,
-        unit_label: lineForm.unit_label || undefined,
-      }],
-    } : c));
-    setLineForm(EMPTY_LINE(concept.currency));
-  }
-
-  function createConcept() {
-    if (!conceptForm.description.trim()) return;
-    const tempId = Date.now().toString();
-    setBillingConcepts(p => [...p, { tempId, product_id: conceptForm.product_id || undefined, description: conceptForm.description, currency: conceptForm.currency, lines: [] }]);
-    setActiveConcept(tempId);
-    setConceptForm({ product_id: "", description: "", currency: "MXN" });
-    setAddingConcept(false);
-  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>

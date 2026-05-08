@@ -79,7 +79,6 @@ export default function ContentExpo({ info, setInfo, billingConcepts, setBilling
     if (a) setInfo(p => ({ ...p, aduana: a.name, clave_aduana: a.clave_sat, tipo_aduana: a.type }));
   }
 
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 

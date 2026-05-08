@@ -1,5 +1,4 @@
 "use client";
-import { useState, useEffect } from "react";
 import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
 import { INCOTERMS, CONTAINER_TYPES, CURRENCIES } from "../../../types/quotations.types";
 import type { BillingConceptDraft } from "../drawerState";
@@ -30,7 +29,6 @@ export const EMPTY_MARITIMO_INFO = (): MaritimoInfo => ({
   contenedores: [EMPTY_CONTENEDOR()], bultos: [],
 });
 
-const UNITS_FCL = ["Por contenedor", "Por BL", "Por embarque", "Por servicio", "Por factura", "Por trámite"];
 type Props = {
   info:               MaritimoInfo;
   setInfo:            React.Dispatch<React.SetStateAction<MaritimoInfo>>;
@@ -48,60 +46,10 @@ export default function ContentMaritimo({ info, setInfo, billingConcepts, setBil
   const wmTotal   = Math.max(cbmTotal, pesoTotal / 1000);
 
   // Al cambiar subtipo, actualizar defaults del lineForm
-  useEffect(() => {
-    if (info.subtipo === "fcl") {
-      setLineForm(EMPTY_LINE("USD", "Por contenedor", String(totalContenedores || 1)));
-    } else {
-      setLineForm(EMPTY_LINE("USD", "Por W/M", wmTotal > 0 ? wmTotal.toFixed(3) : ""));
-    }
-  }, [info.subtipo]);
 
   // Actualizar cantidad automática cuando cambian contenedores o W/M
-  useEffect(() => {
-    if (info.subtipo === "fcl" && totalContenedores > 0) {
-      setLineForm(p => ({ ...p, quantity: String(totalContenedores) }));
-    }
-  }, [totalContenedores]);
-
-  useEffect(() => {
-    if (info.subtipo === "lcl" && wmTotal > 0) {
-      setLineForm(p => ({ ...p, quantity: wmTotal.toFixed(3) }));
-    }
-  }, [wmTotal]);
 
   const unitOptions = info.subtipo === "fcl" ? UNITS_FCL : UNITS_LCL;
-
-  function addLine(ci: number, concept: BillingConceptDraft) {
-    if (!lineForm.description.trim() || !lineForm.unit_price) return;
-    const price = autoTotal;
-    setBillingConcepts(p => p.map((c, i) => i === ci ? {
-      ...c, lines: [...c.lines, {
-        service_type: "maritimo" as any,
-        description:  lineForm.description,
-        currency:     lineForm.currency,
-        price,
-        quantity:     Number(lineForm.quantity) || 1,
-        unit_price:   Number(lineForm.unit_price),
-        unit_label:   lineForm.unit_label || undefined,
-        tax_rate:     lineForm.tax_rate,
-        notes:        lineForm.notes || undefined,
-      }],
-    } : c));
-    setLineForm(EMPTY_LINE(
-      concept.currency,
-      info.subtipo === "fcl" ? "Por contenedor" : "Por W/M",
-      info.subtipo === "fcl" ? String(totalContenedores) : wmTotal > 0 ? wmTotal.toFixed(3) : "",
-    ));
-  }
-
-  function createConcept() {
-    if (!conceptForm.description.trim()) return;
-    const tempId = Date.now().toString();
-    setBillingConcepts(p => [...p, { tempId, product_id: conceptForm.product_id || undefined, description: conceptForm.description, currency: conceptForm.currency, lines: [] }]);
-    setActiveConcept(tempId);
-    setConceptForm({ product_id: "", description: "", currency: "USD" });
-    setAddingConcept(false);
-  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>

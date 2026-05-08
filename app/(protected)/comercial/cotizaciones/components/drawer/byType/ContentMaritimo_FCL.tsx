@@ -1,5 +1,4 @@
 "use client";
-import { useState } from "react";
 import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
 import { INCOTERMS, CONTAINER_TYPES, CURRENCIES } from "../../../types/quotations.types";
 import type { BillingConceptDraft } from "../drawerState";
@@ -36,59 +35,6 @@ type Props = {
 export default function ContentMaritimo_FCL({ info, setInfo, billingConcepts, setBillingConcepts, svcCatalog }: Props) {
 
   const totalContenedores = info.contenedores.reduce((s, c) => s + c.cantidad, 0);
-
-  function startEditLine(ci: number, li: number) {
-    const line = billingConcepts[ci].lines[li] as any;
-    setLineForm({
-      description: line.description   ?? "",
-      quantity:    String(line.quantity   ?? ""),
-      unit_label:  line.unit_label    ?? "Por contenedor",
-      unit_price:  String(line.unit_price ?? ""),
-      currency:    line.currency      ?? "USD",
-      tax_rate:    line.tax_rate      ?? 0,
-      notes:       line.notes         ?? "",
-    });
-    setEditingLine(li);
-    setBillingConcepts(p => p.map((c, i) => i === ci
-      ? { ...c, lines: c.lines.filter((_, j) => j !== li) }
-      : c
-    ));
-  }
-
-  function addLine(ci: number) {
-    if (!lineForm.description.trim() || !lineForm.unit_price || !lineForm.quantity) return;
-    const price = autoTotal;
-    setBillingConcepts(p => p.map((c, i) => i === ci ? {
-      ...c, lines: [...c.lines, {
-        service_type: "maritimo" as any,
-        description:  lineForm.description,
-        currency:     lineForm.currency,
-        price,
-        quantity:     Number(lineForm.quantity),
-        unit_price:   Number(lineForm.unit_price),
-        unit_label:   lineForm.unit_label || undefined,
-        tax_rate:     lineForm.tax_rate,
-        notes:        lineForm.notes || undefined,
-      }],
-    } : c));
-    setLineForm(EMPTY_LINE());
-    setEditingLine(null);
-  }
-
-  function createConcept() {
-    if (!conceptForm.description.trim()) return;
-    const tempId = Date.now().toString();
-    setBillingConcepts(p => [...p, {
-      tempId,
-      product_id:  conceptForm.product_id || undefined,
-      description: conceptForm.description,
-      currency:    conceptForm.currency,
-      lines:       [],
-    }]);
-    setActiveConcept(tempId);
-    setConceptForm({ product_id: "", description: "", currency: "USD" });
-    setAddingConcept(false);
-  }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>

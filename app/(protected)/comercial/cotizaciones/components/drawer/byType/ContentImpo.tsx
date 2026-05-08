@@ -1,6 +1,5 @@
 "use client";
-import { useState } from "react";
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
 import { CURRENCIES } from "../../../types/quotations.types";
 import type { BillingConceptDraft } from "../drawerState";
@@ -87,62 +86,9 @@ export default function ContentImpo({ info, setInfo, billingConcepts, setBilling
   const ivaImportacion   = baseIvaImpo * 0.16;
   const totalImpuestos   = igi + dta + prevalidacion + ivaPrevalidacion + ivaImportacion;
 
-
   function handleAduanaChange(id: string) {
     const a = aduanas.find(x => x.id === id);
     if (a) setInfo(p => ({ ...p, aduana: a.name, clave_aduana: a.clave_sat, tipo_aduana: a.type }));
-  }
-
-  function startEditLine(ci: number, li: number) {
-    const line = billingConcepts[ci].lines[li] as any;
-    setLineForm({
-      description: line.description  ?? "",
-      quantity:    String(line.quantity  ?? "1"),
-      unit_label:  line.unit_label   ?? "Por pedimento",
-      unit_price:  String(line.unit_price ?? ""),
-      currency:    line.currency     ?? "MXN",
-      tax_rate:    line.tax_rate     ?? 16,
-      notes:       line.notes        ?? "",
-    });
-    setEditingLine(li);
-    setBillingConcepts(p => p.map((c, i) => i === ci
-      ? { ...c, lines: c.lines.filter((_, j) => j !== li) }
-      : c
-    ));
-  }
-
-  function addLine(ci: number) {
-    if (!lineForm.description.trim() || !lineForm.unit_price || !lineForm.quantity) return;
-    setBillingConcepts(p => p.map((c, i) => i === ci ? {
-      ...c, lines: [...c.lines, {
-        service_type: "aduanal" as any,
-        description:  lineForm.description,
-        currency:     lineForm.currency,
-        price:        autoTotal,
-        quantity:     Number(lineForm.quantity),
-        unit_price:   Number(lineForm.unit_price),
-        unit_label:   lineForm.unit_label || undefined,
-        tax_rate:     lineForm.tax_rate,
-        notes:        lineForm.notes || undefined,
-      }],
-    } : c));
-    setLineForm(EMPTY_LINE());
-    setEditingLine(null);
-  }
-
-  function createConcept() {
-    if (!conceptForm.description.trim()) return;
-    const tempId = Date.now().toString();
-    setBillingConcepts(p => [...p, {
-      tempId,
-      product_id:  conceptForm.product_id || undefined,
-      description: conceptForm.description,
-      currency:    conceptForm.currency,
-      lines:       [],
-    }]);
-    setActiveConcept(tempId);
-    setConceptForm({ product_id: "", description: "", currency: "MXN" });
-    setAddingConcept(false);
   }
 
   const fmt = (n: number) => n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 });

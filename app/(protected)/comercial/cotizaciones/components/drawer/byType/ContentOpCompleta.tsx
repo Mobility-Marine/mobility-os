@@ -136,9 +136,6 @@ export default function ContentOpCompleta({ info, setInfo, billingConcepts, setB
   }, []);
 
   // Actualizar unit_label default al cambiar tipo de transporte
-  useEffect(() => {
-    setLineForm(p => ({ ...p, unit_label: UNITS_BY_TRANSPORT[info.tipo_transporte][0] }));
-  }, [info.tipo_transporte]);
 
   // ── Cálculos LCL ──
   const cbmTotal  = info.bultos.reduce((s, b) => s + (Number(b.largo_cm) * Number(b.ancho_cm) * Number(b.alto_cm) / 1_000_000) * Number(b.cantidad || 1), 0);
@@ -176,52 +173,6 @@ export default function ContentOpCompleta({ info, setInfo, billingConcepts, setB
   function handleAduanaChange(id: string) {
     const a = aduanas.find(x => x.id === id);
     if (a) setInfo(p => ({ ...p, aduana: a.name, clave_aduana: a.clave_sat, tipo_aduana: a.type }));
-  }
-
-  function startEditLine(ci: number, li: number) {
-    const line = billingConcepts[ci].lines[li] as any;
-    setLineForm({
-      description: line.description ?? "",
-      quantity:    String(line.quantity  ?? ""),
-      unit_label:  line.unit_label   ?? UNITS_BY_TRANSPORT[info.tipo_transporte][0],
-      unit_price:  String(line.unit_price ?? ""),
-      currency:    line.currency     ?? "USD",
-      tax_rate:    line.tax_rate     ?? 0,
-      notes:       line.notes        ?? "",
-    });
-    setEditingLine(li);
-    setBillingConcepts(p => p.map((c, i) => i === ci
-      ? { ...c, lines: c.lines.filter((_, j) => j !== li) }
-      : c
-    ));
-  }
-
-  function addLine(ci: number) {
-    if (!lineForm.description.trim() || !lineForm.unit_price || !lineForm.quantity) return;
-    setBillingConcepts(p => p.map((c, i) => i === ci ? {
-      ...c, lines: [...c.lines, {
-        service_type: "op_completa" as any,
-        description:  lineForm.description,
-        currency:     lineForm.currency,
-        price:        autoTotal,
-        quantity:     Number(lineForm.quantity),
-        unit_price:   Number(lineForm.unit_price),
-        unit_label:   lineForm.unit_label || undefined,
-        tax_rate:     lineForm.tax_rate,
-        notes:        lineForm.notes || undefined,
-      }],
-    } : c));
-    setLineForm(EMPTY_LINE(info.tipo_transporte));
-    setEditingLine(null);
-  }
-
-  function createConcept() {
-    if (!conceptForm.description.trim()) return;
-    const tempId = Date.now().toString();
-    setBillingConcepts(p => [...p, { tempId, product_id: conceptForm.product_id || undefined, description: conceptForm.description, currency: conceptForm.currency, lines: [] }]);
-    setActiveConcept(tempId);
-    setConceptForm({ product_id: "", description: "", currency: "USD" });
-    setAddingConcept(false);
   }
 
   const TRANSPORT_OPTIONS: { value: TipoTransporte; label: string; desc: string }[] = [
