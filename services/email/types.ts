@@ -36,6 +36,15 @@ export type SendEmailRequest = {
     email:         string;
     name?:         string;
   };
+  // ────────────────────────────────────────────────────────────
+  // Adjuntos opcionales (PDF de cotización, XML+PDF de CFDI, etc)
+  // El servidor los pasa directo al payload de Brevo.
+  // content debe ser base64 (sin prefijo data:...).
+  // ────────────────────────────────────────────────────────────
+  attachments?: Array<{
+    name:    string;        // nombre del archivo (ej: "COT-2026-0008.pdf")
+    content: string;        // contenido en base64
+  }>;
   related_entity?: {
     type:          string;                        // "invitation" | "quotation" | "shipment"...
     id:            string;

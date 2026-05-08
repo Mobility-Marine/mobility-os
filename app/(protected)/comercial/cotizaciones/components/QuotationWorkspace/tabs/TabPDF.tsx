@@ -1,22 +1,34 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import type { Quotation } from "../../../types/quotations.types";
+import { useTenant } from "@/lib/tenant/TenantProvider";
+import { useCurrentUser } from "@/lib/auth/useCurrentUser";
+import {
+  sendQuotationEmail,
+  parseEmails,
+  loadQuotationSendHistory,
+  type QuotationSendHistory,
+} from "../../../services/quotations.email";
 import {
   IconDownload,
   IconMail,
-  IconFileText,
-} from "../../Icons";
-import { IconInfo } from "@/app/components/shared/Icons";
+  IconCheck,
+  IconAlertCircle,
+  IconRefresh,
+} from "@/app/components/shared/Icons";
 
 // ═══════════════════════════════════════════════════════════════════
-// TAB PDF / ENVÍO — Generación y distribución del documento
+// TAB PDF / ENVÍO — Composer real conectado a Brevo
 //
 // Secciones:
-//   1. Acción principal: descargar PDF (CTA grande)
-//   2. Información del documento (plantilla · tipo · totales)
-//   3. Composición del envío por correo (placeholder hasta Brevo SMTP)
-//   4. Historial de envíos (futuro)
+//   1. Acción principal: descargar PDF
+//   2. Información del documento (totales por moneda)
+//   3. Indicador de envíos previos (si los hay)
+//   4. Composer del correo: Para, CC, CCO, Asunto, Mensaje, Enviar
+//
+// Reply-to automático apunta al usuario actual: cuando el cliente
+// responda, el correo llega al emisor, no al sender genérico.
 // ═══════════════════════════════════════════════════════════════════
 
 type Props = {
@@ -26,452 +38,425 @@ type Props = {
 };
 
 export default function TabPDF({ quotation, onDownload, saving }: Props) {
+  const { companyId } = useTenant();
+  const { user: currentUser, loading: userLoading } = useCurrentUser();
+
+  // ─── Estados del composer ──────────────────────────────────────────
   const [emailTo, setEmailTo] = useState(
     quotation.contact_email ?? quotation.client_email ?? "",
   );
   const [emailCc, setEmailCc] = useState("");
+  const [emailBcc, setEmailBcc] = useState("");
   const [emailSubject, setEmailSubject] = useState(
-    `Cotización ${quotation.quote_number}`,
+    `Cotización ${quotation.quote_number ?? ""}`,
   );
   const [emailMessage, setEmailMessage] = useState("");
+  const [sending, setSending] = useState(false);
+  const [feedback, setFeedback] = useState<{ type: "success" | "error"; text: string } | null>(null);
+  const [history, setHistory] = useState<QuotationSendHistory>({ count: 0, lastAt: null, lastTo: null });
 
-  // Calcular totales por moneda para mostrar en metadata
-  const concepts = (quotation as any).billing_concepts ?? [];
-  const items = quotation.items ?? [];
-  const totals: Record<string, number> = {};
-  if (concepts.length > 0) {
-    for (const c of concepts) {
-      for (const line of c.lines ?? []) {
-        const cur = line.currency ?? c.currency ?? quotation.currency ?? "MXN";
-        const price = Number(line.price ?? 0);
-        const rate = line.tax_rate;
-        const tax =
-          rate === null || rate === undefined || rate === -1 || rate <= 0
+  // ─── Re-sync cuando cambia la cotización ───────────────────────────
+  useEffect(() => {
+    setEmailTo(quotation.contact_email ?? quotation.client_email ?? "");
+    setEmailCc("");
+    setEmailBcc("");
+    setEmailSubject(`Cotización ${quotation.quote_number ?? ""}`);
+    setFeedback(null);
+  }, [quotation.id]);
+
+  // ─── Plantilla pre-cargada del mensaje ─────────────────────────────
+  useEffect(() => {
+    if (!currentUser) return;
+    const contactName = quotation.contact_name?.trim() || quotation.client_name?.trim() || "";
+    const validUntil = quotation.valid_until ?? quotation.expires_at;
+    const validUntilStr = validUntil
+      ? new Date(validUntil).toLocaleDateString("es-MX", { day: "numeric", month: "long", year: "numeric" })
+      : "";
+
+    const greeting = contactName ? `Estimado/a ${contactName},` : "Estimado/a cliente,";
+    const intro = `Adjunto encontrará la cotización ${quotation.quote_number ?? ""}${validUntilStr ? ` con vigencia al ${validUntilStr}` : ""}.`;
+    const closing = "Quedo a sus órdenes para cualquier duda o aclaración. Será un placer atenderle.";
+
+    setEmailMessage(`${greeting}\n\n${intro}\n\n${closing}`);
+  }, [quotation.id, currentUser?.id]);
+
+  // ─── Cargar historial de envíos ────────────────────────────────────
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      const h = await loadQuotationSendHistory(quotation.id);
+      if (!cancelled) setHistory(h);
+    }
+    void load();
+    return () => { cancelled = true; };
+  }, [quotation.id]);
+
+  // ─── Totales por moneda para info del documento ────────────────────
+  const totalsByCurrency = useMemo(() => {
+    const concepts = (quotation as any).billing_concepts ?? [];
+    const items    = quotation.items ?? [];
+    const totals: Record<string, number> = {};
+    if (concepts.length > 0) {
+      for (const c of concepts) {
+        for (const line of c.lines ?? []) {
+          const cur = line.currency ?? c.currency ?? quotation.currency ?? "MXN";
+          const price = Number(line.price ?? 0);
+          const rate = line.tax_rate;
+          const tax = rate === null || rate === undefined || rate === -1 || Number(rate) <= 0
             ? 0
             : price * (Number(rate) / 100);
-        totals[cur] = (totals[cur] ?? 0) + price + tax;
+          totals[cur] = (totals[cur] ?? 0) + price + tax;
+        }
       }
+    } else {
+      totals[quotation.currency ?? "MXN"] = Number(quotation.total ?? 0);
     }
-  } else {
-    totals[quotation.currency ?? "MXN"] = quotation.total ?? 0;
-  }
+    return totals;
+  }, [quotation]);
 
   const fmt = (n: number, cur: string) => {
-    const symbol = cur === "USD" ? "USD $" : cur === "EUR" ? "€" : "$";
-    return `${symbol}${n.toLocaleString("es-MX", {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })}`;
+    const num = new Intl.NumberFormat("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
+    return `$${num} ${cur}`;
   };
 
+  // ─── Validación del formulario ─────────────────────────────────────
+  const canSend = useMemo(() => {
+    if (sending || userLoading || !currentUser) return false;
+    if (!emailTo.trim() || !/\S+@\S+\.\S+/.test(emailTo.trim())) return false;
+    if (!emailSubject.trim()) return false;
+    if (!emailMessage.trim()) return false;
+    return true;
+  }, [sending, userLoading, currentUser, emailTo, emailSubject, emailMessage]);
+
+  // ─── Envío ─────────────────────────────────────────────────────────
+  async function handleSend() {
+    if (!canSend || !currentUser || !companyId) return;
+
+    setSending(true);
+    setFeedback(null);
+
+    try {
+      const result = await sendQuotationEmail({
+        quotation,
+        companyId,
+        currentUser,
+        to:          emailTo.trim(),
+        cc:          parseEmails(emailCc),
+        bcc:         parseEmails(emailBcc),
+        subject:     emailSubject.trim(),
+        userMessage: emailMessage,
+      });
+
+      if (result.success) {
+        setFeedback({ type: "success", text: `Cotización enviada correctamente a ${emailTo.trim()}` });
+        // Refrescar historial
+        const h = await loadQuotationSendHistory(quotation.id);
+        setHistory(h);
+      } else {
+        setFeedback({ type: "error", text: result.error ?? "Error desconocido al enviar" });
+      }
+    } catch (err: any) {
+      setFeedback({ type: "error", text: err.message ?? "Error inesperado" });
+    } finally {
+      setSending(false);
+    }
+  }
+
+  // ─── Helpers de presentación ───────────────────────────────────────
+  const lastSentRelative = (() => {
+    if (!history.lastAt) return null;
+    const d = new Date(history.lastAt);
+    const diffMs = Date.now() - d.getTime();
+    const diffH  = Math.floor(diffMs / 3600000);
+    if (diffH < 1)   return "hace menos de una hora";
+    if (diffH < 24)  return `hace ${diffH} ${diffH === 1 ? "hora" : "horas"}`;
+    const diffD = Math.floor(diffH / 24);
+    if (diffD < 30)  return `hace ${diffD} ${diffD === 1 ? "día" : "días"}`;
+    return d.toLocaleDateString("es-MX", { day: "numeric", month: "short", year: "numeric" });
+  })();
+
+  // ─── Render ────────────────────────────────────────────────────────
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-      {/* SECCIÓN 1 — CTA principal: Descargar PDF */}
+    <div style={{ padding: "20px 24px", overflowY: "auto", height: "100%" }}>
+
+      {/* ═══ DESCARGA PDF ═══ */}
       <div
         style={{
-          background:
-            "linear-gradient(135deg, var(--color-info-bg) 0%, var(--color-bg-base) 100%)",
-          border: "1px solid var(--color-info-border)",
+          background: "var(--color-bg-subtle)",
+          border: "1px solid var(--color-border-faint)",
           borderRadius: "var(--radius-lg)",
-          padding: "20px",
+          padding: "16px 18px",
+          marginBottom: "20px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
           gap: "16px",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "14px", minWidth: 0 }}>
-          <div
-            style={{
-              width: "44px",
-              height: "44px",
-              borderRadius: "var(--radius-md)",
-              background: "var(--color-info-text)",
-              color: "#fff",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              flexShrink: 0,
-            }}
-          >
-            <IconFileText size={22} />
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "var(--color-text-primary)", marginBottom: 2 }}>
+            Documento PDF
           </div>
-          <div style={{ minWidth: 0 }}>
-            <div
-              style={{
-                fontSize: "14px",
-                fontWeight: 800,
-                color: "var(--color-text-primary)",
-              }}
-            >
-              Documento PDF de la cotización
-            </div>
-            <div
-              style={{
-                fontSize: "11px",
-                color: "var(--color-text-muted)",
-                marginTop: "2px",
-              }}
-            >
-              Genera y descarga el PDF con la plantilla configurada en la empresa
-            </div>
+          <div style={{ fontSize: 11, color: "var(--color-text-muted)" }}>
+            {quotation.quote_number}.pdf · plantilla {quotation.template ?? "elegante"}
           </div>
         </div>
         <button
           onClick={onDownload}
           disabled={saving}
           style={{
-            height: "42px",
-            padding: "0 18px",
+            height: 38,
+            padding: "0 16px",
             borderRadius: "var(--radius-md)",
-            background: saving ? "var(--color-bg-subtle)" : "var(--color-info-text)",
-            color: saving ? "var(--color-text-muted)" : "#fff",
-            border: "none",
-            fontSize: "13px",
-            fontWeight: 800,
-            cursor: saving ? "not-allowed" : "pointer",
+            background: "var(--color-brand-blue)",
+            border: "1px solid var(--color-brand-blue)",
+            color: "#fff",
+            fontSize: 13,
+            fontWeight: 700,
+            cursor: saving ? "wait" : "pointer",
             display: "flex",
             alignItems: "center",
-            gap: "8px",
-            flexShrink: 0,
-            boxShadow: "0 1px 3px rgba(0,0,0,0.1)",
+            gap: 8,
+            opacity: saving ? 0.7 : 1,
           }}
         >
-          <IconDownload size={15} strokeWidth={2.5} />
-          {saving ? "Generando…" : "Descargar PDF"}
+          <IconDownload size={15} />
+          {saving ? "Generando..." : "Descargar PDF"}
         </button>
       </div>
 
-      {/* SECCIÓN 2 — Información del documento */}
-      <Section title="Información del documento">
-        <div
-          style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))",
-            gap: "10px",
-          }}
-        >
-          <Field label="Folio" value={quotation.quote_number} mono bold />
-          <Field
-            label="Plantilla"
-            value={quotation.template ?? "Mobility OS"}
-            bold
-          />
-          <Field
-            label="Tipo"
-            value={
-              quotation.type === "services"
-                ? quotation.service_subtype
-                  ? quotation.service_subtype.replace(/_/g, " ").toUpperCase()
-                  : "Servicios"
-                : "Productos"
-            }
-          />
-          <Field
-            label="Idioma"
-            value={quotation.language === "en" ? "Inglés" : "Español"}
-          />
-          <Field
-            label={quotation.type === "services" ? "Conceptos" : "Productos"}
-            value={
-              quotation.type === "services"
-                ? `${concepts.length}`
-                : `${items.length}`
-            }
-            mono
-          />
-          <Field
-            label="Líneas totales"
-            value={
-              quotation.type === "services"
-                ? `${concepts.reduce((s: number, c: any) => s + (c.lines?.length ?? 0), 0)}`
-                : `${items.length}`
-            }
-            mono
-          />
+      {/* ═══ INFO DOCUMENTO (totales por moneda) ═══ */}
+      <div
+        style={{
+          background: "var(--color-bg-subtle)",
+          border: "1px solid var(--color-border-faint)",
+          borderRadius: "var(--radius-lg)",
+          padding: "14px 18px",
+          marginBottom: "20px",
+          display: "grid",
+          gridTemplateColumns: "1fr 1fr",
+          gap: "12px 24px",
+        }}
+      >
+        <div>
+          <div style={{ fontSize: 10, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700, marginBottom: 4 }}>
+            Cliente
+          </div>
+          <div style={{ fontSize: 13, color: "var(--color-text-primary)", fontWeight: 600 }}>
+            {quotation.client_name ?? "—"}
+          </div>
         </div>
-        {/* Totales por moneda */}
+        <div>
+          <div style={{ fontSize: 10, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 1, fontWeight: 700, marginBottom: 4 }}>
+            Total
+          </div>
+          {Object.entries(totalsByCurrency).map(([cur, val]) => (
+            <div key={cur} style={{ fontSize: 13, color: "var(--color-text-primary)", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
+              {fmt(val, cur)}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ═══ INDICADOR DE ENVÍOS PREVIOS ═══ */}
+      {history.count > 0 && (
         <div
           style={{
-            marginTop: "12px",
-            padding: "10px 12px",
-            background: "var(--color-bg-subtle)",
+            background: "color-mix(in srgb, var(--color-brand-blue) 8%, transparent)",
+            border: "1px solid color-mix(in srgb, var(--color-brand-blue) 25%, transparent)",
             borderRadius: "var(--radius-md)",
+            padding: "10px 14px",
+            marginBottom: "20px",
             display: "flex",
-            justifyContent: "space-between",
             alignItems: "center",
-            flexWrap: "wrap",
-            gap: "10px",
+            gap: 10,
+            fontSize: 12,
+            color: "var(--color-text-primary)",
           }}
         >
-          <span
-            style={{
-              fontSize: "10px",
-              fontWeight: 700,
-              color: "var(--color-text-muted)",
-              textTransform: "uppercase",
-              letterSpacing: "0.5px",
-            }}
-          >
-            Total a desplegar en PDF
-          </span>
-          <div style={{ display: "flex", gap: "16px", flexWrap: "wrap" }}>
-            {Object.entries(totals).map(([cur, val]) => (
-              <span
-                key={cur}
-                style={{
-                  fontSize: "13px",
-                  fontWeight: 800,
-                  color: "var(--color-success-text)",
-                  fontVariantNumeric: "tabular-nums",
-                }}
-              >
-                {fmt(val, cur)}
-                {Object.keys(totals).length > 1 && (
-                  <span
-                    style={{
-                      fontSize: "9px",
-                      opacity: 0.65,
-                      marginLeft: "4px",
-                      fontWeight: 700,
-                    }}
-                  >
-                    {cur}
-                  </span>
-                )}
-              </span>
-            ))}
-          </div>
-        </div>
-      </Section>
-
-      {/* SECCIÓN 3 — Envío por correo (placeholder hasta Brevo SMTP activado) */}
-      <Section title="Envío por correo">
-        <div
-          style={{
-            padding: "10px 12px",
-            background: "var(--color-warning-bg)",
-            border: "1px solid var(--color-warning-border)",
-            borderRadius: "var(--radius-md)",
-            fontSize: "11px",
-            color: "var(--color-warning-text)",
-            display: "flex",
-            alignItems: "flex-start",
-            gap: "8px",
-            marginBottom: "12px",
-            lineHeight: 1.5,
-          }}
-        >
-          <IconInfo size={14} />
+          <IconRefresh size={14} style={{ color: "var(--color-brand-blue)" }} />
           <span>
-            <strong>Próximamente:</strong> El envío por correo se habilitará al activar
-            la cuenta SMTP de Brevo (pendiente verificación en la cuenta de soporte). Por
-            ahora, descarga el PDF y envíalo desde tu cliente de correo.
+            <strong>Enviada {history.count} {history.count === 1 ? "vez" : "veces"}.</strong>
+            {history.lastTo && lastSentRelative && (
+              <> Última: a <strong>{history.lastTo}</strong> {lastSentRelative}.</>
+            )}
           </span>
         </div>
+      )}
 
-        <div style={{ display: "flex", flexDirection: "column", gap: "10px", opacity: 0.6 }}>
-          <EmailField
-            label="Para"
+      {/* ═══ COMPOSER ═══ */}
+      <div
+        style={{
+          background: "var(--color-bg-base)",
+          border: "1px solid var(--color-border-faint)",
+          borderRadius: "var(--radius-lg)",
+          padding: "18px 20px",
+        }}
+      >
+        <div style={{ fontSize: 11, fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: 1.5, marginBottom: 14 }}>
+          Envío por correo
+        </div>
+
+        {/* Para */}
+        <Field label="Para" required>
+          <input
+            type="email"
             value={emailTo}
-            onChange={setEmailTo}
-            disabled
+            onChange={e => setEmailTo(e.target.value)}
             placeholder="cliente@empresa.com"
+            disabled={sending}
+            style={inputStyle}
           />
-          <EmailField
-            label="CC (opcional)"
-            value={emailCc}
-            onChange={setEmailCc}
-            disabled
-            placeholder="contacto@empresa.com, otro@empresa.com"
-          />
-          <EmailField
-            label="Asunto"
-            value={emailSubject}
-            onChange={setEmailSubject}
-            disabled
-          />
-          <div>
-            <label
-              style={{
-                fontSize: "9px",
-                fontWeight: 700,
-                color: "var(--color-text-muted)",
-                textTransform: "uppercase",
-                letterSpacing: "0.4px",
-                display: "block",
-                marginBottom: "4px",
-              }}
-            >
-              Mensaje
-            </label>
-            <textarea
-              value={emailMessage}
-              onChange={(e) => setEmailMessage(e.target.value)}
-              disabled
-              placeholder="Mensaje opcional para el cuerpo del correo…"
-              rows={3}
-              style={{
-                width: "100%",
-                padding: "8px 10px",
-                borderRadius: "var(--radius-md)",
-                border: "1px solid var(--color-border)",
-                background: "var(--color-bg-subtle)",
-                color: "var(--color-text-primary)",
-                fontSize: "12px",
-                outline: "none",
-                resize: "vertical",
-                fontFamily: "inherit",
-                boxSizing: "border-box",
-              }}
-            />
-          </div>
+        </Field>
 
-          <button
-            disabled
+        {/* CC */}
+        <Field label="CC" hint="Separados por coma">
+          <input
+            type="text"
+            value={emailCc}
+            onChange={e => setEmailCc(e.target.value)}
+            placeholder="contacto@empresa.com, otro@empresa.com"
+            disabled={sending}
+            style={inputStyle}
+          />
+        </Field>
+
+        {/* CCO */}
+        <Field label="CCO" hint="Copia oculta — separados por coma">
+          <input
+            type="text"
+            value={emailBcc}
+            onChange={e => setEmailBcc(e.target.value)}
+            placeholder="auditoria@miempresa.com"
+            disabled={sending}
+            style={inputStyle}
+          />
+        </Field>
+
+        {/* Asunto */}
+        <Field label="Asunto" required>
+          <input
+            type="text"
+            value={emailSubject}
+            onChange={e => setEmailSubject(e.target.value)}
+            disabled={sending}
+            style={inputStyle}
+          />
+        </Field>
+
+        {/* Mensaje */}
+        <Field label="Mensaje" required>
+          <textarea
+            value={emailMessage}
+            onChange={e => setEmailMessage(e.target.value)}
+            disabled={sending}
+            rows={8}
             style={{
-              height: "38px",
-              padding: "0 16px",
+              ...inputStyle,
+              fontFamily: "inherit",
+              resize: "vertical",
+              minHeight: 140,
+              lineHeight: 1.5,
+            }}
+          />
+        </Field>
+
+        {/* Reply-to info */}
+        <div style={{ fontSize: 11, color: "var(--color-text-muted)", marginTop: -6, marginBottom: 14, fontStyle: "italic" }}>
+          Las respuestas del cliente llegarán a tu correo: <strong>{currentUser?.email ?? "—"}</strong>
+        </div>
+
+        {/* Feedback */}
+        {feedback && (
+          <div
+            style={{
+              padding: "10px 14px",
               borderRadius: "var(--radius-md)",
-              background: "var(--color-bg-subtle)",
-              color: "var(--color-text-muted)",
-              border: "1px solid var(--color-border)",
-              fontSize: "12px",
-              fontWeight: 700,
-              cursor: "not-allowed",
+              marginBottom: 14,
+              fontSize: 12,
+              fontWeight: 600,
               display: "flex",
               alignItems: "center",
-              justifyContent: "center",
-              gap: "8px",
+              gap: 8,
+              background: feedback.type === "success"
+                ? "color-mix(in srgb, var(--color-success-text) 10%, transparent)"
+                : "color-mix(in srgb, var(--color-danger-text) 10%, transparent)",
+              border: feedback.type === "success"
+                ? "1px solid color-mix(in srgb, var(--color-success-text) 35%, transparent)"
+                : "1px solid color-mix(in srgb, var(--color-danger-text) 35%, transparent)",
+              color: feedback.type === "success" ? "var(--color-success-text)" : "var(--color-danger-text)",
             }}
           >
-            <IconMail size={14} />
-            Enviar cotización (próximamente)
-          </button>
-        </div>
-      </Section>
+            {feedback.type === "success" ? <IconCheck size={14} /> : <IconAlertCircle size={14} />}
+            <span>{feedback.text}</span>
+          </div>
+        )}
+
+        {/* Botón Enviar */}
+        <button
+          onClick={handleSend}
+          disabled={!canSend}
+          style={{
+            width: "100%",
+            height: 42,
+            borderRadius: "var(--radius-md)",
+            background: canSend ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
+            border: `1px solid ${canSend ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
+            color: canSend ? "#fff" : "var(--color-text-muted)",
+            fontSize: 13,
+            fontWeight: 800,
+            cursor: canSend ? "pointer" : "not-allowed",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            gap: 8,
+            transition: "var(--transition-fast)",
+          }}
+        >
+          <IconMail size={15} />
+          {sending ? "Enviando..." : "Enviar cotización"}
+        </button>
+      </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// SUB-COMPONENTS
-// ═══════════════════════════════════════════════════════════════════
+// ─── Subcomponente Field reutilizable ──────────────────────────────────
 
-function Section({ title, children }: { title: string; children: React.ReactNode }) {
+function Field({
+  label,
+  hint,
+  required,
+  children,
+}: {
+  label: string;
+  hint?: string;
+  required?: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div
-      style={{
-        background: "var(--color-bg-base)",
-        border: "1px solid var(--color-border-faint)",
-        borderRadius: "var(--radius-lg)",
-        padding: "12px 14px",
-      }}
-    >
-      <div
-        style={{
-          fontSize: "10px",
-          fontWeight: 800,
-          color: "var(--color-text-muted)",
-          textTransform: "uppercase",
-          letterSpacing: "0.6px",
-          marginBottom: "10px",
-          paddingBottom: "8px",
-          borderBottom: "1px solid var(--color-border-faint)",
-        }}
-      >
-        {title}
-      </div>
+    <div style={{ marginBottom: 12 }}>
+      <label style={{ display: "flex", alignItems: "baseline", gap: 6, fontSize: 11, fontWeight: 700, color: "var(--color-text-second)", marginBottom: 4, textTransform: "uppercase", letterSpacing: 0.5 }}>
+        <span>{label}</span>
+        {required && <span style={{ color: "var(--color-danger-text)" }}>*</span>}
+        {hint && <span style={{ fontWeight: 400, color: "var(--color-text-muted)", textTransform: "none", letterSpacing: 0, fontSize: 10 }}>· {hint}</span>}
+      </label>
       {children}
     </div>
   );
 }
 
-function Field({
-  label,
-  value,
-  bold,
-  mono,
-}: {
-  label: string;
-  value: string;
-  bold?: boolean;
-  mono?: boolean;
-}) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
-      <span
-        style={{
-          fontSize: "9px",
-          fontWeight: 700,
-          color: "var(--color-text-muted)",
-          textTransform: "uppercase",
-          letterSpacing: "0.4px",
-        }}
-      >
-        {label}
-      </span>
-      <span
-        style={{
-          fontSize: "12px",
-          fontWeight: bold ? 700 : 600,
-          color: "var(--color-text-primary)",
-          fontVariantNumeric: mono ? "tabular-nums" : "normal",
-        }}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
+// ─── Estilo común de inputs ────────────────────────────────────────────
 
-function EmailField({
-  label,
-  value,
-  onChange,
-  disabled,
-  placeholder,
-}: {
-  label: string;
-  value: string;
-  onChange: (v: string) => void;
-  disabled?: boolean;
-  placeholder?: string;
-}) {
-  return (
-    <div>
-      <label
-        style={{
-          fontSize: "9px",
-          fontWeight: 700,
-          color: "var(--color-text-muted)",
-          textTransform: "uppercase",
-          letterSpacing: "0.4px",
-          display: "block",
-          marginBottom: "4px",
-        }}
-      >
-        {label}
-      </label>
-      <input
-        type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        placeholder={placeholder}
-        style={{
-          width: "100%",
-          height: "32px",
-          padding: "0 10px",
-          borderRadius: "var(--radius-md)",
-          border: "1px solid var(--color-border)",
-          background: "var(--color-bg-subtle)",
-          color: "var(--color-text-primary)",
-          fontSize: "12px",
-          outline: "none",
-          boxSizing: "border-box",
-        }}
-      />
-    </div>
-  );
-}
+const inputStyle: React.CSSProperties = {
+  width: "100%",
+  height: 36,
+  padding: "0 12px",
+  borderRadius: "var(--radius-md)",
+  border: "1px solid var(--color-border-faint)",
+  background: "var(--color-bg-base)",
+  color: "var(--color-text-primary)",
+  fontSize: 13,
+  outline: "none",
+  boxSizing: "border-box",
+};

@@ -101,6 +101,14 @@ export async function POST(req: NextRequest) {
           ...(body.reply_to.name ? { name: body.reply_to.name } : {}),
         }
       } : {}),
+      // ──────────────────────────────────────────────────────────
+      // Adjuntos: Brevo acepta { name, content } con content en
+      // base64 puro (sin prefijo data:...). Si NO hay attachments
+      // el campo se omite del payload.
+      // ──────────────────────────────────────────────────────────
+      ...(body.attachments?.length
+        ? { attachment: body.attachments.map(a => ({ name: a.name, content: a.content })) }
+        : {}),
       // Tags útiles para filtrar en Brevo dashboard
       tags: [body.template_key, rendered.category, rendered.module_key],
     };

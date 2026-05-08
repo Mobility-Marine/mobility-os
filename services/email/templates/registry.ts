@@ -5,7 +5,8 @@
 // solo se importan aquí y se agregan al objeto TEMPLATES.
 
 import type { EmailTemplate } from "../types";
-import { invitationTemplate } from "./invitation";
+import { invitationTemplate }     from "./invitation";
+import { quotationSentTemplate }  from "./quotation_sent";
 
 /**
  * Mapa de templates registradas.
@@ -13,11 +14,11 @@ import { invitationTemplate } from "./invitation";
  */
 export const TEMPLATES: Record<string, EmailTemplate> = {
   user_invitation: invitationTemplate,
+  quotation_sent:  quotationSentTemplate,
   // Futuras:
-  // quotation_send:       quotationTemplate,
-  // invoice_send:         invoiceTemplate,
-  // shipment_status:      shipmentStatusTemplate,
-  // payment_reminder:     paymentReminderTemplate,
+  // invoice_sent:       invoiceSentTemplate,
+  // shipment_status:    shipmentStatusTemplate,
+  // payment_reminder:   paymentReminderTemplate,
 };
 
 export function getTemplate(key: string): EmailTemplate | null {
