@@ -37,7 +37,13 @@ export default function TabPerfil() {
   const { companyId }        = useTenant();
   const fileRef              = useRef<HTMLInputElement>(null);
 
-  const [profile, setProfile] = useState({ full_name: "", phone: "", avatar_url: "" });
+  const [profile, setProfile] = useState({
+    full_name:    "",
+    phone:        "",
+    phone_mobile: "",
+    job_title:    "",
+    avatar_url:   "",
+  });
   const [saving,  setSaving]  = useState(false);
   const [saved,   setSaved]   = useState(false);
   const [error,   setError]   = useState<string | null>(null);
@@ -50,10 +56,17 @@ export default function TabPerfil() {
 
   useEffect(() => {
     if (!user) return;
-    supabase.from("user_profiles").select("full_name, phone, avatar_url")
+    supabase.from("user_profiles")
+      .select("full_name, phone, phone_mobile, job_title, avatar_url")
       .eq("user_id", user.id).maybeSingle()
       .then(({ data }) => {
-        if (data) setProfile({ full_name: data.full_name ?? "", phone: data.phone ?? "", avatar_url: data.avatar_url ?? "" });
+        if (data) setProfile({
+          full_name:    data.full_name    ?? "",
+          phone:        data.phone        ?? "",
+          phone_mobile: data.phone_mobile ?? "",
+          job_title:    data.job_title    ?? "",
+          avatar_url:   data.avatar_url   ?? "",
+        });
       });
   }, [user]);
 
@@ -62,11 +75,13 @@ export default function TabPerfil() {
     setSaving(true); setError(null);
     try {
       await supabase.from("user_profiles").upsert({
-        user_id:    user.id,
-        full_name:  profile.full_name,
-        phone:      profile.phone,
-        avatar_url: profile.avatar_url,
-        updated_at: new Date().toISOString(),
+        user_id:      user.id,
+        full_name:    profile.full_name,
+        phone:        profile.phone,
+        phone_mobile: profile.phone_mobile || null,
+        job_title:    profile.job_title    || null,
+        avatar_url:   profile.avatar_url,
+        updated_at:   new Date().toISOString(),
       }, { onConflict: "user_id" });
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
@@ -145,12 +160,30 @@ export default function TabPerfil() {
           <input value={profile.full_name} onChange={(e) => setProfile((p) => ({ ...p, full_name: e.target.value }))} placeholder="Alejandro Reyes" style={INPUT} />
         </Field>
 
+        <Field label={(t.settings as any)?.jobTitle ?? "Puesto / Título profesional"}>
+          <input
+            value={profile.job_title}
+            onChange={(e) => setProfile((p) => ({ ...p, job_title: e.target.value }))}
+            placeholder="ej: Traffic and Logistics Manager / Lic. en Comercio Internacional"
+            style={INPUT}
+          />
+        </Field>
+
         <Field label="Email">
           <input value={user?.email ?? ""} disabled style={{ ...INPUT, opacity: 0.6, cursor: "not-allowed" }} />
         </Field>
 
-        <Field label={(t.settings as any)?.phone ?? "Teléfono"}>
-          <input value={profile.phone} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} placeholder="+52 33 1234 5678" style={INPUT} />
+        <Field label={(t.settings as any)?.phone ?? "Teléfono fijo / oficina"}>
+          <input value={profile.phone} onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))} placeholder="+52 449 123 4567" style={INPUT} />
+        </Field>
+
+        <Field label={(t.settings as any)?.phoneMobile ?? "Teléfono móvil"}>
+          <input
+            value={profile.phone_mobile}
+            onChange={(e) => setProfile((p) => ({ ...p, phone_mobile: e.target.value }))}
+            placeholder="+52 449 123 4567"
+            style={INPUT}
+          />
         </Field>
 
         {error && (

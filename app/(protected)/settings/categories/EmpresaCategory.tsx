@@ -17,8 +17,9 @@ import { useCompanySettings } from "../hooks/useCompanySettings";
 import { useTenant } from "@/lib/tenant/TenantProvider";
 import { supabase } from "@/lib/supabaseClient";
 import { REGIMENES_FISCALES_SAT } from "@/lib/sat/regimenes-fiscales";
+import CorreoBrandingDrawer from "./drawers/CorreoBrandingDrawer";
 
-type DrawerKey = null | "identidad" | "marca" | "contacto" | "plantillas";
+type DrawerKey = null | "identidad" | "marca" | "contacto" | "plantillas" | "correo";
 
 // ── Estilos compartidos ────────────────────────────────────────────────
 const labelStyle = {
@@ -110,6 +111,21 @@ export default function EmpresaCategory() {
           previewLabel="PLANTILLAS ACTIVAS"
           onClick={() => setOpenDrawer("plantillas")}
         />
+        <SettingCard
+          icon="✉️"
+          title="Branding del correo"
+          description="Redes sociales, banner promocional y disclaimer legal en correos transaccionales."
+          preview={
+            [
+              settings?.social_facebook_url  ? "FB" : null,
+              settings?.social_linkedin_url  ? "IN" : null,
+              settings?.social_instagram_url ? "IG" : null,
+              settings?.social_twitter_url   ? "TW" : null,
+            ].filter(Boolean).join(" · ") || "Sin configurar"
+          }
+          previewLabel="REDES ACTIVAS"
+          onClick={() => setOpenDrawer("correo")}
+        />
       </div>
 
       {/* Drawers */}
@@ -136,6 +152,13 @@ export default function EmpresaCategory() {
       />
       <PlantillasDrawer
         open={openDrawer === "plantillas"}
+        onClose={() => setOpenDrawer(null)}
+        settings={settings}
+        saving={saving}
+        update={update}
+      />
+      <CorreoBrandingDrawer
+        open={openDrawer === "correo"}
         onClose={() => setOpenDrawer(null)}
         settings={settings}
         saving={saving}
