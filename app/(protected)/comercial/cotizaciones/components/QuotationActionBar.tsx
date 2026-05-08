@@ -18,6 +18,7 @@ import {
   IconCheck,
   IconLock,
   IconAlertTriangle,
+  IconX,
 } from "./Icons";
 
 // ═══════════════════════════════════════════════════════════════════
@@ -44,6 +45,8 @@ type Props = {
   onSend?: () => void;
   onDelete: () => Promise<void>;
   onAccept?: () => void;
+  onMarkSent?: () => void;
+  onReject?: () => void;
   saving?: boolean;
 };
 
@@ -55,6 +58,8 @@ export default function QuotationActionBar({
   onSend,
   onDelete,
   onAccept,
+  onMarkSent,
+  onReject,
   saving = false,
 }: Props) {
   const router = useRouter();
@@ -208,17 +213,52 @@ export default function QuotationActionBar({
         )}
       </div>
 
-      {/* SEPARADOR + GRUPO 3 — ACEPTAR (si aplica) */}
-      {canAccept && (
+      {/* SEPARADOR + GRUPO 3 — CAMBIO DE ESTADO (Marcar enviada / Aceptar / Rechazar) */}
+      {(quotation.status === "draft" ||
+        quotation.status === "sent" ||
+        quotation.status === "viewed") && (
         <>
           <Divider />
-          <ActionButton
-            icon={<IconCheck size={13} />}
-            label="Aceptar cotización"
-            onClick={onAccept}
-            disabled={saving}
-            variant="success"
-          />
+          <div style={{ display: "flex", gap: "6px" }}>
+            {/* Marcar enviada — solo si está en borrador */}
+            {quotation.status === "draft" && onMarkSent && (
+              <ActionButton
+                icon={<IconSend size={13} />}
+                label="Marcar enviada"
+                onClick={onMarkSent}
+                disabled={saving}
+                variant="primary"
+                tooltip="Cambiar estado a Enviada (sin enviar email)"
+              />
+            )}
+            {/* Aceptar — disponible en draft/sent/viewed */}
+            {canAccept && (
+              <ActionButton
+                icon={<IconCheck size={13} />}
+                label="Aceptar"
+                onClick={onAccept}
+                disabled={saving}
+                variant="success"
+                tooltip={
+                  quotation.type === "services"
+                    ? "Aceptar cotización y generar embarque"
+                    : "Aceptar cotización y generar pedido"
+                }
+              />
+            )}
+            {/* Rechazar — solo si está enviada/vista */}
+            {(quotation.status === "sent" || quotation.status === "viewed") &&
+              onReject && (
+                <ActionButton
+                  icon={<IconX size={13} />}
+                  label="Rechazar"
+                  onClick={onReject}
+                  disabled={saving}
+                  variant="danger"
+                  tooltip="Cambiar estado a Rechazada (cliente declinó)"
+                />
+              )}
+          </div>
         </>
       )}
 

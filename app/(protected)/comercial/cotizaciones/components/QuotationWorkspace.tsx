@@ -247,6 +247,16 @@ export default function QuotationWorkspace({
                 ? () => onAccept(quotation)
                 : undefined
             }
+            onMarkSent={
+              quotation.status === "draft"
+                ? () => onUpdateStatus(quotation.id, "sent")
+                : undefined
+            }
+            onReject={
+              quotation.status === "sent" || quotation.status === "viewed"
+                ? () => onUpdateStatus(quotation.id, "rejected")
+                : undefined
+            }
             saving={saving}
           />
         </div>
@@ -283,8 +293,8 @@ export default function QuotationWorkspace({
           </div>
         </div>
 
-        {/* ── ACCIONES ── */}
-        <div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
+        {/* ── ACCIONES — DESACTIVADO: ahora todas en QuotationActionBar (ERP-grade) ── */}
+        {false && (<div style={{ display: "flex", gap: "6px", flexWrap: "wrap" }}>
           {isDraft && !editingDetail && (
             <button onClick={() => { startEditDetail(); setTab("detail"); }} style={{ height: "28px", padding: "0 10px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", fontSize: "11px", fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", gap: "4px" }}>
               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -360,7 +370,7 @@ export default function QuotationWorkspace({
               → Ver embarque
             </button>
           )}
-        </div>
+        </div>)}
       </div>
 
       {/* ── TABS ── */}
@@ -748,7 +758,7 @@ export default function QuotationWorkspace({
                     <span style={{ fontWeight: 600, fontVariantNumeric: "tabular-nums" }}>{fmtCur(vals.tax, cur)}</span>
                   </div>
                   <div style={{ display: "flex", justifyContent: "space-between", padding: "12px 14px", background: "var(--color-success-bg)", fontSize: "16px" }}>
-                    <span style={{ color: "var(--color-success-text)", fontWeight: 800 }}>TOTAL {currencyEntries.length > 1 ? cur : ""}</span>
+                    <span style={{ color: "var(--color-success-text)", fontWeight: 800 }}>TOTAL</span>
                     <span style={{ color: "var(--color-success-text)", fontWeight: 800, fontVariantNumeric: "tabular-nums" }}>{fmtCur(vals.total, cur)}</span>
                   </div>
                 </div>
