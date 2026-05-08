@@ -81,6 +81,35 @@ function formatTotal(amount: number, currency: string): string {
   return `$${formatted} ${currency}`;
 }
 
+/**
+ * Calcula totales por moneda desde billing_concepts.
+ * Una cotización puede mezclar conceptos en MXN y USD — el correo debe
+ * mostrarlos por separado, NUNCA sumar montos de monedas distintas.
+ * Patrón consistente con QuotationCopilot / QuotationCommandCenter / QuotationFilters.
+ * (TODO: centralizar en un solo helper compartido en futuro sprint.)
+ */
+function computeTotalsByCurrency(q: Quotation): Record<string, number> {
+  const concepts = (q as any).billing_concepts ?? [];
+  if (concepts.length > 0) {
+    const totals: Record<string, number> = {};
+    for (const c of concepts) {
+      for (const line of c.lines ?? []) {
+        const cur   = line.currency ?? c.currency ?? q.currency ?? "MXN";
+        const price = Number(line.price ?? 0);
+        const rate  = line.tax_rate;
+        const tax   =
+          rate === null || rate === undefined || rate === -1 || Number(rate) <= 0
+            ? 0
+            : price * (Number(rate) / 100);
+        totals[cur] = (totals[cur] ?? 0) + price + tax;
+      }
+    }
+    return totals;
+  }
+  // Fallback: cotizaciones legacy sin billing_concepts
+  return { [q.currency ?? "MXN"]: Number(q.total ?? 0) };
+}
+
 /** Concatena dirección fiscal en una línea */
 function buildAddressLine(s: any): string {
   const parts = [s?.fiscal_address, s?.fiscal_city, s?.fiscal_state, s?.fiscal_zip, s?.fiscal_country]
@@ -131,7 +160,11 @@ export async function sendQuotationEmail(
     const pdfBase64 = await blobToBase64(pdfBlob);
 
     // 3) Construir variables del template
-    const totalNum = Number(quotation.total ?? 0);
+    // Cálculo multi-moneda: NUNCA sumar montos de monedas distintas
+    const totalsByCurrency = computeTotalsByCurrency(quotation);
+    const totalsLines = Object.entries(totalsByCurrency)
+      .filter(([, v]) => v > 0)
+      .map(([cur, v]) => formatTotal(v, cur));
     const variables = {
       // Mensaje
       user_message:         userMessage,
@@ -141,7 +174,10 @@ export async function sendQuotationEmail(
       quote_number:         quotation.quote_number ?? "",
       quote_date:           formatDateLong((quotation as any).created_at),
       valid_until:          formatDateLong(quotation.valid_until),
-      total_formatted:      formatTotal(totalNum, quotation.currency ?? "MXN"),
+      // Multi-moneda: array de líneas formateadas (una por moneda)
+      totals_lines:         totalsLines,
+      // Legacy: total_formatted = primera moneda (compat con templates antiguos)
+      total_formatted:      totalsLines[0] ?? "",
       // Usuario emisor (firma)
       user_full_name:       currentUser.full_name ?? "",
       user_job_title:       currentUser.job_title ?? "",

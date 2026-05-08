@@ -56,6 +56,28 @@ function present(s: string | null | undefined): boolean {
   return !!(s && String(s).trim());
 }
 
+// ─── Render de totales (multi-moneda safe) ───────────────────────────
+// Muestra una línea por moneda. NUNCA suma montos de monedas distintas.
+// Acepta v.totals_lines: string[] (preferido) o v.total_formatted: string (legacy).
+function renderTotals(v: Record<string, any>, brand: string): string {
+  const lines: string[] = Array.isArray(v.totals_lines)
+    ? v.totals_lines.filter((l: any) => !!l)
+    : (present(v.total_formatted) ? [v.total_formatted] : []);
+  if (lines.length === 0) return "";
+  if (lines.length === 1) {
+    return `<div style="font-size:14px; color:${brand}; font-weight:800; margin-top:8px;">Total: ${escape(lines[0])}</div>`;
+  }
+  const items = lines
+    .map(l => `<div style="font-size:14px; color:${brand}; font-weight:800; line-height:1.6;">${escape(l)}</div>`)
+    .join("");
+  return `
+    <div style="margin-top:8px;">
+      <div style="font-size:11px; color:#666; text-transform:uppercase; letter-spacing:1px; font-weight:700; margin-bottom:4px;">Totales por moneda</div>
+      ${items}
+    </div>
+  `;
+}
+
 // ─── Iconos SVG inline para redes sociales (line-style, color brand) ─
 const ICON_FACEBOOK = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 2h-3a5 5 0 0 0-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 0 1 1-1h3z"/></svg>`;
 const ICON_LINKEDIN = `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"/><rect x="2" y="9" width="4" height="12"/><circle cx="4" cy="4" r="2"/></svg>`;
@@ -77,8 +99,8 @@ function renderSignature(v: Record<string, any>): string {
   const nameBlock = `
     <tr>
       <td style="padding:8px 0 4px 0; border-top:2px solid ${brand};">
-        <div style="font-size:15px; font-weight:700; color:${brandDark}; letter-spacing:0.3px;">
-          LCNI. ${escape(v.user_full_name)}
+        <div style="font-size:15px; font-weight:700; color:#0a1628; letter-spacing:0.3px;">
+          ${escape(v.user_full_name)}
         </div>
         ${present(v.user_job_title) ? `
           <div style="font-size:12px; color:#555; margin-top:2px;">
@@ -212,10 +234,10 @@ function render(variables: Record<string, any>): RenderedEmail {
                   <tr>
                     <td style="padding:14px 16px;">
                       <div style="font-size:11px; color:#666; text-transform:uppercase; letter-spacing:1px; font-weight:700; margin-bottom:6px;">Cotización</div>
-                      <div style="font-size:16px; color:${brandDark}; font-weight:800; margin-bottom:10px;">${escape(v.quote_number)}</div>
+                      <div style="font-size:16px; color:#0a1628; font-weight:800; margin-bottom:10px;">${escape(v.quote_number)}</div>
                       ${present(v.quote_date)      ? `<div style="font-size:12px; color:#444; margin-bottom:3px;"><strong style="color:#666;">Fecha:</strong> ${escape(v.quote_date)}</div>` : ""}
                       ${present(v.valid_until)     ? `<div style="font-size:12px; color:#444; margin-bottom:3px;"><strong style="color:#666;">Vigencia:</strong> ${escape(v.valid_until)}</div>` : ""}
-                      ${present(v.total_formatted) ? `<div style="font-size:14px; color:${brand}; font-weight:800; margin-top:8px;">Total: ${escape(v.total_formatted)}</div>` : ""}
+                      ${renderTotals(v, brand)}
                     </td>
                   </tr>
                 </table>
