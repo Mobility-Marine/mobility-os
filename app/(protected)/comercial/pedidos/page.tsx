@@ -53,6 +53,7 @@ export default function PedidosPage() {
       <div style={{ gridColumn: "1 / 2", minHeight: 0, overflow: "hidden" }}>
         <OrdersSidebar
           orders={filtered}
+          totalCount={orders.length}
           selected={selected}
           setSelected={setSelected}
           filters={filters}

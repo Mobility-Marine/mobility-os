@@ -69,6 +69,7 @@ type Props<T> = {
   onClearAllFilters?: () => void;
   headerAction?: HeaderAction;
   headerActions?: HeaderAction[]; // múltiples botones (Productos: Nuevo+Import+Export+PriceList)
+  topSlot?: React.ReactNode;     // contenido custom arriba del title (ej: tabs de rol en Partners)
   items: T[];
   selectedId?: string | number | null;
   onSelect: (item: T) => void;
@@ -94,6 +95,7 @@ export default function VirtualSidebar<T>({
   onClearAllFilters,
   headerAction,
   headerActions,
+  topSlot,
   items,
   selectedId,
   onSelect,
@@ -128,6 +130,11 @@ export default function VirtualSidebar<T>({
         overflow: "hidden",
       }}
     >
+      {/* TOP SLOT — contenido custom (tabs, etc.) */}
+      {topSlot && (
+        <div style={{ flexShrink: 0, marginBottom: "4px" }}>{topSlot}</div>
+      )}
+
       {/* HEADER */}
       <div style={{ flexShrink: 0 }}>
         {/* ROW 1 — title + count */}

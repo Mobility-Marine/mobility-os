@@ -16,7 +16,7 @@ export default function EmbarquesPage() {
   const tl    = (t.logistics as any) ?? {};
   const ctrl  = useShipmentsController();
   const {
-    filtered, selected, setSelected,
+    shipments, filtered, selected, setSelected,
     kpis, loading, saving,
     filters, setFilters,
     handleStatusChange, handleUpdate,
@@ -53,6 +53,7 @@ export default function EmbarquesPage() {
       <div style={{ gridColumn: "1 / 2", minHeight: 0, overflow: "hidden" }}>
         <ShipmentsSidebar
           shipments={filtered}
+          totalCount={shipments.length}
           selected={selected}
           setSelected={setSelected}
           filters={filters}

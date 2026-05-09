@@ -1,15 +1,48 @@
 "use client";
-import type { TrackingShipment, TrackingFilters } from "../types/tracking.types";
-import { EVENT_CONFIG }    from "../types/tracking.types";
-import { useTranslation }  from "@/lib/i18n/useTranslation";
+
+import React, { memo, useMemo, useState } from "react";
+import type {
+  TrackingShipment,
+  TrackingFilters,
+} from "../types/tracking.types";
+import { EVENT_CONFIG } from "../types/tracking.types";
+import { useTranslation } from "@/lib/i18n/useTranslation";
+
+import VirtualSidebar, {
+  type ActiveChip,
+} from "@/app/components/shared/VirtualSidebar";
+import FilterDrawer, {
+  type FilterGroup,
+} from "@/app/components/shared/FilterDrawer";
+import { IconInbox } from "@/app/components/shared/Icons";
+
+// ═══════════════════════════════════════════════════════════════════
+// TRACKING SIDEBAR — Virtualizado · escalable a 100K+ embarques
+//
+// Patrón ERP-grade (Linear / Salesforce):
+//   - SIN botón "Nuevo" — tracking solo lee, no crea embarques
+//   - Search siempre visible (referencia, cliente)
+//   - Botón "Filtros (N)" → drawer con Vista (active/completed/all)
+//   - Chips removibles
+//   - VirtualList con react-window
+//
+// Item compacto (4 rows, ~95px):
+//   Row 1: referencia (mono color por tipo) · badge notificaciones
+//   Row 2: cliente
+//   Row 3: ruta (si existe)
+//   Row 4: último evento con ícono color + ubicación
+// ═══════════════════════════════════════════════════════════════════
 
 type Props = {
-  shipments:   TrackingShipment[];
+  shipments:   TrackingShipment[]; // ya filtrados
+  totalCount?: number;
   selected:    TrackingShipment | null;
   onSelect:    (s: TrackingShipment) => void;
   filters:     TrackingFilters;
   setFilters:  (f: TrackingFilters) => void;
 };
+
+const ITEM_HEIGHT = 95;
 
 const SERVICE_COLORS: Record<string, string> = {
   terrestre_mx:  "#2563eb",
@@ -20,102 +53,301 @@ const SERVICE_COLORS: Record<string, string> = {
   default:       "#64748b",
 };
 
-export default function TrackingSidebar({ shipments, selected, onSelect, filters, setFilters }: Props) {
-  const { t, lang } = useTranslation();
-  const tl          = (t.logistics as any) ?? {};
-  const locale      = lang === "en" ? "en-US" : "es-MX";
+const VIEW_MODE_LABEL: Record<string, string> = {
+  active:    "Activos",
+  completed: "Completados",
+  all:       "Todos",
+};
+
+export default function TrackingSidebar({
+  shipments,
+  totalCount,
+  selected,
+  onSelect,
+  filters,
+  setFilters,
+}: Props) {
+  const { t } = useTranslation();
+  const tl = (t.logistics as any) ?? {};
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // ── Grupo único: Vista (modo) ─────────────────────────────────────
+  const groups: FilterGroup[] = useMemo(
+    () => [
+      {
+        id: "view_mode",
+        label: tl.viewModeLabel ?? "Vista",
+        type: "select",
+        value: filters.view_mode,
+        onChange: (v) =>
+          setFilters({
+            ...filters,
+            view_mode: v as TrackingFilters["view_mode"],
+          }),
+        options: [
+          { value: "active",    label: tl.trackingViewActive    ?? VIEW_MODE_LABEL.active },
+          { value: "completed", label: tl.trackingViewCompleted ?? VIEW_MODE_LABEL.completed },
+          { value: "all",       label: tl.trackingViewAll       ?? VIEW_MODE_LABEL.all },
+        ],
+      },
+    ],
+    [filters, tl, setFilters],
+  );
+
+  // ── Chip activo solo si view_mode != active (default) ─────────────
+  const activeChips: ActiveChip[] = useMemo(() => {
+    const chips: ActiveChip[] = [];
+    if (filters.view_mode !== "active") {
+      chips.push({
+        id: "view_mode",
+        label: `Vista: ${VIEW_MODE_LABEL[filters.view_mode] ?? filters.view_mode}`,
+        onRemove: () => setFilters({ ...filters, view_mode: "active" }),
+      });
+    }
+    return chips;
+  }, [filters, setFilters]);
+
+  const activeCount = activeChips.length;
+
+  const clearAll = () => setFilters({ ...filters, view_mode: "active" });
 
   return (
-    <div style={{ background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", borderRadius: "var(--radius-lg)", padding: "14px", display: "flex", flexDirection: "column", gap: "10px", height: "100%", minHeight: 0, overflow: "hidden" }}>
-      <div style={{ flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-          <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "1px" }}>{tl.tracking ?? "Tracking"}</span>
-          <span style={{ fontSize: "11px", fontWeight: 700, padding: "1px 7px", borderRadius: "var(--radius-full)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", color: "var(--color-text-muted)" }}>{shipments.length}</span>
-        </div>
+    <>
+      <VirtualSidebar<TrackingShipment>
+        title={tl.tracking ?? "Tracking"}
+        count={shipments.length}
+        totalCount={totalCount}
+        search={{
+          value: filters.search,
+          onChange: (v) => setFilters({ ...filters, search: v }),
+          placeholder: tl.searchTracking ?? "Buscar embarque…",
+          hint: "Referencia · cliente · ruta",
+        }}
+        filterButton={{
+          activeCount,
+          onOpen: () => setDrawerOpen(true),
+        }}
+        activeChips={activeChips}
+        onClearAllFilters={clearAll}
+        items={shipments}
+        selectedId={selected?.id ?? null}
+        onSelect={onSelect}
+        getItemId={(s) => s.id}
+        itemHeight={ITEM_HEIGHT}
+        renderItem={(s, _i, isSelected) => (
+          <TrackingItem shipment={s} isSelected={isSelected} tl={tl} />
+        )}
+        emptyState={{
+          icon: <IconInbox size={32} />,
+          title:
+            activeCount > 0 || filters.search
+              ? tl.noResults ?? "Sin resultados"
+              : tl.noTracking ?? "Sin embarques activos",
+          description:
+            activeCount > 0 || filters.search
+              ? "Ajusta los filtros o limpia la búsqueda"
+              : "Los embarques aparecerán aquí cuando comiencen su tránsito",
+        }}
+      />
 
-        <div style={{ position: "relative", marginBottom: "8px" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2" style={{ position: "absolute", left: "9px", top: "50%", transform: "translateY(-50%)" }}>
-            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-          </svg>
-          <input
-            placeholder={tl.searchTracking ?? "Buscar embarque…"}
-            value={filters.search}
-            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            style={{ width: "100%", height: "32px", paddingLeft: "28px", paddingRight: "8px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
-          />
-        </div>
-
-        {/* VIEW MODE PILLS — Active / Completed / All */}
-        <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
-          {([
-            { v: "active",    l: tl.trackingViewActive    ?? "Activos"     },
-            { v: "completed", l: tl.trackingViewCompleted ?? "Completados" },
-            { v: "all",       l: tl.trackingViewAll       ?? "Todos"       },
-          ] as { v: "active" | "completed" | "all"; l: string }[]).map((f) => (
-            <button
-              key={f.v}
-              onClick={() => setFilters({ ...filters, view_mode: f.v })}
-              style={{
-                height: "22px",
-                padding: "0 9px",
-                borderRadius: "var(--radius-full)",
-                cursor: "pointer",
-                fontSize: "10px",
-                fontWeight: filters.view_mode === f.v ? 700 : 500,
-                background:  filters.view_mode === f.v ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
-                border:     `1px solid ${filters.view_mode === f.v ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
-                color:       filters.view_mode === f.v ? "#fff" : "var(--color-text-muted)",
-                transition: "var(--transition-fast)",
-              }}
-            >
-              {f.l}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "grid", gap: "5px", alignContent: "start" }}>
-        {shipments.length === 0 ? (
-          <div style={{ padding: "28px 12px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>{tl.noTracking ?? "Sin embarques activos"}</div>
-        ) : shipments.map((s) => {
-          const isSelected  = selected?.id === s.id;
-          const lastEv      = s.lastEvent;
-          const evCfg       = lastEv ? EVENT_CONFIG[lastEv.event_type] : null;
-          const svcColor    = SERVICE_COLORS[s.service_type] ?? SERVICE_COLORS.default;
-
-          return (
-            <div key={s.id} onClick={() => onSelect(s)} style={{ padding: "10px 12px", borderRadius: "var(--radius-md)", background: isSelected ? "var(--color-bg-active)" : "var(--color-bg-subtle)", border: isSelected ? "1px solid var(--color-brand-blue)" : "1px solid var(--color-border-faint)", cursor: "pointer", display: "grid", gap: "4px", transition: "var(--transition-fast)" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                <span style={{ fontSize: "11px", fontWeight: 800, color: svcColor, fontFamily: "monospace", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{s.reference}</span>
-                {s.pendingNotifs > 0 && (
-                  <span style={{ fontSize: "9px", fontWeight: 800, padding: "1px 5px", borderRadius: "var(--radius-full)", background: "var(--color-warning-bg)", border: "1px solid var(--color-warning-border)", color: "var(--color-warning-text)", flexShrink: 0 }}>{s.pendingNotifs}</span>
-                )}
-              </div>
-              <div style={{ fontSize: "10px", color: "var(--color-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {s.client?.name ?? "—"}
-              </div>
-              {s.origin && s.destination && (
-                <div style={{ fontSize: "10px", color: "var(--color-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {s.origin} → {s.destination}
-                </div>
-              )}
-              {lastEv && evCfg ? (
-                <div style={{ display: "flex", alignItems: "center", gap: "4px", marginTop: "2px" }}>
-                  <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: evCfg.color, flexShrink: 0 }} />
-                  <span style={{ fontSize: "10px", fontWeight: 600, color: evCfg.color, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                    {tl[evCfg.labelKey.replace("logistics.", "")] ?? lastEv.event_type}
-                  </span>
-                  {lastEv.location && (
-                    <span style={{ fontSize: "9px", color: "var(--color-text-muted)" }}>· {lastEv.location}</span>
-                  )}
-                </div>
-              ) : (
-                <div style={{ fontSize: "10px", color: "var(--color-text-muted)" }}>Sin eventos aún</div>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </div>
+      <FilterDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title={tl.filtersTitle ?? "Filtros de tracking"}
+        groups={groups}
+        activeCount={activeCount}
+        onClearAll={clearAll}
+      />
+    </>
   );
 }
+
+// ═══════════════════════════════════════════════════════════════════
+// TRACKING ITEM — card compacto (memo para react-window)
+// ═══════════════════════════════════════════════════════════════════
+const TrackingItem = memo(function TrackingItem({
+  shipment: s,
+  isSelected,
+  tl,
+}: {
+  shipment:   TrackingShipment;
+  isSelected: boolean;
+  tl:         any;
+}) {
+  const lastEv = s.lastEvent;
+  const evCfg = lastEv ? EVENT_CONFIG[lastEv.event_type] : null;
+  const svcColor = SERVICE_COLORS[s.service_type] ?? SERVICE_COLORS.default;
+  const clientName = (s as any).client?.name ?? "—";
+  const route = s.origin && s.destination ? `${s.origin} → ${s.destination}` : null;
+  const evLabel = evCfg
+    ? tl[evCfg.labelKey.replace("logistics.", "")] ?? lastEv?.event_type
+    : null;
+
+  return (
+    <div
+      style={{
+        // ── ANTI-OVERFLOW ──
+        width:        "100%",
+        boxSizing:    "border-box",
+        overflow:     "hidden",
+        // ── visual ──
+        padding:      "8px 11px",
+        borderRadius: "var(--radius-md)",
+        background:   isSelected
+          ? "var(--color-bg-active)"
+          : "var(--color-bg-subtle)",
+        border:       isSelected
+          ? "1px solid var(--color-brand-blue)"
+          : "1px solid var(--color-border-faint)",
+        display:      "flex",
+        flexDirection:"column",
+        gap:          "3px",
+        transition:   "var(--transition-fast)",
+        height:       "calc(100% - 5px)",
+      }}
+    >
+      {/* ROW 1 — referencia + notificaciones pendientes */}
+      <div
+        style={{
+          display:    "flex",
+          alignItems: "center",
+          gap:        "5px",
+          minWidth:   0,
+          width:      "100%",
+        }}
+      >
+        <span
+          style={{
+            fontSize:           "11px",
+            fontWeight:         800,
+            color:              svcColor,
+            fontFamily:         "ui-monospace, monospace",
+            flex:               1,
+            minWidth:           0,
+            overflow:           "hidden",
+            textOverflow:       "ellipsis",
+            whiteSpace:         "nowrap",
+          }}
+        >
+          {s.reference}
+        </span>
+        {s.pendingNotifs > 0 && (
+          <span
+            style={{
+              fontSize:     "9px",
+              fontWeight:   800,
+              padding:      "1px 5px",
+              borderRadius: "var(--radius-full)",
+              background:   "var(--color-warning-bg)",
+              border:       "1px solid var(--color-warning-border)",
+              color:        "var(--color-warning-text)",
+              flexShrink:   0,
+              whiteSpace:   "nowrap",
+            }}
+            title="Notificaciones pendientes"
+          >
+            {s.pendingNotifs}
+          </span>
+        )}
+      </div>
+
+      {/* ROW 2 — cliente */}
+      <div
+        style={{
+          fontSize:     "10px",
+          color:        "var(--color-text-muted)",
+          overflow:     "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace:   "nowrap",
+          width:        "100%",
+        }}
+      >
+        {clientName}
+      </div>
+
+      {/* ROW 3 — ruta (opcional) */}
+      {route && (
+        <div
+          style={{
+            fontSize:     "10px",
+            color:        "var(--color-text-muted)",
+            overflow:     "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace:   "nowrap",
+            width:        "100%",
+          }}
+        >
+          {route}
+        </div>
+      )}
+
+      {/* ROW 4 — último evento */}
+      {lastEv && evCfg ? (
+        <div
+          style={{
+            display:    "flex",
+            alignItems: "center",
+            gap:        "5px",
+            marginTop:  "1px",
+            minWidth:   0,
+            width:      "100%",
+          }}
+        >
+          <span
+            style={{
+              width:        "6px",
+              height:       "6px",
+              borderRadius: "50%",
+              background:   evCfg.color,
+              flexShrink:   0,
+            }}
+          />
+          <span
+            style={{
+              fontSize:     "10px",
+              fontWeight:   600,
+              color:        evCfg.color,
+              overflow:     "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace:   "nowrap",
+              minWidth:     0,
+              flex:         lastEv.location ? "0 1 auto" : 1,
+            }}
+          >
+            {evLabel}
+          </span>
+          {lastEv.location && (
+            <span
+              style={{
+                fontSize:     "9px",
+                color:        "var(--color-text-muted)",
+                overflow:     "hidden",
+                textOverflow: "ellipsis",
+                whiteSpace:   "nowrap",
+                flex:         1,
+                minWidth:     0,
+              }}
+            >
+              · {lastEv.location}
+            </span>
+          )}
+        </div>
+      ) : (
+        <div
+          style={{
+            fontSize: "10px",
+            color:    "var(--color-text-muted)",
+            fontStyle:"italic",
+          }}
+        >
+          Sin eventos aún
+        </div>
+      )}
+    </div>
+  );
+}, (prev, next) =>
+  prev.shipment.id === next.shipment.id &&
+  prev.shipment.pendingNotifs === next.shipment.pendingNotifs &&
+  prev.shipment.lastEvent?.id === next.shipment.lastEvent?.id &&
+  prev.isSelected === next.isSelected
+);
