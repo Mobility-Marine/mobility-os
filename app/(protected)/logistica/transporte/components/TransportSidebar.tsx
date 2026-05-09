@@ -142,9 +142,9 @@ export default function TransportSidebar({
         id: "unit_type",
         label: tl.unitTypeLabel ?? "Tipo de unidad",
         type: "select",
-        value: (filters as any).unit_type ?? "all",
+        value: filters.type ?? "all",
         onChange: (v) =>
-          setFilters({ ...filters, unit_type: v as any }),
+          setFilters({ ...filters, type: v as UnitFilters["type"] }),
         options: [
           { value: "all", label: tl.filterAll ?? "Todas" },
           ...typeOptions,
@@ -166,11 +166,11 @@ export default function TransportSidebar({
         onRemove: () => setFilters({ ...filters, status: "all" }),
       });
     }
-    if ((filters as any).unit_type && (filters as any).unit_type !== "all") {
+    if (filters.type && filters.type !== "all") {
       chips.push({
-        id: "unit_type",
-        label: `Tipo: ${getTypeLabel((filters as any).unit_type)}`,
-        onRemove: () => setFilters({ ...filters, unit_type: "all" } as any),
+        id: "type",
+        label: `Tipo: ${getTypeLabel(filters.type)}`,
+        onRemove: () => setFilters({ ...filters, type: "all" }),
       });
     }
     return chips;
@@ -179,7 +179,7 @@ export default function TransportSidebar({
 
   const activeCount = activeChips.length;
   const clearAll = () =>
-    setFilters({ ...filters, status: "all", unit_type: "all" } as any);
+    setFilters({ ...filters, status: "all", type: "all" });
 
   return (
     <>

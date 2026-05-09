@@ -58,7 +58,9 @@ const STATUS_OPTIONS: { v: RequisitionStatus | "all"; l: string }[] = [
   { v: "pending_approval", l: "Pendiente" },
   { v: "approved",         l: "Aprobada" },
   { v: "rejected",         l: "Rechazada" },
-  { v: "converted",        l: "Convertida" },
+  { v: "in_quotation",     l: "En cotización" },
+  { v: "ordered",          l: "Ordenada" },
+  { v: "received",         l: "Recibida" },
   { v: "cancelled",        l: "Cancelada" },
 ];
 

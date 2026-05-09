@@ -123,7 +123,7 @@ export default function FTSidebar({
       chips.push({
         id: "status",
         label: `Estado: ${STATUS_LABEL_MAP[filters.status] ?? filters.status}`,
-        onRemove: () => setFilters({ ...filters, status: "all" as any }),
+        onRemove: () => setFilters({ ...filters, status: "all" }),
       });
     }
     return chips;
@@ -131,7 +131,7 @@ export default function FTSidebar({
 
   const activeCount = activeChips.length;
   const clearAll = () =>
-    setFilters({ ...filters, operation_type: "all", status: "all" as any });
+    setFilters({ ...filters, operation_type: "all", status: "all" });
 
   return (
     <>

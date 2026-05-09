@@ -42,6 +42,7 @@ const STATUS_OPTIONS: { v: RFQStatus | "all"; l: string }[] = [
   { v: "draft",              l: "Borrador" },
   { v: "sent",               l: "Enviada" },
   { v: "responses_received", l: "Con respuestas" },
+  { v: "evaluated",          l: "Evaluada" },
   { v: "awarded",            l: "Adjudicada" },
   { v: "cancelled",          l: "Cancelada" },
 ];
