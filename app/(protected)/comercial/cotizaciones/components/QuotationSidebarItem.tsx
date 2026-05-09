@@ -44,7 +44,7 @@ function QuotationSidebarItem({ quotation, isSelected }: Props) {
         boxSizing:    "border-box",
         overflow:     "hidden",
         // ── visual ──
-        padding:      "9px 11px",
+        padding:      "8px 11px",
         borderRadius: "var(--radius-md)",
         background:   isSelected
           ? "var(--color-bg-active)"
@@ -54,7 +54,7 @@ function QuotationSidebarItem({ quotation, isSelected }: Props) {
           : "1px solid var(--color-border-faint)",
         display:      "flex",
         flexDirection:"column",
-        gap:          "4px",
+        gap:          "3px",
         transition:   "var(--transition-fast)",
         height:       "calc(100% - 5px)",
       }}
@@ -127,14 +127,15 @@ function QuotationSidebarItem({ quotation, isSelected }: Props) {
         </div>
       </div>
 
-      {/* ROW 2 — subtipo (solo services) */}
+      {/* ROW 2 — subtipo (solo services) — SIEMPRE visible */}
       {isServices && subtype && (
         <div
           style={{
-            paddingLeft: "32px",
-            overflow:    "hidden",
-            whiteSpace:  "nowrap",
-            textOverflow:"ellipsis",
+            paddingLeft:  "32px",
+            overflow:     "hidden",
+            whiteSpace:   "nowrap",
+            textOverflow: "ellipsis",
+            flexShrink:   0, // garantiza que NO sea colapsado
           }}
         >
           <span
@@ -156,16 +157,17 @@ function QuotationSidebarItem({ quotation, isSelected }: Props) {
         </div>
       )}
 
-      {/* ROW 3 — fecha (truncable) · totales (fijos, nowrap) */}
+      {/* ROW 3 — fecha (truncable) · totales (inline, nowrap) */}
       <div
         style={{
           display:      "flex",
-          alignItems:   "flex-end",
+          alignItems:   "center",
           fontSize:     "10px",
           paddingLeft:  "32px",
           gap:          "8px",
           minWidth:     0,
           width:        "100%",
+          flexShrink:   0,
         }}
       >
         {/* Fecha — flexible, se trunca si no cabe */}
@@ -184,15 +186,16 @@ function QuotationSidebarItem({ quotation, isSelected }: Props) {
             ` → ${formatShortDate(quotation.valid_until)}`}
         </span>
 
-        {/* Totales — flexShrink:0, alineados a la derecha, nowrap */}
+        {/* Totales — todas las monedas en UNA línea separadas por gap */}
         <div
           style={{
-            display:        "flex",
-            flexDirection:  "column",
-            alignItems:     "flex-end",
-            gap:            "1px",
-            flexShrink:     0,
-            maxWidth:       "55%", // techo absoluto para preservar la fecha
+            display:    "flex",
+            flexDirection: "row",
+            alignItems: "center",
+            gap:        "6px",
+            flexShrink: 0,
+            maxWidth:   "65%",
+            overflow:   "hidden",
           }}
         >
           {totalEntries.length > 0 ? (
@@ -205,9 +208,7 @@ function QuotationSidebarItem({ quotation, isSelected }: Props) {
                   fontVariantNumeric: "tabular-nums",
                   fontSize:           "10px",
                   whiteSpace:         "nowrap",
-                  overflow:           "hidden",
-                  textOverflow:       "ellipsis",
-                  maxWidth:           "100%",
+                  flexShrink:         0,
                 }}
               >
                 {cur !== "MXN" && (

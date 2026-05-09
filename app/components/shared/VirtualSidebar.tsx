@@ -165,7 +165,19 @@ export default function VirtualSidebar<T>({
 
         {/* ROW 2 — search */}
         {search && (
-          <div style={{ marginBottom: hasActionsRow || hasChips ? "8px" : "0" }}>
+          <div
+            style={{
+              // El hint del SearchInput usa position:absolute (top:100%);
+              // necesitamos margen extra para que NO se encime con el
+              // botón de filtros o los chips siguientes.
+              marginBottom:
+                hasActionsRow || hasChips
+                  ? search.hint
+                    ? "18px"
+                    : "8px"
+                  : "0",
+            }}
+          >
             <SearchInput
               value={search.value}
               onChange={search.onChange}

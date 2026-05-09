@@ -40,7 +40,7 @@ type Props = {
   onCreateNew?: () => void;
 };
 
-const ITEM_HEIGHT = 95;
+const ITEM_HEIGHT = 100;
 
 // ── Helpers para etiquetas legibles en chips ────────────────────────
 const TYPE_LABEL: Record<string, string> = {
