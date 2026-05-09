@@ -320,6 +320,14 @@ const PartnerItem = memo(function PartnerItem({
   partner:    PartnerListItem;
   isSelected: boolean;
 }) {
+  // Fallback en cascada: name → legal_name → null
+  // Después de unificar business_partners (4 may) algunos registros
+  // legacy quedaron con `name` vacío pero `legal_name` poblado.
+  const displayName =
+    (p.name && p.name.trim()) ||
+    ((p as any).legal_name && (p as any).legal_name.trim()) ||
+    null;
+
   return (
     <div
       style={{
@@ -343,20 +351,21 @@ const PartnerItem = memo(function PartnerItem({
         height:       "calc(100% - 5px)",
       }}
     >
-      {/* ROW 1 — nombre */}
+      {/* ROW 1 — nombre (fallback cascada por unificación business_partners) */}
       <div
         style={{
           fontSize:     "13px",
           fontWeight:   600,
-          color:        "var(--color-text-primary)",
+          color:        displayName ? "var(--color-text-primary)" : "var(--color-text-muted)",
           overflow:     "hidden",
           textOverflow: "ellipsis",
           whiteSpace:   "nowrap",
           width:        "100%",
+          fontStyle:    displayName ? "normal" : "italic",
         }}
-        title={p.name}
+        title={displayName ?? "Sin nombre"}
       >
-        {p.name}
+        {displayName ?? "Sin nombre"}
       </div>
 
       {/* ROW 2 — status dot · roles · RFC/email */}
@@ -422,6 +431,8 @@ const PartnerItem = memo(function PartnerItem({
   );
 }, (prev, next) =>
   prev.partner.id === next.partner.id &&
+  prev.partner.name === next.partner.name &&
+  prev.partner.rfc === next.partner.rfc &&
   prev.partner.status === next.partner.status &&
   prev.partner.is_customer === next.partner.is_customer &&
   prev.partner.is_supplier === next.partner.is_supplier &&
