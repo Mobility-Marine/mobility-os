@@ -7,19 +7,20 @@ import { IconBoxes, IconTruck } from "./Icons";
 import { computeTotalsByCurrency } from "../utils/computeTotalsByCurrency";
 
 // ═══════════════════════════════════════════════════════════════════
-// QUOTATION SIDEBAR ITEM — Card compacto del sidebar
+// QUOTATION SIDEBAR ITEM — Card compacto del sidebar (BULLET-PROOF)
 //
-// Layout 3 filas (~80 px de altura):
-//   Fila 1: icono · folio + cliente · status badge
-//   Fila 2: subtipo (solo services) — opcional
-//   Fila 3: fecha range · totales por moneda
+// REGLAS ANTI-OVERFLOW (críticas para no causar scroll horizontal en
+// el sidebar virtualizado):
+//   1. Card: width:100%, boxSizing:border-box, overflow:hidden
+//   2. Filas flex: minWidth:0 en hijos elásticos (permite ellipsis)
+//   3. Texto largo: overflow:hidden + textOverflow:ellipsis +
+//      whiteSpace:nowrap
+//   4. Elementos fijos (icon, badge, totales): flexShrink:0
+//   5. Sin paddingLeft fijo en filas que cargan contenido variable —
+//      usa el ancho del flex nativo
 //
-// MEMO: este componente se memoriza para que React no re-renderice
-// cards en el viewport cuando otras cards entran/salen del viewport
-// durante el scroll virtualizado.
-//
-// Totales: usa el helper centralizado `computeTotalsByCurrency` para
-// consistencia con KPIs y filtros.
+// Los anchos de USD/MXN largos JAMÁS deben empujar el badge ni
+// causar scroll horizontal. Layout testeado en 280–360 px.
 // ═══════════════════════════════════════════════════════════════════
 
 type Props = {
@@ -38,54 +39,70 @@ function QuotationSidebarItem({ quotation, isSelected }: Props) {
   return (
     <div
       style={{
-        padding: "9px 11px",
+        // ── ANTI-OVERFLOW core ──
+        width:        "100%",
+        boxSizing:    "border-box",
+        overflow:     "hidden",
+        // ── visual ──
+        padding:      "9px 11px",
         borderRadius: "var(--radius-md)",
-        background: isSelected
+        background:   isSelected
           ? "var(--color-bg-active)"
           : "var(--color-bg-subtle)",
-        border: isSelected
+        border:       isSelected
           ? "1px solid var(--color-brand-blue)"
           : "1px solid var(--color-border-faint)",
-        display: "grid",
-        gap: "4px",
-        transition: "var(--transition-fast)",
-        height: "calc(100% - 5px)",
-        boxSizing: "border-box",
+        display:      "flex",
+        flexDirection:"column",
+        gap:          "4px",
+        transition:   "var(--transition-fast)",
+        height:       "calc(100% - 5px)",
       }}
     >
-      {/* ROW 1 — icono + folio/cliente + status */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+      {/* ROW 1 — icono · folio+cliente · status badge */}
+      <div
+        style={{
+          display:    "flex",
+          alignItems: "center",
+          gap:        "8px",
+          minWidth:   0, // permite que los hijos se truncen
+          width:      "100%",
+        }}
+      >
+        {/* Icono fijo */}
         <div
           style={{
-            width: "24px",
-            height: "24px",
+            width:        "24px",
+            height:       "24px",
             borderRadius: "var(--radius-sm)",
-            flexShrink: 0,
-            background: isServices
+            flexShrink:   0,
+            background:   isServices
               ? "var(--color-info-bg)"
               : "var(--color-success-bg)",
-            border: isServices
+            border:       isServices
               ? "1px solid var(--color-info-border)"
               : "1px solid var(--color-success-border)",
-            color: isServices
+            color:        isServices
               ? "var(--color-info-text)"
               : "var(--color-success-text)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
+            display:      "flex",
+            alignItems:   "center",
+            justifyContent:"center",
           }}
         >
           {isServices ? <IconTruck size={12} /> : <IconBoxes size={12} />}
         </div>
-        <div style={{ flex: 1, minWidth: 0 }}>
+
+        {/* Folio + cliente — flexible con minWidth:0 para ellipsis */}
+        <div style={{ flex: 1, minWidth: 0, overflow: "hidden" }}>
           <div
             style={{
-              fontSize: "11px",
-              fontWeight: 700,
-              color: "var(--color-text-primary)",
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              fontSize:           "11px",
+              fontWeight:         700,
+              color:              "var(--color-text-primary)",
+              overflow:           "hidden",
+              textOverflow:       "ellipsis",
+              whiteSpace:         "nowrap",
               fontVariantNumeric: "tabular-nums",
             }}
           >
@@ -93,18 +110,18 @@ function QuotationSidebarItem({ quotation, isSelected }: Props) {
           </div>
           <div
             style={{
-              fontSize: "10px",
-              color: "var(--color-text-muted)",
-              overflow: "hidden",
+              fontSize:     "10px",
+              color:        "var(--color-text-muted)",
+              overflow:     "hidden",
               textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              whiteSpace:   "nowrap",
             }}
           >
             {clientName}
           </div>
         </div>
-        {/* flexShrink: 0 garantiza que el badge NUNCA se achique ni se
-            empuje por nombres largos de cliente (bug ellipsis ERP). */}
+
+        {/* Status badge — NUNCA se achica ni se empuja */}
         <div style={{ flexShrink: 0 }}>
           <StatusBadge status={quotation.status} size="sm" />
         </div>
@@ -112,18 +129,26 @@ function QuotationSidebarItem({ quotation, isSelected }: Props) {
 
       {/* ROW 2 — subtipo (solo services) */}
       {isServices && subtype && (
-        <div style={{ paddingLeft: "32px" }}>
+        <div
+          style={{
+            paddingLeft: "32px",
+            overflow:    "hidden",
+            whiteSpace:  "nowrap",
+            textOverflow:"ellipsis",
+          }}
+        >
           <span
             style={{
-              fontSize: "8px",
-              fontWeight: 700,
-              color: "var(--color-info-text)",
-              background: "var(--color-info-bg)",
-              padding: "1px 6px",
-              borderRadius: "var(--radius-full)",
-              border: "1px solid var(--color-info-border)",
+              fontSize:      "8px",
+              fontWeight:    700,
+              color:         "var(--color-info-text)",
+              background:    "var(--color-info-bg)",
+              padding:       "1px 6px",
+              borderRadius:  "var(--radius-full)",
+              border:        "1px solid var(--color-info-border)",
               textTransform: "uppercase",
               letterSpacing: "0.3px",
+              whiteSpace:    "nowrap",
             }}
           >
             {subtype.replace(/_/g, " ")}
@@ -131,33 +156,43 @@ function QuotationSidebarItem({ quotation, isSelected }: Props) {
         </div>
       )}
 
-      {/* ROW 3 — fechas + totales por moneda */}
+      {/* ROW 3 — fecha (truncable) · totales (fijos, nowrap) */}
       <div
         style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "flex-end",
-          fontSize: "10px",
-          paddingLeft: "32px",
+          display:      "flex",
+          alignItems:   "flex-end",
+          fontSize:     "10px",
+          paddingLeft:  "32px",
+          gap:          "8px",
+          minWidth:     0,
+          width:        "100%",
         }}
       >
-        <span style={{ color: "var(--color-text-muted)" }}>
-          {new Date(quotation.created_at).toLocaleDateString("es-MX", {
-            day: "numeric",
-            month: "short",
-          })}
+        {/* Fecha — flexible, se trunca si no cabe */}
+        <span
+          style={{
+            flex:         1,
+            minWidth:     0,
+            overflow:     "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace:   "nowrap",
+            color:        "var(--color-text-muted)",
+          }}
+        >
+          {formatShortDate(quotation.created_at)}
           {quotation.valid_until &&
-            ` → ${new Date(quotation.valid_until).toLocaleDateString("es-MX", {
-              day: "numeric",
-              month: "short",
-            })}`}
+            ` → ${formatShortDate(quotation.valid_until)}`}
         </span>
+
+        {/* Totales — flexShrink:0, alineados a la derecha, nowrap */}
         <div
           style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "flex-end",
-            gap: "1px",
+            display:        "flex",
+            flexDirection:  "column",
+            alignItems:     "flex-end",
+            gap:            "1px",
+            flexShrink:     0,
+            maxWidth:       "55%", // techo absoluto para preservar la fecha
           }}
         >
           {totalEntries.length > 0 ? (
@@ -165,25 +200,28 @@ function QuotationSidebarItem({ quotation, isSelected }: Props) {
               <span
                 key={cur}
                 style={{
-                  fontWeight: 700,
-                  color: "var(--color-success-text)",
+                  fontWeight:         700,
+                  color:              "var(--color-success-text)",
                   fontVariantNumeric: "tabular-nums",
-                  fontSize: "10px",
+                  fontSize:           "10px",
+                  whiteSpace:         "nowrap",
+                  overflow:           "hidden",
+                  textOverflow:       "ellipsis",
+                  maxWidth:           "100%",
                 }}
               >
                 {cur !== "MXN" && (
                   <span
                     style={{
-                      fontSize: "9px",
-                      opacity: 0.7,
-                      marginRight: "2px",
+                      fontSize:    "9px",
+                      opacity:     0.7,
+                      marginRight: "3px",
                     }}
                   >
                     {cur}
                   </span>
                 )}
-                $
-                {val.toLocaleString("es-MX", { maximumFractionDigits: 0 })}
+                {formatCompactAmount(val)}
               </span>
             ))
           ) : (
@@ -195,7 +233,39 @@ function QuotationSidebarItem({ quotation, isSelected }: Props) {
   );
 }
 
-// Memo: solo re-renderiza cuando cambia la cotización o su estado de selección
+// ═══════════════════════════════════════════════════════════════════
+// HELPERS de formato — anti-overflow
+// ═══════════════════════════════════════════════════════════════════
+
+// Fecha corta sin "de" (ej: "29 abr" en vez de "29 de abril")
+function formatShortDate(iso: string): string {
+  try {
+    return new Date(iso).toLocaleDateString("es-MX", {
+      day:   "numeric",
+      month: "short",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+// Monto compacto: $1,234 / $12K / $1.2M / $1.5B según magnitud.
+// Evita que totales grandes (ej: $1,234,567) empujen el badge.
+function formatCompactAmount(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000_000) {
+    return `$${(value / 1_000_000_000).toFixed(1)}B`;
+  }
+  if (abs >= 1_000_000) {
+    return `$${(value / 1_000_000).toFixed(1)}M`;
+  }
+  if (abs >= 10_000) {
+    return `$${(value / 1_000).toFixed(1)}K`;
+  }
+  return `$${value.toLocaleString("es-MX", { maximumFractionDigits: 0 })}`;
+}
+
+// Memo: solo re-renderiza cuando cambia la cotización o su selección
 export default memo(QuotationSidebarItem, (prev, next) => {
   return (
     prev.quotation.id === next.quotation.id &&

@@ -86,9 +86,12 @@ export default function VirtualList<T>({
         itemSize={itemHeight}
         overscanCount={overscan}
         width="100%"
+        style={{ overflowX: "hidden" }}
       >
         {({ index, style }: ListChildComponentProps) => (
-          <div style={style}>{renderItem(items[index], index)}</div>
+          <div style={{ ...style, overflow: "hidden" }}>
+            {renderItem(items[index], index)}
+          </div>
         )}
       </VariableSizeList>
     );
@@ -104,9 +107,12 @@ export default function VirtualList<T>({
       itemSize={itemHeight}
       overscanCount={overscan}
       width="100%"
+      style={{ overflowX: "hidden" }}
     >
       {({ index, style }: ListChildComponentProps) => (
-        <div style={style}>{renderItem(items[index], index)}</div>
+        <div style={{ ...style, overflow: "hidden" }}>
+          {renderItem(items[index], index)}
+        </div>
       )}
     </FixedSizeList>
   );
