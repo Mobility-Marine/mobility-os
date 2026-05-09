@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
-import { CURRENCIES, INCOTERMS, CONTAINER_TYPES, TRUCK_TYPES } from "../../../types/quotations.types";
+import { INCOTERMS, CONTAINER_TYPES, TRUCK_TYPES } from "../../../types/quotations.types";
 import type { BillingConceptDraft } from "../drawerState";
 import StepConceptos from "../steps/StepConceptos";
 
@@ -569,7 +569,7 @@ export default function ContentOpCompleta({ info, setInfo, billingConcepts, setB
         </div>
       </div>
 
-      {/* ══════════════ CONCEPTOS DE FACTURACIÓN ══════════════ */}
+      {/* ── CONCEPTOS DE FACTURACIÓN ── */}
       <StepConceptos
         billingConcepts={billingConcepts}
         setBillingConcepts={setBillingConcepts}

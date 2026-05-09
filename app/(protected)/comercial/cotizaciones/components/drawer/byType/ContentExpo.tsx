@@ -1,7 +1,6 @@
 "use client";
 import { useState, useEffect } from "react";
-import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
-import { CURRENCIES } from "../../../types/quotations.types";
+import { Field, SectionTitle, INPUT, SELECT } from "../drawerShared";
 import type { BillingConceptDraft } from "../drawerState";
 import StepConceptos from "../steps/StepConceptos";
 
@@ -60,7 +59,7 @@ type Props = {
 };
 
 export default function ContentExpo({ info, setInfo, billingConcepts, setBillingConcepts, svcCatalog }: Props) {
-  const [aduanas,       setAduanas]       = useState<any[]>([]);
+  const [aduanas, setAduanas] = useState<any[]>([]);
 
   useEffect(() => {
     import("@/lib/supabaseClient").then(({ supabase }) => {
@@ -219,6 +218,7 @@ export default function ContentExpo({ info, setInfo, billingConcepts, setBilling
         </div>
       </div>
 
+      {/* ── CONCEPTOS DE FACTURACIÓN ── */}
       <StepConceptos
         billingConcepts={billingConcepts}
         setBillingConcepts={setBillingConcepts}

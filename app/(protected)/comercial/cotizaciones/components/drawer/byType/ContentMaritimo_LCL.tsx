@@ -1,6 +1,6 @@
 "use client";
 import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
-import { INCOTERMS, CURRENCIES } from "../../../types/quotations.types";
+import { INCOTERMS } from "../../../types/quotations.types";
 import type { BillingConceptDraft } from "../drawerState";
 import StepConceptos from "../steps/StepConceptos";
 
@@ -32,7 +32,6 @@ type Props = {
 };
 
 export default function ContentMaritimo_LCL({ info, setInfo, billingConcepts, setBillingConcepts, svcCatalog }: Props) {
-
   // Cálculos automáticos de bultos
   const cbmTotal  = info.bultos.reduce((s, b) => {
     const vol = (Number(b.largo_cm) * Number(b.ancho_cm) * Number(b.alto_cm)) / 1_000_000;
@@ -134,6 +133,12 @@ export default function ContentMaritimo_LCL({ info, setInfo, billingConcepts, se
         </div>
       </div>
 
+      {/* ── CONCEPTOS DE FACTURACIÓN ── */}
+      {cbmTotal > 0 && (
+        <InfoBox type="info">
+          W/M calculado: <strong>{wmTotal.toFixed(3)}</strong> — úsalo como referencia al capturar la cantidad de los cargos por W/M.
+        </InfoBox>
+      )}
       <StepConceptos
         billingConcepts={billingConcepts}
         setBillingConcepts={setBillingConcepts}

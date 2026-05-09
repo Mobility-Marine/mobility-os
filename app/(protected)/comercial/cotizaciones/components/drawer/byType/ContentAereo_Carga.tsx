@@ -1,6 +1,6 @@
 "use client";
 import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
-import { INCOTERMS, CURRENCIES } from "../../../types/quotations.types";
+import { INCOTERMS } from "../../../types/quotations.types";
 import type { BillingConceptDraft } from "../drawerState";
 import StepConceptos from "../steps/StepConceptos";
 
@@ -40,7 +40,6 @@ type Props = {
 };
 
 export default function ContentAereo_Carga({ info, setInfo, billingConcepts, setBillingConcepts, svcCatalog }: Props) {
-
   // Cálculos de peso
   const pesoReal        = info.bultos.reduce((s, b) => s + Number(b.peso_kg) * Number(b.cantidad || 1), 0);
   const pesoDimensional = info.bultos.reduce((s, b) => {
@@ -170,6 +169,12 @@ export default function ContentAereo_Carga({ info, setInfo, billingConcepts, set
         </div>
       </div>
 
+      {/* ── CONCEPTOS DE FACTURACIÓN ── */}
+      {pesoCobrable > 0 && (
+        <InfoBox type="info">
+          Peso cobrable calculado: <strong>{pesoCobrable.toFixed(2)} kg</strong> — úsalo como referencia al capturar la cantidad de cargos por kg.
+        </InfoBox>
+      )}
       <StepConceptos
         billingConcepts={billingConcepts}
         setBillingConcepts={setBillingConcepts}

@@ -1,6 +1,5 @@
 "use client";
-import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
-import { CURRENCIES } from "../../../types/quotations.types";
+import { Field, SectionTitle, INPUT, SELECT } from "../drawerShared";
 import type { BillingConceptDraft } from "../drawerState";
 import StepConceptos from "../steps/StepConceptos";
 
@@ -200,6 +199,7 @@ export default function ContentConsultoria({ info, setInfo, billingConcepts, set
         </div>
       </div>
 
+      {/* ── CONCEPTOS DE FACTURACIÓN ── */}
       <StepConceptos
         billingConcepts={billingConcepts}
         setBillingConcepts={setBillingConcepts}

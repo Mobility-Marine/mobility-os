@@ -1,6 +1,6 @@
 "use client";
 import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
-import { INCOTERMS, CURRENCIES } from "../../../types/quotations.types";
+import { INCOTERMS } from "../../../types/quotations.types";
 import type { BillingConceptDraft } from "../drawerState";
 import StepConceptos from "../steps/StepConceptos";
 
@@ -40,7 +40,6 @@ type Props = {
 };
 
 export default function ContentTerrestre_LTL({ info, setInfo, billingConcepts, setBillingConcepts, svcCatalog }: Props) {
-
   // Cálculo de volumen automático
   const volLTL = (info.largo_cm && info.ancho_cm && info.alto_cm)
     ? (Number(info.largo_cm) * Number(info.ancho_cm) * Number(info.alto_cm)) / 1_000_000
@@ -155,6 +154,7 @@ export default function ContentTerrestre_LTL({ info, setInfo, billingConcepts, s
         </div>
       </div>
 
+      {/* ── CONCEPTOS DE FACTURACIÓN ── */}
       <StepConceptos
         billingConcepts={billingConcepts}
         setBillingConcepts={setBillingConcepts}

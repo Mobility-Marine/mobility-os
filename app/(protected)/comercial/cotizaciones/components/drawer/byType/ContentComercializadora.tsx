@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
-import { CURRENCIES, CONTAINER_TYPES, TRUCK_TYPES, INCOTERMS } from "../../../types/quotations.types";
+import { CONTAINER_TYPES, TRUCK_TYPES, INCOTERMS } from "../../../types/quotations.types";
 import type { BillingConceptDraft } from "../drawerState";
 import StepConceptos from "../steps/StepConceptos";
 
@@ -445,7 +445,7 @@ export default function ContentComercializadora({ info, setInfo, billingConcepts
         </div>
       </div>
 
-      {/* ══════════════ CONCEPTOS DE FACTURACIÓN ══════════════ */}
+      {/* ── CONCEPTOS DE FACTURACIÓN ── */}
       <StepConceptos
         billingConcepts={billingConcepts}
         setBillingConcepts={setBillingConcepts}

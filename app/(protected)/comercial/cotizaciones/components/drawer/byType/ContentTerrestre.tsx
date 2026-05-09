@@ -1,9 +1,7 @@
 "use client";
-import { Field, Grid2, Grid3, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
-import { INCOTERMS, TRUCK_TYPES, CURRENCIES, SERVICE_TYPES, SERVICE_TYPE_CONFIG } from "../../../types/quotations.types";
-import type { ServiceType } from "../../../types/quotations.types";
+import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
+import { INCOTERMS, TRUCK_TYPES } from "../../../types/quotations.types";
 import type { BillingConceptDraft } from "../drawerState";
-import { useTranslation } from "@/lib/i18n/useTranslation";
 import StepConceptos from "../steps/StepConceptos";
 
 type Ruta = { origen: string; destino: string; incoterm: string };
@@ -33,8 +31,6 @@ const EMPTY_INFO = (): TerrestreInfo => ({
   tipo_unidad: "", cantidad_unidades: "1",
 });
 
-const UNIT_LABELS = ["Por servicio","Por contenedor","Por BL","Por pedimento","Por factura","Por kg","Por tonelada","Por m³","Por W/M","Por pieza","Por embarque","Por trámite"];
-
 type Props = {
   info:               TerrestreInfo;
   setInfo:            React.Dispatch<React.SetStateAction<TerrestreInfo>>;
@@ -47,8 +43,6 @@ export type { TerrestreInfo };
 export { EMPTY_INFO as EMPTY_TERRESTRE_INFO };
 
 export default function ContentTerrestre({ info, setInfo, billingConcepts, setBillingConcepts, svcCatalog }: Props) {
-  const { t } = useTranslation();
-
   const volAuto = (info.largo_cm && info.ancho_cm && info.alto_cm)
     ? ((Number(info.largo_cm) * Number(info.ancho_cm) * Number(info.alto_cm)) / 1_000_000).toFixed(3)
     : null;
@@ -172,6 +166,7 @@ export default function ContentTerrestre({ info, setInfo, billingConcepts, setBi
         </div>
       )}
 
+      {/* ── CONCEPTOS DE FACTURACIÓN ── */}
       <StepConceptos
         billingConcepts={billingConcepts}
         setBillingConcepts={setBillingConcepts}

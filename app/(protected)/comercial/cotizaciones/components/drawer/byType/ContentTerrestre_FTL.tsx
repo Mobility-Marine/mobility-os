@@ -1,6 +1,6 @@
 "use client";
 import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
-import { INCOTERMS, CURRENCIES, TRUCK_TYPES } from "../../../types/quotations.types";
+import { INCOTERMS, TRUCK_TYPES } from "../../../types/quotations.types";
 import type { BillingConceptDraft } from "../drawerState";
 import StepConceptos from "../steps/StepConceptos";
 
@@ -36,7 +36,6 @@ type Props = {
 };
 
 export default function ContentTerrestre_FTL({ info, setInfo, billingConcepts, setBillingConcepts, svcCatalog }: Props) {
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
 
@@ -135,6 +134,7 @@ export default function ContentTerrestre_FTL({ info, setInfo, billingConcepts, s
         </div>
       </div>
 
+      {/* ── CONCEPTOS DE FACTURACIÓN ── */}
       <StepConceptos
         billingConcepts={billingConcepts}
         setBillingConcepts={setBillingConcepts}

@@ -1,6 +1,6 @@
 "use client";
 import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
-import { INCOTERMS, CONTAINER_TYPES, CURRENCIES } from "../../../types/quotations.types";
+import { INCOTERMS, CONTAINER_TYPES } from "../../../types/quotations.types";
 import type { BillingConceptDraft } from "../drawerState";
 import StepConceptos from "../steps/StepConceptos";
 
@@ -38,18 +38,11 @@ type Props = {
 };
 
 export default function ContentMaritimo({ info, setInfo, billingConcepts, setBillingConcepts, svcCatalog }: Props) {
-
   // Cálculos automáticos
   const totalContenedores = info.contenedores.reduce((s, c) => s + c.cantidad, 0);
   const cbmTotal  = info.bultos.reduce((s, b) => s + (Number(b.largo_cm) * Number(b.ancho_cm) * Number(b.alto_cm) / 1_000_000) * Number(b.cantidad || 1), 0);
   const pesoTotal = info.bultos.reduce((s, b) => s + Number(b.peso_kg) * Number(b.cantidad || 1), 0);
   const wmTotal   = Math.max(cbmTotal, pesoTotal / 1000);
-
-  // Al cambiar subtipo, actualizar defaults del lineForm
-
-  // Actualizar cantidad automática cuando cambian contenedores o W/M
-
-  const unitOptions = info.subtipo === "fcl" ? UNITS_FCL : UNITS_LCL;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
@@ -198,6 +191,7 @@ export default function ContentMaritimo({ info, setInfo, billingConcepts, setBil
         </div>
       )}
 
+      {/* ── CONCEPTOS DE FACTURACIÓN ── */}
       <StepConceptos
         billingConcepts={billingConcepts}
         setBillingConcepts={setBillingConcepts}

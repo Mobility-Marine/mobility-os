@@ -1,6 +1,6 @@
 "use client";
 import { Field, SectionTitle, INPUT, SELECT, InfoBox } from "../drawerShared";
-import { INCOTERMS, CONTAINER_TYPES, CURRENCIES } from "../../../types/quotations.types";
+import { INCOTERMS, CONTAINER_TYPES } from "../../../types/quotations.types";
 import type { BillingConceptDraft } from "../drawerState";
 import StepConceptos from "../steps/StepConceptos";
 
@@ -33,7 +33,6 @@ type Props = {
 };
 
 export default function ContentMaritimo_FCL({ info, setInfo, billingConcepts, setBillingConcepts, svcCatalog }: Props) {
-
   const totalContenedores = info.contenedores.reduce((s, c) => s + c.cantidad, 0);
 
   return (
@@ -117,6 +116,7 @@ export default function ContentMaritimo_FCL({ info, setInfo, billingConcepts, se
         </div>
       </div>
 
+      {/* ── CONCEPTOS DE FACTURACIÓN ── */}
       <StepConceptos
         billingConcepts={billingConcepts}
         setBillingConcepts={setBillingConcepts}
