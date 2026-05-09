@@ -1,11 +1,34 @@
 "use client";
 
+import React, { memo } from "react";
 import type { Prospect } from "../types/prospects.types";
 import { STAGE_CONFIG } from "../types/prospects.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
-  getProspectStage, isProspectActive, isHighValue, hasContact,
+  getProspectStage,
+  isProspectActive,
+  isHighValue,
+  hasContact,
 } from "../services/prospects.normalization";
+
+import VirtualSidebar from "@/app/components/shared/VirtualSidebar";
+import { IconInbox } from "@/app/components/shared/Icons";
+
+// ═══════════════════════════════════════════════════════════════════
+// PROSPECTS SIDEBAR — Virtualizado · escalable a 100K+ prospectos
+//
+// Patrón Linear / Salesforce con peculiaridad:
+//   - 4 KPIs siempre visibles arriba (Activos / Alto valor / Sin contacto /
+//     Calificados) — son el pulso comercial inmediato del módulo.
+//   - Botón "Nuevo prospecto" en header
+//   - Search (sin filterDrawer porque no hay filtros adicionales)
+//   - VirtualList con react-window
+//
+// Item ~95px:
+//   Row 1: empresa/nombre · stage badge
+//   Row 2: email · teléfono
+//   Row 3: badges (valor estimado, sin contacto, revenue ready, health)
+// ═══════════════════════════════════════════════════════════════════
 
 type Props = {
   search:       string;
@@ -16,216 +39,333 @@ type Props = {
   onOpenCreate: () => void;
 };
 
+const ITEM_HEIGHT = 95;
+
+const IconPlus = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+
 export default function ProspectsSidebar({
-  search, setSearch, prospects, selected, setSelected, onOpenCreate,
+  search,
+  setSearch,
+  prospects,
+  selected,
+  setSelected,
+  onOpenCreate,
 }: Props) {
   const { t } = useTranslation();
 
-  const active    = prospects.filter(isProspectActive);
-  const hot       = prospects.filter((p) => isHighValue(p, 50_000));
-  const noContact = prospects.filter((p) => !hasContact(p) && (p.is_active ?? true));
-  const qualified = prospects.filter((p) => getProspectStage(p) === "qualified");
+  // ── KPIs (calculados desde lista filtrada) ────────────────────────
+  const active = prospects.filter(isProspectActive).length;
+  const hot = prospects.filter((p) => isHighValue(p, 50_000)).length;
+  const noContact = prospects.filter(
+    (p) => !hasContact(p) && (p.is_active ?? true),
+  ).length;
+  const qualified = prospects.filter(
+    (p) => getProspectStage(p) === "qualified",
+  ).length;
 
   const kpis = [
-    { label: t.prospects.active,    value: active.length,    color: "var(--color-brand-blue)"   },
-    { label: t.prospects.highValue, value: hot.length,       color: "var(--color-success-text)" },
-    { label: t.prospects.noContact, value: noContact.length, color: noContact.length > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)" },
-    { label: t.prospects.qualified, value: qualified.length, color: "var(--color-info-text)"    },
+    {
+      label: t.prospects.active,
+      value: active,
+      color: "var(--color-brand-blue)",
+    },
+    {
+      label: t.prospects.highValue,
+      value: hot,
+      color: "var(--color-success-text)",
+    },
+    {
+      label: t.prospects.noContact,
+      value: noContact,
+      color: noContact > 0 ? "var(--color-danger-text)" : "var(--color-text-muted)",
+    },
+    {
+      label: t.prospects.qualified,
+      value: qualified,
+      color: "var(--color-info-text)",
+    },
   ];
 
-  return (
-    <div style={{
-      background: "var(--color-bg-base)",
-      border: "1px solid var(--color-border-faint)",
-      borderRadius: "var(--radius-lg)",
-      padding: "14px",
-      display: "flex", flexDirection: "column", gap: "12px",
-      height: "100%", minHeight: 0, overflow: "hidden",
-    }}>
-      {/* HEADER */}
-<div style={{ flexShrink: 0, marginBottom: "4px" }}>
-  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-      <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "1px" }}>
-        {t.prospects.title}
-      </span>
-      <span style={{
-        fontSize: "11px", fontWeight: 700,
-        padding: "1px 7px", borderRadius: "var(--radius-full)",
-        background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)",
-        color: "var(--color-text-muted)",
-      }}>
-        {prospects.length}
-      </span>
-    </div>
-  </div>
-  <button
-    onClick={onOpenCreate}
-    style={{
-      width: "100%", height: "36px",
-      borderRadius: "var(--radius-md)",
-      background: "var(--color-brand-blue)",
-      color: "#fff", border: "none",
-      fontSize: "13px", fontWeight: 700,
-      cursor: "pointer",
-      display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
-      boxShadow: "var(--shadow-brand-blue)",
-      marginBottom: "10px",
-    }}
-  >
-    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-      <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-    </svg>
-    {t.prospects.newProspect}
-  </button>
-</div>
-
-      {/* SEARCH */}
-      <div style={{ position: "relative", flexShrink: 0 }}>
-        <svg
-          width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2"
-          style={{ position: "absolute", left: "10px", top: "50%", transform: "translateY(-50%)" }}
-        >
-          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-        </svg>
-        <input
-          placeholder={t.prospects.search}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
+  // ── KPI Grid (topSlot del VirtualSidebar) ─────────────────────────
+  const kpiGrid = (
+    <div
+      style={{
+        display:             "grid",
+        gridTemplateColumns: "repeat(2, 1fr)",
+        gap:                 "6px",
+      }}
+    >
+      {kpis.map((k) => (
+        <div
+          key={k.label}
           style={{
-            width: "100%", height: "34px",
-            paddingLeft: "30px", paddingRight: "12px",
+            background:   "var(--color-bg-subtle)",
+            border:       "1px solid var(--color-border-faint)",
             borderRadius: "var(--radius-md)",
-            border: "1px solid var(--color-border)",
-            background: "var(--color-bg-subtle)",
-            color: "var(--color-text-primary)",
-            fontSize: "13px", outline: "none", boxSizing: "border-box",
+            padding:      "7px 10px",
+            textAlign:    "center",
           }}
-        />
+        >
+          <div
+            style={{
+              fontSize:     "10px",
+              color:        "var(--color-text-muted)",
+              marginBottom: "2px",
+              overflow:     "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace:   "nowrap",
+            }}
+          >
+            {k.label}
+          </div>
+          <div
+            style={{
+              fontSize:           "16px",
+              fontWeight:         800,
+              color:              k.color,
+              fontVariantNumeric: "tabular-nums",
+              lineHeight:         1.1,
+            }}
+          >
+            {k.value}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+
+  return (
+    <VirtualSidebar<Prospect>
+      title={t.prospects.title}
+      count={prospects.length}
+      topSlot={kpiGrid}
+      search={{
+        value: search,
+        onChange: setSearch,
+        placeholder: t.prospects.search,
+        hint: "Empresa · email · teléfono",
+      }}
+      headerActions={[
+        {
+          label: t.prospects.newProspect,
+          icon: <IconPlus />,
+          onClick: onOpenCreate,
+          variant: "primary",
+        },
+      ]}
+      items={prospects}
+      selectedId={selected?.id ?? null}
+      onSelect={setSelected}
+      getItemId={(p) => p.id}
+      itemHeight={ITEM_HEIGHT}
+      renderItem={(p, _i, isSelected) => (
+        <ProspectItem prospect={p} isSelected={isSelected} t={t} />
+      )}
+      emptyState={{
+        icon: <IconInbox size={32} />,
+        title: t.prospects.noProspects ?? "Sin prospectos",
+        description: search
+          ? "Ajusta tu búsqueda"
+          : "Crea tu primer prospecto para empezar",
+        action: !search
+          ? { label: t.prospects.newProspect ?? "Nuevo prospecto", onClick: onOpenCreate }
+          : undefined,
+      }}
+    />
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PROSPECT ITEM (memo)
+// ═══════════════════════════════════════════════════════════════════
+const ProspectItem = memo(function ProspectItem({
+  prospect: p,
+  isSelected,
+  t,
+}: {
+  prospect:   Prospect;
+  isSelected: boolean;
+  t:          any;
+}) {
+  const stage = getProspectStage(p);
+  const cfg = STAGE_CONFIG[stage];
+  const stageLabel =
+    (t.prospects as any)[cfg.labelKey.replace("prospects.", "")] ?? stage;
+  const noContactFlag = !hasContact(p);
+  const isProposal = stage === "proposal" || stage === "negotiation";
+
+  return (
+    <div
+      style={{
+        // ── ANTI-OVERFLOW ──
+        width:        "100%",
+        boxSizing:    "border-box",
+        overflow:     "hidden",
+        // ── visual ──
+        padding:      "10px 11px",
+        borderRadius: "var(--radius-md)",
+        background:   isSelected
+          ? "var(--color-bg-active)"
+          : "var(--color-bg-subtle)",
+        border:       isSelected
+          ? "1px solid var(--color-brand-blue)"
+          : "1px solid var(--color-border-faint)",
+        display:      "flex",
+        flexDirection:"column",
+        gap:          "4px",
+        transition:   "var(--transition-fast)",
+        height:       "calc(100% - 5px)",
+      }}
+    >
+      {/* ROW 1 — empresa/nombre + stage */}
+      <div
+        style={{
+          display:    "flex",
+          alignItems: "center",
+          gap:        "6px",
+          minWidth:   0,
+          width:      "100%",
+        }}
+      >
+        <span
+          style={{
+            fontSize:     "13px",
+            fontWeight:   700,
+            color:        "var(--color-text-primary)",
+            flex:         1,
+            minWidth:     0,
+            overflow:     "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace:   "nowrap",
+          }}
+        >
+          {p.company_name ?? p.name ?? t.prospects.noName}
+        </span>
+        <span
+          style={{
+            fontSize:      "9px",
+            fontWeight:    700,
+            padding:       "2px 6px",
+            borderRadius:  "var(--radius-full)",
+            background:    cfg.bg,
+            color:         cfg.color,
+            border:        `1px solid ${cfg.border}`,
+            flexShrink:    0,
+            textTransform: "uppercase",
+            whiteSpace:    "nowrap",
+          }}
+        >
+          {stageLabel}
+        </span>
       </div>
 
-      {/* KPIs */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "6px", flexShrink: 0 }}>
-        {kpis.map((k) => (
-          <div key={k.label} style={{
-            background: "var(--color-bg-subtle)",
-            border: "1px solid var(--color-border-faint)",
-            borderRadius: "var(--radius-md)",
-            padding: "8px 10px",
-            textAlign: "center",
-          }}>
-            <div style={{ fontSize: "10px", color: "var(--color-text-muted)", marginBottom: "2px" }}>{k.label}</div>
-            <div style={{ fontSize: "18px", fontWeight: 800, color: k.color, fontVariantNumeric: "tabular-nums" }}>{k.value}</div>
-          </div>
-        ))}
+      {/* ROW 2 — email · phone */}
+      <div
+        style={{
+          fontSize:     "11px",
+          color:        "var(--color-text-muted)",
+          overflow:     "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace:   "nowrap",
+          width:        "100%",
+        }}
+      >
+        {p.email ?? t.prospects.noEmail} · {p.phone ?? t.prospects.noPhone}
       </div>
 
-      {/* LIST */}
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "grid", gap: "6px", alignContent: "start" }}>
-        {prospects.length === 0 ? (
-          <div style={{
-            padding: "32px 16px", textAlign: "center",
-            color: "var(--color-text-muted)", fontSize: "13px",
-          }}>
-            {t.prospects.noProspects}
-          </div>
-        ) : prospects.map((p) => {
-          const isSelected = selected?.id === p.id;
-          const stage      = getProspectStage(p);
-          const cfg        = STAGE_CONFIG[stage];
-          const stageLabel = (t.prospects as any)[cfg.labelKey.replace("prospects.", "")] ?? stage;
-
-          return (
-            <div
-              key={p.id}
-              onClick={() => setSelected(p)}
-              style={{
-                padding: "12px",
-                borderRadius: "var(--radius-md)",
-                background: isSelected ? "var(--color-bg-active)" : "var(--color-bg-subtle)",
-                border: isSelected
-                  ? "1px solid var(--color-brand-blue)"
-                  : "1px solid var(--color-border-faint)",
-                cursor: "pointer",
-                display: "grid", gap: "6px",
-                transition: "var(--transition-fast)",
-                boxShadow: isSelected ? "0 0 0 1px var(--color-brand-blue)20 inset" : "none",
-              }}
-              onMouseEnter={(e) => {
-                if (!isSelected) (e.currentTarget as HTMLDivElement).style.borderColor = "var(--color-border)";
-              }}
-              onMouseLeave={(e) => {
-                if (!isSelected) (e.currentTarget as HTMLDivElement).style.borderColor = "var(--color-border-faint)";
-              }}
-            >
-              {/* TOP ROW */}
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: "8px" }}>
-                <div style={{
-                  fontSize: "13px", fontWeight: 700,
-                  color: "var(--color-text-primary)",
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1,
-                }}>
-                  {p.company_name ?? p.name ?? t.prospects.noName}
-                </div>
-                <span style={{
-                  fontSize: "9px", fontWeight: 700,
-                  padding: "2px 6px", borderRadius: "var(--radius-full)",
-                  background: cfg.bg, color: cfg.color,
-                  border: `1px solid ${cfg.border}`,
-                  flexShrink: 0, textTransform: "uppercase", letterSpacing: "0.3px",
-                }}>
-                  {stageLabel}
-                </span>
-              </div>
-
-              {/* META */}
-              <div style={{ fontSize: "11px", color: "var(--color-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                {p.email ?? t.prospects.noEmail} · {p.phone ?? t.prospects.noPhone}
-              </div>
-
-              {/* BADGES */}
-              <div style={{ display: "flex", gap: "5px", flexWrap: "wrap" }}>
-                {p.estimated_value && (
-                  <span style={{
-                    fontSize: "10px", fontWeight: 700,
-                    padding: "2px 7px", borderRadius: "var(--radius-full)",
-                    background: "var(--color-success-bg)", color: "var(--color-success-text)",
-                    border: "1px solid var(--color-success-border)",
-                  }}>
-                    ${Number(p.estimated_value).toLocaleString()}
-                  </span>
-                )}
-                {!hasContact(p) && (
-                  <span style={{
-                    fontSize: "10px", fontWeight: 700,
-                    padding: "2px 7px", borderRadius: "var(--radius-full)",
-                    background: "var(--color-danger-bg)", color: "var(--color-danger-text)",
-                    border: "1px solid var(--color-danger-border)",
-                  }}>
-                    {t.prospects.noContact}
-                  </span>
-                )}
-                {(stage === "proposal" || stage === "negotiation") && (
-                  <span style={{
-                    fontSize: "10px", fontWeight: 700,
-                    padding: "2px 7px", borderRadius: "var(--radius-full)",
-                    background: "var(--color-brand-blue-light)", color: "var(--color-brand-blue)",
-                  }}>
-                    {t.prospects.revenueReady}
-                  </span>
-                )}
-                {p.health && (
-                  <span style={{
-                    fontSize: "10px", color: "var(--color-text-muted)",
-                  }}>
-                    {p.health.score}/100
-                  </span>
-                )}
-              </div>
-            </div>
-          );
-        })}
+      {/* ROW 3 — badges */}
+      <div
+        style={{
+          display:    "flex",
+          gap:        "5px",
+          flexWrap:   "nowrap",
+          overflow:   "hidden",
+          minWidth:   0,
+          width:      "100%",
+        }}
+      >
+        {p.estimated_value && (
+          <span
+            style={{
+              fontSize:     "10px",
+              fontWeight:   700,
+              padding:      "1px 6px",
+              borderRadius: "var(--radius-full)",
+              background:   "var(--color-success-bg)",
+              color:        "var(--color-success-text)",
+              border:       "1px solid var(--color-success-border)",
+              whiteSpace:   "nowrap",
+              flexShrink:   0,
+            }}
+          >
+            ${formatCompact(Number(p.estimated_value))}
+          </span>
+        )}
+        {noContactFlag && (
+          <span
+            style={{
+              fontSize:     "10px",
+              fontWeight:   700,
+              padding:      "1px 6px",
+              borderRadius: "var(--radius-full)",
+              background:   "var(--color-danger-bg)",
+              color:        "var(--color-danger-text)",
+              border:       "1px solid var(--color-danger-border)",
+              whiteSpace:   "nowrap",
+              flexShrink:   0,
+            }}
+          >
+            {t.prospects.noContact}
+          </span>
+        )}
+        {isProposal && (
+          <span
+            style={{
+              fontSize:     "10px",
+              fontWeight:   700,
+              padding:      "1px 6px",
+              borderRadius: "var(--radius-full)",
+              background:   "var(--color-brand-blue-light)",
+              color:        "var(--color-brand-blue)",
+              whiteSpace:   "nowrap",
+              flexShrink:   0,
+            }}
+          >
+            {t.prospects.revenueReady}
+          </span>
+        )}
+        {p.health && (
+          <span
+            style={{
+              fontSize:   "10px",
+              color:      "var(--color-text-muted)",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+              marginLeft: "auto",
+            }}
+          >
+            {p.health.score}/100
+          </span>
+        )}
       </div>
     </div>
   );
+}, (prev, next) =>
+  prev.prospect.id === next.prospect.id &&
+  prev.prospect.updated_at === next.prospect.updated_at &&
+  prev.prospect.is_active === next.prospect.is_active &&
+  prev.isSelected === next.isSelected
+);
+
+// ─── Compact format para badges (evita $1,500,000 que rompe layout) ──
+function formatCompact(value: number): string {
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
+  if (abs >= 10_000)    return `${(value / 1_000).toFixed(0)}K`;
+  return value.toLocaleString("es-MX", { maximumFractionDigits: 0 });
 }

@@ -16,7 +16,7 @@ export default function PedidosPage() {
   const to    = (t.orders as any) ?? {};
   const ctrl  = useOrdersController();
   const {
-    filtered, selected, setSelected,
+    orders, filtered, selected, setSelected,
     kpis, loading, saving,
     filters, setFilters,
     handleStatusChange, handleUpdate,
