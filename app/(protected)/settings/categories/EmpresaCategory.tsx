@@ -1,56 +1,34 @@
 "use client";
 
 // ════════════════════════════════════════════════════════════════════════
-// EMPRESA — Categoría de Settings con datos del tenant (organización)
+// EMPRESA — Categoría de Settings (orquestador delgado)
 // ════════════════════════════════════════════════════════════════════════
-// 4 cards:
+// 5 cards. Cada drawer vive en su propio archivo en `./drawers/`.
 //   1) Identidad fiscal — RFC, razón social, régimen, dirección
 //   2) Marca y branding — colores, logo
 //   3) Contacto público — teléfono, email, web (aparece en cotizaciones)
 //   4) Plantillas de documentos — selección de templates PDF + footer
+//   5) Branding del correo — redes sociales, banner, disclaimer
+//
+// Antes (816 líneas): drawers inline + LogoUploader + ColorPickerRow
+// Ahora (~140 líneas): solo orquesta cards + estado de drawer abierto.
 // ════════════════════════════════════════════════════════════════════════
 
-import { useEffect, useState } from "react";
-import SettingCard           from "../components/SettingCard";
-import SettingDrawer         from "../components/SettingDrawer";
-import { useCompanySettings } from "../hooks/useCompanySettings";
-import { useTenant } from "@/lib/tenant/TenantProvider";
-import { supabase } from "@/lib/supabaseClient";
-import { REGIMENES_FISCALES_SAT } from "@/lib/sat/regimenes-fiscales";
-import CorreoBrandingDrawer from "./drawers/CorreoBrandingDrawer";
+import { useState } from "react";
+import SettingCard               from "../components/SettingCard";
+import { useCompanySettings }    from "../hooks/useCompanySettings";
+
+import IdentidadFiscalDrawer     from "./drawers/IdentidadFiscalDrawer";
+import MarcaBrandingDrawer       from "./drawers/MarcaBrandingDrawer";
+import ContactoPublicoDrawer     from "./drawers/ContactoPublicoDrawer";
+import PlantillasDrawer          from "./drawers/PlantillasDrawer";
+import CorreoBrandingDrawer      from "./drawers/CorreoBrandingDrawer";
 
 type DrawerKey = null | "identidad" | "marca" | "contacto" | "plantillas" | "correo";
 
-// ── Estilos compartidos ────────────────────────────────────────────────
-const labelStyle = {
-  display:       "block",
-  fontSize:      "12px",
-  fontWeight:    600,
-  color:         "var(--fg-muted, #64748b)",
-  letterSpacing: "0.02em",
-  textTransform: "uppercase" as const,
-  marginBottom:  "6px",
-};
-
-const inputStyle = {
-  width:         "100%",
-  padding:       "10px 12px",
-  fontSize:      "14px",
-  borderRadius:  "8px",
-  border:        "1px solid var(--border, rgba(148,163,184,0.30))",
-  background:    "var(--bg-input, #ffffff)",
-  color:         "var(--fg, #0f172a)",
-  fontFamily:    "inherit",
-  outline:       "none",
-  transition:    "border-color 120ms",
-};
-
-const fieldGroupStyle = { marginBottom: "16px" };
-
 // ════════════════════════════════════════════════════════════════════════
-// COMPONENTE PRINCIPAL
+// COMPONENTE
 // ════════════════════════════════════════════════════════════════════════
-
 export default function EmpresaCategory() {
   const { settings, loading, saving, update } = useCompanySettings();
   const [openDrawer, setOpenDrawer] = useState<DrawerKey>(null);
@@ -63,9 +41,19 @@ export default function EmpresaCategory() {
     );
   }
 
+  // Preview de redes activas (resumen para card de correo)
+  const redesActivas = [
+    settings?.social_facebook_url  ? "FB" : null,
+    settings?.social_linkedin_url  ? "IN" : null,
+    settings?.social_instagram_url ? "IG" : null,
+    settings?.social_twitter_url   ? "TW" : null,
+  ].filter(Boolean).join(" · ") || "Sin configurar";
+
+  const close = () => setOpenDrawer(null);
+
   return (
     <>
-      {/* Grid de cards */}
+      {/* ─── Grid de cards ──────────────────────────────────────────── */}
       <div
         style={{
           display:             "grid",
@@ -115,51 +103,44 @@ export default function EmpresaCategory() {
           icon="✉️"
           title="Branding del correo"
           description="Redes sociales, banner promocional y disclaimer legal en correos transaccionales."
-          preview={
-            [
-              settings?.social_facebook_url  ? "FB" : null,
-              settings?.social_linkedin_url  ? "IN" : null,
-              settings?.social_instagram_url ? "IG" : null,
-              settings?.social_twitter_url   ? "TW" : null,
-            ].filter(Boolean).join(" · ") || "Sin configurar"
-          }
+          preview={redesActivas}
           previewLabel="REDES ACTIVAS"
           onClick={() => setOpenDrawer("correo")}
         />
       </div>
 
-      {/* Drawers */}
+      {/* ─── Drawers (cada uno en su archivo) ───────────────────────── */}
       <IdentidadFiscalDrawer
         open={openDrawer === "identidad"}
-        onClose={() => setOpenDrawer(null)}
+        onClose={close}
         settings={settings}
         saving={saving}
         update={update}
       />
       <MarcaBrandingDrawer
         open={openDrawer === "marca"}
-        onClose={() => setOpenDrawer(null)}
+        onClose={close}
         settings={settings}
         saving={saving}
         update={update}
       />
       <ContactoPublicoDrawer
         open={openDrawer === "contacto"}
-        onClose={() => setOpenDrawer(null)}
+        onClose={close}
         settings={settings}
         saving={saving}
         update={update}
       />
       <PlantillasDrawer
         open={openDrawer === "plantillas"}
-        onClose={() => setOpenDrawer(null)}
+        onClose={close}
         settings={settings}
         saving={saving}
         update={update}
       />
       <CorreoBrandingDrawer
         open={openDrawer === "correo"}
-        onClose={() => setOpenDrawer(null)}
+        onClose={close}
         settings={settings}
         saving={saving}
         update={update}
@@ -169,18 +150,8 @@ export default function EmpresaCategory() {
 }
 
 // ════════════════════════════════════════════════════════════════════════
-// SUB-COMPONENTES (drawers individuales)
+// SUB-COMPONENTE — ColorChips (preview de paleta en card de marca)
 // ════════════════════════════════════════════════════════════════════════
-
-type DrawerSubProps = {
-  open:     boolean;
-  onClose:  () => void;
-  settings: ReturnType<typeof useCompanySettings>["settings"];
-  saving:   boolean;
-  update:   ReturnType<typeof useCompanySettings>["update"];
-};
-
-// ── Color chips para preview de marca ─────────────────────────────────
 function ColorChips({ c1, c2, c3 }: { c1?: string; c2?: string; c3?: string }) {
   const chip = (color?: string) => (
     <span
@@ -202,616 +173,3 @@ function ColorChips({ c1, c2, c3 }: { c1?: string; c2?: string; c3?: string }) {
     </span>
   );
 }
-
-// ────────────────────────────────────────────────────────────────────────
-// 1) Identidad fiscal
-// ────────────────────────────────────────────────────────────────────────
-function IdentidadFiscalDrawer({ open, onClose, settings, saving, update }: DrawerSubProps) {
-  const [form, setForm] = useState({
-    fiscal_name:    "",
-    fiscal_rfc:     "",
-    fiscal_regime:  "",
-    fiscal_address: "",
-    fiscal_city:    "",
-    fiscal_state:   "",
-    fiscal_zip:     "",
-    fiscal_country: "México",
-  });
-
-  useEffect(() => {
-    if (open && settings) {
-      setForm({
-        fiscal_name:    settings.fiscal_name    ?? "",
-        fiscal_rfc:     settings.fiscal_rfc     ?? "",
-        fiscal_regime:  settings.fiscal_regime  ?? "",
-        fiscal_address: settings.fiscal_address ?? "",
-        fiscal_city:    settings.fiscal_city    ?? "",
-        fiscal_state:   settings.fiscal_state   ?? "",
-        fiscal_zip:     settings.fiscal_zip     ?? "",
-        fiscal_country: settings.fiscal_country ?? "México",
-      });
-    }
-  }, [open, settings]);
-
-  const handleSave = async () => {
-    const ok = await update(form);
-    if (ok) onClose();
-  };
-
-  return (
-    <SettingDrawer
-      open={open}
-      onClose={onClose}
-      title="Identidad fiscal"
-      description="Datos legales de tu empresa que aparecen en CFDIs y documentos."
-      icon="🏛️"
-      size="md"
-      saving={saving}
-      footer={
-        <>
-          <button onClick={onClose} disabled={saving} style={btnSecondary}>
-            Cancelar
-          </button>
-          <button onClick={handleSave} disabled={saving} style={btnPrimary}>
-            {saving ? "Guardando…" : "Guardar cambios"}
-          </button>
-        </>
-      }
-    >
-      <div style={fieldGroupStyle}>
-        <label style={labelStyle}>Razón social</label>
-        <input
-          type="text"
-          style={inputStyle}
-          value={form.fiscal_name}
-          onChange={(e) => setForm({ ...form, fiscal_name: e.target.value })}
-          placeholder="Mobility Marine S.A. de C.V."
-        />
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
-        <div>
-          <label style={labelStyle}>RFC</label>
-          <input
-            type="text"
-            style={inputStyle}
-            value={form.fiscal_rfc}
-            onChange={(e) => setForm({ ...form, fiscal_rfc: e.target.value.toUpperCase() })}
-            placeholder="MMA210517V20"
-            maxLength={13}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Régimen fiscal</label>
-          <select
-            style={inputStyle}
-            value={form.fiscal_regime}
-            onChange={(e) => setForm({ ...form, fiscal_regime: e.target.value })}
-          >
-            <option value="">— Selecciona régimen —</option>
-            <optgroup label="Personas Morales">
-              {REGIMENES_FISCALES_SAT.filter((r) => r.aplica === "PM").map((r) => (
-                <option key={r.clave} value={r.clave}>{r.clave} — {r.descripcion}</option>
-              ))}
-            </optgroup>
-            <optgroup label="Personas Físicas">
-              {REGIMENES_FISCALES_SAT.filter((r) => r.aplica === "PF").map((r) => (
-                <option key={r.clave} value={r.clave}>{r.clave} — {r.descripcion}</option>
-              ))}
-            </optgroup>
-            <optgroup label="Personas Físicas y Morales">
-              {REGIMENES_FISCALES_SAT.filter((r) => r.aplica === "AMBOS").map((r) => (
-                <option key={r.clave} value={r.clave}>{r.clave} — {r.descripcion}</option>
-              ))}
-            </optgroup>
-          </select>
-        </div>
-      </div>
-
-      <h3 style={{ fontSize: "13px", fontWeight: 600, color: "var(--fg-muted)", margin: "20px 0 10px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-        Dirección fiscal
-      </h3>
-
-      <div style={fieldGroupStyle}>
-        <label style={labelStyle}>Calle y número</label>
-        <input
-          type="text"
-          style={inputStyle}
-          value={form.fiscal_address}
-          onChange={(e) => setForm({ ...form, fiscal_address: e.target.value })}
-          placeholder="Av. de las Industrias 123"
-        />
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px", marginBottom: "16px" }}>
-        <div>
-          <label style={labelStyle}>Ciudad</label>
-          <input
-            type="text"
-            style={inputStyle}
-            value={form.fiscal_city}
-            onChange={(e) => setForm({ ...form, fiscal_city: e.target.value })}
-            placeholder="Aguascalientes"
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>Estado</label>
-          <input
-            type="text"
-            style={inputStyle}
-            value={form.fiscal_state}
-            onChange={(e) => setForm({ ...form, fiscal_state: e.target.value })}
-            placeholder="Aguascalientes"
-          />
-        </div>
-      </div>
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "12px" }}>
-        <div>
-          <label style={labelStyle}>Código postal</label>
-          <input
-            type="text"
-            style={inputStyle}
-            value={form.fiscal_zip}
-            onChange={(e) => setForm({ ...form, fiscal_zip: e.target.value })}
-            placeholder="20290"
-            maxLength={5}
-          />
-        </div>
-        <div>
-          <label style={labelStyle}>País</label>
-          <input
-            type="text"
-            style={inputStyle}
-            value={form.fiscal_country}
-            onChange={(e) => setForm({ ...form, fiscal_country: e.target.value })}
-          />
-        </div>
-      </div>
-    </SettingDrawer>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// 2) Marca y branding
-// ────────────────────────────────────────────────────────────────────────
-function MarcaBrandingDrawer({ open, onClose, settings, saving, update }: DrawerSubProps) {
-  const [form, setForm] = useState({
-    logo_url:         "",
-    brand_color:      "#1d4ed8",
-    brand_color_dark: "#0a1628",
-    brand_accent:     "#c9a227",
-  });
-
-  useEffect(() => {
-    if (open && settings) {
-      setForm({
-        logo_url:         settings.logo_url         ?? "",
-        brand_color:      settings.brand_color      ?? "#1d4ed8",
-        brand_color_dark: settings.brand_color_dark ?? "#0a1628",
-        brand_accent:     settings.brand_accent     ?? "#c9a227",
-      });
-    }
-  }, [open, settings]);
-
-  const handleSave = async () => {
-    const ok = await update(form);
-    if (ok) onClose();
-  };
-
-  return (
-    <SettingDrawer
-      open={open}
-      onClose={onClose}
-      title="Marca y branding"
-      description="Logo y paleta de colores. Se aplican a PDFs, app y emails."
-      icon="🎨"
-      size="md"
-      saving={saving}
-      footer={
-        <>
-          <button onClick={onClose} disabled={saving} style={btnSecondary}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving} style={btnPrimary}>
-            {saving ? "Guardando…" : "Guardar cambios"}
-          </button>
-        </>
-      }
-    >
-      <div style={fieldGroupStyle}>
-        <label style={labelStyle}>Logo de la empresa</label>
-        <LogoUploader
-          currentUrl={form.logo_url}
-          onChange={(url) => setForm({ ...form, logo_url: url })}
-        />
-      </div>
-
-      <h3 style={{ fontSize: "13px", fontWeight: 600, color: "var(--fg-muted)", margin: "24px 0 10px", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-        Paleta de colores
-      </h3>
-
-      <ColorPickerRow
-        label="Color principal (encabezados)"
-        value={form.brand_color_dark}
-        onChange={(v) => setForm({ ...form, brand_color_dark: v })}
-        hint="Header de PDFs, sidebar, botones primarios."
-      />
-      <ColorPickerRow
-        label="Color secundario (tablas y totales)"
-        value={form.brand_color}
-        onChange={(v) => setForm({ ...form, brand_color: v })}
-        hint="Tablas, totales, footer de cotizaciones."
-      />
-      <ColorPickerRow
-        label="Color de acento"
-        value={form.brand_accent}
-        onChange={(v) => setForm({ ...form, brand_accent: v })}
-        hint="Detalles, badges, highlights."
-      />
-    </SettingDrawer>
-  );
-}
-
-function ColorPickerRow({
-  label, value, onChange, hint,
-}: { label: string; value: string; onChange: (v: string) => void; hint?: string }) {
-  return (
-    <div style={{ marginBottom: "14px" }}>
-      <label style={labelStyle}>{label}</label>
-      <div style={{ display: "flex", gap: "10px", alignItems: "center" }}>
-        <input
-          type="color"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          style={{
-            width:        "44px",
-            height:       "44px",
-            border:       "1px solid var(--border, rgba(148,163,184,0.30))",
-            borderRadius: "8px",
-            cursor:       "pointer",
-            background:   "transparent",
-            padding:      "2px",
-          }}
-        />
-        <input
-          type="text"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          style={{ ...inputStyle, fontFamily: "ui-monospace, monospace", maxWidth: "140px" }}
-          placeholder="#000000"
-        />
-      </div>
-      {hint && (
-        <div style={{ marginTop: "4px", fontSize: "11px", color: "var(--fg-muted)" }}>
-          {hint}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// 3) Contacto público
-// ────────────────────────────────────────────────────────────────────────
-function ContactoPublicoDrawer({ open, onClose, settings, saving, update }: DrawerSubProps) {
-  const [form, setForm] = useState({
-    fiscal_phone:   "",
-    fiscal_email:   "",
-    fiscal_website: "",
-  });
-
-  useEffect(() => {
-    if (open && settings) {
-      setForm({
-        fiscal_phone:   settings.fiscal_phone   ?? "",
-        fiscal_email:   settings.fiscal_email   ?? "",
-        fiscal_website: settings.fiscal_website ?? "",
-      });
-    }
-  }, [open, settings]);
-
-  const handleSave = async () => {
-    const ok = await update(form);
-    if (ok) onClose();
-  };
-
-  return (
-    <SettingDrawer
-      open={open}
-      onClose={onClose}
-      title="Contacto público"
-      description="Estos datos aparecen en cotizaciones, facturas y emails enviados."
-      icon="📞"
-      size="md"
-      saving={saving}
-      footer={
-        <>
-          <button onClick={onClose} disabled={saving} style={btnSecondary}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving} style={btnPrimary}>
-            {saving ? "Guardando…" : "Guardar cambios"}
-          </button>
-        </>
-      }
-    >
-      <div style={fieldGroupStyle}>
-        <label style={labelStyle}>Teléfono</label>
-        <input
-          type="tel"
-          style={inputStyle}
-          value={form.fiscal_phone}
-          onChange={(e) => setForm({ ...form, fiscal_phone: e.target.value })}
-          placeholder="+52 449 123 4567"
-        />
-      </div>
-      <div style={fieldGroupStyle}>
-        <label style={labelStyle}>Correo electrónico</label>
-        <input
-          type="email"
-          style={inputStyle}
-          value={form.fiscal_email}
-          onChange={(e) => setForm({ ...form, fiscal_email: e.target.value })}
-          placeholder="contacto@mobility-marine.com"
-        />
-      </div>
-      <div style={fieldGroupStyle}>
-        <label style={labelStyle}>Sitio web</label>
-        <input
-          type="url"
-          style={inputStyle}
-          value={form.fiscal_website}
-          onChange={(e) => setForm({ ...form, fiscal_website: e.target.value })}
-          placeholder="https://mobility-marine.com"
-        />
-      </div>
-    </SettingDrawer>
-  );
-}
-
-// ────────────────────────────────────────────────────────────────────────
-// 4) Plantillas de documentos
-// ────────────────────────────────────────────────────────────────────────
-function PlantillasDrawer({ open, onClose, settings, saving, update }: DrawerSubProps) {
-  const [form, setForm] = useState({
-    template_products: "elegante",
-    template_services: "elegante",
-    quote_footer:      "",
-  });
-
-  useEffect(() => {
-    if (open && settings) {
-      setForm({
-        template_products: settings.template_products ?? "elegante",
-        template_services: settings.template_services ?? "elegante",
-        quote_footer:      settings.quote_footer      ?? "",
-      });
-    }
-  }, [open, settings]);
-
-  const handleSave = async () => {
-    const ok = await update(form);
-    if (ok) onClose();
-  };
-
-  // Por ahora solo existe la plantilla "elegante" (Mobility OS)
-  const TEMPLATES = [{ value: "elegante", label: "Mobility OS (default)" }];
-
-  return (
-    <SettingDrawer
-      open={open}
-      onClose={onClose}
-      title="Plantillas de documentos"
-      description="Diseño de cotizaciones (productos y servicios) y footer global."
-      icon="📋"
-      size="md"
-      saving={saving}
-      footer={
-        <>
-          <button onClick={onClose} disabled={saving} style={btnSecondary}>Cancelar</button>
-          <button onClick={handleSave} disabled={saving} style={btnPrimary}>
-            {saving ? "Guardando…" : "Guardar cambios"}
-          </button>
-        </>
-      }
-    >
-      <div style={fieldGroupStyle}>
-        <label style={labelStyle}>Plantilla para cotizaciones de servicios</label>
-        <select
-          style={inputStyle}
-          value={form.template_services}
-          onChange={(e) => setForm({ ...form, template_services: e.target.value })}
-        >
-          {TEMPLATES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-      </div>
-      <div style={fieldGroupStyle}>
-        <label style={labelStyle}>Plantilla para cotizaciones de productos</label>
-        <select
-          style={inputStyle}
-          value={form.template_products}
-          onChange={(e) => setForm({ ...form, template_products: e.target.value })}
-        >
-          {TEMPLATES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-        </select>
-      </div>
-      <div style={fieldGroupStyle}>
-        <label style={labelStyle}>Footer global de cotizaciones</label>
-        <textarea
-          rows={4}
-          style={{ ...inputStyle, fontFamily: "inherit", resize: "vertical" }}
-          value={form.quote_footer}
-          onChange={(e) => setForm({ ...form, quote_footer: e.target.value })}
-          placeholder="Texto que aparece al pie de cada cotización en PDF (datos bancarios, agradecimiento, etc.)."
-        />
-        <div style={{ marginTop: "6px", fontSize: "11px", color: "var(--fg-muted)" }}>
-          Aparece en la última página del PDF, debajo de los términos y condiciones.
-        </div>
-      </div>
-    </SettingDrawer>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════════
-// LOGO UPLOADER — Sube imagen al bucket company-assets de Supabase Storage
-// ════════════════════════════════════════════════════════════════════════
-// Estructura: company-assets/{companyId}/logo-{timestamp}.{ext}
-// El timestamp evita problemas de cache cuando se reemplaza el logo.
-// ════════════════════════════════════════════════════════════════════════
-
-function LogoUploader({
-  currentUrl,
-  onChange,
-}: {
-  currentUrl: string;
-  onChange: (url: string) => void;
-}) {
-  const { companyId } = useTenant();
-  const [uploading, setUploading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const handleFile = async (file: File) => {
-    if (!companyId) {
-      setError("No se detectó empresa activa.");
-      return;
-    }
-    if (!/^image\/(png|jpe?g|svg\+xml|webp)$/i.test(file.type)) {
-      setError("Formato no soportado. Usa PNG, JPG, SVG o WebP.");
-      return;
-    }
-    if (file.size > 2 * 1024 * 1024) {
-      setError("El archivo no puede pesar más de 2 MB.");
-      return;
-    }
-
-    setUploading(true);
-    setError(null);
-    try {
-      const ext = (file.name.split(".").pop() ?? "png").toLowerCase();
-      const path = `${companyId}/logo-${Date.now()}.${ext}`;
-
-      const { error: upErr } = await supabase.storage
-        .from("company-assets")
-        .upload(path, file, { upsert: true, contentType: file.type });
-
-      if (upErr) throw upErr;
-
-      const { data } = supabase.storage.from("company-assets").getPublicUrl(path);
-      onChange(data.publicUrl);
-    } catch (e) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      setError((e as any)?.message ?? "Error al subir el archivo.");
-    } finally {
-      setUploading(false);
-    }
-  };
-
-  return (
-    <div>
-      {/* Preview actual */}
-      {currentUrl && (
-        <div
-          style={{
-            display:        "flex",
-            alignItems:     "center",
-            justifyContent: "center",
-            padding:        "20px",
-            marginBottom:   "12px",
-            borderRadius:   "10px",
-            background:     "var(--surface-soft, rgba(148,163,184,0.06))",
-            border:         "1px dashed var(--border, rgba(148,163,184,0.30))",
-            minHeight:      "100px",
-          }}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={currentUrl}
-            alt="Logo actual"
-            style={{ maxHeight: "80px", maxWidth: "100%", objectFit: "contain" }}
-          />
-        </div>
-      )}
-
-      {/* Input file */}
-      <label
-        style={{
-          display:        "inline-flex",
-          alignItems:     "center",
-          gap:            "8px",
-          padding:        "9px 16px",
-          fontSize:       "13px",
-          fontWeight:     500,
-          borderRadius:   "8px",
-          border:         "1px solid var(--border, rgba(148,163,184,0.30))",
-          background:     "var(--surface, #ffffff)",
-          color:          "var(--fg, #0f172a)",
-          cursor:         uploading ? "wait" : "pointer",
-          opacity:        uploading ? 0.6 : 1,
-          transition:     "background 120ms",
-        }}
-      >
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-          <polyline points="17 8 12 3 7 8" />
-          <line x1="12" y1="3" x2="12" y2="15" />
-        </svg>
-        {uploading ? "Subiendo…" : currentUrl ? "Reemplazar logo" : "Subir logo"}
-        <input
-          type="file"
-          accept="image/png,image/jpeg,image/svg+xml,image/webp"
-          style={{ display: "none" }}
-          disabled={uploading}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void handleFile(file);
-            e.target.value = "";
-          }}
-        />
-      </label>
-
-      {/* URL manual (opcional) */}
-      <div style={{ marginTop: "12px" }}>
-        <label style={{ ...labelStyle, fontSize: "11px" }}>URL del logo (opcional)</label>
-        <input
-          type="text"
-          style={{ ...inputStyle, fontSize: "12px", fontFamily: "ui-monospace, monospace" }}
-          value={currentUrl}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder="https://…"
-        />
-      </div>
-
-      {/* Errores */}
-      {error && (
-        <div style={{ marginTop: "8px", fontSize: "12px", color: "#b91c1c" }}>
-          {error}
-        </div>
-      )}
-
-      {/* Hint */}
-      <div style={{ marginTop: "10px", fontSize: "11px", color: "var(--fg-muted)", lineHeight: 1.5 }}>
-        Formatos: PNG, JPG, SVG, WebP. Máximo 2 MB. Idealmente 400×100 px con fondo transparente.
-      </div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════════
-// Estilos de botones (compartidos)
-// ════════════════════════════════════════════════════════════════════════
-const btnPrimary = {
-  padding:      "9px 18px",
-  fontSize:     "13px",
-  fontWeight:   600,
-  borderRadius: "8px",
-  border:       "none",
-  background:   "var(--accent, #2563eb)",
-  color:        "#ffffff",
-  cursor:       "pointer",
-  transition:   "opacity 120ms",
-};
-
-const btnSecondary = {
-  padding:      "9px 16px",
-  fontSize:     "13px",
-  fontWeight:   500,
-  borderRadius: "8px",
-  border:       "1px solid var(--border, rgba(148,163,184,0.30))",
-  background:   "transparent",
-  color:        "var(--fg, #0f172a)",
-  cursor:       "pointer",
-};

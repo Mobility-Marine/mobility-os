@@ -3,6 +3,7 @@ import type {
   QuotationStatus,
   QuotationType,
 } from "../types/quotations.types";
+import { computeTotalsByCurrency } from "../utils/computeTotalsByCurrency";
 
 // ═══════════════════════════════════════════════════════════════════
 // QUOTATION FILTERS — Lógica pura de filtrado nivel ERP
@@ -10,9 +11,13 @@ import type {
 // Patrón Salesforce/SAP: filtros complementarios y compositivos.
 //   1. Búsqueda multi-campo  → folio, cliente, RFC, email, contacto, subtipo
 //   2. Filtros simples       → tipo (productos/servicios), status
-//   3. Filtros avanzados     → fecha · monto · subtipo · vigencia
+//   3. Filtros avanzados     → fecha · monto · subtipo · vigencia · moneda
 //
 // Se aplican TODOS encadenados con AND (más restrictivo).
+//
+// NOTA: El cálculo de totales usa el helper centralizado
+// `computeTotalsByCurrency` (utils/) para mantener consistencia con
+// KPIs del CommandCenter y montos del SidebarItem.
 // ═══════════════════════════════════════════════════════════════════
 
 export type QuotationFilters = {
@@ -21,12 +26,13 @@ export type QuotationFilters = {
   type: QuotationType | "all";
   status: QuotationStatus | "all";
 
-  // Filtros avanzados (panel expandible)
+  // Filtros avanzados (panel expandible / drawer)
   dateFrom?: string;
   dateTo?: string;
   amountFrom?: string;
   amountTo?: string;
   amountCurrency?: string;
+  currency?: string; // Filtro por moneda dominante de la cotización
   subtype?: string;
   validity?: "all" | "vigente" | "expired";
 };
@@ -40,28 +46,6 @@ export const DEFAULT_FILTERS: QuotationFilters = {
 // ═══════════════════════════════════════════════════════════════════
 // HELPERS internos
 // ═══════════════════════════════════════════════════════════════════
-
-// Calcula totales por moneda (consistente con CommandCenter y Workspace)
-function getTotalsByCurrency(q: Quotation): Record<string, number> {
-  const concepts = (q as any).billing_concepts ?? [];
-  if (concepts.length > 0) {
-    const totals: Record<string, number> = {};
-    for (const c of concepts) {
-      for (const line of c.lines ?? []) {
-        const cur = line.currency ?? c.currency ?? q.currency ?? "MXN";
-        const price = Number(line.price ?? 0);
-        const rate = line.tax_rate;
-        const tax =
-          rate === null || rate === undefined || rate === -1 || rate <= 0
-            ? 0
-            : price * (Number(rate) / 100);
-        totals[cur] = (totals[cur] ?? 0) + price + tax;
-      }
-    }
-    return totals;
-  }
-  return { [q.currency ?? "MXN"]: q.total ?? 0 };
-}
 
 // Búsqueda multi-campo: tokenizada y case-insensitive
 function searchInQuotation(q: Quotation, term: string): boolean {
@@ -137,9 +121,18 @@ export function applyFilters(
       if (filters.validity === "expired" && days >= 0) return false;
     }
 
-    // 7. Rango de monto (en moneda específica)
+    // 7. Filtro por moneda — la cotización debe tener al menos una línea
+    //    en la moneda solicitada
+    if (filters.currency) {
+      const totals = computeTotalsByCurrency(q);
+      if (!totals[filters.currency] || totals[filters.currency] === 0) {
+        return false;
+      }
+    }
+
+    // 8. Rango de monto (en moneda específica)
     if (filters.amountFrom || filters.amountTo) {
-      const totals = getTotalsByCurrency(q);
+      const totals = computeTotalsByCurrency(q);
       const cur = filters.amountCurrency || Object.keys(totals)[0] || "MXN";
       const total = totals[cur] ?? 0;
       const from = filters.amountFrom ? Number(filters.amountFrom) : 0;
@@ -187,6 +180,7 @@ export function hasActiveFilters(filters: QuotationFilters): boolean {
     !!filters.dateTo ||
     !!filters.amountFrom ||
     !!filters.amountTo ||
+    !!filters.currency ||
     !!filters.subtype ||
     (!!filters.validity && filters.validity !== "all")
   );

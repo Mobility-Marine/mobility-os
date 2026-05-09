@@ -4,6 +4,10 @@ import type { Quotation } from "../types/quotations.types";
 import { computeQuotationDataQuality } from "../types/quotations.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 import {
+  computeTotalsByCurrency,
+  sumTotalsByCurrency,
+} from "../utils/computeTotalsByCurrency";
+import {
   IconBarChart,
   IconTrendingUp,
   IconTarget,
@@ -24,45 +28,15 @@ type Props = { quotations: Quotation[] };
 // 4. Ticket Promedio  — Avg deal size (ADS) por moneda
 // 5. Sales Velocity   — Días promedio creación → aceptación
 // 6. Data Quality     — % cotizaciones completas (SAT codes + RFC)
+//
+// Totales por moneda → usa helper centralizado `computeTotalsByCurrency`
+// para mantener consistencia con sidebar, filtros y copilot.
 // ═══════════════════════════════════════════════════════════════════
-
-// Suma de totales por moneda — igual lógica que sidebar (consistencia)
-function getQuotationTotals(q: Quotation): Record<string, number> {
-  const concepts = (q as any).billing_concepts ?? [];
-  if (concepts.length > 0) {
-    const totals: Record<string, number> = {};
-    for (const concept of concepts) {
-      for (const line of concept.lines ?? []) {
-        const cur = line.currency ?? concept.currency ?? q.currency ?? "MXN";
-        const price = Number(line.price ?? 0);
-        const rate = line.tax_rate;
-        const tax =
-          rate === null || rate === undefined || rate === -1 || rate === 0
-            ? 0
-            : price * (rate / 100);
-        totals[cur] = (totals[cur] ?? 0) + price + tax;
-      }
-    }
-    return totals;
-  }
-  return { [q.currency ?? "MXN"]: q.total ?? 0 };
-}
-
-function sumByCurrency(quotations: Quotation[]): Record<string, number> {
-  const out: Record<string, number> = {};
-  for (const q of quotations) {
-    const t = getQuotationTotals(q);
-    for (const [cur, val] of Object.entries(t)) {
-      out[cur] = (out[cur] ?? 0) + val;
-    }
-  }
-  return out;
-}
 
 function avgByCurrency(quotations: Quotation[]): Record<string, number> {
   const acc: Record<string, { total: number; count: number }> = {};
   for (const q of quotations) {
-    const t = getQuotationTotals(q);
+    const t = computeTotalsByCurrency(q);
     for (const [cur, val] of Object.entries(t)) {
       if (val <= 0) continue;
       if (!acc[cur]) acc[cur] = { total: 0, count: 0 };
@@ -89,11 +63,11 @@ export default function QuotationCommandCenter({ quotations }: Props) {
 
   // ── KPI 1: PIPELINE ACTIVO ────────────────────────────────
   const pipelineQuots = [...drafts, ...sent];
-  const pipelineByCurrency = sumByCurrency(pipelineQuots);
+  const pipelineByCurrency = sumTotalsByCurrency(pipelineQuots);
   const pipelineCount = pipelineQuots.length;
 
   // ── KPI 2: CERRADO / WON + TENDENCIA ──────────────────────
-  const acceptedByCurrency = sumByCurrency(accepted);
+  const acceptedByCurrency = sumTotalsByCurrency(accepted);
   const acceptedCount = accepted.length;
 
   const now = new Date();

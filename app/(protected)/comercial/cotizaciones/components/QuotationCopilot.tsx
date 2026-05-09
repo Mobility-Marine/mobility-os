@@ -2,36 +2,12 @@
 import type { Quotation } from "../types/quotations.types";
 import { STATUS_CONFIG } from "../types/quotations.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
+import { computeBreakdownByCurrency } from "../utils/computeTotalsByCurrency";
 
 type Props = { quotation: Quotation | null };
 
-// Totales por moneda desde billing_concepts
-function getTotalsByCurrency(quotation: Quotation): Record<string, { subtotal: number; tax: number; total: number }> {
-  const concepts = (quotation as any).billing_concepts ?? [];
-  const byCurrency: Record<string, { subtotal: number; tax: number; total: number }> = {};
-
-  if (concepts.length > 0) {
-    for (const concept of concepts) {
-      for (const line of (concept.lines ?? [])) {
-        const cur   = line.currency ?? concept.currency ?? quotation.currency ?? "MXN";
-        const price = Number(line.price ?? 0);
-        const rate  = line.tax_rate;
-        const tax   = (rate === null || rate === undefined || rate === -1 || rate === 0) ? 0 : price * (rate / 100);
-        if (!byCurrency[cur]) byCurrency[cur] = { subtotal: 0, tax: 0, total: 0 };
-        byCurrency[cur].subtotal += price;
-        byCurrency[cur].tax      += tax;
-        byCurrency[cur].total    += price + tax;
-      }
-    }
-    return byCurrency;
-  }
-
-  // Fallback cotizaciones sin billing_concepts
-  const cur = quotation.currency ?? "MXN";
-  return { [cur]: { subtotal: quotation.subtotal ?? 0, tax: quotation.tax_amount ?? 0, total: quotation.total ?? 0 } };
-}
-
-// Desglose de conceptos con sus líneas
+// Desglose de conceptos con sus líneas (helper local — específico de
+// Copilot, no se centraliza porque solo aquí se necesita esta forma)
 function getConceptSummary(quotation: Quotation): { description: string; byCurrency: Record<string, number> }[] {
   const concepts = (quotation as any).billing_concepts ?? [];
   return concepts.map((concept: any) => {
@@ -67,7 +43,7 @@ export default function QuotationCopilot({ quotation }: Props) {
   const subtype     = (quotation as any).service_subtype as string | undefined;
 
   // Totales multi-moneda
-  const totalsByCurrency = getTotalsByCurrency(quotation);
+  const totalsByCurrency = computeBreakdownByCurrency(quotation);
   const currencyEntries  = Object.entries(totalsByCurrency).filter(([, v]) => v.total > 0);
   const conceptSummary   = getConceptSummary(quotation);
 

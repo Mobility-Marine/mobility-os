@@ -4,6 +4,7 @@ import React, { memo } from "react";
 import type { Quotation } from "../types/quotations.types";
 import StatusBadge from "./QuotationWorkspace/components/StatusBadge";
 import { IconBoxes, IconTruck } from "./Icons";
+import { computeTotalsByCurrency } from "../utils/computeTotalsByCurrency";
 
 // ═══════════════════════════════════════════════════════════════════
 // QUOTATION SIDEBAR ITEM — Card compacto del sidebar
@@ -16,6 +17,9 @@ import { IconBoxes, IconTruck } from "./Icons";
 // MEMO: este componente se memoriza para que React no re-renderice
 // cards en el viewport cuando otras cards entran/salen del viewport
 // durante el scroll virtualizado.
+//
+// Totales: usa el helper centralizado `computeTotalsByCurrency` para
+// consistencia con KPIs y filtros.
 // ═══════════════════════════════════════════════════════════════════
 
 type Props = {
@@ -23,33 +27,12 @@ type Props = {
   isSelected: boolean;
 };
 
-function getQuotationTotals(q: Quotation): Record<string, number> {
-  const concepts = (q as any).billing_concepts ?? [];
-  if (concepts.length > 0) {
-    const totals: Record<string, number> = {};
-    for (const c of concepts) {
-      for (const line of c.lines ?? []) {
-        const cur = line.currency ?? c.currency ?? q.currency ?? "MXN";
-        const price = Number(line.price ?? 0);
-        const rate = line.tax_rate;
-        const tax =
-          rate === null || rate === undefined || rate === -1 || rate <= 0
-            ? 0
-            : price * (Number(rate) / 100);
-        totals[cur] = (totals[cur] ?? 0) + price + tax;
-      }
-    }
-    return totals;
-  }
-  return { [q.currency ?? "MXN"]: q.total ?? 0 };
-}
-
 function QuotationSidebarItem({ quotation, isSelected }: Props) {
   const isServices = quotation.type === "services";
   const subtype = (quotation as any).service_subtype as string | undefined;
   const clientName =
     (quotation as any).client?.name ?? quotation.client_name ?? "—";
-  const totals = getQuotationTotals(quotation);
+  const totals = computeTotalsByCurrency(quotation);
   const totalEntries = Object.entries(totals).filter(([, v]) => v > 0);
 
   return (
@@ -120,7 +103,11 @@ function QuotationSidebarItem({ quotation, isSelected }: Props) {
             {clientName}
           </div>
         </div>
-        <StatusBadge status={quotation.status} size="sm" />
+        {/* flexShrink: 0 garantiza que el badge NUNCA se achique ni se
+            empuje por nombres largos de cliente (bug ellipsis ERP). */}
+        <div style={{ flexShrink: 0 }}>
+          <StatusBadge status={quotation.status} size="sm" />
+        </div>
       </div>
 
       {/* ROW 2 — subtipo (solo services) */}

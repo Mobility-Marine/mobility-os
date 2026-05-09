@@ -3,75 +3,69 @@
 import React, { useMemo } from "react";
 import VirtualList from "./VirtualList";
 import SearchInput from "./SearchInput";
-import FilterPills from "./FilterPills";
-import AdvancedSearchPanel, {
-  AdvancedFilters,
-  AdvancedSearchConfig,
-} from "./AdvancedSearchPanel";
 import EmptyState from "./EmptyState";
-import { IconInbox } from "./Icons";
+import { IconInbox, IconSliders, IconX } from "./Icons";
 
 // ═══════════════════════════════════════════════════════════════════
-// VIRTUAL SIDEBAR — Sidebar completo virtualizado nivel ERP
+// VIRTUAL SIDEBAR — Sidebar virtualizado nivel ERP (v2 — patrón Linear/Salesforce)
 //
-// Composición: header con count + search + N filas de pills +
-// panel avanzado opcional + lista virtualizada (100K+ items) +
-// empty state + auto-scroll al item seleccionado.
+// Composición del header (ahora SIMPLE, sin pills ni panel embebido):
+//   ┌────────────────────────────────────────────────┐
+//   │ TÍTULO              [count]                    │  ← row 1
+//   │ [🔍 search input               ]               │  ← row 2 (opcional)
+//   │ [⚙️ Filtros (3)]   [Acción opcional]           │  ← row 3 (opcional)
+//   │ [chip 1 ×] [chip 2 ×] [chip 3 ×] [Limpiar]    │  ← row 4 (chips activos)
+//   ├────────────────────────────────────────────────┤
+//   │                                                │
+//   │      VirtualList (react-window)                │
+//   │                                                │
+//   └────────────────────────────────────────────────┘
 //
-// Patrón industria: usado por Linear sidebar, Notion sidebar, Slack DMs.
+// Esto reemplaza al patrón anterior (multi-fila de pills + panel
+// avanzado expandible). Razón: a más de 5–6 filtros simultáneos el
+// header crecía verticalmente comiéndose el espacio de la lista. El
+// patrón drawer + chips es el estándar de Linear, NetSuite, Salesforce.
 //
-// Uso típico:
-//   <VirtualSidebar
-//     title="Cotizaciones"
-//     count={items.length}
-//     totalCount={allItems.length}
-//     search={{
-//       value: query,
-//       onChange: setQuery,
-//       placeholder: "Buscar...",
-//       hint: "Folio, cliente, RFC, monto",
-//     }}
-//     pillRows={[
-//       { mode: "single", value: filterType, onChange: setFilterType, options: [...] },
-//       { mode: "single", value: filterStatus, onChange: setFilterStatus, options: [...] },
-//     ]}
-//     advancedSearch={{ filters, onChange, config }}
-//     items={items}
-//     selectedId={selected?.id}
-//     onSelect={handleSelect}
-//     getItemId={(item) => item.id}
-//     itemHeight={75}
-//     renderItem={(item) => <RowComponent item={item} />}
-//     emptyState={{ icon, title, description, action }}
-//   />
+// API:
+//   - filterButton + activeChips son OPCIONALES; si no se pasan, no
+//     se renderiza nada en esos rows. Útil para sidebars sin filtros.
+//   - El consumer maneja el FilterDrawer aparte; aquí solo recibimos
+//     el callback `filterButton.onOpen` para abrirlo.
 // ═══════════════════════════════════════════════════════════════════
 
-type PillRow = {
-  mode: "single" | "multi";
-  value: any;
-  onChange: any;
-  options: Array<{ value: string; label: string; count?: number }>;
-  size?: "sm" | "md";
-  shape?: "rect" | "round";
+export type ActiveChip = {
+  id: string;
+  label: string;       // texto a mostrar (ej: "Tipo: Servicios")
+  onRemove: () => void;
+};
+
+type FilterButton = {
+  activeCount: number;
+  onOpen: () => void;
+  label?: string;       // default "Filtros"
+};
+
+type HeaderAction = {
+  label: string;
+  onClick: () => void;
+  variant?: "primary" | "secondary";
 };
 
 type Props<T> = {
   title: string;
   count: number;
-  totalCount?: number; // Si difiere, muestra "N de M"
-  height?: number; // Si no se da, usa flexbox auto
+  totalCount?: number;
+  height?: number;
   search?: {
     value: string;
     onChange: (v: string) => void;
     placeholder?: string;
     hint?: string;
   };
-  pillRows?: PillRow[];
-  advancedSearch?: {
-    filters: AdvancedFilters;
-    onChange: (f: AdvancedFilters) => void;
-    config: AdvancedSearchConfig;
-  };
+  filterButton?: FilterButton;
+  activeChips?: ActiveChip[];
+  onClearAllFilters?: () => void;
+  headerAction?: HeaderAction;
   items: T[];
   selectedId?: string | number | null;
   onSelect: (item: T) => void;
@@ -92,8 +86,10 @@ export default function VirtualSidebar<T>({
   totalCount,
   height,
   search,
-  pillRows,
-  advancedSearch,
+  filterButton,
+  activeChips,
+  onClearAllFilters,
+  headerAction,
   items,
   selectedId,
   onSelect,
@@ -108,6 +104,9 @@ export default function VirtualSidebar<T>({
     const idx = items.findIndex((item) => getItemId(item) === selectedId);
     return idx >= 0 ? idx : undefined;
   }, [items, selectedId, getItemId]);
+
+  const hasChips = !!activeChips && activeChips.length > 0;
+  const hasActionsRow = !!filterButton || !!headerAction;
 
   return (
     <div
@@ -124,14 +123,15 @@ export default function VirtualSidebar<T>({
         overflow: "hidden",
       }}
     >
-      {/* HEADER — title + count */}
+      {/* HEADER */}
       <div style={{ flexShrink: 0 }}>
+        {/* ROW 1 — title + count */}
         <div
           style={{
             display: "flex",
             alignItems: "center",
             justifyContent: "space-between",
-            marginBottom: search || pillRows ? "10px" : "0",
+            marginBottom: search || hasActionsRow || hasChips ? "10px" : "0",
           }}
         >
           <span
@@ -163,9 +163,9 @@ export default function VirtualSidebar<T>({
           </span>
         </div>
 
-        {/* SEARCH */}
+        {/* ROW 2 — search */}
         {search && (
-          <div style={{ marginBottom: "8px" }}>
+          <div style={{ marginBottom: hasActionsRow || hasChips ? "8px" : "0" }}>
             <SearchInput
               value={search.value}
               onChange={search.onChange}
@@ -175,28 +175,74 @@ export default function VirtualSidebar<T>({
           </div>
         )}
 
-        {/* PILL ROWS */}
-        {pillRows?.map((row, idx) => (
-          <div key={idx} style={{ marginBottom: "5px" }}>
-            <FilterPills
-              mode={row.mode as any}
-              options={row.options}
-              value={row.value}
-              onChange={row.onChange}
-              size={row.size}
-              shape={row.shape}
-            />
+        {/* ROW 3 — filter button + opcional headerAction */}
+        {hasActionsRow && (
+          <div
+            style={{
+              display: "flex",
+              gap: "6px",
+              alignItems: "center",
+              marginBottom: hasChips ? "8px" : "0",
+            }}
+          >
+            {filterButton && (
+              <button
+                onClick={filterButton.onOpen}
+                style={filterBtnStyle(filterButton.activeCount > 0)}
+              >
+                <IconSliders size={12} />
+                <span>{filterButton.label ?? "Filtros"}</span>
+                {filterButton.activeCount > 0 && (
+                  <span style={filterBtnBadgeStyle}>
+                    {filterButton.activeCount}
+                  </span>
+                )}
+              </button>
+            )}
+            {headerAction && (
+              <button
+                onClick={headerAction.onClick}
+                style={headerActionStyle(headerAction.variant === "primary")}
+              >
+                {headerAction.label}
+              </button>
+            )}
           </div>
-        ))}
+        )}
 
-        {/* ADVANCED SEARCH PANEL */}
-        {advancedSearch && (
-          <div style={{ marginTop: "6px" }}>
-            <AdvancedSearchPanel
-              filters={advancedSearch.filters}
-              onChange={advancedSearch.onChange}
-              config={advancedSearch.config}
-            />
+        {/* ROW 4 — chips de filtros activos */}
+        {hasChips && (
+          <div
+            style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: "5px",
+              alignItems: "center",
+            }}
+          >
+            {activeChips!.map((chip) => (
+              <ActiveChipPill key={chip.id} chip={chip} />
+            ))}
+            {onClearAllFilters && activeChips!.length > 1 && (
+              <button
+                onClick={onClearAllFilters}
+                style={{
+                  height: "22px",
+                  padding: "0 8px",
+                  borderRadius: "var(--radius-sm)",
+                  background: "transparent",
+                  border: "1px dashed var(--color-border)",
+                  color: "var(--color-text-muted)",
+                  fontSize: "9px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  textTransform: "uppercase",
+                  letterSpacing: "0.3px",
+                }}
+              >
+                Limpiar todo
+              </button>
+            )}
           </div>
         )}
       </div>
@@ -254,10 +300,66 @@ export default function VirtualSidebar<T>({
 }
 
 // ═══════════════════════════════════════════════════════════════════
+// SUB-COMPONENTE — ActiveChipPill
+// Cada chip muestra el filtro activo y permite removerlo con × inline.
+// ═══════════════════════════════════════════════════════════════════
+function ActiveChipPill({ chip }: { chip: ActiveChip }) {
+  return (
+    <span
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        gap: "5px",
+        height: "22px",
+        padding: "0 4px 0 8px",
+        borderRadius: "var(--radius-sm)",
+        background: "var(--color-info-bg)",
+        border: "1px solid var(--color-info-border)",
+        color: "var(--color-info-text)",
+        fontSize: "10px",
+        fontWeight: 600,
+        whiteSpace: "nowrap",
+        maxWidth: "100%",
+      }}
+    >
+      <span
+        style={{
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+          maxWidth: "180px",
+        }}
+      >
+        {chip.label}
+      </span>
+      <button
+        onClick={chip.onRemove}
+        aria-label={`Quitar filtro ${chip.label}`}
+        style={{
+          width: "16px",
+          height: "16px",
+          padding: 0,
+          border: "none",
+          background: "transparent",
+          color: "inherit",
+          cursor: "pointer",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          flexShrink: 0,
+          opacity: 0.7,
+        }}
+      >
+        <IconX size={10} strokeWidth={2.5} />
+      </button>
+    </span>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
 // AUTO-SIZER — calcula height del container automáticamente
 // (sin dependencia adicional react-virtualized-auto-sizer)
 // ═══════════════════════════════════════════════════════════════════
-
 function AutoSizer({
   children,
 }: {
@@ -286,4 +388,52 @@ function AutoSizer({
       {size.height > 0 && children(size)}
     </div>
   );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// ESTILOS — botones del header
+// ═══════════════════════════════════════════════════════════════════
+function filterBtnStyle(active: boolean): React.CSSProperties {
+  return {
+    height: "28px",
+    padding: "0 10px",
+    borderRadius: "var(--radius-md)",
+    background: active ? "var(--color-info-bg)" : "var(--color-bg-subtle)",
+    border: `1px solid ${active ? "var(--color-info-border)" : "var(--color-border-faint)"}`,
+    color: active ? "var(--color-info-text)" : "var(--color-text-second)",
+    fontSize: "11px",
+    fontWeight: 700,
+    cursor: "pointer",
+    display: "inline-flex",
+    alignItems: "center",
+    gap: "6px",
+    transition: "var(--transition-fast)",
+    whiteSpace: "nowrap",
+  };
+}
+
+const filterBtnBadgeStyle: React.CSSProperties = {
+  fontSize: "9px",
+  fontWeight: 800,
+  padding: "1px 6px",
+  borderRadius: "var(--radius-full)",
+  background: "var(--color-brand-blue)",
+  color: "#fff",
+  fontVariantNumeric: "tabular-nums",
+  lineHeight: 1.3,
+};
+
+function headerActionStyle(primary: boolean): React.CSSProperties {
+  return {
+    height: "28px",
+    padding: "0 12px",
+    borderRadius: "var(--radius-md)",
+    background: primary ? "var(--color-brand-blue)" : "transparent",
+    border: `1px solid ${primary ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
+    color: primary ? "#fff" : "var(--color-text-second)",
+    fontSize: "11px",
+    fontWeight: 700,
+    cursor: "pointer",
+    whiteSpace: "nowrap",
+  };
 }
