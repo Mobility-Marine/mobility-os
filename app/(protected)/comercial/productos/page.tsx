@@ -55,6 +55,7 @@ export default function ProductosPage() {
       <div style={{ gridColumn: "1 / 2", minHeight: 0, overflow: "hidden" }}>
         <ProductsSidebar
           products={filtered}
+          totalCount={products.length}
           selected={selected}
           setSelected={setSelected}
           filters={filters}

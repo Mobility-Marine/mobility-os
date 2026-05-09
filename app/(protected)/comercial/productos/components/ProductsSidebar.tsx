@@ -1,210 +1,497 @@
 "use client";
+
+import React, { memo, useMemo, useState } from "react";
 import type { Product, ProductFilters } from "../types/products.types";
 import { useTranslation } from "@/lib/i18n/useTranslation";
 
+import VirtualSidebar, {
+  type ActiveChip,
+} from "@/app/components/shared/VirtualSidebar";
+import FilterDrawer, {
+  type FilterGroup,
+} from "@/app/components/shared/FilterDrawer";
+import { IconInbox } from "@/app/components/shared/Icons";
+
+// ═══════════════════════════════════════════════════════════════════
+// PRODUCTS SIDEBAR — Virtualizado · escalable a 100K+ productos
+//
+// Patrón ERP-grade (Linear / Salesforce):
+//   - 4 acciones header: Nuevo (primary) + Import + Export + PriceList
+//   - Search siempre visible (SKU, nombre, categoría)
+//   - Botón "Filtros (N)" → FilterDrawer con Status / Tipo / Categoría
+//   - Chips de filtros activos removibles
+//   - VirtualList con react-window — escalable a catálogos grandes
+//
+// Item compacto (2 rows, ~64px alto):
+//   Row 1: [SKU pill] · nombre · OFF (si inactivo)
+//   Row 2: stock/categoría · precio · margen %
+// ═══════════════════════════════════════════════════════════════════
+
 type Props = {
-  products:     Product[];
-  selected:     Product | null;
-  setSelected:  (p: Product) => void;
-  filters:      ProductFilters;
-  setFilters:   (f: ProductFilters) => void;
-  categories:   string[];
-  onNew:        () => void;
-  onImport:     () => void;
-  onExport:     () => void;
-  onPriceList:  () => void;
+  products:    Product[];           // ya filtrados (vienen del page)
+  totalCount?: number;              // total sin filtrar (para "X de Y")
+  selected:    Product | null;
+  setSelected: (p: Product) => void;
+  filters:     ProductFilters;
+  setFilters:  (f: ProductFilters) => void;
+  categories:  string[];
+  onNew:       () => void;
+  onImport:    () => void;
+  onExport:    () => void;
+  onPriceList: () => void;
+};
+
+const ITEM_HEIGHT = 64;
+
+// ── Iconos SVG inline (importables en headerActions del VirtualSidebar) ──
+const IconPlus = () => (
+  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </svg>
+);
+
+const IconUpload = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="17 8 12 3 7 8" />
+    <line x1="12" y1="3" x2="12" y2="15" />
+  </svg>
+);
+
+const IconDownload = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+    <polyline points="7 10 12 15 17 10" />
+    <line x1="12" y1="15" x2="12" y2="3" />
+  </svg>
+);
+
+const IconList = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+    <polyline points="10 9 9 9 8 9" />
+  </svg>
+);
+
+// ── Etiquetas para chips activos ────────────────────────────────────
+const STATUS_LABEL: Record<string, string> = {
+  active:    "Activos",
+  inactive:  "Inactivos",
+  low_stock: "Bajo mínimo",
+  no_stock:  "Sin stock",
+};
+
+const TYPE_LABEL: Record<string, string> = {
+  product: "Productos",
+  service: "Servicios",
 };
 
 export default function ProductsSidebar({
-  products, selected, setSelected, filters, setFilters,
-  categories, onNew, onImport, onExport, onPriceList,
+  products,
+  totalCount,
+  selected,
+  setSelected,
+  filters,
+  setFilters,
+  categories,
+  onNew,
+  onImport,
+  onExport,
+  onPriceList,
 }: Props) {
   const { t, lang } = useTranslation();
-  const locale      = lang === "en" ? "en-US" : "es-MX";
-  const tp          = (t.products as any) ?? {};
+  const locale = lang === "en" ? "en-US" : "es-MX";
+  const tp = (t.products as any) ?? {};
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const STATUS_OPTS = [
-    { value: "all",       label: tp.filterAll      ?? "Todos"       },
-    { value: "active",    label: tp.filterActive   ?? "Activos"     },
-    { value: "inactive",  label: tp.filterInactive ?? "Inactivos"   },
-    { value: "low_stock", label: tp.filterLowStock ?? "Bajo mínimo" },
-    { value: "no_stock",  label: tp.filterNoStock  ?? "Sin stock"   },
-  ];
+  // ── Construir grupos del FilterDrawer ─────────────────────────────
+  const groups: FilterGroup[] = useMemo(() => {
+    const g: FilterGroup[] = [
+      {
+        id: "status",
+        label: tp.statusLabel ?? "Estado",
+        type: "select",
+        value: filters.status,
+        onChange: (v) =>
+          setFilters({ ...filters, status: v as ProductFilters["status"] }),
+        options: [
+          { value: "all",       label: tp.filterAll      ?? "Todos" },
+          { value: "active",    label: STATUS_LABEL.active },
+          { value: "inactive",  label: STATUS_LABEL.inactive },
+          { value: "low_stock", label: STATUS_LABEL.low_stock },
+          { value: "no_stock",  label: STATUS_LABEL.no_stock },
+        ],
+      },
+      {
+        id: "product_type",
+        label: tp.productTypeLabel ?? "Tipo",
+        type: "select",
+        value: filters.product_type ?? "all",
+        onChange: (v) =>
+          setFilters({
+            ...filters,
+            product_type: v as ProductFilters["product_type"],
+          }),
+        options: [
+          { value: "all",     label: tp.filterAll ?? "Todos" },
+          { value: "product", label: TYPE_LABEL.product },
+          { value: "service", label: TYPE_LABEL.service },
+        ],
+      },
+    ];
 
-  function getStockColor(p: Product) {
-    if (!p.is_active)           return "var(--color-text-muted)";
-    if (p.stock <= 0)           return "var(--color-danger-text)";
-    if (p.stock <= p.stock_min) return "var(--color-warning-text)";
-    return "var(--color-success-text)";
-  }
+    if (categories.length > 0) {
+      g.push({
+        id: "category",
+        label: tp.categoryLabel ?? "Categoría",
+        type: "select",
+        value: filters.category ?? "",
+        onChange: (v) => setFilters({ ...filters, category: v }),
+        options: [
+          { value: "", label: tp.allCategories ?? "Todas" },
+          ...categories.map((c) => ({ value: c, label: c })),
+        ],
+      });
+    }
+
+    return g;
+  }, [filters, categories, tp, setFilters]);
+
+  // ── Construir chips activos ───────────────────────────────────────
+  const activeChips: ActiveChip[] = useMemo(() => {
+    const chips: ActiveChip[] = [];
+
+    if (filters.status !== "all") {
+      chips.push({
+        id: "status",
+        label: `Estado: ${STATUS_LABEL[filters.status] ?? filters.status}`,
+        onRemove: () => setFilters({ ...filters, status: "all" }),
+      });
+    }
+    if (filters.product_type && filters.product_type !== "all") {
+      chips.push({
+        id: "product_type",
+        label: `Tipo: ${TYPE_LABEL[filters.product_type] ?? filters.product_type}`,
+        onRemove: () => setFilters({ ...filters, product_type: "all" }),
+      });
+    }
+    if (filters.category) {
+      chips.push({
+        id: "category",
+        label: `Categoría: ${filters.category}`,
+        onRemove: () => setFilters({ ...filters, category: "" }),
+      });
+    }
+
+    return chips;
+  }, [filters, setFilters]);
+
+  const activeCount = activeChips.length;
+
+  const clearAll = () =>
+    setFilters({
+      ...filters,
+      status: "all",
+      product_type: "all",
+      category: "",
+    });
 
   return (
-    <div style={{
-      background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)",
-      borderRadius: "var(--radius-lg)", padding: "14px",
-      display: "flex", flexDirection: "column", gap: "10px",
-      height: "100%", minHeight: 0, overflow: "hidden",
-    }}>
-      {/* HEADER */}
-      <div style={{ flexShrink: 0 }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "10px" }}>
-          <span style={{ fontSize: "11px", fontWeight: 700, color: "var(--color-text-muted)", textTransform: "uppercase", letterSpacing: "1px" }}>
-            {tp.title ?? "Productos"}
+    <>
+      <VirtualSidebar<Product>
+        title={tp.title ?? "Productos"}
+        count={products.length}
+        totalCount={totalCount}
+        search={{
+          value: filters.search,
+          onChange: (v) => setFilters({ ...filters, search: v }),
+          placeholder: tp.search ?? "SKU, nombre o categoría…",
+          hint: "SKU · nombre · categoría",
+        }}
+        headerActions={[
+          {
+            label: tp.newProduct ?? "Nuevo",
+            icon: <IconPlus />,
+            onClick: onNew,
+            variant: "primary",
+          },
+          {
+            icon: <IconUpload />,
+            title: tp.importTitle ?? "Importar CSV",
+            onClick: onImport,
+          },
+          {
+            icon: <IconDownload />,
+            title: tp.exportBtn ?? "Exportar CSV",
+            onClick: onExport,
+          },
+          {
+            icon: <IconList />,
+            title: tp.priceList ?? "Lista de precios",
+            onClick: onPriceList,
+          },
+        ]}
+        filterButton={{
+          activeCount,
+          onOpen: () => setDrawerOpen(true),
+        }}
+        activeChips={activeChips}
+        onClearAllFilters={clearAll}
+        items={products}
+        selectedId={selected?.id ?? null}
+        onSelect={setSelected}
+        getItemId={(p) => p.id}
+        itemHeight={ITEM_HEIGHT}
+        renderItem={(p, _i, isSelected) => (
+          <ProductItem product={p} isSelected={isSelected} locale={locale} tp={tp} />
+        )}
+        emptyState={{
+          icon: <IconInbox size={32} />,
+          title: activeCount > 0 || filters.search
+            ? tp.noResults ?? "Sin resultados"
+            : tp.noProducts ?? "Sin productos",
+          description: activeCount > 0 || filters.search
+            ? "Ajusta los filtros o limpia la búsqueda"
+            : "Crea tu primer producto para empezar",
+          action:
+            activeCount === 0 && !filters.search
+              ? { label: tp.newProduct ?? "Nuevo producto", onClick: onNew }
+              : undefined,
+        }}
+      />
+
+      <FilterDrawer
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        title={tp.filtersTitle ?? "Filtros de productos"}
+        groups={groups}
+        activeCount={activeCount}
+        onClearAll={clearAll}
+      />
+    </>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════
+// PRODUCT ITEM — card compacto del sidebar (memo para react-window)
+// ═══════════════════════════════════════════════════════════════════
+const ProductItem = memo(function ProductItem({
+  product: p,
+  isSelected,
+  locale,
+  tp,
+}: {
+  product:    Product;
+  isSelected: boolean;
+  locale:     string;
+  tp:         any;
+}) {
+  const isService = p.product_type === "service";
+  const margin =
+    p.unit_price > 0 ? ((p.unit_price - p.cost) / p.unit_price) * 100 : 0;
+
+  const stockColor = !p.is_active
+    ? "var(--color-text-muted)"
+    : p.stock <= 0
+    ? "var(--color-danger-text)"
+    : p.stock <= p.stock_min
+    ? "var(--color-warning-text)"
+    : "var(--color-success-text)";
+
+  return (
+    <div
+      style={{
+        // ── ANTI-OVERFLOW ──
+        width:        "100%",
+        boxSizing:    "border-box",
+        overflow:     "hidden",
+        // ── visual ──
+        padding:      "8px 11px",
+        borderRadius: "var(--radius-md)",
+        background:   isSelected
+          ? "var(--color-bg-active)"
+          : "var(--color-bg-subtle)",
+        border:       isSelected
+          ? "1px solid var(--color-brand-blue)"
+          : "1px solid var(--color-border-faint)",
+        display:      "flex",
+        flexDirection:"column",
+        gap:          "3px",
+        opacity:      p.is_active ? 1 : 0.6,
+        transition:   "var(--transition-fast)",
+        height:       "calc(100% - 5px)",
+      }}
+    >
+      {/* ROW 1 — SKU + nombre + OFF */}
+      <div
+        style={{
+          display:    "flex",
+          alignItems: "center",
+          gap:        "6px",
+          minWidth:   0,
+          width:      "100%",
+        }}
+      >
+        <span
+          style={{
+            fontSize:     "9px",
+            fontWeight:   800,
+            padding:      "1px 5px",
+            borderRadius: "var(--radius-sm)",
+            background:   "var(--color-bg-base)",
+            border:       "1px solid var(--color-border-faint)",
+            color:        "var(--color-text-muted)",
+            flexShrink:   0,
+            fontFamily:   "ui-monospace, monospace",
+            maxWidth:     "70px",
+            overflow:     "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace:   "nowrap",
+          }}
+        >
+          {p.sku}
+        </span>
+        <span
+          style={{
+            fontSize:           "12px",
+            fontWeight:         700,
+            color:              "var(--color-text-primary)",
+            flex:               1,
+            minWidth:           0,
+            overflow:           "hidden",
+            textOverflow:       "ellipsis",
+            whiteSpace:         "nowrap",
+          }}
+        >
+          {p.name}
+        </span>
+        {!p.is_active && (
+          <span
+            style={{
+              fontSize:     "9px",
+              color:        "var(--color-text-muted)",
+              background:   "var(--color-bg-base)",
+              padding:      "1px 4px",
+              borderRadius: "var(--radius-sm)",
+              border:       "1px solid var(--color-border-faint)",
+              flexShrink:   0,
+            }}
+          >
+            OFF
           </span>
-          <span style={{ fontSize: "11px", fontWeight: 700, padding: "1px 7px", borderRadius: "var(--radius-full)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border-faint)", color: "var(--color-text-muted)" }}>
-            {products.length}
-          </span>
-        </div>
+        )}
+      </div>
 
-        {/* ACTIONS */}
-        <div style={{ display: "grid", gridTemplateColumns: "1fr auto auto auto", gap: "5px", marginBottom: "10px" }}>
-          <button onClick={onNew} style={{ height: "34px", borderRadius: "var(--radius-md)", background: "var(--color-brand-blue)", color: "#fff", border: "none", fontSize: "12px", fontWeight: 700, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: "5px" }}>
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
-            </svg>
-            {tp.newProduct ?? "Nuevo"}
-          </button>
-          <button onClick={onImport} title={tp.importTitle ?? "Importar CSV"} style={{ width: "34px", height: "34px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          </button>
-          <button onClick={onExport} title={tp.exportBtn ?? "Exportar CSV"} style={{ width: "34px", height: "34px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-text-second)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          </button>
-          <button onClick={onPriceList} title={tp.priceList ?? "Lista de precios"} style={{ width: "34px", height: "34px", borderRadius: "var(--radius-md)", background: "var(--color-bg-subtle)", border: "1px solid var(--color-border)", color: "var(--color-brand-blue)", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-          </button>
-        </div>
-
-        {/* SEARCH */}
-        <div style={{ position: "relative", marginBottom: "8px" }}>
-          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--color-text-muted)" strokeWidth="2" style={{ position: "absolute", left: "9px", top: "50%", transform: "translateY(-50%)" }}>
-            <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/>
-          </svg>
-          <input
-            placeholder={tp.search ?? "SKU, nombre o categoría…"}
-            value={filters.search}
-            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-            style={{ width: "100%", height: "32px", paddingLeft: "28px", paddingRight: "8px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-primary)", fontSize: "12px", outline: "none", boxSizing: "border-box" }}
-          />
-        </div>
-
-        {/* FILTROS */}
-        <div style={{ display: "grid", gap: "5px" }}>
-          {/* Filtro status */}
-          <div style={{ display: "flex", gap: "3px", flexWrap: "wrap" }}>
-            {STATUS_OPTS.map((s) => (
-              <button key={s.value} onClick={() => setFilters({ ...filters, status: s.value as any })} style={{
-                height: "22px", padding: "0 7px", borderRadius: "var(--radius-full)",
-                background: filters.status === s.value ? "var(--color-brand-blue)" : "var(--color-bg-subtle)",
-                border: `1px solid ${filters.status === s.value ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
-                color: filters.status === s.value ? "#fff" : "var(--color-text-muted)",
-                fontSize: "10px", fontWeight: filters.status === s.value ? 700 : 500, cursor: "pointer",
-              }}>
-                {s.label}
-              </button>
-            ))}
-          </div>
-          {/* Filtro tipo producto/servicio */}
-          <div style={{ display: "flex", gap: "3px" }}>
-            {[
-              { value: "all",     label: "Todos"         },
-              { value: "product", label: "📦 Productos"  },
-              { value: "service", label: "⚙️ Servicios"  },
-            ].map((opt) => (
-              <button
-                key={opt.value}
-                onClick={() => setFilters({ ...filters, product_type: opt.value as any })}
-                style={{
-                  height: "22px", padding: "0 8px", borderRadius: "var(--radius-full)", flex: 1,
-                  background: (filters.product_type ?? "all") === opt.value ? "rgba(59,130,246,0.15)" : "var(--color-bg-subtle)",
-                  border: `1px solid ${(filters.product_type ?? "all") === opt.value ? "var(--color-brand-blue)" : "var(--color-border-faint)"}`,
-                  color: (filters.product_type ?? "all") === opt.value ? "var(--color-brand-blue)" : "var(--color-text-muted)",
-                  fontSize: "10px", fontWeight: (filters.product_type ?? "all") === opt.value ? 700 : 500,
-                  cursor: "pointer",
-                }}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-          {/* Filtro categoría */}
-          {categories.length > 0 && (
-            <select
-              value={filters.category}
-              onChange={(e) => setFilters({ ...filters, category: e.target.value })}
-              style={{ height: "28px", padding: "0 8px", borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)", background: "var(--color-bg-subtle)", color: "var(--color-text-second)", fontSize: "11px", cursor: "pointer" }}
-            >
-              <option value="">{tp.allCategories ?? "Todas las categorías"}</option>
-              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          )}
-        </div>
-      </div>{/* ← cierre del div flexShrink:0 del HEADER */}
-
-      {/* LIST */}
-      <div style={{ flex: 1, overflowY: "auto", minHeight: 0, display: "grid", gap: "4px", alignContent: "start" }}>
-        {products.length === 0 ? (
-          <div style={{ padding: "28px 12px", textAlign: "center", color: "var(--color-text-muted)", fontSize: "13px" }}>
-            {tp.noProducts ?? "Sin productos"}
-          </div>
-        ) : products.map((p) => {
-          const isSelected = selected?.id === p.id;
-          const stockColor = getStockColor(p);
-          const margin     = p.unit_price > 0 ? ((p.unit_price - p.cost) / p.unit_price) * 100 : 0;
-          return (
-            <div
-              key={p.id}
-              onClick={() => setSelected(p)}
+      {/* ROW 2 — stock/categoría · precio · margen */}
+      <div
+        style={{
+          display:    "flex",
+          alignItems: "center",
+          fontSize:   "10px",
+          minWidth:   0,
+          gap:        "6px",
+          width:      "100%",
+        }}
+      >
+        <div
+          style={{
+            display:    "flex",
+            gap:        "6px",
+            minWidth:   0,
+            overflow:   "hidden",
+            flex:       1,
+            alignItems: "center",
+          }}
+        >
+          {isService ? (
+            <span
               style={{
-                padding: "9px 11px", borderRadius: "var(--radius-md)",
-                background: isSelected ? "var(--color-bg-active)" : "var(--color-bg-subtle)",
-                border: isSelected ? "1px solid var(--color-brand-blue)" : "1px solid var(--color-border-faint)",
-                cursor: "pointer", display: "grid", gap: "3px",
-                opacity: p.is_active ? 1 : 0.6,
-                transition: "var(--transition-fast)",
+                color:      "var(--color-info-text)",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                flexShrink: 0,
               }}
             >
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
-                <span style={{ fontSize: "9px", fontWeight: 800, padding: "1px 5px", borderRadius: "var(--radius-sm)", background: "var(--color-bg-base)", border: "1px solid var(--color-border-faint)", color: "var(--color-text-muted)", flexShrink: 0, fontFamily: "monospace", maxWidth: "70px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {p.sku}
-                </span>
-                <span style={{ fontSize: "12px", fontWeight: 700, color: "var(--color-text-primary)", flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                  {p.name}
-                </span>
-                {!p.is_active && (
-                  <span style={{ fontSize: "9px", color: "var(--color-text-muted)", background: "var(--color-bg-base)", padding: "1px 4px", borderRadius: "var(--radius-sm)", border: "1px solid var(--color-border-faint)", flexShrink: 0 }}>
-                    OFF
-                  </span>
-                )}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: "10px", minWidth: 0, gap: "4px" }}>
-                <div style={{ display: "flex", gap: "8px", minWidth: 0, overflow: "hidden" }}>
-                  {p.product_type === "service" ? (
-                    <span style={{ color: "var(--color-info-text)", fontWeight: 600 }}>⚙️ Servicio</span>
-                  ) : (
-                    <span style={{ color: stockColor, fontWeight: 600 }}>
-                      {tp.stock ?? "Stock"}: {p.stock} {p.unit}
-                    </span>
-                  )}
-                  {p.category && (
-                    <span style={{ color: "var(--color-text-muted)" }}>{p.category}</span>
-                  )}
-                </div>
-                <div style={{ display: "flex", gap: "6px", alignItems: "center" }}>
-                  <span style={{ color: "var(--color-success-text)", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>
-                    ${Number(p.unit_price).toLocaleString(locale, { maximumFractionDigits: 0 })}
-                  </span>
-                  {margin > 0 && (
-                    <span style={{ fontSize: "9px", color: margin >= 30 ? "var(--color-success-text)" : margin >= 15 ? "var(--color-warning-text)" : "var(--color-danger-text)", fontWeight: 600 }}>
-                      {margin.toFixed(0)}%
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+              ⚙ Servicio
+            </span>
+          ) : (
+            <span
+              style={{
+                color:      stockColor,
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+                overflow:   "hidden",
+                textOverflow: "ellipsis",
+                flexShrink: 0,
+              }}
+            >
+              {tp.stock ?? "Stock"}: {p.stock} {p.unit}
+            </span>
+          )}
+          {p.category && (
+            <span
+              style={{
+                color:        "var(--color-text-muted)",
+                whiteSpace:   "nowrap",
+                overflow:     "hidden",
+                textOverflow: "ellipsis",
+                minWidth:     0,
+              }}
+            >
+              {p.category}
+            </span>
+          )}
+        </div>
+        <div
+          style={{
+            display:    "flex",
+            gap:        "6px",
+            alignItems: "center",
+            flexShrink: 0,
+          }}
+        >
+          <span
+            style={{
+              color:              "var(--color-success-text)",
+              fontWeight:         700,
+              fontVariantNumeric: "tabular-nums",
+              whiteSpace:         "nowrap",
+            }}
+          >
+            ${Number(p.unit_price).toLocaleString(locale, {
+              maximumFractionDigits: 0,
+            })}
+          </span>
+          {margin > 0 && (
+            <span
+              style={{
+                fontSize:   "9px",
+                color:
+                  margin >= 30
+                    ? "var(--color-success-text)"
+                    : margin >= 15
+                    ? "var(--color-warning-text)"
+                    : "var(--color-danger-text)",
+                fontWeight: 600,
+                whiteSpace: "nowrap",
+              }}
+            >
+              {margin.toFixed(0)}%
+            </span>
+          )}
+        </div>
       </div>
     </div>
   );
-}
+}, (prev, next) =>
+  prev.product.id === next.product.id &&
+  prev.product.updated_at === next.product.updated_at &&
+  prev.product.is_active === next.product.is_active &&
+  prev.product.stock === next.product.stock &&
+  prev.product.unit_price === next.product.unit_price &&
+  prev.isSelected === next.isSelected
+);

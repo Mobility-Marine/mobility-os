@@ -46,7 +46,9 @@ type FilterButton = {
 };
 
 type HeaderAction = {
-  label: string;
+  label?: string;       // texto opcional (si solo es ícono se omite)
+  icon?: React.ReactNode; // ícono opcional
+  title?: string;       // tooltip (recomendado si solo hay ícono)
   onClick: () => void;
   variant?: "primary" | "secondary";
 };
@@ -66,6 +68,7 @@ type Props<T> = {
   activeChips?: ActiveChip[];
   onClearAllFilters?: () => void;
   headerAction?: HeaderAction;
+  headerActions?: HeaderAction[]; // múltiples botones (Productos: Nuevo+Import+Export+PriceList)
   items: T[];
   selectedId?: string | number | null;
   onSelect: (item: T) => void;
@@ -90,6 +93,7 @@ export default function VirtualSidebar<T>({
   activeChips,
   onClearAllFilters,
   headerAction,
+  headerActions,
   items,
   selectedId,
   onSelect,
@@ -106,7 +110,8 @@ export default function VirtualSidebar<T>({
   }, [items, selectedId, getItemId]);
 
   const hasChips = !!activeChips && activeChips.length > 0;
-  const hasActionsRow = !!filterButton || !!headerAction;
+  const hasActionsRow =
+    !!filterButton || !!headerAction || (!!headerActions && headerActions.length > 0);
 
   return (
     <div
@@ -214,11 +219,28 @@ export default function VirtualSidebar<T>({
             {headerAction && (
               <button
                 onClick={headerAction.onClick}
+                title={headerAction.title}
                 style={headerActionStyle(headerAction.variant === "primary")}
               >
+                {headerAction.icon}
                 {headerAction.label}
               </button>
             )}
+            {headerActions?.map((a, i) => (
+              <button
+                key={i}
+                onClick={a.onClick}
+                title={a.title}
+                style={
+                  a.label
+                    ? headerActionStyle(a.variant === "primary")
+                    : headerIconBtnStyle
+                }
+              >
+                {a.icon}
+                {a.label}
+              </button>
+            ))}
           </div>
         )}
 
@@ -433,6 +455,21 @@ const filterBtnBadgeStyle: React.CSSProperties = {
   color: "#fff",
   fontVariantNumeric: "tabular-nums",
   lineHeight: 1.3,
+};
+
+const headerIconBtnStyle: React.CSSProperties = {
+  width: "28px",
+  height: "28px",
+  padding: 0,
+  borderRadius: "var(--radius-md)",
+  background: "var(--color-bg-subtle)",
+  border: "1px solid var(--color-border-faint)",
+  color: "var(--color-text-second)",
+  cursor: "pointer",
+  display: "inline-flex",
+  alignItems: "center",
+  justifyContent: "center",
+  flexShrink: 0,
 };
 
 function headerActionStyle(primary: boolean): React.CSSProperties {
